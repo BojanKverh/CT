@@ -7,6 +7,9 @@ export class CApplication extends CObject {
     #m_canvas: HTMLCanvasElement;
     #m_topLevelWidgets = new Set<CWidget>();
 
+    #m_updatesEnabled = false;
+    #m_frameRequest: number | null = null;
+
     constructor(canvas: HTMLCanvasElement) {
         super();
 
@@ -47,11 +50,58 @@ export class CApplication extends CObject {
         this.#m_topLevelWidgets.delete(widget);
     }
 
+    updatesEnabled(): boolean {
+        return this.#m_updatesEnabled;
+    }
+
+    startUpdates(): void {
+        if (this.#m_updatesEnabled)
+            return;
+
+        this.#m_updatesEnabled = true;
+
+        this.requestRepaint();
+    }
+
+    stopUpdates(): void {
+        if (!this.#m_updatesEnabled)
+            return;
+
+        this.#m_updatesEnabled = false;
+
+        if (this.#m_frameRequest !== null) {
+            cancelAnimationFrame(this.#m_frameRequest);
+            this.#m_frameRequest = null;
+        }
+    }
+
+    requestRepaint(): void {
+        if (!this.#m_updatesEnabled)
+            return;
+
+        if (this.#m_frameRequest !== null)
+            return;
+
+        this.#m_frameRequest = requestAnimationFrame(() => {
+            this.#m_frameRequest = null;
+
+            this.#repaint();
+        });
+    }
+
     destroy(): void {
         if (CApplication.#m_instance !== this)
             return;
 
+        this.stopUpdates();
+
         this.#m_topLevelWidgets.clear();
         CApplication.#m_instance = null;
+    }
+
+    #repaint(): void {
+        /*
+         * Actual widget painting will be implemented later.
+         */
     }
 }

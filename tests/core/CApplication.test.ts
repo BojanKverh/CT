@@ -1,10 +1,55 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { CApplication } from "../../src/core/CApplication";
 import { CWidget } from "../../src/widgets/CWidget";
 
 function createCanvas(): HTMLCanvasElement {
     return {} as HTMLCanvasElement;
 }
+
+let animationFrameCallbacks = new Map<number, FrameRequestCallback>();
+let nextAnimationFrameId = 1;
+
+function installAnimationFrameMock(): void {
+    animationFrameCallbacks = new Map<number, FrameRequestCallback>();
+    nextAnimationFrameId = 1;
+
+    globalThis.requestAnimationFrame = (
+        callback: FrameRequestCallback
+    ): number => {
+        const id = nextAnimationFrameId++;
+
+        animationFrameCallbacks.set(id, callback);
+
+        return id;
+    };
+
+    globalThis.cancelAnimationFrame = (
+        handle: number
+    ): void => {
+        animationFrameCallbacks.delete(handle);
+    };
+}
+
+function pendingAnimationFrameCount(): number {
+    return animationFrameCallbacks.size;
+}
+
+function runNextAnimationFrame(): void {
+    const entry = animationFrameCallbacks.entries().next();
+
+    if (entry.done)
+        return;
+
+    const [id, callback] = entry.value;
+
+    animationFrameCallbacks.delete(id);
+
+    callback(0);
+}
+
+beforeEach(() => {
+    installAnimationFrameMock();
+});
 
 afterEach(() => {
     if (CApplication.exists())
@@ -69,6 +114,14 @@ describe("CApplication", () => {
 
         expect(CApplication.instance()).toBe(app2);
         expect(app2).not.toBe(app1);
+    });
+
+    test("does not allow creating a widget without an application", () => {
+        expect(CApplication.exists()).toBe(false);
+
+        expect(() => {
+            new CWidget();
+        }).toThrow("CApplication has not been created.");
     });
 
     test("registers widgets without a parent as top-level widgets", () => {
@@ -183,7 +236,6 @@ describe("CApplication", () => {
             widget2
         ]);
 
-        // The returned array must not expose the application's internal Set.
         const mutableWidgets = widgets as CWidget[];
         mutableWidgets.length = 0;
 
@@ -206,11 +258,130 @@ describe("CApplication", () => {
         expect(app.topLevelWidgets()).toHaveLength(0);
     });
 
-    test("does not allow creating a widget without an application", () => {
-        expect(CApplication.exists()).toBe(false);
-        expect(() => {
-            new CWidget();
-        }).toThrow("CApplication has not been created.");
+    test("updates are disabled by default", () => {
+        const app = new CApplication(createCanvas());
+
+        expect(app.updatesEnabled()).toBe(false);
     });
-    
+
+    test("startUpdates enables updates", () => {
+        const app = new CApplication(createCanvas());
+
+        app.startUpdates();
+
+        expect(app.updatesEnabled()).toBe(true);
+    });
+
+    test("startUpdates schedules the initial repaint", () => {
+        const app = new CApplication(createCanvas());
+
+        app.startUpdates();
+
+        expect(pendingAnimationFrameCount()).toBe(1);
+    });
+
+    test("calling startUpdates repeatedly does not schedule additional frames", () => {
+        const app = new CApplication(createCanvas());
+
+        app.startUpdates();
+        app.startUpdates();
+        app.startUpdates();
+
+        expect(pendingAnimationFrameCount()).toBe(1);
+    });
+
+    test("requestRepaint does nothing while updates are disabled", () => {
+        const app = new CApplication(createCanvas());
+
+        app.requestRepaint();
+
+        expect(pendingAnimationFrameCount()).toBe(0);
+    });
+
+    test("coalesces multiple repaint requests into one animation frame", () => {
+        const app = new CApplication(createCanvas());
+
+        app.startUpdates();
+
+        app.requestRepaint();
+        app.requestRepaint();
+        app.requestRepaint();
+
+        expect(pendingAnimationFrameCount()).toBe(1);
+    });
+
+    test("allows another repaint after the current frame completes", () => {
+        const app = new CApplication(createCanvas());
+
+        app.startUpdates();
+
+        expect(pendingAnimationFrameCount()).toBe(1);
+
+        runNextAnimationFrame();
+
+        expect(pendingAnimationFrameCount()).toBe(0);
+
+        app.requestRepaint();
+
+        expect(pendingAnimationFrameCount()).toBe(1);
+    });
+
+    test("stopUpdates disables updates", () => {
+        const app = new CApplication(createCanvas());
+
+        app.startUpdates();
+        app.stopUpdates();
+
+        expect(app.updatesEnabled()).toBe(false);
+    });
+
+    test("stopUpdates cancels a pending repaint", () => {
+        const app = new CApplication(createCanvas());
+
+        app.startUpdates();
+
+        expect(pendingAnimationFrameCount()).toBe(1);
+
+        app.stopUpdates();
+
+        expect(pendingAnimationFrameCount()).toBe(0);
+    });
+
+    test("requestRepaint is ignored after stopUpdates", () => {
+        const app = new CApplication(createCanvas());
+
+        app.startUpdates();
+        app.stopUpdates();
+
+        app.requestRepaint();
+
+        expect(pendingAnimationFrameCount()).toBe(0);
+    });
+
+    test("updates can be started again after being stopped", () => {
+        const app = new CApplication(createCanvas());
+
+        app.startUpdates();
+        app.stopUpdates();
+
+        app.startUpdates();
+
+        expect(app.updatesEnabled()).toBe(true);
+        expect(pendingAnimationFrameCount()).toBe(1);
+    });
+
+    test("destroy stops updates and cancels pending repaint", () => {
+        const app = new CApplication(createCanvas());
+
+        app.startUpdates();
+
+        expect(app.updatesEnabled()).toBe(true);
+        expect(pendingAnimationFrameCount()).toBe(1);
+
+        app.destroy();
+
+        expect(app.updatesEnabled()).toBe(false);
+        expect(pendingAnimationFrameCount()).toBe(0);
+        expect(CApplication.exists()).toBe(false);
+    });
 });
