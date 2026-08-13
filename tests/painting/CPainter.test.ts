@@ -1,0 +1,141 @@
+import { describe, expect, test, vi } from "vitest";
+import { CPainter } from "../../src/painting/CPainter";
+import { CPaintDevice } from "../../src/painting/CPaintDevice";
+import { CPaintEngine } from "../../src/painting/CPaintEngine";
+import { CRect } from "../../src/geometry/CRect";
+
+class TestPaintEngine extends CPaintEngine {
+    save = vi.fn();
+    restore = vi.fn();
+
+    translate = vi.fn();
+
+    fillRect = vi.fn();
+    strokeRect = vi.fn();
+    clearRect = vi.fn();
+
+    setFillStyle = vi.fn();
+    setStrokeStyle = vi.fn();
+    setLineWidth = vi.fn();
+}
+
+class TestPaintDevice extends CPaintDevice {
+    readonly engine = new TestPaintEngine();
+
+    width(): number {
+        return 800;
+    }
+
+    height(): number {
+        return 600;
+    }
+
+    paintEngine(): CPaintEngine {
+        return this.engine;
+    }
+}
+
+describe("CPainter", () => {
+    test("stores the paint device", () => {
+        const device = new TestPaintDevice();
+        const painter = new CPainter(device);
+
+        expect(painter.device()).toBe(device);
+    });
+
+    test("saves painter state", () => {
+        const device = new TestPaintDevice();
+        const painter = new CPainter(device);
+
+        painter.save();
+
+        expect(device.engine.save).toHaveBeenCalledOnce();
+    });
+
+    test("restores painter state", () => {
+        const device = new TestPaintDevice();
+        const painter = new CPainter(device);
+
+        painter.restore();
+
+        expect(device.engine.restore).toHaveBeenCalledOnce();
+    });
+
+    test("translates painter", () => {
+        const device = new TestPaintDevice();
+        const painter = new CPainter(device);
+
+        painter.translate(10, 20);
+
+        expect(device.engine.translate).toHaveBeenCalledWith(10, 20);
+    });
+
+    test("clears a rectangle", () => {
+        const device = new TestPaintDevice();
+        const painter = new CPainter(device);
+
+        painter.clearRect(new CRect(10, 20, 100, 50));
+
+        expect(device.engine.clearRect).toHaveBeenCalledWith(
+            10,
+            20,
+            100,
+            50
+        );
+    });
+
+    test("fills a rectangle", () => {
+        const device = new TestPaintDevice();
+        const painter = new CPainter(device);
+
+        painter.fillRect(new CRect(10, 20, 100, 50));
+
+        expect(device.engine.fillRect).toHaveBeenCalledWith(
+            10,
+            20,
+            100,
+            50
+        );
+    });
+
+    test("strokes a rectangle", () => {
+        const device = new TestPaintDevice();
+        const painter = new CPainter(device);
+
+        painter.strokeRect(new CRect(10, 20, 100, 50));
+
+        expect(device.engine.strokeRect).toHaveBeenCalledWith(
+            10,
+            20,
+            100,
+            50
+        );
+    });
+
+    test("sets fill style", () => {
+        const device = new TestPaintDevice();
+        const painter = new CPainter(device);
+
+        painter.setFillStyle("#ff0000");
+
+        expect(device.engine.setFillStyle).toHaveBeenCalledWith("#ff0000");
+    });
+
+    test("sets stroke style", () => {
+        const device = new TestPaintDevice();
+        const painter = new CPainter(device);
+
+        painter.setStrokeStyle("#00ff00");
+
+        expect(device.engine.setStrokeStyle).toHaveBeenCalledWith("#00ff00");
+    });
+
+    test("sets line width", () => {
+        const device = new TestPaintDevice();
+        const painter = new CPainter(device);
+
+        painter.setLineWidth(5);
+
+        expect(device.engine.setLineWidth).toHaveBeenCalledWith(5);
+    });
+});

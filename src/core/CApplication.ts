@@ -1,10 +1,15 @@
 import { CObject } from "./CObject.js";
 import type { CWidget } from "../widgets/CWidget.js";
 
+import { CPaintDevice } from "../painting/CPaintDevice.js";
+import { CCanvasPaintDevice } from "../painting/CCanvasPaintDevice.js";
+import { CPainter } from "../painting/CPainter.js";
+import { CRect } from "../geometry/CRect.js";
+
 export class CApplication extends CObject {
     static #m_instance: CApplication | null = null;
 
-    #m_canvas: HTMLCanvasElement;
+    #m_paintDevice: CCanvasPaintDevice;
     #m_topLevelWidgets = new Set<CWidget>();
 
     #m_updatesEnabled = false;
@@ -16,8 +21,9 @@ export class CApplication extends CObject {
         if (CApplication.#m_instance !== null)
             throw new Error("Only one CApplication instance can exist.");
 
+        this.#m_paintDevice = new CCanvasPaintDevice(canvas);
+
         CApplication.#m_instance = this;
-        this.#m_canvas = canvas;
     }
 
     static instance(): CApplication {
@@ -32,7 +38,11 @@ export class CApplication extends CObject {
     }
 
     canvas(): HTMLCanvasElement {
-        return this.#m_canvas;
+        return this.#m_paintDevice.canvas();
+    }
+
+    paintDevice(): CPaintDevice {
+        return this.#m_paintDevice;
     }
 
     topLevelWidgets(): readonly CWidget[] {
@@ -100,8 +110,14 @@ export class CApplication extends CObject {
     }
 
     #repaint(): void {
-        /*
-         * Actual widget painting will be implemented later.
-         */
+        const painter = new CPainter(this.#m_paintDevice);
+        painter.clearRect(new CRect(
+            0, 0, this.#m_paintDevice.width(),
+                this.#m_paintDevice.height()
+            )
+        );
+
+        for (const widget of this.#m_topLevelWidgets)
+            widget.render(painter);
     }
 }

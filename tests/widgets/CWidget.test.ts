@@ -1,19 +1,137 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { CApplication } from "../../src/core/CApplication";
 import { CWidget } from "../../src/widgets/CWidget";
+import { vi } from "vitest";
+import { CPainter } from "../../src/painting/CPainter";
+import { CPaintDevice } from "../../src/painting/CPaintDevice";
+import { CPaintEngine } from "../../src/painting/CPaintEngine";
+
+let animationFrameCallbacks = new Map<number, FrameRequestCallback>();
+let nextAnimationFrameId = 1;
+
+function installAnimationFrameMock(): void {
+    animationFrameCallbacks = new Map<number, FrameRequestCallback>();
+    nextAnimationFrameId = 1;
+
+    globalThis.requestAnimationFrame = (
+        callback: FrameRequestCallback
+    ): number => {
+        const id = nextAnimationFrameId++;
+
+        animationFrameCallbacks.set(id, callback);
+
+        return id;
+    };
+
+    globalThis.cancelAnimationFrame = (
+        handle: number
+    ): void => {
+        animationFrameCallbacks.delete(handle);
+    };
+}
+
+function pendingAnimationFrameCount(): number {
+    return animationFrameCallbacks.size;
+}
+
+function runNextAnimationFrame(): void {
+    const entry = animationFrameCallbacks.entries().next();
+
+    if (entry.done)
+        return;
+
+    const [id, callback] = entry.value;
+
+    animationFrameCallbacks.delete(id);
+
+    callback(0);
+}
 
 function createCanvas(): HTMLCanvasElement {
-    return {} as HTMLCanvasElement;
+    const context = { save: vi.fn(), restore: vi.fn(),
+        translate: vi.fn(), fillRect: vi.fn(),
+        strokeRect: vi.fn(), clearRect: vi.fn(),
+        fillStyle: "", strokeStyle: "", lineWidth: 1
+    } as unknown as CanvasRenderingContext2D;
+
+    return { width: 800, height: 600,
+        getContext: (type: string) => {
+            if (type === "2d")
+                return context;
+            return null;
+        }
+    } as HTMLCanvasElement;
 }
 
 beforeEach(() => {
+    installAnimationFrameMock();
+
     new CApplication(createCanvas());
+
+    CApplication.instance().startUpdates();
+
+    /*
+     * startUpdates() schedules the initial repaint.
+     * Execute it so each test starts with no pending frame.
+     */
+    runNextAnimationFrame();
 });
 
 afterEach(() => {
     if (CApplication.exists())
         CApplication.instance().destroy();
 });
+
+class TestPaintEngine extends CPaintEngine {
+    save = vi.fn();
+    restore = vi.fn();
+
+    translate = vi.fn();
+
+    fillRect = vi.fn();
+    strokeRect = vi.fn();
+    clearRect = vi.fn();
+
+    setFillStyle = vi.fn();
+    setStrokeStyle = vi.fn();
+    setLineWidth = vi.fn();
+}
+
+class TestPaintDevice extends CPaintDevice {
+    readonly engine = new TestPaintEngine();
+
+    width(): number {
+        return 800;
+    }
+
+    height(): number {
+        return 600;
+    }
+
+    paintEngine(): CPaintEngine {
+        return this.engine;
+    }
+}
+
+class TestWidget extends CWidget {
+    paintEventCalled = false;
+
+    protected override paintEvent(_painter: CPainter): void {
+        this.paintEventCalled = true;
+    }
+}
+
+function createPainter(): {
+    painter: CPainter;
+    device: TestPaintDevice;
+} {
+    const device = new TestPaintDevice();
+
+    return {
+        painter: new CPainter(device),
+        device
+    };
+}
 
 describe("CWidget", () => {
     test("creates a widget without a parent", () => {
@@ -190,5 +308,229 @@ describe("CWidget", () => {
         expect(child.y()).toBe(30);
         expect(child.width()).toBe(100);
         expect(child.height()).toBe(40);
+    });
+
+    test("renders a visible widget", () => {
+        const widget = new TestWidget();
+        const { painter } = createPainter();
+        widget.render(painter);
+        expect(widget.paintEventCalled).toBe(true);
+    });
+
+    test("does not render a hidden widget", () => {
+        const widget = new TestWidget();
+        const { painter } = createPainter();
+        widget.hide();
+        widget.render(painter);
+        expect(widget.paintEventCalled).toBe(false);
+    });
+
+    test("saves and restores painter state when rendering", () => {
+        const widget = new TestWidget();
+        const { painter, device } = createPainter();
+        widget.render(painter);
+        expect(device.engine.save).toHaveBeenCalledOnce();
+        expect(device.engine.restore).toHaveBeenCalledOnce();
+    });
+
+    test("translates painter to widget position", () => {
+        const widget = new TestWidget();
+        const { painter, device } = createPainter();
+        widget.setGeometry(50, 70, 200, 100);
+        widget.render(painter);
+        expect(device.engine.translate).toHaveBeenCalledWith(50, 70);
+    });
+
+    test("renders child widgets", () => {
+        const parent = new TestWidget();
+        const child = new TestWidget(parent);
+        const { painter } = createPainter();
+        parent.render(painter);
+        expect(parent.paintEventCalled).toBe(true);
+        expect(child.paintEventCalled).toBe(true);
+    });
+
+    test("does not render children of a hidden widget", () => {
+        const parent = new TestWidget();
+        const child = new TestWidget(parent);
+        const { painter } = createPainter();
+        parent.hide();
+        parent.render(painter);
+        expect(parent.paintEventCalled).toBe(false);
+        expect(child.paintEventCalled).toBe(false);
+    });
+
+    test("applies relative translations through widget hierarchy", () => {
+        const parent = new TestWidget();
+        const child = new TestWidget(parent);
+        const { painter, device } = createPainter();
+        parent.setGeometry(100, 50, 400, 300);
+        child.setGeometry(20, 30, 100, 40);
+        parent.render(painter);
+        expect(device.engine.translate).toHaveBeenNthCalledWith(
+            1, 100, 50 );
+
+        expect(device.engine.translate).toHaveBeenNthCalledWith(
+        2, 20, 30 );
+    });
+
+    test("saves and restores painter state for every widget", () => {
+        const parent = new TestWidget();
+        const child1 = new TestWidget(parent);
+        const child2 = new TestWidget(parent);
+        const { painter, device } = createPainter();
+        parent.render(painter);
+        expect(device.engine.save).toHaveBeenCalledTimes(3);
+        expect(device.engine.restore).toHaveBeenCalledTimes(3);
+    });
+
+    test("renders children in insertion order", () => {
+        const renderOrder: string[] = [];
+        class OrderedWidget extends CWidget {
+            constructor(
+                private readonly name: string,
+                parent: CWidget | null = null
+            ) {
+                super(parent);
+            }
+
+            protected override paintEvent(_painter: CPainter): void {
+                renderOrder.push(this.name);
+            }
+        }
+
+        const parent = new OrderedWidget("parent");
+        new OrderedWidget("child1", parent);
+        new OrderedWidget("child2", parent);
+        new OrderedWidget("child3", parent);
+
+        const { painter } = createPainter();
+
+        parent.render(painter);
+
+        expect(renderOrder).toEqual([
+            "parent", "child1", "child2", "child3"
+        ]);
+    });
+
+    test("restores painter state when paintEvent throws", () => {
+            class ThrowingWidget extends CWidget {
+                protected override paintEvent(_painter: CPainter): void {
+                    throw new Error("Paint failed");
+                }
+            }
+
+            const widget = new ThrowingWidget();
+            const { painter, device } = createPainter();
+
+            expect(() => {
+                widget.render(painter);
+            }).toThrow("Paint failed");
+
+            expect(device.engine.save).toHaveBeenCalledOnce();
+            expect(device.engine.restore).toHaveBeenCalledOnce();
+        });
+
+        test("update requests a repaint", () => {
+        const widget = new CWidget();
+
+        expect(pendingAnimationFrameCount()).toBe(0);
+
+        widget.update();
+
+        expect(pendingAnimationFrameCount()).toBe(1);
+    });
+
+    test("multiple updates are coalesced into one repaint", () => {
+        const widget = new CWidget();
+        widget.update();
+        widget.update();
+        widget.update();
+        expect(pendingAnimationFrameCount()).toBe(1);
+    });
+
+    test("setGeometry requests a repaint when geometry changes", () => {
+        const widget = new CWidget();
+        widget.setGeometry(10, 20, 100, 50);
+        expect(pendingAnimationFrameCount()).toBe(1);
+    });
+
+    test("setGeometry does not request a repaint when geometry is unchanged", () => {
+        const widget = new CWidget();
+        widget.setGeometry(10, 20, 100, 50);
+        runNextAnimationFrame();
+        expect(pendingAnimationFrameCount()).toBe(0);
+        widget.setGeometry(10, 20, 100, 50);
+        expect(pendingAnimationFrameCount()).toBe(0);
+    });
+
+    test("move requests a repaint when position changes", () => {
+        const widget = new CWidget();
+        widget.setGeometry(10, 20, 100, 50);
+        runNextAnimationFrame();
+        widget.move(30, 40);
+        expect(pendingAnimationFrameCount()).toBe(1);
+    });
+
+    test("move does not request a repaint when position is unchanged", () => {
+        const widget = new CWidget();
+        widget.setGeometry(10, 20, 100, 50);
+        runNextAnimationFrame();
+        widget.move(10, 20);
+        expect(pendingAnimationFrameCount()).toBe(0);
+    });
+
+    test("resize requests a repaint when size changes", () => {
+        const widget = new CWidget();
+        widget.setGeometry(10, 20, 100, 50);
+        runNextAnimationFrame();
+        widget.resize(200, 150);
+        expect(pendingAnimationFrameCount()).toBe(1);
+    });
+
+    test("resize does not request a repaint when size is unchanged", () => {
+        const widget = new CWidget();
+        widget.setGeometry(10, 20, 100, 50);
+        runNextAnimationFrame();
+        widget.resize(100, 50);
+        expect(pendingAnimationFrameCount()).toBe(0);
+    });
+
+    test("setVisible requests a repaint when visibility changes", () => {
+        const widget = new CWidget();
+        widget.setVisible(false);
+        expect(pendingAnimationFrameCount()).toBe(1);
+    });
+
+    test("setVisible does not request a repaint when visibility is unchanged", () => {
+        const widget = new CWidget();
+        widget.setVisible(true);
+        expect(pendingAnimationFrameCount()).toBe(0);
+    });
+
+    test("hide requests a repaint", () => {
+        const widget = new CWidget();
+        widget.hide();
+        expect(pendingAnimationFrameCount()).toBe(1);
+    });
+
+    test("show requests a repaint when showing a hidden widget", () => {
+        const widget = new CWidget();
+        widget.hide();
+        runNextAnimationFrame();
+        widget.show();
+        expect(pendingAnimationFrameCount()).toBe(1);
+    });
+
+    test("setEnabled requests a repaint when enabled state changes", () => {
+        const widget = new CWidget();
+        widget.setEnabled(false);
+        expect(pendingAnimationFrameCount()).toBe(1);
+    });
+
+    test("setEnabled does not request a repaint when state is unchanged", () => {
+        const widget = new CWidget();
+        widget.setEnabled(true);
+        expect(pendingAnimationFrameCount()).toBe(0);
     });
 });

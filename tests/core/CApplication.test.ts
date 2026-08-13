@@ -1,9 +1,44 @@
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CApplication } from "../../src/core/CApplication";
 import { CWidget } from "../../src/widgets/CWidget";
+import { CPainter } from "../../src/painting/CPainter";
+
+class RenderTrackingWidget extends CWidget {
+    renderCalls = 0;
+
+    override render(painter: CPainter): void {
+        ++this.renderCalls;
+
+        super.render(painter);
+    }
+}
 
 function createCanvas(): HTMLCanvasElement {
-    return {} as HTMLCanvasElement;
+    const context = {
+        save: vi.fn(),
+        restore: vi.fn(),
+        translate: vi.fn(),
+
+        fillRect: vi.fn(),
+        strokeRect: vi.fn(),
+        clearRect: vi.fn(),
+
+        fillStyle: "",
+        strokeStyle: "",
+        lineWidth: 1
+    } as unknown as CanvasRenderingContext2D;
+
+    return {
+        width: 800,
+        height: 600,
+
+        getContext: (type: string) => {
+            if (type === "2d")
+                return context;
+
+            return null;
+        }
+    } as HTMLCanvasElement;
 }
 
 let animationFrameCallbacks = new Map<number, FrameRequestCallback>();
@@ -383,5 +418,33 @@ describe("CApplication", () => {
         expect(app.updatesEnabled()).toBe(false);
         expect(pendingAnimationFrameCount()).toBe(0);
         expect(CApplication.exists()).toBe(false);
+    });
+
+    test("repaint clears the entire paint device", () => {
+        const clearRect = vi.fn();
+        const context = { save: vi.fn(), restore: vi.fn(),
+            translate: vi.fn(), fillRect: vi.fn(),
+            strokeRect: vi.fn(), clearRect,
+            fillStyle: "", strokeStyle: "", lineWidth: 1
+        } as unknown as CanvasRenderingContext2D;
+
+        const canvas = {
+            width: 800, height: 600,
+            getContext: (type: string) => {
+                if (type === "2d")
+                    return context;
+
+                return null;
+            }
+        } as HTMLCanvasElement;
+
+        const app = new CApplication(canvas);
+
+        app.startUpdates();
+        runNextAnimationFrame();
+
+        expect(clearRect).toHaveBeenCalledOnce();
+        expect(clearRect).toHaveBeenCalledWith(
+            0, 0, 800, 600 );
     });
 });

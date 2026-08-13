@@ -1,6 +1,7 @@
 import { CApplication } from "../core/CApplication.js";
 import { CObject } from "../core/CObject.js";
 import { CRect } from "../geometry/CRect.js";
+import { CPainter } from "../painting/CPainter.js";
 
 export class CWidget extends CObject {
     #m_geometry = new CRect();
@@ -79,39 +80,49 @@ export class CWidget extends CObject {
         return this.#m_geometry.height();
     }
 
-    setGeometry(
-        x: number,
-        y: number,
-        width: number,
-        height: number
-    ): void {
+    setGeometry(x: number, y: number, width: number, height: number): void {
+        if (x === this.x() && y === this.y() 
+            && width === this.width() && height === this.height())
+            return;
+
         this.#m_geometry.setGeometry(x, y, width, height);
+        this.update();
     }
 
     move(x: number, y: number): void {
-        this.#m_geometry.setGeometry(
-            x,
-            y,
-            this.width(),
-            this.height()
-        );
+        if (x === this.x() && y === this.y())
+            return;
+
+        this.#m_geometry.setGeometry(x, y, this.width(), this.height());
+        this.update();
     }
 
     resize(width: number, height: number): void {
-        this.#m_geometry.setGeometry(
-            this.x(),
-            this.y(),
-            width,
-            height
-        );
+        if (width === this.width() && height === this.height())
+            return;
+        
+        this.#m_geometry.setGeometry(this.x(), this.y(), width, height);
+        this.update();
+    }
+
+    setVisible(visible: boolean): void {
+        if (this.#m_visible === visible)
+            return;
+
+        this.#m_visible = visible;
+        this.update();
+    }
+
+    setEnabled(enabled: boolean): void {
+        if (this.#m_enabled === enabled)
+            return;
+
+        this.#m_enabled = enabled;
+        this.update();
     }
 
     isVisible(): boolean {
         return this.#m_visible;
-    }
-
-    setVisible(visible: boolean): void {
-        this.#m_visible = visible;
     }
 
     show(): void {
@@ -126,7 +137,28 @@ export class CWidget extends CObject {
         return this.#m_enabled;
     }
 
-    setEnabled(enabled: boolean): void {
-        this.#m_enabled = enabled;
+    render(painter: CPainter): void {
+        if (!this.isVisible())
+            return;
+
+        painter.save();
+
+        try {
+            painter.translate(this.x(), this.y());
+
+            this.paintEvent(painter);
+
+            for (const child of this.children())
+            child.render(painter);
+        } finally {
+            painter.restore();
+        }
+}
+
+    protected paintEvent(_painter: CPainter): void {
+    }
+
+    update(): void {
+        CApplication.instance().requestRepaint();
     }
 }
