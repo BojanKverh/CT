@@ -1,5 +1,19 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { CApplication } from "../../src/core/CApplication";
 import { CWidget } from "../../src/widgets/CWidget";
+
+function createCanvas(): HTMLCanvasElement {
+    return {} as HTMLCanvasElement;
+}
+
+beforeEach(() => {
+    new CApplication(createCanvas());
+});
+
+afterEach(() => {
+    if (CApplication.exists())
+        CApplication.instance().destroy();
+});
 
 describe("CWidget", () => {
     test("creates a widget without a parent", () => {
