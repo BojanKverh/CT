@@ -50,9 +50,9 @@ export class CRect {
     }
 
     contains(point: CPoint): boolean {
-        return point.x() >= this.#m_x
+        return point.x() >= this.x()
             && point.x() < this.right()
-            && point.y() >= this.#m_y
+            && point.y() >= this.y()
             && point.y() < this.bottom();
     }
 

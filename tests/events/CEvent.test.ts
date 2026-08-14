@@ -1,15 +1,21 @@
 import { describe, expect, test } from "vitest";
-import { CEvent } from "../../src/events/CEvent";
+import { CEvent, CEventType } from "../../src/events/CEvent";
 
 describe("CEvent", () => {
+    test("stores event type", () => {
+        const event = new CEvent(CEventType.MousePress);
+
+        expect(event.type()).toBe(CEventType.MousePress);
+    });
+
     test("is accepted by default", () => {
-        const event = new CEvent();
+        const event = new CEvent(CEventType.MousePress);
 
         expect(event.isAccepted()).toBe(true);
     });
 
     test("can be ignored", () => {
-        const event = new CEvent();
+        const event = new CEvent(CEventType.MousePress);
 
         event.ignore();
 
@@ -17,7 +23,7 @@ describe("CEvent", () => {
     });
 
     test("can be accepted again after being ignored", () => {
-        const event = new CEvent();
+        const event = new CEvent(CEventType.MousePress);
 
         event.ignore();
         event.accept();
@@ -26,7 +32,7 @@ describe("CEvent", () => {
     });
 
     test("accepting an already accepted event keeps it accepted", () => {
-        const event = new CEvent();
+        const event = new CEvent(CEventType.MousePress);
 
         event.accept();
 
@@ -34,7 +40,7 @@ describe("CEvent", () => {
     });
 
     test("ignoring an already ignored event keeps it ignored", () => {
-        const event = new CEvent();
+        const event = new CEvent(CEventType.MousePress);
 
         event.ignore();
         event.ignore();

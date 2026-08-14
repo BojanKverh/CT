@@ -1,7 +1,10 @@
 import { CApplication } from "../core/CApplication.js";
 import { CObject } from "../core/CObject.js";
+import { CPoint } from "../geometry/CPoint.js";
 import { CRect } from "../geometry/CRect.js";
-import { CPainter } from "../painting/CPainter.js";
+import type { CPainter } from "../painting/CPainter.js";
+import { CEvent, CEventType } from "../events/CEvent.js";
+import { CMouseEvent } from "../events/CMouseEvent.js";
 
 export class CWidget extends CObject {
     #m_geometry = new CRect();
@@ -56,12 +59,11 @@ export class CWidget extends CObject {
     }
 
     geometry(): CRect {
-        return new CRect(
-            this.#m_geometry.x(),
-            this.#m_geometry.y(),
-            this.#m_geometry.width(),
-            this.#m_geometry.height()
-        );
+        return new CRect(this.x(), this.y(), this.width(), this.height());
+    }
+
+    rect(): CRect {
+        return new CRect(0, 0, this.width(), this.height());
     }
 
     x(): number {
@@ -81,8 +83,12 @@ export class CWidget extends CObject {
     }
 
     setGeometry(x: number, y: number, width: number, height: number): void {
-        if (x === this.x() && y === this.y() 
-            && width === this.width() && height === this.height())
+        if (
+            x === this.x()
+            && y === this.y()
+            && width === this.width()
+            && height === this.height()
+        )
             return;
 
         this.#m_geometry.setGeometry(x, y, width, height);
@@ -93,15 +99,27 @@ export class CWidget extends CObject {
         if (x === this.x() && y === this.y())
             return;
 
-        this.#m_geometry.setGeometry(x, y, this.width(), this.height());
+        this.#m_geometry.setGeometry(
+            x,
+            y,
+            this.width(),
+            this.height()
+        );
+
         this.update();
     }
 
     resize(width: number, height: number): void {
         if (width === this.width() && height === this.height())
             return;
-        
-        this.#m_geometry.setGeometry(this.x(), this.y(), width, height);
+
+        this.#m_geometry.setGeometry(
+            this.x(),
+            this.y(),
+            width,
+            height
+        );
+
         this.update();
     }
 
@@ -149,16 +167,84 @@ export class CWidget extends CObject {
             this.paintEvent(painter);
 
             for (const child of this.children())
-            child.render(painter);
+                child.render(painter);
         } finally {
             painter.restore();
         }
-}
+    }
+
+    widgetAt(x: number, y: number): CWidget | null {
+        if (!this.isVisible())
+            return null;
+
+        if (!this.rect().contains(new CPoint(x, y)))
+            return null;
+
+        const children = this.children();
+
+        for (let i = children.length - 1; i >= 0; --i) {
+            const child = children[i]!;
+            const widget = child.widgetAt(
+                x - child.x(),
+                y - child.y()
+            );
+
+            if (widget !== null)
+                return widget;
+        }
+
+        return this;
+    }
 
     protected paintEvent(_painter: CPainter): void {
     }
 
     update(): void {
         CApplication.instance().requestRepaint();
+    }
+
+    event(event: CEvent): boolean {
+        switch (event.type()) {
+            case CEventType.MousePress:
+                this.mousePressEvent(event as CMouseEvent);
+                return event.isAccepted();
+
+            case CEventType.MouseRelease:
+                this.mouseReleaseEvent(event as CMouseEvent);
+                return event.isAccepted();
+
+            case CEventType.MouseMove:
+                this.mouseMoveEvent(event as CMouseEvent);
+                return event.isAccepted();
+        }
+
+        return false;
+    }
+
+    mapFromCanvas(x: number, y: number): CPoint {
+        let widget: CWidget | null = this;
+        let localX = x;
+        let localY = y;
+
+        while (widget !== null) {
+            localX -= widget.x();
+            localY -= widget.y();
+
+            widget = widget.parent();
+        }
+
+        return new CPoint(localX, localY);
+    }
+
+    protected mousePressEvent(event: CMouseEvent): void {
+        event.ignore();
+    }
+
+    protected mouseReleaseEvent(event: CMouseEvent): void {
+        event.ignore();
+    }
+
+    protected mouseMoveEvent(event: CMouseEvent): void {
+        event.ignore();
     }
 }

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CApplication } from "../../src/core/CApplication";
 import { CWidget } from "../../src/widgets/CWidget";
 import { CPainter } from "../../src/painting/CPainter";
+import { createTestCanvas } from "../helpers/createTestCanvas";
 
 class RenderTrackingWidget extends CWidget {
     renderCalls = 0;
@@ -11,34 +12,6 @@ class RenderTrackingWidget extends CWidget {
 
         super.render(painter);
     }
-}
-
-function createCanvas(): HTMLCanvasElement {
-    const context = {
-        save: vi.fn(),
-        restore: vi.fn(),
-        translate: vi.fn(),
-
-        fillRect: vi.fn(),
-        strokeRect: vi.fn(),
-        clearRect: vi.fn(),
-
-        fillStyle: "",
-        strokeStyle: "",
-        lineWidth: 1
-    } as unknown as CanvasRenderingContext2D;
-
-    return {
-        width: 800,
-        height: 600,
-
-        getContext: (type: string) => {
-            if (type === "2d")
-                return context;
-
-            return null;
-        }
-    } as HTMLCanvasElement;
 }
 
 let animationFrameCallbacks = new Map<number, FrameRequestCallback>();
@@ -93,7 +66,7 @@ afterEach(() => {
 
 describe("CApplication", () => {
     test("creates a singleton application", () => {
-        const canvas = createCanvas();
+        const canvas = createTestCanvas();
         const app = new CApplication(canvas);
 
         expect(CApplication.exists()).toBe(true);
@@ -101,15 +74,15 @@ describe("CApplication", () => {
     });
 
     test("stores the canvas", () => {
-        const canvas = createCanvas();
+        const canvas = createTestCanvas();
         const app = new CApplication(canvas);
 
         expect(app.canvas()).toBe(canvas);
     });
 
     test("does not allow more than one application instance", () => {
-        const canvas1 = createCanvas();
-        const canvas2 = createCanvas();
+        const canvas1 = createTestCanvas();
+        const canvas2 = createTestCanvas();
 
         const app = new CApplication(canvas1);
 
@@ -129,7 +102,7 @@ describe("CApplication", () => {
     });
 
     test("destroy removes the application instance", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         app.destroy();
 
@@ -141,11 +114,11 @@ describe("CApplication", () => {
     });
 
     test("allows creating a new application after destroy", () => {
-        const app1 = new CApplication(createCanvas());
+        const app1 = new CApplication(createTestCanvas());
 
         app1.destroy();
 
-        const app2 = new CApplication(createCanvas());
+        const app2 = new CApplication(createTestCanvas());
 
         expect(CApplication.instance()).toBe(app2);
         expect(app2).not.toBe(app1);
@@ -160,7 +133,7 @@ describe("CApplication", () => {
     });
 
     test("registers widgets without a parent as top-level widgets", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         const widget1 = new CWidget();
         const widget2 = new CWidget();
@@ -172,7 +145,7 @@ describe("CApplication", () => {
     });
 
     test("does not register child widgets as top-level widgets", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         const parent = new CWidget();
         const child = new CWidget(parent);
@@ -185,7 +158,7 @@ describe("CApplication", () => {
     });
 
     test("removes a top-level widget when it gets a parent", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         const parent = new CWidget();
         const widget = new CWidget();
@@ -203,7 +176,7 @@ describe("CApplication", () => {
     });
 
     test("registers a widget as top-level when its parent is removed", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         const parent = new CWidget();
         const child = new CWidget(parent);
@@ -217,7 +190,7 @@ describe("CApplication", () => {
     });
 
     test("does not duplicate a top-level widget registration", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         const widget = new CWidget();
 
@@ -230,7 +203,7 @@ describe("CApplication", () => {
     });
 
     test("preserves top-level widget registration order", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         const widget1 = new CWidget();
         const widget2 = new CWidget();
@@ -244,7 +217,7 @@ describe("CApplication", () => {
     });
 
     test("re-registers a widget at the end after becoming top-level again", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         const widget1 = new CWidget();
         const widget2 = new CWidget();
@@ -259,7 +232,7 @@ describe("CApplication", () => {
     });
 
     test("returns a copy of the top-level widget list", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         const widget1 = new CWidget();
         const widget2 = new CWidget();
@@ -281,7 +254,7 @@ describe("CApplication", () => {
     });
 
     test("clears top-level widget registry when destroyed", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         new CWidget();
         new CWidget();
@@ -294,13 +267,13 @@ describe("CApplication", () => {
     });
 
     test("updates are disabled by default", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         expect(app.updatesEnabled()).toBe(false);
     });
 
     test("startUpdates enables updates", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         app.startUpdates();
 
@@ -308,7 +281,7 @@ describe("CApplication", () => {
     });
 
     test("startUpdates schedules the initial repaint", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         app.startUpdates();
 
@@ -316,7 +289,7 @@ describe("CApplication", () => {
     });
 
     test("calling startUpdates repeatedly does not schedule additional frames", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         app.startUpdates();
         app.startUpdates();
@@ -326,7 +299,7 @@ describe("CApplication", () => {
     });
 
     test("requestRepaint does nothing while updates are disabled", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         app.requestRepaint();
 
@@ -334,7 +307,7 @@ describe("CApplication", () => {
     });
 
     test("coalesces multiple repaint requests into one animation frame", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         app.startUpdates();
 
@@ -346,7 +319,7 @@ describe("CApplication", () => {
     });
 
     test("allows another repaint after the current frame completes", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         app.startUpdates();
 
@@ -362,7 +335,7 @@ describe("CApplication", () => {
     });
 
     test("stopUpdates disables updates", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         app.startUpdates();
         app.stopUpdates();
@@ -371,7 +344,7 @@ describe("CApplication", () => {
     });
 
     test("stopUpdates cancels a pending repaint", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         app.startUpdates();
 
@@ -383,7 +356,7 @@ describe("CApplication", () => {
     });
 
     test("requestRepaint is ignored after stopUpdates", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         app.startUpdates();
         app.stopUpdates();
@@ -394,7 +367,7 @@ describe("CApplication", () => {
     });
 
     test("updates can be started again after being stopped", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         app.startUpdates();
         app.stopUpdates();
@@ -406,7 +379,7 @@ describe("CApplication", () => {
     });
 
     test("destroy stops updates and cancels pending repaint", () => {
-        const app = new CApplication(createCanvas());
+        const app = new CApplication(createTestCanvas());
 
         app.startUpdates();
 
@@ -425,26 +398,27 @@ describe("CApplication", () => {
         const context = { save: vi.fn(), restore: vi.fn(),
             translate: vi.fn(), fillRect: vi.fn(),
             strokeRect: vi.fn(), clearRect,
-            fillStyle: "", strokeStyle: "", lineWidth: 1
+            fillStyle: "",cstrokeStyle: "",
+            lineWidth: 1
         } as unknown as CanvasRenderingContext2D;
 
-        const canvas = {
-            width: 800, height: 600,
+        const canvas = {width: 800, height: 600,
             getContext: (type: string) => {
                 if (type === "2d")
                     return context;
 
                 return null;
-            }
-        } as HTMLCanvasElement;
+            },
+
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn()
+        } as unknown as HTMLCanvasElement;
 
         const app = new CApplication(canvas);
-
         app.startUpdates();
         runNextAnimationFrame();
 
         expect(clearRect).toHaveBeenCalledOnce();
-        expect(clearRect).toHaveBeenCalledWith(
-            0, 0, 800, 600 );
+        expect(clearRect).toHaveBeenCalledWith(0, 0, 800, 600 );
     });
 });

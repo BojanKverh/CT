@@ -1,9 +1,10 @@
 export { CObject } from "./core/CObject.js";
 export { CSignal, type CSlot } from "./core/CSignal.js";
-export { CEvent } from "./events/CEvent.js";
 export { CPoint } from "./geometry/CPoint.js";
 export { CSize } from "./geometry/CSize.js";
 export { CRect } from "./geometry/CRect.js";
+export { CEvent, CEventType } from "./events/CEvent.js";
+export { CMouseEvent, CMouseButton } from "./events/CMouseEvent.js";
 export { CPaintDevice } from "./painting/CPaintDevice.js";
 export { CCanvasPaintDevice } from "./painting/CCanvasPaintDevice.js";
 export { CPaintEngine } from "./painting/CPaintEngine.js";

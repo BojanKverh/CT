@@ -154,4 +154,27 @@ describe("CRect", () => {
         expect(intersection.width()).toBe(0);
         expect(intersection.height()).toBe(0);
     });
+
+    test("contains a point inside the rectangle", () => {
+        const rect = new CRect(10, 20, 100, 50);
+        expect(rect.contains(new CPoint(50, 40))).toBe(true);
+    });
+
+    test("contains the top-left edge", () => {
+        const rect = new CRect(10, 20, 100, 50);
+        expect(rect.contains(new CPoint(10, 20))).toBe(true);
+    });
+
+    test("does not contain the right or bottom edge", () => {
+        const rect = new CRect(10, 20, 100, 50);
+        expect(rect.contains(new CPoint(110, 20))).toBe(false);
+        expect(rect.contains(new CPoint(10, 70))).toBe(false);
+        expect(rect.contains(new CPoint(110, 70))).toBe(false);
+    });
+
+    test("does not contain a point outside the rectangle", () => {
+        const rect = new CRect(10, 20, 100, 50);
+        expect(rect.contains(new CPoint(9, 20))).toBe(false);
+        expect(rect.contains(new CPoint(10, 19))).toBe(false);
+    });
 });

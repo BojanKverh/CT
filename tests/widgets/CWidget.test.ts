@@ -5,6 +5,9 @@ import { vi } from "vitest";
 import { CPainter } from "../../src/painting/CPainter";
 import { CPaintDevice } from "../../src/painting/CPaintDevice";
 import { CPaintEngine } from "../../src/painting/CPaintEngine";
+import { CEventType } from "../../src/events/CEvent";
+import { CMouseButton, CMouseEvent } from "../../src/events/CMouseEvent";
+import { createTestCanvas } from "../helpers/createTestCanvas";
 
 let animationFrameCallbacks = new Map<number, FrameRequestCallback>();
 let nextAnimationFrameId = 1;
@@ -47,26 +50,10 @@ function runNextAnimationFrame(): void {
     callback(0);
 }
 
-function createCanvas(): HTMLCanvasElement {
-    const context = { save: vi.fn(), restore: vi.fn(),
-        translate: vi.fn(), fillRect: vi.fn(),
-        strokeRect: vi.fn(), clearRect: vi.fn(),
-        fillStyle: "", strokeStyle: "", lineWidth: 1
-    } as unknown as CanvasRenderingContext2D;
-
-    return { width: 800, height: 600,
-        getContext: (type: string) => {
-            if (type === "2d")
-                return context;
-            return null;
-        }
-    } as HTMLCanvasElement;
-}
-
 beforeEach(() => {
     installAnimationFrameMock();
 
-    new CApplication(createCanvas());
+    new CApplication(createTestCanvas());
 
     CApplication.instance().startUpdates();
 
@@ -533,4 +520,159 @@ describe("CWidget", () => {
         widget.setEnabled(true);
         expect(pendingAnimationFrameCount()).toBe(0);
     });
+
+    test("dispatches mouse press event to mousePressEvent", () => {
+        class MousePressWidget extends CWidget {
+            mousePressCalled = false;
+
+            protected override mousePressEvent(event: CMouseEvent): void {
+                this.mousePressCalled = true;
+                event.accept();
+            }
+        }
+
+        const widget = new MousePressWidget();
+        const event = new CMouseEvent(CEventType.MousePress, 10,
+            20, CMouseButton.LeftButton);
+
+        const handled = widget.event(event);
+
+        expect(widget.mousePressCalled).toBe(true);
+        expect(handled).toBe(true);
+        expect(event.isAccepted()).toBe(true);
+    });
+
+    test("dispatches mouse release event to mouseReleaseEvent", () => {
+        class MouseReleaseWidget extends CWidget {
+            mouseReleaseCalled = false;
+
+            protected override mouseReleaseEvent(event: CMouseEvent): void {
+                this.mouseReleaseCalled = true;
+                event.accept();
+            }
+        }
+
+        const widget = new MouseReleaseWidget();
+        const event = new CMouseEvent(CEventType.MouseRelease, 10,
+            20, CMouseButton.LeftButton
+        );
+
+        const handled = widget.event(event);
+
+        expect(widget.mouseReleaseCalled).toBe(true);
+        expect(handled).toBe(true);
+        expect(event.isAccepted()).toBe(true);
+    });
+
+    test("dispatches mouse move event to mouseMoveEvent", () => {
+        class MouseMoveWidget extends CWidget {
+            mouseMoveCalled = false;
+
+            protected override mouseMoveEvent(event: CMouseEvent): void {
+                this.mouseMoveCalled = true;
+                event.accept();
+            }
+        }
+
+        const widget = new MouseMoveWidget();
+        const event = new CMouseEvent(CEventType.MouseMove, 10,
+            20, CMouseButton.NoButton);
+
+        const handled = widget.event(event);
+
+        expect(widget.mouseMoveCalled).toBe(true);
+        expect(handled).toBe(true);
+        expect(event.isAccepted()).toBe(true);
+    });
+
+    test("default mouse press handler ignores event", () => {
+        const widget = new CWidget();
+
+        const event = new CMouseEvent(CEventType.MousePress, 10,
+            20, CMouseButton.LeftButton );
+
+        const handled = widget.event(event);
+
+        expect(handled).toBe(false);
+        expect(event.isAccepted()).toBe(false);
+    });
+
+    test("default mouse release handler ignores event", () => {
+        const widget = new CWidget();
+
+        const event = new CMouseEvent(CEventType.MouseRelease, 10,
+            20, CMouseButton.LeftButton);
+
+        const handled = widget.event(event);
+
+        expect(handled).toBe(false);
+        expect(event.isAccepted()).toBe(false);
+    });
+
+    test("default mouse move handler ignores event", () => {
+        const widget = new CWidget();
+
+        const event = new CMouseEvent(CEventType.MouseMove, 10,
+            20, CMouseButton.NoButton);
+
+        const handled = widget.event(event);
+
+        expect(handled).toBe(false);
+        expect(event.isAccepted()).toBe(false);
+    });
+
+    test("returns false for an unsupported event type", () => {
+        const widget = new CWidget();
+
+        const event = { type: () => 999, isAccepted: () => true
+            } as unknown as CMouseEvent;
+
+        expect(widget.event(event)).toBe(false);
+    });
+
+    test("mouse handler can explicitly ignore event", () => {
+        class IgnoringWidget extends CWidget {
+            protected override mousePressEvent(event: CMouseEvent): void {
+                event.ignore();
+            }
+        }
+
+        const widget = new IgnoringWidget();
+
+        const event = new CMouseEvent(CEventType.MousePress, 10,
+            20, CMouseButton.LeftButton);
+
+        const handled = widget.event(event);
+
+        expect(handled).toBe(false);
+        expect(event.isAccepted()).toBe(false);
+    });
+
+    test("mouse handler receives event coordinates and button", () => {
+        class InspectingWidget extends CWidget {
+            receivedX: number | null = null;
+            receivedY: number | null = null;
+            receivedButton: CMouseButton | null = null;
+
+            protected override mousePressEvent(event: CMouseEvent): void {
+                this.receivedX = event.x();
+                this.receivedY = event.y();
+                this.receivedButton = event.button();
+                event.accept();
+            }
+        }
+
+        const widget = new InspectingWidget();
+        
+        const event = new CMouseEvent(CEventType.MousePress, 42,
+            73, CMouseButton.RightButton
+        );
+
+        widget.event(event);
+
+        expect(widget.receivedX).toBe(42);
+        expect(widget.receivedY).toBe(73);
+        expect(widget.receivedButton).toBe(CMouseButton.RightButton);
+    });
+    
 });

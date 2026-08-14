@@ -1,10 +1,11 @@
 import { CObject } from "./CObject.js";
 import type { CWidget } from "../widgets/CWidget.js";
-
-import { CPaintDevice } from "../painting/CPaintDevice.js";
+import type { CPaintDevice } from "../painting/CPaintDevice.js";
 import { CCanvasPaintDevice } from "../painting/CCanvasPaintDevice.js";
 import { CPainter } from "../painting/CPainter.js";
 import { CRect } from "../geometry/CRect.js";
+import { CEventType } from "../events/CEvent.js";
+import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 
 export class CApplication extends CObject {
     static #m_instance: CApplication | null = null;
@@ -15,6 +16,18 @@ export class CApplication extends CObject {
     #m_updatesEnabled = false;
     #m_frameRequest: number | null = null;
 
+    #onPointerDown = (event: PointerEvent): void => {
+        this.#dispatchMouseEvent(CEventType.MousePress, event);
+    };
+
+    #onPointerUp = (event: PointerEvent): void => {
+        this.#dispatchMouseEvent(CEventType.MouseRelease, event);
+    };
+
+    #onPointerMove = (event: PointerEvent): void => {
+        this.#dispatchMouseEvent(CEventType.MouseMove, event);
+    };
+
     constructor(canvas: HTMLCanvasElement) {
         super();
 
@@ -22,8 +35,11 @@ export class CApplication extends CObject {
             throw new Error("Only one CApplication instance can exist.");
 
         this.#m_paintDevice = new CCanvasPaintDevice(canvas);
-
         CApplication.#m_instance = this;
+
+        canvas.addEventListener("pointerdown", this.#onPointerDown);
+        canvas.addEventListener("pointerup", this.#onPointerUp);
+        canvas.addEventListener("pointermove", this.#onPointerMove);
     }
 
     static instance(): CApplication {
@@ -69,7 +85,6 @@ export class CApplication extends CObject {
             return;
 
         this.#m_updatesEnabled = true;
-
         this.requestRepaint();
     }
 
@@ -94,7 +109,6 @@ export class CApplication extends CObject {
 
         this.#m_frameRequest = requestAnimationFrame(() => {
             this.#m_frameRequest = null;
-
             this.#repaint();
         });
     }
@@ -105,19 +119,97 @@ export class CApplication extends CObject {
 
         this.stopUpdates();
 
+        const canvas = this.#m_paintDevice.canvas();
+        canvas.removeEventListener("pointerdown", this.#onPointerDown);
+        canvas.removeEventListener("pointerup", this.#onPointerUp);
+        canvas.removeEventListener("pointermove", this.#onPointerMove);
+
         this.#m_topLevelWidgets.clear();
         CApplication.#m_instance = null;
     }
 
+    #mouseButton(button: number): CMouseButton {
+        switch (button) {
+            case 0:
+                return CMouseButton.LeftButton;
+
+            case 1:
+                return CMouseButton.MiddleButton;
+
+            case 2:
+                return CMouseButton.RightButton;
+
+            default:
+                return CMouseButton.NoButton;
+        }
+    }
+
+    #canvasPosition(event: PointerEvent): { x: number; y: number } {
+        const canvas = this.#m_paintDevice.canvas();
+        const rect = canvas.getBoundingClientRect();
+
+        return {
+            x: (event.clientX - rect.left) * canvas.width / rect.width,
+            y: (event.clientY - rect.top) * canvas.height / rect.height
+        };
+    }
+
+    #topLevelWidgetAt(x: number, y: number): CWidget | null {
+        const widgets = [...this.#m_topLevelWidgets];
+
+        for (let i = widgets.length - 1; i >= 0; --i) {
+            const widget = widgets[i]!;
+
+            const target = widget.widgetAt(
+                x - widget.x(),
+                y - widget.y()
+            );
+
+            if (target !== null)
+                return target;
+        }
+
+        return null;
+    }
+
     #repaint(): void {
         const painter = new CPainter(this.#m_paintDevice);
-        painter.clearRect(new CRect(
-            0, 0, this.#m_paintDevice.width(),
+
+        painter.clearRect(
+            new CRect(
+                0,
+                0,
+                this.#m_paintDevice.width(),
                 this.#m_paintDevice.height()
             )
         );
 
         for (const widget of this.#m_topLevelWidgets)
             widget.render(painter);
+    }
+
+    #dispatchMouseEvent(
+        type: CEventType,
+        pointerEvent: PointerEvent
+    ): void {
+        const position = this.#canvasPosition(pointerEvent);
+        const target = this.#topLevelWidgetAt(position.x, position.y);
+
+        if (target === null)
+            return;
+
+        const localPosition = target.mapFromCanvas(
+            position.x,
+            position.y
+        );
+
+        const event = new CMouseEvent(
+            type,
+            localPosition.x(),
+            localPosition.y(),
+            this.#mouseButton(pointerEvent.button)
+        );
+
+        target.event(event);
     }
 }
