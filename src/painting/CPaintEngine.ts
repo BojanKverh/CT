@@ -31,4 +31,12 @@ export abstract class CPaintEngine {
 
     abstract clipRect(x: number, y: number, width: number,
 		height: number): void;
+
+    abstract font() : string;
+    abstract setFont(font: string): void;
+    abstract textAlign() : CanvasTextAlign;
+    abstract setTextAlign(align: CanvasTextAlign) : void;
+    abstract setTextBaseline(baseline: CanvasTextBaseline): void;
+    abstract textBaseline() : CanvasTextBaseline;
+    abstract fillText(text: string, x: number, y: number): void;
 }

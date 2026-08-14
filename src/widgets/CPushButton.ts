@@ -8,9 +8,22 @@ export class CPushButton extends CWidget {
 	readonly clicked = new CSignal();
 
 	#m_down = false;
+    #m_text = "";
 
 	isDown(): boolean {
 		return this.#m_down;
+	}
+
+    text(): string {
+		return this.#m_text;
+	}
+
+	setText(text: string): void {
+		if (this.#m_text === text)
+			return;
+
+		this.#m_text = text;
+		this.update();
 	}
 
 	protected override mousePressEvent(event: CMouseEvent): void {
@@ -48,5 +61,12 @@ export class CPushButton extends CWidget {
 	protected override paintEvent(painter: CPainter): void {
 		painter.setFillStyle(this.#m_down ? "#808080" : "#c0c0c0");
 		painter.fillRect(this.rect());
+
+        painter.setFillStyle("black");
+		painter.setFont("14px sans-serif");
+		painter.setTextAlign("center");
+		painter.setTextBaseline("middle");
+
+		painter.drawText(this.#m_text, this.width() / 2, this.height() / 2);
 	}
 }

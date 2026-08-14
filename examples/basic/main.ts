@@ -50,6 +50,7 @@ parent.setGeometry(100, 100, 400, 300);
 
 const but = new CPushButton(parent);
 but.setGeometry(50, 50, 100, 30);
+but.setText("Click me");
 
 const child = new BlueWidget(parent);
 child.setGeometry(350, 250, 150, 100);

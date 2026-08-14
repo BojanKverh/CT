@@ -17,7 +17,11 @@ export function createTestCanvas(width = 800, height = 600): HTMLCanvasElement {
         beginPath: vi.fn(),
 	    rect: vi.fn(),
 	    clip: vi.fn(),
+	    fillText: vi.fn(),
 
+	    font: "",
+	    textAlign: "start",
+	    textBaseline: "alphabetic",
         fillStyle: "",
         strokeStyle: "",
         lineWidth: 1

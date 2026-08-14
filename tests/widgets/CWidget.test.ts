@@ -8,6 +8,7 @@ import { CPaintEngine } from "../../src/painting/CPaintEngine";
 import { CEventType } from "../../src/events/CEvent";
 import { CMouseButton, CMouseEvent } from "../../src/events/CMouseEvent";
 import { createTestCanvas } from "../helpers/createTestCanvas";
+import { TestPaintEngine } from "../helpers/createTestPaintEngine";
 
 let animationFrameCallbacks = new Map<number, FrameRequestCallback>();
 let nextAnimationFrameId = 1;
@@ -68,22 +69,6 @@ afterEach(() => {
     if (CApplication.exists())
         CApplication.instance().destroy();
 });
-
-class TestPaintEngine extends CPaintEngine {
-    save = vi.fn();
-    restore = vi.fn();
-
-    translate = vi.fn();
-
-    fillRect = vi.fn();
-    strokeRect = vi.fn();
-    clearRect = vi.fn();
-    clipRect = vi.fn();
-
-    setFillStyle = vi.fn();
-    setStrokeStyle = vi.fn();
-    setLineWidth = vi.fn();
-}
 
 class TestPaintDevice extends CPaintDevice {
     readonly engine = new TestPaintEngine();

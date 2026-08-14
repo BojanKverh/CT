@@ -8,6 +8,8 @@ import {
 import { CEventType } from "../../src/events/CEvent.js";
 import { CPushButton } from "../../src/widgets/CPushButton.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
+import { CPainter } from "../../src/painting/CPainter";
+import { TestPaintDevice } from "../helpers/createTestPaintEngine";
 
 class TestPushButton extends CPushButton {
 	mousePress(event: CMouseEvent): void {
@@ -16,6 +18,10 @@ class TestPushButton extends CPushButton {
 
 	mouseRelease(event: CMouseEvent): void {
 		this.mouseReleaseEvent(event);
+	}
+
+	paint(painter: CPainter): void {
+		this.paintEvent(painter);
 	}
 }
 
@@ -127,4 +133,43 @@ describe("CPushButton", () => {
 		expect(clicked).not.toHaveBeenCalled();
 		expect(app.mouseGrabber()).toBeNull();
 	});
+
+	test("has empty text by default", () => {
+		const button = new CPushButton();
+
+		expect(button.text()).toBe("");
+	});
+
+	test("sets button text", () => {
+		const button = new CPushButton();
+
+		button.setText("Hello");
+
+		expect(button.text()).toBe("Hello");
+	});
+
+	test("draws button text centered in the button", () => {
+		const button = new TestPushButton();
+		button.resize(120, 50);
+		button.setText("Click me");
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		button.paint(painter);
+
+		expect(device.engine.setFont).toHaveBeenCalledWith(
+			"14px sans-serif"
+		);
+		expect(device.engine.setTextAlign).toHaveBeenCalledWith(
+			"center"
+		);
+		expect(device.engine.setTextBaseline).toHaveBeenCalledWith(
+			"middle"
+		);
+		expect(device.engine.fillText).toHaveBeenCalledWith(
+			"Click me", 60, 25
+		);
+	});
+    
 });

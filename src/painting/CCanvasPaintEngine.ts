@@ -65,4 +65,32 @@ export class CCanvasPaintEngine extends CPaintEngine {
 		this.#m_context.rect(x, y, width, height);
 		this.#m_context.clip();
 	}
+
+    font() : string {
+        return this.#m_context.font;
+    }
+
+    setFont(font: string): void {
+		this.#m_context.font = font;
+	}
+
+	textAlign() : CanvasTextAlign {
+        return this.#m_context.textAlign;
+    }
+
+	setTextAlign(align: CanvasTextAlign): void {
+		this.#m_context.textAlign = align;
+	}
+
+    setTextBaseline(baseline: CanvasTextBaseline): void {
+		this.#m_context.textBaseline = baseline;
+	}
+
+    textBaseline() : CanvasTextBaseline {
+        return this.#m_context.textBaseline;
+    }
+
+	fillText(text: string, x: number, y: number): void {
+		this.#m_context.fillText(text, x, y);
+	}
 }

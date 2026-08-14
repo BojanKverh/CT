@@ -3,22 +3,7 @@ import { CPainter } from "../../src/painting/CPainter";
 import { CPaintDevice } from "../../src/painting/CPaintDevice";
 import { CPaintEngine } from "../../src/painting/CPaintEngine";
 import { CRect } from "../../src/geometry/CRect";
-
-class TestPaintEngine extends CPaintEngine {
-    save = vi.fn();
-    restore = vi.fn();
-
-    translate = vi.fn();
-
-    fillRect = vi.fn();
-    strokeRect = vi.fn();
-    clearRect = vi.fn();
-    clipRect = vi.fn();
-
-    setFillStyle = vi.fn();
-    setStrokeStyle = vi.fn();
-    setLineWidth = vi.fn();
-}
+import { TestPaintEngine } from "../helpers/createTestPaintEngine";
 
 class TestPaintDevice extends CPaintDevice {
     readonly engine = new TestPaintEngine();
@@ -148,6 +133,48 @@ describe("CPainter", () => {
 
 		expect(device.engine.clipRect).toHaveBeenCalledWith(
 			10, 20, 100, 50
+		);
+	});
+
+    test("sets font", () => {
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		painter.setFont("14px sans-serif");
+
+		expect(device.engine.setFont).toHaveBeenCalledWith(
+			"14px sans-serif"
+		);
+	});
+
+	test("sets text alignment", () => {
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		painter.setTextAlign("center");
+
+		expect(device.engine.setTextAlign).toHaveBeenCalledWith("center");
+	});
+
+	test("sets text baseline", () => {
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		painter.setTextBaseline("middle");
+
+		expect(device.engine.setTextBaseline).toHaveBeenCalledWith(
+			"middle"
+		);
+	});
+
+	test("draws text", () => {
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		painter.drawText("Hello", 10, 20);
+
+		expect(device.engine.fillText).toHaveBeenCalledWith(
+			"Hello", 10, 20
 		);
 	});
 });

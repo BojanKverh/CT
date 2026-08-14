@@ -71,4 +71,33 @@ export class CPainter {
 			rect.x(), rect.y(), rect.width(), rect.height()
 		);
 	}
+
+    font() : string {
+        return this.#m_engine.font();
+    }
+
+	setFont(font: string): void {
+		this.#m_engine.setFont(font);
+	}
+
+    textAlign() : CanvasTextAlign {
+        return this.#m_engine.textAlign();
+    }
+
+	setTextAlign(align: CanvasTextAlign): void {
+		this.#m_engine.setTextAlign(align);
+	}
+
+	setTextBaseline(baseline: CanvasTextBaseline): void {
+		this.#m_engine.setTextBaseline(baseline);
+	}
+
+    textBaseline() : CanvasTextBaseline {
+        return this.#m_engine.textBaseline();
+    }
+
+
+	drawText(text: string, x: number, y: number): void {
+		this.#m_engine.fillText(text, x, y);
+	}
 }
