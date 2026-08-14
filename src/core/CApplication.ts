@@ -18,6 +18,8 @@ export class CApplication extends CObject {
     #m_updatesEnabled = false;
     #m_frameRequest: number | null = null;
 
+	#m_font = "14px sans-serif";
+
     #onPointerDown = (event: PointerEvent): void => {
         this.#dispatchMouseEvent(CEventType.MousePress, event);
     };
@@ -66,6 +68,18 @@ export class CApplication extends CObject {
     topLevelWidgets(): readonly CWidget[] {
         return [...this.#m_topLevelWidgets];
     }
+
+   	font(): string {
+		return this.#m_font;
+	}
+
+	setFont(font: string): void {
+		if (this.#m_font === font)
+			return;
+
+		this.#m_font = font;
+		this.requestRepaint();
+	}
 
     registerTopLevelWidget(widget: CWidget): void {
         if (widget.parent() !== null)

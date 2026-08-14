@@ -691,4 +691,20 @@ describe("CWidget", () => {
 			2, 0, 0, 100, 100
 		);
 	});
+
+	test("keeps its font when reparented", () => {
+		const parent1 = new CWidget();
+		parent1.setFont("18px serif");
+
+		const parent2 = new CWidget();
+		parent2.setFont("12px monospace");
+
+		const child = new CWidget(parent1);
+
+		expect(child.font()).toBe("18px serif");
+
+		child.setParent(parent2);
+
+		expect(child.font()).toBe("18px serif");
+	});
 });

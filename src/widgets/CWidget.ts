@@ -11,6 +11,7 @@ export class CWidget extends CObject {
 
     #m_visible = true;
     #m_enabled = true;
+	#m_font: string;
 
     constructor(parent: CWidget | null = null) {
         /*
@@ -22,10 +23,13 @@ export class CWidget extends CObject {
          */
         super(null);
 
-        if (parent !== null)
+        if (parent !== null) {
             super.setParent(parent);
-        else
+            this.#m_font = parent.font();
+        } else {
             CApplication.instance().registerTopLevelWidget(this);
+            this.#m_font = CApplication.instance().font();
+        }
     }
 
     override parent(): CWidget | null {
@@ -142,6 +146,18 @@ export class CWidget extends CObject {
     isVisible(): boolean {
         return this.#m_visible;
     }
+
+	font(): string {
+		return this.#m_font;
+	}
+
+	setFont(font: string): void {
+		if (this.#m_font === font)
+			return;
+
+		this.#m_font = font;
+		this.update();
+	}
 
     show(): void {
         this.setVisible(true);
