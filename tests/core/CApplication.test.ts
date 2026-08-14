@@ -486,4 +486,147 @@ describe("CApplication", () => {
         expect(childCalls).toBe(1);
         expect(parentCalls).toBe(0);
     });
+
+	test("accepted mouse press grabs the mouse", () => {
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+
+		class PressWidget extends CWidget {
+			protected override mousePressEvent(
+				event: CMouseEvent
+			): void {
+				event.accept();
+			}
+		}
+
+		const widget = new PressWidget();
+		widget.setGeometry(100, 100, 200, 100);
+
+		canvas.dispatchEvent({
+			type: "pointerdown",
+			clientX: 150,
+			clientY: 130,
+			button: 0
+		} as PointerEvent);
+
+		expect(app.mouseGrabber()).toBe(widget);
+	});
+
+	test("mouse release is sent to the grabber outside its geometry", () => {
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+
+		let releaseCalls = 0;
+
+		class GrabWidget extends CWidget {
+			protected override mousePressEvent(
+				event: CMouseEvent
+			): void {
+				event.accept();
+			}
+
+			protected override mouseReleaseEvent(
+				event: CMouseEvent
+			): void {
+				++releaseCalls;
+				event.accept();
+			}
+		}
+
+		const widget = new GrabWidget();
+		widget.setGeometry(100, 100, 200, 100);
+
+		canvas.dispatchEvent({
+			type: "pointerdown",
+			clientX: 150,
+			clientY: 130,
+			button: 0
+		} as PointerEvent);
+
+		canvas.dispatchEvent({
+			type: "pointerup",
+			clientX: 700,
+			clientY: 500,
+			button: 0
+		} as PointerEvent);
+
+		expect(releaseCalls).toBe(1);
+	});
+
+	test("mouse release releases the mouse grab", () => {
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+
+		class GrabWidget extends CWidget {
+			protected override mousePressEvent(
+				event: CMouseEvent
+			): void {
+				event.accept();
+			}
+
+			protected override mouseReleaseEvent(
+				event: CMouseEvent
+			): void {
+				event.accept();
+			}
+		}
+
+		const widget = new GrabWidget();
+		widget.setGeometry(100, 100, 200, 100);
+
+		canvas.dispatchEvent({
+			type: "pointerdown",
+			clientX: 150,
+			clientY: 130,
+			button: 0
+		} as PointerEvent);
+
+		expect(app.mouseGrabber()).toBe(widget);
+
+		canvas.dispatchEvent({
+			type: "pointerup",
+			clientX: 700,
+			clientY: 500,
+			button: 0
+		} as PointerEvent);
+
+		expect(app.mouseGrabber()).toBeNull();
+	});
+
+	test("mouse grab goes to the widget that accepts the press", () => {
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+
+		class ParentWidget extends CWidget {
+			protected override mousePressEvent(
+				event: CMouseEvent
+			): void {
+				event.accept();
+			}
+		}
+
+		class ChildWidget extends CWidget {
+			protected override mousePressEvent(
+				event: CMouseEvent
+			): void {
+				event.ignore();
+			}
+		}
+
+		const parent = new ParentWidget();
+		parent.setGeometry(100, 100, 300, 200);
+
+		const child = new ChildWidget(parent);
+		child.setGeometry(20, 20, 100, 80);
+
+		canvas.dispatchEvent({
+			type: "pointerdown",
+			clientX: 140,
+			clientY: 140,
+			button: 0
+		} as PointerEvent);
+
+		expect(app.mouseGrabber()).toBe(parent);
+	});
+    
 });

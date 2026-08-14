@@ -4,7 +4,8 @@ import {
     CPainter,
     CRect,
     CMouseEvent,
-    CMouseButton
+    CMouseButton,
+    CPushButton
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -46,6 +47,9 @@ const app = new CApplication(canvas);
 
 const parent = new RedWidget();
 parent.setGeometry(100, 100, 400, 300);
+
+const but = new CPushButton(parent);
+but.setGeometry(50, 50, 100, 30);
 
 const child = new BlueWidget(parent);
 child.setGeometry(350, 250, 150, 100);

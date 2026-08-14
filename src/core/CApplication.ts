@@ -13,6 +13,7 @@ export class CApplication extends CObject {
 
     #m_paintDevice: CCanvasPaintDevice;
     #m_topLevelWidgets = new Set<CWidget>();
+    #m_mouseGrabber: CWidget | null = null;
 
     #m_updatesEnabled = false;
     #m_frameRequest: number | null = null;
@@ -126,8 +127,21 @@ export class CApplication extends CObject {
         canvas.removeEventListener("pointermove", this.#onPointerMove);
 
         this.#m_topLevelWidgets.clear();
+        this.#m_mouseGrabber = null;
         CApplication.#m_instance = null;
     }
+
+	grabMouse(widget: CWidget): void {
+		this.#m_mouseGrabber = widget;
+	}
+
+	releaseMouse(): void {
+		this.#m_mouseGrabber = null;
+	}
+
+	mouseGrabber(): CWidget | null {
+		return this.#m_mouseGrabber;
+	}
 
     #mouseButton(button: number): CMouseButton {
         switch (button) {
@@ -155,7 +169,7 @@ export class CApplication extends CObject {
         );
     }
 
-    #topLevelWidgetAt(x: number, y: number): CWidget | null {
+    #widgetAt(x: number, y: number): CWidget | null {
         const widgets = [...this.#m_topLevelWidgets];
 
         for (let i = widgets.length - 1; i >= 0; --i) {
@@ -189,24 +203,36 @@ export class CApplication extends CObject {
             widget.render(painter);
     }
 
-    #dispatchMouseEvent(type: CEventType, pointerEvent: PointerEvent): void {
-        const position = this.#canvasPosition(pointerEvent);
-        let target = this.#topLevelWidgetAt(position.x(),position.y()
-    );
+	#dispatchMouseEvent(type: CEventType,
+		pointerEvent: PointerEvent): void {
+		const position = this.#canvasPosition(pointerEvent);
 
-    while (target !== null) {
-        const localPosition = target.mapFromCanvas(
-            position.x(), position.y()
-        );
+		let target = this.#m_mouseGrabber;
 
-        const event = new CMouseEvent(type, localPosition.x(),
-            localPosition.y(), this.#mouseButton(pointerEvent.button)
-        );
+		if (target === null)
+			target = this.#widgetAt(position.x(), position.y());
 
-        if (target.event(event))
-            return;
+		while (target !== null) {
+			const localPosition = target.mapFromCanvas(
+				position.x(), position.y()
+			);
 
-        target = target.parent();
-    }
-}
+			const event = new CMouseEvent(
+				type, localPosition.x(), localPosition.y(),
+				this.#mouseButton(pointerEvent.button)
+			);
+
+			if (target.event(event)) {
+				if (type === CEventType.MousePress)
+					this.grabMouse(target);
+
+				break;
+			}
+
+			target = target.parent();
+		}
+
+		if (type === CEventType.MouseRelease)
+			this.releaseMouse();
+	}
 }

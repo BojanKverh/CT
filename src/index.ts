@@ -12,3 +12,4 @@ export { CCanvasPaintEngine } from "./painting/CCanvasPaintEngine.js";
 export { CPainter } from "./painting/CPainter.js";
 export { CApplication } from "./core/CApplication.js";
 export { CWidget } from "./widgets/CWidget.js";
+export { CPushButton } from "./widgets/CPushButton.js";
