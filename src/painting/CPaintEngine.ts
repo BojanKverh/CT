@@ -28,4 +28,7 @@ export abstract class CPaintEngine {
     abstract setFillStyle(style: string): void;
     abstract setStrokeStyle(style: string): void;
     abstract setLineWidth(width: number): void;
+
+    abstract clipRect(x: number, y: number, width: number,
+		height: number): void;
 }

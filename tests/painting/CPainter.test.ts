@@ -13,6 +13,7 @@ class TestPaintEngine extends CPaintEngine {
     fillRect = vi.fn();
     strokeRect = vi.fn();
     clearRect = vi.fn();
+    clipRect = vi.fn();
 
     setFillStyle = vi.fn();
     setStrokeStyle = vi.fn();
@@ -138,4 +139,15 @@ describe("CPainter", () => {
 
         expect(device.engine.setLineWidth).toHaveBeenCalledWith(5);
     });
+
+	test("clips to a rectangle", () => {
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		painter.clipRect(new CRect(10, 20, 100, 50));
+
+		expect(device.engine.clipRect).toHaveBeenCalledWith(
+			10, 20, 100, 50
+		);
+	});
 });

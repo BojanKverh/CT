@@ -78,6 +78,7 @@ class TestPaintEngine extends CPaintEngine {
     fillRect = vi.fn();
     strokeRect = vi.fn();
     clearRect = vi.fn();
+    clipRect = vi.fn();
 
     setFillStyle = vi.fn();
     setStrokeStyle = vi.fn();
@@ -674,5 +675,35 @@ describe("CWidget", () => {
         expect(widget.receivedY).toBe(73);
         expect(widget.receivedButton).toBe(CMouseButton.RightButton);
     });
-    
+
+	test("clips rendering to widget rectangle", () => {
+		const widget = new TestWidget();
+		const { painter, device } = createPainter();
+
+		widget.setGeometry(10, 20, 100, 50);
+		widget.render(painter);
+
+		expect(device.engine.clipRect).toHaveBeenCalledWith(
+			0, 0, 100, 50
+		);
+	});
+
+	test("clips both parent and child during rendering", () => {
+		const parent = new TestWidget();
+		parent.setGeometry(10, 20, 100, 80);
+
+		const child = new TestWidget(parent);
+		child.setGeometry(70, 50, 100, 100);
+
+		const { painter, device } = createPainter();
+
+		parent.render(painter);
+
+		expect(device.engine.clipRect).toHaveBeenNthCalledWith(
+			1, 0, 0, 100, 80
+		);
+		expect(device.engine.clipRect).toHaveBeenNthCalledWith(
+			2, 0, 0, 100, 100
+		);
+	});
 });

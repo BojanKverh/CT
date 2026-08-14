@@ -14,6 +14,9 @@ export function createTestCanvas(width = 800, height = 600): HTMLCanvasElement {
         fillRect: vi.fn(),
         strokeRect: vi.fn(),
         clearRect: vi.fn(),
+        beginPath: vi.fn(),
+	    rect: vi.fn(),
+	    clip: vi.fn(),
 
         fillStyle: "",
         strokeStyle: "",

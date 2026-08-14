@@ -59,4 +59,10 @@ export class CCanvasPaintEngine extends CPaintEngine {
     setLineWidth(width: number): void {
         this.#m_context.lineWidth = width;
     }
+
+    clipRect(x: number, y: number, width: number, height: number): void {
+		this.#m_context.beginPath();
+		this.#m_context.rect(x, y, width, height);
+		this.#m_context.clip();
+	}
 }

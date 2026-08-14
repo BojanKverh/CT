@@ -65,4 +65,10 @@ export class CPainter {
     setLineWidth(width: number): void {
         this.#m_engine.setLineWidth(width);
     }
+
+	clipRect(rect: CRect): void {
+		this.#m_engine.clipRect(
+			rect.x(), rect.y(), rect.width(), rect.height()
+		);
+	}
 }

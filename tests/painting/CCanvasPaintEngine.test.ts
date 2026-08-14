@@ -9,6 +9,9 @@ function createContext(): CanvasRenderingContext2D {
         fillRect: vi.fn(),
         strokeRect: vi.fn(),
         clearRect: vi.fn(),
+        beginPath: vi.fn(),
+        rect: vi.fn(),
+        clip: vi.fn(),
 
         fillStyle: "",
         strokeStyle: "",
@@ -116,4 +119,15 @@ describe("CCanvasPaintEngine", () => {
 
         expect(context.lineWidth).toBe(5);
     });
+
+	test("clips to a rectangle", () => {
+		const context = createContext();
+		const engine = new CCanvasPaintEngine(context);
+
+		engine.clipRect(10, 20, 100, 50);
+
+		expect(context.beginPath).toHaveBeenCalledOnce();
+		expect(context.rect).toHaveBeenCalledWith(10, 20, 100, 50);
+		expect(context.clip).toHaveBeenCalledOnce();
+	});    
 });

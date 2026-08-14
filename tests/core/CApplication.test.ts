@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CApplication } from "../../src/core/CApplication";
 import { CWidget } from "../../src/widgets/CWidget";
 import { CPainter } from "../../src/painting/CPainter";
+import { CMouseEvent } from "../../src/events/CMouseEvent";
 import { createTestCanvas } from "../helpers/createTestCanvas";
 
 class RenderTrackingWidget extends CWidget {
@@ -420,5 +421,69 @@ describe("CApplication", () => {
 
         expect(clearRect).toHaveBeenCalledOnce();
         expect(clearRect).toHaveBeenCalledWith(0, 0, 800, 600 );
+    });
+
+    test("bubbles ignored mouse press event to parent", () => {
+        const canvas = createTestCanvas();
+        new CApplication(canvas);
+        const calls: string[] = [];
+
+        class ParentWidget extends CWidget {
+            protected override mousePressEvent(event: CMouseEvent): void {
+                calls.push(`parent:${event.x()},${event.y()}`);
+                event.accept();
+            }
+        }
+
+        class ChildWidget extends CWidget {
+            protected override mousePressEvent(event: CMouseEvent): void {
+                calls.push(`child:${event.x()},${event.y()}`);
+                event.ignore();
+            }
+        }
+
+        const parent = new ParentWidget();
+        parent.setGeometry(100, 100, 300, 200);
+        const child = new ChildWidget(parent);
+        child.setGeometry(50, 40, 100, 80);
+
+        canvas.dispatchEvent({type: "pointerdown", clientX: 180,
+            clientY: 160, button: 0} as PointerEvent);
+
+        expect(calls).toEqual(["child:30,20", "parent:80,60"]);
+    });
+
+    test("stops mouse event bubbling when child accepts event", () => {
+        const canvas = createTestCanvas();
+        new CApplication(canvas);
+
+        let parentCalls = 0;
+        let childCalls = 0;
+
+        class ParentWidget extends CWidget {
+            protected override mousePressEvent(event: CMouseEvent): void {
+                ++parentCalls;
+                event.accept();
+            }
+        }
+
+        class ChildWidget extends CWidget {
+            protected override mousePressEvent(event: CMouseEvent): void {
+                ++childCalls;
+                event.accept();
+            }
+        }
+
+        const parent = new ParentWidget();
+        parent.setGeometry(100, 100, 300, 200);
+
+        const child = new ChildWidget(parent);
+        child.setGeometry(50, 40, 100, 80);
+
+        canvas.dispatchEvent({type: "pointerdown", clientX: 180,
+            clientY: 160, button: 0} as PointerEvent);
+
+        expect(childCalls).toBe(1);
+        expect(parentCalls).toBe(0);
     });
 });

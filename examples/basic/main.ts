@@ -2,7 +2,9 @@ import {
     CApplication,
     CWidget,
     CPainter,
-    CRect
+    CRect,
+    CMouseEvent,
+    CMouseButton
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -15,12 +17,24 @@ class RedWidget extends CWidget {
 }
 
 class BlueWidget extends CWidget {
-    protected override paintEvent(painter: CPainter): void {
-        painter.setFillStyle("blue");
-        painter.fillRect(
-            new CRect(0, 0, this.width(), this.height())
-        );
-    }
+	#m_color = "blue";
+
+	protected override paintEvent(painter: CPainter): void {
+		painter.setFillStyle(this.#m_color);
+		painter.fillRect(new CRect(0, 0, this.width(), this.height()));
+	}
+
+	protected override mousePressEvent(event: CMouseEvent): void {
+		if (event.button() !== CMouseButton.LeftButton) {
+			event.ignore();
+			return;
+		}
+
+		this.#m_color = this.#m_color === "blue" ? "green" : "blue";
+
+		event.accept();
+		this.update();
+	}
 }
 
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas");
@@ -34,7 +48,7 @@ const parent = new RedWidget();
 parent.setGeometry(100, 100, 400, 300);
 
 const child = new BlueWidget(parent);
-child.setGeometry(50, 50, 150, 100);
+child.setGeometry(350, 250, 150, 100);
 
 app.startUpdates();
 

@@ -155,23 +155,24 @@ export class CWidget extends CObject {
         return this.#m_enabled;
     }
 
-    render(painter: CPainter): void {
-        if (!this.isVisible())
-            return;
+	render(painter: CPainter): void {
+		if (!this.isVisible())
+			return;
 
-        painter.save();
+		painter.save();
 
-        try {
-            painter.translate(this.x(), this.y());
+		try {
+			painter.translate(this.x(), this.y());
+			painter.clipRect(this.rect());
 
-            this.paintEvent(painter);
+			this.paintEvent(painter);
 
-            for (const child of this.children())
-                child.render(painter);
-        } finally {
-            painter.restore();
-        }
-    }
+			for (const child of this.children())
+				child.render(painter);
+		} finally {
+			painter.restore();
+		}
+	}    
 
     widgetAt(x: number, y: number): CWidget | null {
         if (!this.isVisible())
