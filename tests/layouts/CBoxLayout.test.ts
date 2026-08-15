@@ -1,0 +1,297 @@
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
+
+import { CApplication } from "../../src/core/CApplication.js";
+import {
+	CBoxLayout,
+	CBoxLayoutDirection
+} from "../../src/layouts/CBoxLayout.js";
+import { CWidget } from "../../src/widgets/CWidget.js";
+import { createTestCanvas } from "../helpers/createTestCanvas.js";
+import { createTestWindow } from "../helpers/createTestWindow.js";
+
+describe("CBoxLayout", () => {
+	beforeEach(() => {
+		Object.defineProperty(globalThis, "window", {
+			value: createTestWindow(),
+			writable: true,
+			configurable: true
+		});
+
+		new CApplication(createTestCanvas());
+	});
+
+	afterEach(() => {
+		if (CApplication.exists())
+			CApplication.instance().destroy();
+	});
+
+	test("stores layout direction", () => {
+		const horizontal = new CBoxLayout(
+			CBoxLayoutDirection.LeftToRight
+		);
+
+		const vertical = new CBoxLayout(
+			CBoxLayoutDirection.TopToBottom
+		);
+
+		expect(horizontal.direction()).toBe(
+			CBoxLayoutDirection.LeftToRight
+		);
+		expect(vertical.direction()).toBe(
+			CBoxLayoutDirection.TopToBottom
+		);
+	});
+
+	test("does nothing without parent widget", () => {
+		const layout = new CBoxLayout(
+			CBoxLayoutDirection.LeftToRight
+		);
+
+		const widget = new CWidget();
+		layout.addWidget(widget);
+
+		expect(() => layout.update()).not.toThrow();
+	});
+
+	test("does nothing with empty layout", () => {
+		const parent = new CWidget();
+		parent.resize(300, 100);
+
+		const layout = new CBoxLayout(
+			CBoxLayoutDirection.LeftToRight
+		);
+
+		parent.setLayout(layout);
+
+		expect(() => layout.update()).not.toThrow();
+	});
+
+	test("lays out widgets horizontally", () => {
+		const parent = new CWidget();
+		parent.resize(300, 100);
+
+		const layout = new CBoxLayout(
+			CBoxLayoutDirection.LeftToRight
+		);
+
+		parent.setLayout(layout);
+
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+		const widget3 = new CWidget();
+
+		layout.addWidget(widget1);
+		layout.addWidget(widget2);
+		layout.addWidget(widget3);
+
+		expect(widget1.geometry().x()).toBe(0);
+		expect(widget1.geometry().y()).toBe(0);
+		expect(widget1.geometry().width()).toBe(100);
+		expect(widget1.geometry().height()).toBe(100);
+
+		expect(widget2.geometry().x()).toBe(100);
+		expect(widget2.geometry().y()).toBe(0);
+		expect(widget2.geometry().width()).toBe(100);
+		expect(widget2.geometry().height()).toBe(100);
+
+		expect(widget3.geometry().x()).toBe(200);
+		expect(widget3.geometry().y()).toBe(0);
+		expect(widget3.geometry().width()).toBe(100);
+		expect(widget3.geometry().height()).toBe(100);
+	});
+
+	test("lays out widgets vertically", () => {
+		const parent = new CWidget();
+		parent.resize(100, 300);
+
+		const layout = new CBoxLayout(
+			CBoxLayoutDirection.TopToBottom
+		);
+
+		parent.setLayout(layout);
+
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+		const widget3 = new CWidget();
+
+		layout.addWidget(widget1);
+		layout.addWidget(widget2);
+		layout.addWidget(widget3);
+
+		expect(widget1.geometry().x()).toBe(0);
+		expect(widget1.geometry().y()).toBe(0);
+		expect(widget1.geometry().width()).toBe(100);
+		expect(widget1.geometry().height()).toBe(100);
+
+		expect(widget2.geometry().x()).toBe(0);
+		expect(widget2.geometry().y()).toBe(100);
+		expect(widget2.geometry().width()).toBe(100);
+		expect(widget2.geometry().height()).toBe(100);
+
+		expect(widget3.geometry().x()).toBe(0);
+		expect(widget3.geometry().y()).toBe(200);
+		expect(widget3.geometry().width()).toBe(100);
+		expect(widget3.geometry().height()).toBe(100);
+	});
+
+	test("applies spacing horizontally", () => {
+		const parent = new CWidget();
+		parent.resize(320, 100);
+
+		const layout = new CBoxLayout(
+			CBoxLayoutDirection.LeftToRight
+		);
+
+		parent.setLayout(layout);
+		layout.setSpacing(10);
+
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+		const widget3 = new CWidget();
+
+		layout.addWidget(widget1);
+		layout.addWidget(widget2);
+		layout.addWidget(widget3);
+
+		expect(widget1.geometry().x()).toBe(0);
+		expect(widget1.geometry().width()).toBe(100);
+
+		expect(widget2.geometry().x()).toBe(110);
+		expect(widget2.geometry().width()).toBe(100);
+
+		expect(widget3.geometry().x()).toBe(220);
+		expect(widget3.geometry().width()).toBe(100);
+	});
+
+	test("applies spacing vertically", () => {
+		const parent = new CWidget();
+		parent.resize(100, 320);
+
+		const layout = new CBoxLayout(
+			CBoxLayoutDirection.TopToBottom
+		);
+
+		parent.setLayout(layout);
+		layout.setSpacing(10);
+
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+		const widget3 = new CWidget();
+
+		layout.addWidget(widget1);
+		layout.addWidget(widget2);
+		layout.addWidget(widget3);
+
+		expect(widget1.geometry().y()).toBe(0);
+		expect(widget1.geometry().height()).toBe(100);
+
+		expect(widget2.geometry().y()).toBe(110);
+		expect(widget2.geometry().height()).toBe(100);
+
+		expect(widget3.geometry().y()).toBe(220);
+		expect(widget3.geometry().height()).toBe(100);
+	});
+
+	test("relayouts widgets when spacing changes", () => {
+		const parent = new CWidget();
+		parent.resize(300, 100);
+
+		const layout = new CBoxLayout(
+			CBoxLayoutDirection.LeftToRight
+		);
+
+		parent.setLayout(layout);
+
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+
+		layout.addWidget(widget1);
+		layout.addWidget(widget2);
+
+		layout.setSpacing(20);
+
+		expect(widget1.geometry().width()).toBe(140);
+		expect(widget2.geometry().x()).toBe(160);
+		expect(widget2.geometry().width()).toBe(140);
+	});
+
+	test("relayouts widgets when parent is resized", () => {
+		const parent = new CWidget();
+		parent.resize(200, 100);
+
+		const layout = new CBoxLayout(
+			CBoxLayoutDirection.LeftToRight
+		);
+
+		parent.setLayout(layout);
+
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+
+		layout.addWidget(widget1);
+		layout.addWidget(widget2);
+
+		expect(widget1.geometry().width()).toBe(100);
+		expect(widget2.geometry().x()).toBe(100);
+
+		parent.resize(400, 100);
+
+		expect(widget1.geometry().width()).toBe(200);
+		expect(widget2.geometry().x()).toBe(200);
+		expect(widget2.geometry().width()).toBe(200);
+	});
+
+	test("supports fractional widget sizes", () => {
+		const parent = new CWidget();
+		parent.resize(100, 40);
+
+		const layout = new CBoxLayout(
+			CBoxLayoutDirection.LeftToRight
+		);
+
+		parent.setLayout(layout);
+
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+		const widget3 = new CWidget();
+
+		layout.addWidget(widget1);
+		layout.addWidget(widget2);
+		layout.addWidget(widget3);
+
+		expect(widget1.geometry().width()).toBeCloseTo(100 / 3);
+		expect(widget2.geometry().x()).toBeCloseTo(100 / 3);
+		expect(widget3.geometry().x()).toBeCloseTo(200 / 3);
+	});
+
+	test("applies spacing inside contents margins", () => {
+		const parent = new CWidget();
+		parent.resize(340, 100);
+
+		const layout = new CBoxLayout(
+			CBoxLayoutDirection.LeftToRight
+		);
+
+		layout.setContentsMargins(10, 10, 10, 10);
+		layout.setSpacing(20);
+		parent.setLayout(layout);
+
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+
+		layout.addWidget(widget1);
+		layout.addWidget(widget2);
+
+		expect(widget1.x()).toBe(10);
+		expect(widget1.width()).toBe(150);
+
+		expect(widget2.x()).toBe(180);
+		expect(widget2.width()).toBe(150);
+
+		expect(widget1.y()).toBe(10);
+		expect(widget1.height()).toBe(80);
+
+		expect(widget2.y()).toBe(10);
+		expect(widget2.height()).toBe(80);
+	});
+});

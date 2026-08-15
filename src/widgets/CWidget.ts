@@ -2,11 +2,12 @@ import { CApplication } from "../core/CApplication.js";
 import { CObject } from "../core/CObject.js";
 import { CPoint } from "../geometry/CPoint.js";
 import { CRect } from "../geometry/CRect.js";
-import type { CPainter } from "../painting/CPainter.js";
+import { CPainter } from "../painting/CPainter.js";
 import { CEvent, CEventType } from "../events/CEvent.js";
 import { CMouseEvent } from "../events/CMouseEvent.js";
 import { CFocusEvent } from "../events/CFocusEvent.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
+import { CLayout } from "../layouts/CLayout.js";
 
 export class CWidget extends CObject {
     #m_geometry = new CRect();
@@ -14,6 +15,7 @@ export class CWidget extends CObject {
     #m_visible = true;
     #m_enabled = true;
 	#m_font: string;
+    #m_layout: CLayout | null = null;
 
     constructor(parent: CWidget | null = null) {
         /*
@@ -89,44 +91,21 @@ export class CWidget extends CObject {
     }
 
     setGeometry(x: number, y: number, width: number, height: number): void {
-        if (
-            x === this.x()
-            && y === this.y()
-            && width === this.width()
-            && height === this.height()
-        )
+        if (x === this.x() && y === this.y() && width === this.width()
+            && height === this.height())
             return;
 
         this.#m_geometry.setGeometry(x, y, width, height);
+        this.#m_layout?.update();
         this.update();
     }
 
     move(x: number, y: number): void {
-        if (x === this.x() && y === this.y())
-            return;
-
-        this.#m_geometry.setGeometry(
-            x,
-            y,
-            this.width(),
-            this.height()
-        );
-
-        this.update();
+        this.setGeometry(x, y, this.width(), this.height());
     }
 
     resize(width: number, height: number): void {
-        if (width === this.width() && height === this.height())
-            return;
-
-        this.#m_geometry.setGeometry(
-            this.x(),
-            this.y(),
-            width,
-            height
-        );
-
-        this.update();
+        this.setGeometry(this.x(), this.y(), width, height);
     }
 
     setVisible(visible: boolean): void {
@@ -229,6 +208,19 @@ export class CWidget extends CObject {
         }
 
         return this;
+    }
+
+    layout(): CLayout | null {
+	    return this.#m_layout;
+    }
+
+    setLayout(layout: CLayout): void {
+	    if (this.#m_layout === layout)
+		    return;
+
+	    this.#m_layout = layout;
+	    layout.setParentWidget(this);
+	    layout.update();
     }
 
     protected paintEvent(_painter: CPainter): void {
