@@ -1,7 +1,9 @@
 export enum CEventType {
     MousePress,
     MouseRelease,
-    MouseMove
+    MouseMove,
+    MouseEnter,
+    MouseLeave,
 }
 
 export class CEvent {

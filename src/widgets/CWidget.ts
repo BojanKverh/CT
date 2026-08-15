@@ -221,22 +221,30 @@ export class CWidget extends CObject {
     }
 
     event(event: CEvent): boolean {
-        switch (event.type()) {
-            case CEventType.MousePress:
-                this.mousePressEvent(event as CMouseEvent);
-                return event.isAccepted();
+		switch (event.type()) {
+		case CEventType.MousePress:
+			this.mousePressEvent(event as CMouseEvent);
+			return event.isAccepted();
 
-            case CEventType.MouseRelease:
-                this.mouseReleaseEvent(event as CMouseEvent);
-                return event.isAccepted();
+		case CEventType.MouseRelease:
+			this.mouseReleaseEvent(event as CMouseEvent);
+			return event.isAccepted();
 
-            case CEventType.MouseMove:
-                this.mouseMoveEvent(event as CMouseEvent);
-                return event.isAccepted();
-        }
+		case CEventType.MouseMove:
+			this.mouseMoveEvent(event as CMouseEvent);
+			return event.isAccepted();
 
-        return false;
-    }
+		case CEventType.MouseEnter:
+			this.mouseEnterEvent(event as CMouseEvent);
+			return event.isAccepted();
+
+		case CEventType.MouseLeave:
+			this.mouseLeaveEvent(event as CMouseEvent);
+			return event.isAccepted();
+		}
+
+		return false;
+	}
 
     mapFromCanvas(x: number, y: number): CPoint {
         let widget: CWidget | null = this;
@@ -262,6 +270,14 @@ export class CWidget extends CObject {
     }
 
     protected mouseMoveEvent(event: CMouseEvent): void {
+        event.ignore();
+    }
+
+    protected mouseEnterEvent(event: CMouseEvent): void {
+        event.ignore();
+    }
+
+    protected mouseLeaveEvent(event: CMouseEvent): void {
         event.ignore();
     }
 }

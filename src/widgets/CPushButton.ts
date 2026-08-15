@@ -9,6 +9,7 @@ export class CPushButton extends CWidget {
 
 	#m_down = false;
     #m_text = "";
+    #m_hovered = false;
 
 	isDown(): boolean {
 		return this.#m_down;
@@ -24,6 +25,10 @@ export class CPushButton extends CWidget {
 
 		this.#m_text = text;
 		this.update();
+	}
+
+    isHovered(): boolean {
+		return this.#m_hovered;
 	}
 
 	protected override mousePressEvent(event: CMouseEvent): void {
@@ -59,7 +64,12 @@ export class CPushButton extends CWidget {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
-		painter.setFillStyle(this.#m_down ? "#808080" : "#c0c0c0");
+		if (this.#m_down)
+			painter.setFillStyle("#808080");
+		else if (this.#m_hovered)
+			painter.setFillStyle("#d0d0d0");
+		else
+			painter.setFillStyle("#c0c0c0");
 		painter.fillRect(this.rect());
 
         painter.setFillStyle("black");
@@ -68,5 +78,17 @@ export class CPushButton extends CWidget {
 		painter.setTextBaseline("middle");
 
 		painter.drawText(this.#m_text, this.width() / 2, this.height() / 2);
+	}
+
+	protected override mouseEnterEvent(event: CMouseEvent): void {
+		this.#m_hovered = true;
+		event.accept();
+		this.update();
+	}
+
+	protected override mouseLeaveEvent(event: CMouseEvent): void {
+		this.#m_hovered = false;
+		event.accept();
+		this.update();
 	}
 }

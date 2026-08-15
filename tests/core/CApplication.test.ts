@@ -628,5 +628,95 @@ describe("CApplication", () => {
 
 		expect(app.mouseGrabber()).toBe(parent);
 	});
-    
+
+	test("updates hover widget when pointer moves between widgets", () => {
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+
+		const widget1 = new CWidget();
+		widget1.setGeometry(50, 50, 100, 100);
+
+		const widget2 = new CWidget();
+		widget2.setGeometry(200, 50, 100, 100);
+
+		canvas.dispatchEvent({
+			type: "pointermove",
+			clientX: 75,
+			clientY: 75,
+			button: -1
+		} as PointerEvent);
+
+		expect(app.hoverWidget()).toBe(widget1);
+
+		canvas.dispatchEvent({
+			type: "pointermove",
+			clientX: 225,
+			clientY: 75,
+			button: -1
+		} as PointerEvent);
+
+		expect(app.hoverWidget()).toBe(widget2);
+
+		canvas.dispatchEvent({
+			type: "pointermove",
+			clientX: 500,
+			clientY: 500,
+			button: -1
+		} as PointerEvent);
+
+		expect(app.hoverWidget()).toBeNull();
+	});
+
+	test("sends mouse enter and leave when hover target changes", () => {
+		const canvas = createTestCanvas();
+		new CApplication(canvas);
+
+		const events: string[] = [];
+
+		class HoverWidget extends CWidget {
+			constructor(private readonly name: string) {
+				super();
+			}
+
+			protected override mouseEnterEvent(
+				event: CMouseEvent
+			): void {
+				events.push(`${this.name}:enter`);
+				event.accept();
+			}
+
+			protected override mouseLeaveEvent(
+				event: CMouseEvent
+			): void {
+				events.push(`${this.name}:leave`);
+				event.accept();
+			}
+		}
+
+		const widget1 = new HoverWidget("A");
+		widget1.setGeometry(50, 50, 100, 100);
+
+		const widget2 = new HoverWidget("B");
+		widget2.setGeometry(200, 50, 100, 100);
+
+		canvas.dispatchEvent({
+			type: "pointermove",
+			clientX: 75,
+			clientY: 75,
+			button: -1
+		} as PointerEvent);
+
+		canvas.dispatchEvent({
+			type: "pointermove",
+			clientX: 225,
+			clientY: 75,
+			button: -1
+		} as PointerEvent);
+
+		expect(events).toEqual([
+			"A:enter",
+			"A:leave",
+			"B:enter"
+		]);
+	});
 });

@@ -23,6 +23,14 @@ class TestPushButton extends CPushButton {
 	paint(painter: CPainter): void {
 		this.paintEvent(painter);
 	}
+
+	mouseEnter(event: CMouseEvent): void {
+		this.mouseEnterEvent(event);
+	}
+
+	mouseLeave(event: CMouseEvent): void {
+		this.mouseLeaveEvent(event);
+	}
 }
 
 describe("CPushButton", () => {
@@ -172,4 +180,83 @@ describe("CPushButton", () => {
 		);
 	});
     
+	test("is not hovered by default", () => {
+		const button = new CPushButton();
+
+		expect(button.isHovered()).toBe(false);
+	});
+
+	test("becomes hovered on mouse enter", () => {
+		const button = new TestPushButton();
+
+		const event = new CMouseEvent(
+			CEventType.MouseEnter, 10, 10,
+			CMouseButton.NoButton
+		);
+
+		button.mouseEnter(event);
+
+		expect(button.isHovered()).toBe(true);
+		expect(event.isAccepted()).toBe(true);
+	});
+
+	test("stops being hovered on mouse leave", () => {
+		const button = new TestPushButton();
+
+		button.mouseEnter(new CMouseEvent(
+			CEventType.MouseEnter, 10, 10,
+			CMouseButton.NoButton
+		));
+
+		const event = new CMouseEvent(
+			CEventType.MouseLeave, 150, 10,
+			CMouseButton.NoButton
+		);
+
+		button.mouseLeave(event);
+
+		expect(button.isHovered()).toBe(false);
+		expect(event.isAccepted()).toBe(true);
+	});
+
+	test("uses hover background when hovered", () => {
+		const button = new TestPushButton();
+
+		button.mouseEnter(new CMouseEvent(
+			CEventType.MouseEnter, 10, 10,
+			CMouseButton.NoButton
+		));
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		button.paint(painter);
+
+		expect(device.engine.setFillStyle).toHaveBeenCalledWith(
+			"#d0d0d0"
+		);
+	});
+
+	test("pressed background has priority over hover background", () => {
+		const button = new TestPushButton();
+
+		button.mouseEnter(new CMouseEvent(
+			CEventType.MouseEnter, 10, 10,
+			CMouseButton.NoButton
+		));
+
+		button.mousePress(new CMouseEvent(
+			CEventType.MousePress, 10, 10,
+			CMouseButton.LeftButton
+		));
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		button.paint(painter);
+
+		expect(device.engine.setFillStyle).toHaveBeenCalledWith(
+			"#808080"
+		);
+	});
 });

@@ -707,4 +707,80 @@ describe("CWidget", () => {
 
 		expect(child.font()).toBe("18px serif");
 	});
+
+	test("dispatches mouse enter event to mouseEnterEvent", () => {
+		class MouseEnterWidget extends CWidget {
+			mouseEnterCalled = false;
+
+			protected override mouseEnterEvent(
+				event: CMouseEvent
+			): void {
+				this.mouseEnterCalled = true;
+				event.accept();
+			}
+		}
+
+		const widget = new MouseEnterWidget();
+
+		const event = new CMouseEvent(
+			CEventType.MouseEnter, 10, 20,
+			CMouseButton.NoButton
+		);
+
+		const handled = widget.event(event);
+
+		expect(widget.mouseEnterCalled).toBe(true);
+		expect(handled).toBe(true);
+		expect(event.isAccepted()).toBe(true);
+	});
+
+	test("dispatches mouse leave event to mouseLeaveEvent", () => {
+		class MouseLeaveWidget extends CWidget {
+			mouseLeaveCalled = false;
+
+			protected override mouseLeaveEvent(
+				event: CMouseEvent
+			): void {
+				this.mouseLeaveCalled = true;
+				event.accept();
+			}
+		}
+
+		const widget = new MouseLeaveWidget();
+
+		const event = new CMouseEvent(
+			CEventType.MouseLeave, 10, 20,
+			CMouseButton.NoButton
+		);
+
+		const handled = widget.event(event);
+
+		expect(widget.mouseLeaveCalled).toBe(true);
+		expect(handled).toBe(true);
+		expect(event.isAccepted()).toBe(true);
+	});
+
+	test("default mouse enter handler ignores event", () => {
+		const widget = new CWidget();
+
+		const event = new CMouseEvent(
+			CEventType.MouseEnter, 10, 20,
+			CMouseButton.NoButton
+		);
+
+		expect(widget.event(event)).toBe(false);
+		expect(event.isAccepted()).toBe(false);
+	});
+
+	test("default mouse leave handler ignores event", () => {
+		const widget = new CWidget();
+
+		const event = new CMouseEvent(
+			CEventType.MouseLeave, 10, 20,
+			CMouseButton.NoButton
+		);
+
+		expect(widget.event(event)).toBe(false);
+		expect(event.isAccepted()).toBe(false);
+	});
 });
