@@ -5,8 +5,10 @@ import { CCanvasPaintDevice } from "../painting/CCanvasPaintDevice.js";
 import { CPainter } from "../painting/CPainter.js";
 import { CPoint } from "../geometry/CPoint.js";
 import { CRect } from "../geometry/CRect.js";
-import { CEvent, CEventType } from "../events/CEvent.js";
+import { CEventType } from "../events/CEvent.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
+import { CKeyEvent } from "../events/CKeyEvent.js";
+import { CFocusEvent } from "../events/CFocusEvent.js";
 
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
@@ -15,7 +17,7 @@ export class CApplication extends CObject {
 	#m_topLevelWidgets = new Set<CWidget>();
 	#m_mouseGrabber: CWidget | null = null;
 	#m_hoverWidget: CWidget | null = null;
-    #m_focusWidget: CWidget | null = null;
+	#m_focusWidget: CWidget | null = null;
 
 	#m_updatesEnabled = false;
 	#m_frameRequest: number | null = null;
@@ -35,6 +37,14 @@ export class CApplication extends CObject {
 		this.#dispatchMouseEvent(CEventType.MouseMove, event);
 	};
 
+    #onKeyDown = (event: KeyboardEvent): void => {
+		this.#dispatchKeyEvent(CEventType.KeyPress, event);
+	};
+
+	#onKeyUp = (event: KeyboardEvent): void => {
+		this.#dispatchKeyEvent(CEventType.KeyRelease, event);
+	};
+
 	constructor(canvas: HTMLCanvasElement) {
 		super();
 
@@ -47,6 +57,32 @@ export class CApplication extends CObject {
 		canvas.addEventListener("pointerdown", this.#onPointerDown);
 		canvas.addEventListener("pointerup", this.#onPointerUp);
 		canvas.addEventListener("pointermove", this.#onPointerMove);
+        if (typeof window !== "undefined") {
+	        window.addEventListener("keydown", this.#onKeyDown);
+	        window.addEventListener("keyup", this.#onKeyUp);
+        }
+	}
+
+    destroy(): void {
+		if (CApplication.#m_instance !== this)
+			return;
+
+		this.stopUpdates();
+
+		const canvas = this.#m_paintDevice.canvas();
+		canvas.removeEventListener("pointerdown", this.#onPointerDown);
+		canvas.removeEventListener("pointerup", this.#onPointerUp);
+		canvas.removeEventListener("pointermove", this.#onPointerMove);
+		if (typeof window !== "undefined") {
+			window.removeEventListener("keydown", this.#onKeyDown);
+			window.removeEventListener("keyup", this.#onKeyUp);
+		}
+
+		this.#m_topLevelWidgets.clear();
+		this.#m_mouseGrabber = null;
+		this.#m_hoverWidget = null;
+        this.#m_focusWidget = null;
+		CApplication.#m_instance = null;
 	}
 
 	static instance(): CApplication {
@@ -111,12 +147,12 @@ export class CApplication extends CObject {
 		this.#m_focusWidget = widget;
 
 		if (oldWidget !== null) {
-			const event = new CEvent(CEventType.FocusOut);
+			const event = new CFocusEvent(CEventType.FocusOut);
 			oldWidget.event(event);
 		}
 
 		if (widget !== null) {
-			const event = new CEvent(CEventType.FocusIn);
+			const event = new CFocusEvent(CEventType.FocusIn);
 			widget.event(event);
 		}
 	}
@@ -152,23 +188,6 @@ export class CApplication extends CObject {
 			this.#m_frameRequest = null;
 			this.#repaint();
 		});
-	}
-
-	destroy(): void {
-		if (CApplication.#m_instance !== this)
-			return;
-
-		this.stopUpdates();
-
-		const canvas = this.#m_paintDevice.canvas();
-		canvas.removeEventListener("pointerdown", this.#onPointerDown);
-		canvas.removeEventListener("pointerup", this.#onPointerUp);
-		canvas.removeEventListener("pointermove", this.#onPointerMove);
-
-		this.#m_topLevelWidgets.clear();
-		this.#m_mouseGrabber = null;
-		this.#m_hoverWidget = null;
-		CApplication.#m_instance = null;
 	}
 
 	grabMouse(widget: CWidget): void {
@@ -254,7 +273,7 @@ export class CApplication extends CObject {
 		while (target !== null) {
 			if (this.#sendMouseEvent(target, type, pointerEvent)) {
 				if (type === CEventType.MousePress) {
-                    target.setFocus();
+					target.setFocus();
 					this.grabMouse(target);
                 }
 
@@ -266,6 +285,21 @@ export class CApplication extends CObject {
 
 		if (type === CEventType.MouseRelease)
 			this.releaseMouse();
+	}
+
+	#dispatchKeyEvent(type: CEventType,
+		keyboardEvent: KeyboardEvent): void {
+		const target = this.#m_focusWidget;
+
+		if (target === null)
+			return;
+
+		const event = new CKeyEvent(type, keyboardEvent.key,
+			keyboardEvent.ctrlKey, keyboardEvent.shiftKey,
+			keyboardEvent.altKey, keyboardEvent.metaKey
+		);
+
+		target.event(event);
 	}
 
 	#updateHoverWidget(pointerEvent: PointerEvent): void {

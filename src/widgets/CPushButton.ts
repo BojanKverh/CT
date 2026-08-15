@@ -3,6 +3,7 @@ import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CWidget } from "./CWidget.js";
 import { CPoint } from "../geometry/CPoint";
+import { CKeyEvent } from "../events/CKeyEvent.js";
 
 export class CPushButton extends CWidget {
 	readonly clicked = new CSignal();
@@ -92,5 +93,38 @@ export class CPushButton extends CWidget {
 		this.#m_hovered = false;
 		event.accept();
 		this.update();
+	}
+
+	protected override keyPressEvent(event: CKeyEvent): void {
+		if (event.key() === " ") {
+			this.#m_down = true;
+			event.accept();
+			this.update();
+			return;
+		}
+
+		if (event.key() === "Enter") {
+			event.accept();
+			this.clicked.emit();
+			return;
+		}
+
+		event.ignore();
+	}
+
+	protected override keyReleaseEvent(event: CKeyEvent): void {
+		if (event.key() !== " ") {
+			event.ignore();
+			return;
+		}
+
+		const wasDown = this.#m_down;
+		this.#m_down = false;
+
+		event.accept();
+		this.update();
+
+		if (wasDown)
+			this.clicked.emit();
 	}
 }

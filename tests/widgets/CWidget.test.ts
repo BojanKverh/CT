@@ -7,6 +7,7 @@ import { CPaintDevice } from "../../src/painting/CPaintDevice";
 import { CPaintEngine } from "../../src/painting/CPaintEngine";
 import { CEventType } from "../../src/events/CEvent";
 import { CMouseButton, CMouseEvent } from "../../src/events/CMouseEvent";
+import { CKeyEvent } from "../../src/events/CKeyEvent.js";
 import { createTestCanvas } from "../helpers/createTestCanvas";
 import { TestPaintEngine } from "../helpers/createTestPaintEngine";
 
@@ -885,5 +886,105 @@ describe("CWidget", () => {
 
 		expect(childCalls).toBe(0);
 		expect(parentCalls).toBe(1);
+	});
+
+	test("dispatches key press event to keyPressEvent", () => {
+		class KeyPressWidget extends CWidget {
+			keyPressCalled = false;
+
+			protected override keyPressEvent(
+				event: CKeyEvent
+			): void {
+				this.keyPressCalled = true;
+				event.accept();
+			}
+		}
+
+		const widget = new KeyPressWidget();
+
+		const event = new CKeyEvent(
+			CEventType.KeyPress, "Enter"
+		);
+
+		const handled = widget.event(event);
+
+		expect(widget.keyPressCalled).toBe(true);
+		expect(handled).toBe(true);
+		expect(event.isAccepted()).toBe(true);
+	});
+
+	test("dispatches key release event to keyReleaseEvent", () => {
+		class KeyReleaseWidget extends CWidget {
+			keyReleaseCalled = false;
+
+			protected override keyReleaseEvent(
+				event: CKeyEvent
+			): void {
+				this.keyReleaseCalled = true;
+				event.accept();
+			}
+		}
+
+		const widget = new KeyReleaseWidget();
+
+		const event = new CKeyEvent(
+			CEventType.KeyRelease, "Enter"
+		);
+
+		const handled = widget.event(event);
+
+		expect(widget.keyReleaseCalled).toBe(true);
+		expect(handled).toBe(true);
+		expect(event.isAccepted()).toBe(true);
+	});
+
+	test("default key press handler ignores event", () => {
+		const widget = new CWidget();
+
+		const event = new CKeyEvent(
+			CEventType.KeyPress, "Enter"
+		);
+
+		expect(widget.event(event)).toBe(false);
+		expect(event.isAccepted()).toBe(false);
+	});
+
+	test("default key release handler ignores event", () => {
+		const widget = new CWidget();
+
+		const event = new CKeyEvent(
+			CEventType.KeyRelease, "Enter"
+		);
+
+		expect(widget.event(event)).toBe(false);
+		expect(event.isAccepted()).toBe(false);
+	});
+
+	test("key handler receives key and modifiers", () => {
+		class InspectingWidget extends CWidget {
+			receivedKey: string | null = null;
+			ctrl = false;
+			shift = false;
+
+			protected override keyPressEvent(
+				event: CKeyEvent
+			): void {
+				this.receivedKey = event.key();
+				this.ctrl = event.ctrl();
+				this.shift = event.shift();
+				event.accept();
+			}
+		}
+
+		const widget = new InspectingWidget();
+
+		widget.event(new CKeyEvent(
+			CEventType.KeyPress, "A",
+			true, true
+		));
+
+		expect(widget.receivedKey).toBe("A");
+		expect(widget.ctrl).toBe(true);
+		expect(widget.shift).toBe(true);
 	});
 });

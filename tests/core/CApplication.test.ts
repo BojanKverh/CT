@@ -4,7 +4,9 @@ import { CWidget } from "../../src/widgets/CWidget";
 import { CPainter } from "../../src/painting/CPainter";
 import { CMouseEvent } from "../../src/events/CMouseEvent";
 import { CFocusEvent } from "../../src/events/CFocusEvent";
+import { CKeyEvent } from "../../src/events/CKeyEvent";
 import { createTestCanvas } from "../helpers/createTestCanvas";
+import { createTestWindow } from "../helpers/createTestWindow.js";
 
 class RenderTrackingWidget extends CWidget {
     renderCalls = 0;
@@ -58,7 +60,13 @@ function runNextAnimationFrame(): void {
 }
 
 beforeEach(() => {
-    installAnimationFrameMock();
+	installAnimationFrameMock();
+
+	Object.defineProperty(globalThis, "window", {
+		value: createTestWindow(),
+		writable: true,
+		configurable: true
+	});
 });
 
 afterEach(() => {
@@ -821,4 +829,103 @@ describe("CApplication", () => {
 		expect(app.focusWidget()).toBe(widget);
 		expect(widget.hasFocus()).toBe(true);
 	});
+
+   	test("does not dispatch key event without focus widget", () => {
+		const app = new CApplication(createTestCanvas());
+
+		expect(app.focusWidget()).toBeNull();
+
+		expect(() => {
+			window.dispatchEvent({ type: "keydown", key: "Enter",
+				ctrlKey: false,
+				shiftKey: false,
+				altKey: false,
+				metaKey: false
+			} as unknown as KeyboardEvent);
+		}).not.toThrow();
+	});
+
+	test("dispatches key press to focus widget", () => {
+		const app = new CApplication(createTestCanvas());
+
+		let receivedKey: string | null = null;
+
+		class KeyWidget extends CWidget {
+			protected override keyPressEvent(
+				event: CKeyEvent
+			): void {
+				receivedKey = event.key();
+				event.accept();
+			}
+		}
+
+		const widget = new KeyWidget();
+		app.setFocusWidget(widget);
+
+		window.dispatchEvent({type: "keydown", key: "Enter", ctrlKey: false,
+			shiftKey: false, altKey: false, metaKey: false
+		} as unknown as KeyboardEvent);
+
+		expect(receivedKey).toBe("Enter");
+	});
+
+	test("dispatches key release to focus widget", () => {
+		const app = new CApplication(createTestCanvas());
+
+		let receivedKey: string | null = null;
+
+		class KeyWidget extends CWidget {
+			protected override keyReleaseEvent(
+				event: CKeyEvent
+			): void {
+				receivedKey = event.key();
+				event.accept();
+			}
+		}
+
+		const widget = new KeyWidget();
+		app.setFocusWidget(widget);
+
+		window.dispatchEvent({ type: "keyup", key: "Enter",
+			ctrlKey: false, shiftKey: false,
+			altKey: false, metaKey: false
+		} as unknown as KeyboardEvent);
+
+		expect(receivedKey).toBe("Enter");
+	});
+
+	test("passes keyboard modifiers to focus widget", () => {
+		const app = new CApplication(createTestCanvas());
+
+		let ctrl = false;
+		let shift = false;
+		let alt = false;
+		let meta = false;
+
+		class KeyWidget extends CWidget {
+			protected override keyPressEvent(
+				event: CKeyEvent
+			): void {
+				ctrl = event.ctrl();
+				shift = event.shift();
+				alt = event.alt();
+				meta = event.meta();
+				event.accept();
+			}
+		}
+
+		const widget = new KeyWidget();
+		app.setFocusWidget(widget);
+
+		window.dispatchEvent({
+			type: "keydown", key: "A", ctrlKey: true,
+			shiftKey: true, altKey: true, metaKey: true
+		} as unknown as KeyboardEvent);
+
+		expect(ctrl).toBe(true);
+		expect(shift).toBe(true);
+		expect(alt).toBe(true);
+		expect(meta).toBe(true);
+	});
+
 });

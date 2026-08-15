@@ -6,6 +6,7 @@ import type { CPainter } from "../painting/CPainter.js";
 import { CEvent, CEventType } from "../events/CEvent.js";
 import { CMouseEvent } from "../events/CMouseEvent.js";
 import { CFocusEvent } from "../events/CFocusEvent.js";
+import { CKeyEvent } from "../events/CKeyEvent.js";
 
 export class CWidget extends CObject {
     #m_geometry = new CRect();
@@ -271,6 +272,14 @@ export class CWidget extends CObject {
 		case CEventType.FocusOut:
 			this.focusOutEvent(event as CFocusEvent);
 			return event.isAccepted();
+
+        case CEventType.KeyPress:
+			this.keyPressEvent(event as CKeyEvent);
+			return event.isAccepted();
+
+		case CEventType.KeyRelease:
+			this.keyReleaseEvent(event as CKeyEvent);
+			return event.isAccepted();
 		}
 
 		return false;
@@ -316,6 +325,14 @@ export class CWidget extends CObject {
     }
 
     protected focusOutEvent(event: CFocusEvent): void {
+        event.ignore();
+    }
+
+    protected keyPressEvent(event: CKeyEvent): void {
+        event.ignore();
+    }
+
+    protected keyReleaseEvent(event: CKeyEvent): void {
         event.ignore();
     }
 }
