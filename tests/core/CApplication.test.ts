@@ -3,6 +3,7 @@ import { CApplication } from "../../src/core/CApplication";
 import { CWidget } from "../../src/widgets/CWidget";
 import { CPainter } from "../../src/painting/CPainter";
 import { CMouseEvent } from "../../src/events/CMouseEvent";
+import { CFocusEvent } from "../../src/events/CFocusEvent";
 import { createTestCanvas } from "../helpers/createTestCanvas";
 
 class RenderTrackingWidget extends CWidget {
@@ -718,5 +719,106 @@ describe("CApplication", () => {
 			"A:leave",
 			"B:enter"
 		]);
+	});
+
+	test("has no focus widget by default", () => {
+		const app = new CApplication(createTestCanvas());
+
+		expect(app.focusWidget()).toBeNull();
+	});
+
+	test("sets focus widget", () => {
+		const app = new CApplication(createTestCanvas());
+		const widget = new CWidget();
+
+		app.setFocusWidget(widget);
+
+		expect(app.focusWidget()).toBe(widget);
+		expect(widget.hasFocus()).toBe(true);
+	});
+
+	test("clears focus widget", () => {
+		const app = new CApplication(createTestCanvas());
+		const widget = new CWidget();
+
+		app.setFocusWidget(widget);
+		app.setFocusWidget(null);
+
+		expect(app.focusWidget()).toBeNull();
+		expect(widget.hasFocus()).toBe(false);
+	});
+
+	test("sends focus out and focus in when focus changes", () => {
+		const app = new CApplication(createTestCanvas());
+		const events: string[] = [];
+
+		class FocusWidget extends CWidget {
+			constructor(private readonly name: string) {
+				super();
+			}
+
+			protected override focusInEvent(
+				event: CFocusEvent
+			): void {
+				events.push(`${this.name}:in`);
+				event.accept();
+			}
+
+			protected override focusOutEvent(
+				event: CFocusEvent
+			): void {
+				events.push(`${this.name}:out`);
+				event.accept();
+			}
+		}
+
+		const widget1 = new FocusWidget("A");
+		const widget2 = new FocusWidget("B");
+
+		app.setFocusWidget(widget1);
+		app.setFocusWidget(widget2);
+
+		expect(events).toEqual([
+			"A:in",
+			"A:out",
+			"B:in"
+		]);
+	});
+
+	test("disabled widget cannot take focus", () => {
+		const app = new CApplication(createTestCanvas());
+		const widget = new CWidget();
+
+		widget.setEnabled(false);
+		widget.setFocus();
+
+		expect(app.focusWidget()).toBeNull();
+		expect(widget.hasFocus()).toBe(false);
+	});
+
+	test("accepted mouse press gives focus to widget", () => {
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+
+		class FocusableWidget extends CWidget {
+			protected override mousePressEvent(
+				event: CMouseEvent
+			): void {
+				event.accept();
+			}
+		}
+
+		const widget = new FocusableWidget();
+		widget.setGeometry(100, 100, 120, 50);
+
+		canvas.dispatchEvent({
+			type: "pointerdown",
+			clientX: 120,
+			clientY: 120,
+			button: 0
+		} as PointerEvent);
+
+		expect(app.focusWidget()).toBe(widget);
+		expect(widget.hasFocus()).toBe(true);
 	});
 });

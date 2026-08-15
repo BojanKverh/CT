@@ -5,6 +5,7 @@ export { CSize } from "./geometry/CSize.js";
 export { CRect } from "./geometry/CRect.js";
 export { CEvent, CEventType } from "./events/CEvent.js";
 export { CMouseEvent, CMouseButton } from "./events/CMouseEvent.js";
+export { CFocusEvent } from "./events/CFocusEvent.js";
 export { CPaintDevice } from "./painting/CPaintDevice.js";
 export { CCanvasPaintDevice } from "./painting/CCanvasPaintDevice.js";
 export { CPaintEngine } from "./painting/CPaintEngine.js";

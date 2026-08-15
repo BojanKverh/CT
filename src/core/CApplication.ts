@@ -5,7 +5,7 @@ import { CCanvasPaintDevice } from "../painting/CCanvasPaintDevice.js";
 import { CPainter } from "../painting/CPainter.js";
 import { CPoint } from "../geometry/CPoint.js";
 import { CRect } from "../geometry/CRect.js";
-import { CEventType } from "../events/CEvent.js";
+import { CEvent, CEventType } from "../events/CEvent.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 
 export class CApplication extends CObject {
@@ -15,6 +15,7 @@ export class CApplication extends CObject {
 	#m_topLevelWidgets = new Set<CWidget>();
 	#m_mouseGrabber: CWidget | null = null;
 	#m_hoverWidget: CWidget | null = null;
+    #m_focusWidget: CWidget | null = null;
 
 	#m_updatesEnabled = false;
 	#m_frameRequest: number | null = null;
@@ -96,6 +97,28 @@ export class CApplication extends CObject {
 
 	updatesEnabled(): boolean {
 		return this.#m_updatesEnabled;
+	}
+
+	focusWidget(): CWidget | null {
+		return this.#m_focusWidget;
+	}
+
+	setFocusWidget(widget: CWidget | null): void {
+		if (this.#m_focusWidget === widget)
+			return;
+
+		const oldWidget = this.#m_focusWidget;
+		this.#m_focusWidget = widget;
+
+		if (oldWidget !== null) {
+			const event = new CEvent(CEventType.FocusOut);
+			oldWidget.event(event);
+		}
+
+		if (widget !== null) {
+			const event = new CEvent(CEventType.FocusIn);
+			widget.event(event);
+		}
 	}
 
 	startUpdates(): void {
@@ -230,8 +253,10 @@ export class CApplication extends CObject {
 
 		while (target !== null) {
 			if (this.#sendMouseEvent(target, type, pointerEvent)) {
-				if (type === CEventType.MousePress)
+				if (type === CEventType.MousePress) {
+                    target.setFocus();
 					this.grabMouse(target);
+                }
 
 				break;
 			}

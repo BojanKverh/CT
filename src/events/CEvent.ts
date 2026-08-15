@@ -4,6 +4,8 @@ export enum CEventType {
     MouseMove,
     MouseEnter,
     MouseLeave,
+    FocusIn,
+    FocusOut,
 }
 
 export class CEvent {

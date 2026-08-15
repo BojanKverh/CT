@@ -5,6 +5,7 @@ import { CRect } from "../geometry/CRect.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CEvent, CEventType } from "../events/CEvent.js";
 import { CMouseEvent } from "../events/CMouseEvent.js";
+import { CFocusEvent } from "../events/CFocusEvent.js";
 
 export class CWidget extends CObject {
     #m_geometry = new CRect();
@@ -171,6 +172,22 @@ export class CWidget extends CObject {
         return this.#m_enabled;
     }
 
+	hasFocus(): boolean {
+		return CApplication.instance().focusWidget() === this;
+	}
+
+	setFocus(): void {
+		if (!this.isEnabled())
+			return;
+
+		CApplication.instance().setFocusWidget(this);
+	}
+
+	clearFocus(): void {
+		if (this.hasFocus())
+			CApplication.instance().setFocusWidget(null);
+	}
+
 	render(painter: CPainter): void {
 		if (!this.isVisible())
 			return;
@@ -225,7 +242,7 @@ export class CWidget extends CObject {
 			event.ignore();
 			return false;
 		}
-        
+
 		switch (event.type()) {
 		case CEventType.MousePress:
 			this.mousePressEvent(event as CMouseEvent);
@@ -245,6 +262,14 @@ export class CWidget extends CObject {
 
 		case CEventType.MouseLeave:
 			this.mouseLeaveEvent(event as CMouseEvent);
+			return event.isAccepted();
+
+		case CEventType.FocusIn:
+			this.focusInEvent(event as CFocusEvent);
+			return event.isAccepted();
+
+		case CEventType.FocusOut:
+			this.focusOutEvent(event as CFocusEvent);
 			return event.isAccepted();
 		}
 
@@ -283,6 +308,14 @@ export class CWidget extends CObject {
     }
 
     protected mouseLeaveEvent(event: CMouseEvent): void {
+        event.ignore();
+    }
+
+    protected focusInEvent(event: CFocusEvent): void {
+        event.ignore();
+    }
+
+    protected focusOutEvent(event: CFocusEvent): void {
         event.ignore();
     }
 }
