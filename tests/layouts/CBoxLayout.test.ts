@@ -294,4 +294,144 @@ describe("CBoxLayout", () => {
 		expect(widget2.y()).toBe(10);
 		expect(widget2.height()).toBe(80);
 	});
+
+	test("applies horizontal stretch factors", () => {
+		const parent = new CWidget();
+		parent.resize(400, 100);
+
+		const layout = new CBoxLayout(
+			CBoxLayoutDirection.LeftToRight
+		);
+
+		parent.setLayout(layout);
+
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+		const widget3 = new CWidget();
+
+		layout.addWidget(widget1, 1);
+		layout.addWidget(widget2, 2);
+		layout.addWidget(widget3, 1);
+
+		expect(widget1.x()).toBe(0);
+		expect(widget1.width()).toBe(100);
+
+		expect(widget2.x()).toBe(100);
+		expect(widget2.width()).toBe(200);
+
+		expect(widget3.x()).toBe(300);
+		expect(widget3.width()).toBe(100);
+	});
+
+	test("applies vertical stretch factors", () => {
+		const parent = new CWidget();
+		parent.resize(100, 400);
+
+		const layout = new CBoxLayout(
+			CBoxLayoutDirection.TopToBottom
+		);
+
+		parent.setLayout(layout);
+
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+		const widget3 = new CWidget();
+
+		layout.addWidget(widget1, 1);
+		layout.addWidget(widget2, 2);
+		layout.addWidget(widget3, 1);
+
+		expect(widget1.y()).toBe(0);
+		expect(widget1.height()).toBe(100);
+
+		expect(widget2.y()).toBe(100);
+		expect(widget2.height()).toBe(200);
+
+		expect(widget3.y()).toBe(300);
+		expect(widget3.height()).toBe(100);
+	});
+
+	test("uses equal sizes when stretch is zero", () => {
+		const parent = new CWidget();
+		parent.resize(300, 100);
+
+		const layout = new CBoxLayout(
+			CBoxLayoutDirection.LeftToRight
+		);
+
+		parent.setLayout(layout);
+
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+		const widget3 = new CWidget();
+
+		layout.addWidget(widget1, 0);
+		layout.addWidget(widget2, 0);
+		layout.addWidget(widget3, 0);
+
+		expect(widget1.width()).toBe(100);
+		expect(widget2.width()).toBe(100);
+		expect(widget3.width()).toBe(100);
+	});
+
+	test("combines stretch factors with spacing", () => {
+		const parent = new CWidget();
+		parent.resize(420, 100);
+
+		const layout = new CBoxLayout(
+			CBoxLayoutDirection.LeftToRight
+		);
+
+		layout.setSpacing(10);
+		parent.setLayout(layout);
+
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+		const widget3 = new CWidget();
+
+		layout.addWidget(widget1, 1);
+		layout.addWidget(widget2, 2);
+		layout.addWidget(widget3, 1);
+
+		expect(widget1.width()).toBe(100);
+		expect(widget1.x()).toBe(0);
+
+		expect(widget2.width()).toBe(200);
+		expect(widget2.x()).toBe(110);
+
+		expect(widget3.width()).toBe(100);
+		expect(widget3.x()).toBe(320);
+	});
+
+	test("combines stretch factors with contents margins", () => {
+		const parent = new CWidget();
+		parent.resize(440, 100);
+
+		const layout = new CBoxLayout(
+			CBoxLayoutDirection.LeftToRight
+		);
+
+		layout.setContentsMargins(20, 10, 20, 10);
+		parent.setLayout(layout);
+
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+		const widget3 = new CWidget();
+
+		layout.addWidget(widget1, 1);
+		layout.addWidget(widget2, 2);
+		layout.addWidget(widget3, 1);
+
+		expect(widget1.x()).toBe(20);
+		expect(widget1.width()).toBe(100);
+
+		expect(widget2.x()).toBe(120);
+		expect(widget2.width()).toBe(200);
+
+		expect(widget3.x()).toBe(320);
+		expect(widget3.width()).toBe(100);
+
+		expect(widget1.y()).toBe(10);
+		expect(widget1.height()).toBe(80);
+	});
 });

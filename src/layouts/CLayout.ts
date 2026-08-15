@@ -1,4 +1,6 @@
 import type { CWidget } from "../widgets/CWidget.js";
+import { CWidgetItem } from "./CWidgetItem.js";
+import type { CLayoutItem } from "./CLayoutItem.js";
 
 export interface CMargins {
 	left: number;
@@ -9,42 +11,39 @@ export interface CMargins {
 
 export abstract class CLayout {
 	#m_parentWidget: CWidget | null = null;
-	#m_widgets: CWidget[] = [];
+	#m_items: CLayoutItem[] = [];
 	#m_spacing = 0;
 
-    #m_margins: CMargins = { left: 0, top: 0, right: 0, bottom: 0 };
+	#m_margins: CMargins = {
+		left: 0,
+		top: 0,
+		right: 0,
+		bottom: 0
+	};
 
 	parentWidget(): CWidget | null {
 		return this.#m_parentWidget;
 	}
 
-    setParentWidget(widget: CWidget | null): void {
-	    this.#m_parentWidget = widget;
+	setParentWidget(widget: CWidget | null): void {
+		this.#m_parentWidget = widget;
 
-	    if (widget !== null) {
-		    for (const child of this.#m_widgets)
-			    child.setParent(widget);
-	    }
-    }
-
-	addWidget(widget: CWidget): void {
-		if (this.#m_widgets.includes(widget))
-			return;
-
-		this.#m_widgets.push(widget);
-
-		if (this.#m_parentWidget !== null)
-			widget.setParent(this.#m_parentWidget);
-
-		this.update();
+		if (widget !== null) {
+			for (const item of this.#m_items)
+				item.widget()?.setParent(widget);
+		}
 	}
 
+    addWidget(widget: CWidget): void {
+	    this.addItem(new CWidgetItem(widget));
+    }
+
 	count(): number {
-		return this.#m_widgets.length;
+		return this.#m_items.length;
 	}
 
 	widgetAt(index: number): CWidget | null {
-		return this.#m_widgets[index] ?? null;
+		return this.#m_items[index]?.widget() ?? null;
 	}
 
 	spacing(): number {
@@ -83,8 +82,33 @@ export abstract class CLayout {
 		this.update();
 	}
 
-    protected widgets(): readonly CWidget[] {
-		return this.#m_widgets;
+	protected addItem(item: CLayoutItem): boolean {
+		const widget = item.widget();
+
+		if (widget !== null && this.#indexOf(widget) !== -1)
+			return false;
+
+		this.#m_items.push(item);
+
+		if (widget !== null && this.#m_parentWidget !== null)
+			widget.setParent(this.#m_parentWidget);
+
+		this.update();
+		return true;
+	}
+
+	protected itemAt(index: number): CLayoutItem | null {
+		return this.#m_items[index] ?? null;
+	}
+
+	protected items(): readonly CLayoutItem[] {
+		return this.#m_items;
+	}
+
+	#indexOf(widget: CWidget): number {
+		return this.#m_items.findIndex(
+			item => item.widget() === widget
+		);
 	}
 
 	abstract update(): void;
