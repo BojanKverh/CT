@@ -5,7 +5,9 @@ import {
     CRect,
     CMouseEvent,
     CMouseButton,
-    CPushButton
+    CPushButton,
+    CLabel,
+    CAlignment
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -51,6 +53,11 @@ parent.setGeometry(100, 100, 400, 300);
 const but = new CPushButton(parent);
 but.setGeometry(50, 50, 100, 30);
 but.setText("Click me");
+
+const lab = new CLabel(parent);
+lab.setGeometry(250, 50, 130, 40);
+lab.setText("Jaz sem CLabel");
+lab.setAlignment(CAlignment.Right | CAlignment.Top);
 
 const child = new BlueWidget(parent);
 child.setGeometry(350, 250, 150, 100);

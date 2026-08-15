@@ -1,0 +1,156 @@
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	test
+} from "vitest";
+
+import { CAlignment } from "../../src/core/CAlignment.js";
+import { CApplication } from "../../src/core/CApplication.js";
+import { CPainter } from "../../src/painting/CPainter.js";
+import { CLabel } from "../../src/widgets/CLabel.js";
+import { createTestCanvas } from "../helpers/createTestCanvas.js";
+import { TestPaintDevice } from "../helpers/createTestPaintEngine.js";
+
+class TestLabel extends CLabel {
+	paint(painter: CPainter): void {
+		this.paintEvent(painter);
+	}
+}
+
+describe("CLabel", () => {
+	beforeEach(() => {
+		new CApplication(createTestCanvas());
+	});
+
+	afterEach(() => {
+		CApplication.instance().destroy();
+	});
+
+	test("has empty text by default", () => {
+		const label = new CLabel();
+
+		expect(label.text()).toBe("");
+	});
+
+	test("sets text", () => {
+		const label = new CLabel();
+
+		label.setText("Hello");
+
+		expect(label.text()).toBe("Hello");
+	});
+
+	test("uses left and vertical center alignment by default", () => {
+		const label = new TestLabel();
+		label.resize(200, 40);
+		label.setText("Hello");
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		label.paint(painter);
+
+		expect(label.alignment()).toBe(
+			CAlignment.Left | CAlignment.VCenter
+		);
+		expect(device.engine.setTextAlign).toHaveBeenCalledWith("left");
+		expect(device.engine.setTextBaseline).toHaveBeenCalledWith(
+			"middle"
+		);
+		expect(device.engine.fillText).toHaveBeenCalledWith(
+			"Hello", 0, 20
+		);
+	});
+
+	test("sets alignment", () => {
+		const label = new CLabel();
+
+		label.setAlignment(
+			CAlignment.Right | CAlignment.Bottom
+		);
+
+		expect(label.alignment()).toBe(
+			CAlignment.Right | CAlignment.Bottom
+		);
+	});
+
+	test("draws text left and top aligned", () => {
+		const label = new TestLabel();
+		label.resize(200, 40);
+		label.setText("Hello");
+		label.setAlignment(CAlignment.Left | CAlignment.Top);
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		label.paint(painter);
+
+		expect(device.engine.setTextAlign).toHaveBeenCalledWith("left");
+		expect(device.engine.setTextBaseline).toHaveBeenCalledWith("top");
+		expect(device.engine.fillText).toHaveBeenCalledWith(
+			"Hello", 0, 0
+		);
+	});
+
+	test("draws text centered", () => {
+		const label = new TestLabel();
+		label.resize(200, 40);
+		label.setText("Hello");
+		label.setAlignment(CAlignment.Center);
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		label.paint(painter);
+
+		expect(device.engine.setTextAlign).toHaveBeenCalledWith(
+			"center"
+		);
+		expect(device.engine.setTextBaseline).toHaveBeenCalledWith(
+			"middle"
+		);
+		expect(device.engine.fillText).toHaveBeenCalledWith(
+			"Hello", 100, 20
+		);
+	});
+
+	test("draws text right and bottom aligned", () => {
+		const label = new TestLabel();
+		label.resize(200, 40);
+		label.setText("Hello");
+		label.setAlignment(
+			CAlignment.Right | CAlignment.Bottom
+		);
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		label.paint(painter);
+
+		expect(device.engine.setTextAlign).toHaveBeenCalledWith("right");
+		expect(device.engine.setTextBaseline).toHaveBeenCalledWith(
+			"bottom"
+		);
+		expect(device.engine.fillText).toHaveBeenCalledWith(
+			"Hello", 200, 40
+		);
+	});
+
+	test("draws text using widget font", () => {
+		const label = new TestLabel();
+		label.resize(200, 40);
+		label.setText("Hello");
+		label.setFont("18px serif");
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		label.paint(painter);
+
+		expect(device.engine.setFont).toHaveBeenCalledWith(
+			"18px serif"
+		);
+	});
+});
