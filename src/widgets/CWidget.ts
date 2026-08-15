@@ -221,6 +221,11 @@ export class CWidget extends CObject {
     }
 
     event(event: CEvent): boolean {
+        if (!this.isEnabled()) {
+			event.ignore();
+			return false;
+		}
+        
 		switch (event.type()) {
 		case CEventType.MousePress:
 			this.mousePressEvent(event as CMouseEvent);

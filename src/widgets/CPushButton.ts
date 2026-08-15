@@ -64,15 +64,17 @@ export class CPushButton extends CWidget {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
-		if (this.#m_down)
-			painter.setFillStyle("#808080");
-		else if (this.#m_hovered)
-			painter.setFillStyle("#d0d0d0");
-		else
-			painter.setFillStyle("#c0c0c0");
+        if (!this.isEnabled())
+		    painter.setFillStyle("#e0e0e0");
+	    else if (this.#m_down)
+		    painter.setFillStyle("#808080");
+	    else if (this.#m_hovered)
+		    painter.setFillStyle("#d0d0d0");
+	    else
+		    painter.setFillStyle("#c0c0c0");
 		painter.fillRect(this.rect());
 
-        painter.setFillStyle("black");
+        painter.setFillStyle(this.isEnabled() ? "black" : "#808080");
 		painter.setFont("14px sans-serif");
 		painter.setTextAlign("center");
 		painter.setTextBaseline("middle");

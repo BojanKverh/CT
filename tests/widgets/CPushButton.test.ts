@@ -259,4 +259,68 @@ describe("CPushButton", () => {
 			"#808080"
 		);
 	});
+
+	test("uses disabled background when disabled", () => {
+		const button = new TestPushButton();
+		button.setEnabled(false);
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		button.paint(painter);
+
+		expect(device.engine.setFillStyle).toHaveBeenCalledWith(
+			"#e0e0e0"
+		);
+	});
+
+	test("uses disabled text color when disabled", () => {
+		const button = new TestPushButton();
+		button.setEnabled(false);
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		button.paint(painter);
+
+		expect(device.engine.setFillStyle).toHaveBeenCalledWith(
+			"#808080"
+		);
+	});
+
+	test("disabled button does not go down on mouse press", () => {
+		const button = new TestPushButton();
+		button.setEnabled(false);
+
+		const event = new CMouseEvent(
+			CEventType.MousePress, 10, 10,
+			CMouseButton.LeftButton
+		);
+
+		button.event(event);
+
+		expect(button.isDown()).toBe(false);
+		expect(event.isAccepted()).toBe(false);
+	});
+
+	test("disabled button does not emit clicked", () => {
+		const button = new TestPushButton();
+		button.resize(100, 50);
+		button.setEnabled(false);
+
+		const clicked = vi.fn();
+		button.clicked.connect(clicked);
+
+		button.event(new CMouseEvent(
+			CEventType.MousePress, 10, 10,
+			CMouseButton.LeftButton
+		));
+
+		button.event(new CMouseEvent(
+			CEventType.MouseRelease, 10, 10,
+			CMouseButton.LeftButton
+		));
+
+		expect(clicked).not.toHaveBeenCalled();
+	});
 });

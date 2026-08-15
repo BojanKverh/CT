@@ -783,4 +783,107 @@ describe("CWidget", () => {
 		expect(widget.event(event)).toBe(false);
 		expect(event.isAccepted()).toBe(false);
 	});
+
+	test("is enabled by default", () => {
+		const widget = new CWidget();
+
+		expect(widget.isEnabled()).toBe(true);
+	});
+
+	test("changes enabled state", () => {
+		const widget = new CWidget();
+
+		widget.setEnabled(false);
+
+		expect(widget.isEnabled()).toBe(false);
+
+		widget.setEnabled(true);
+
+		expect(widget.isEnabled()).toBe(true);
+	});
+
+	test("disabled widget ignores mouse press event", () => {
+		class PressWidget extends CWidget {
+			pressCalls = 0;
+
+			protected override mousePressEvent(
+				event: CMouseEvent
+			): void {
+				++this.pressCalls;
+				event.accept();
+			}
+		}
+
+		const widget = new PressWidget();
+		widget.setEnabled(false);
+
+		const event = new CMouseEvent(
+			CEventType.MousePress, 10, 10,
+			CMouseButton.LeftButton
+		);
+
+		const handled = widget.event(event);
+
+		expect(widget.pressCalls).toBe(0);
+		expect(handled).toBe(false);
+		expect(event.isAccepted()).toBe(false);
+	});
+
+	test("disabled widget remains part of hit testing", () => {
+		const parent = new CWidget();
+		parent.resize(300, 200);
+
+		const child = new CWidget(parent);
+		child.setGeometry(20, 20, 100, 80);
+		child.setEnabled(false);
+
+		expect(parent.widgetAt(50, 50)).toBe(child);
+	});
+
+	test("mouse event can bubble past a disabled child", () => {
+		let parentCalls = 0;
+		let childCalls = 0;
+
+		class ParentWidget extends CWidget {
+			protected override mousePressEvent(
+				event: CMouseEvent
+			): void {
+				++parentCalls;
+				event.accept();
+			}
+		}
+
+		class ChildWidget extends CWidget {
+			protected override mousePressEvent(
+				event: CMouseEvent
+			): void {
+				++childCalls;
+				event.accept();
+			}
+		}
+
+		const parent = new ParentWidget();
+		parent.resize(300, 200);
+
+		const child = new ChildWidget(parent);
+		child.setGeometry(20, 20, 100, 80);
+		child.setEnabled(false);
+
+		let target: CWidget | null = parent.widgetAt(50, 50);
+
+		while (target !== null) {
+			const event = new CMouseEvent(
+				CEventType.MousePress, 10, 10,
+				CMouseButton.LeftButton
+			);
+
+			if (target.event(event))
+				break;
+
+			target = target.parent();
+		}
+
+		expect(childCalls).toBe(0);
+		expect(parentCalls).toBe(1);
+	});
 });
