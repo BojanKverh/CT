@@ -10,6 +10,9 @@ import { CMouseButton, CMouseEvent } from "../../src/events/CMouseEvent";
 import { CKeyEvent } from "../../src/events/CKeyEvent.js";
 import { createTestCanvas } from "../helpers/createTestCanvas";
 import { TestPaintEngine } from "../helpers/createTestPaintEngine";
+import { CLayout } from "../../src/layouts/CLayout";
+import { CSize } from "../../src/geometry/CSize";
+import { CPalette } from "../../src/gui/CPalette";
 
 let animationFrameCallbacks = new Map<number, FrameRequestCallback>();
 let nextAnimationFrameId = 1;
@@ -709,6 +712,42 @@ describe("CWidget", () => {
 		expect(child.font()).toBe("18px serif");
 	});
 
+    test("sets font only on widget by default", () => {
+	    const parent = new CWidget();
+	    const child = new CWidget(parent);
+
+	    child.setFont("12px Arial");
+	    parent.setFont("20px Arial");
+
+	    expect(parent.font()).toBe("20px Arial");
+	    expect(child.font()).toBe("12px Arial");
+    });
+
+    test("propagates font to descendants", () => {
+	    const parent = new CWidget();
+	    const child = new CWidget(parent);
+	    const grandchild = new CWidget(child);
+
+	    parent.setFont("20px Arial", true);
+
+	    expect(parent.font()).toBe("20px Arial");
+	    expect(child.font()).toBe("20px Arial");
+	    expect(grandchild.font()).toBe("20px Arial");
+    });
+
+    test("propagates font even when widget already has same font", () => {
+	    const parent = new CWidget();
+	    const child = new CWidget(parent);
+
+	    parent.setFont("20px Arial");
+	    child.setFont("12px Arial");
+
+	    parent.setFont("20px Arial", true);
+
+	    expect(parent.font()).toBe("20px Arial");
+	    expect(child.font()).toBe("20px Arial");
+    });
+
 	test("dispatches mouse enter event to mouseEnterEvent", () => {
 		class MouseEnterWidget extends CWidget {
 			mouseEnterCalled = false;
@@ -987,4 +1026,136 @@ describe("CWidget", () => {
 		expect(widget.ctrl).toBe(true);
 		expect(widget.shift).toBe(true);
 	});
+
+	test("has 0x0 minimum size by default", () => {
+		const widget = new CWidget();
+
+		expect(widget.minimumSize().width()).toBe(0);
+		expect(widget.minimumSize().height()).toBe(0);
+	});
+
+	test("sets minimum size", () => {
+		const widget = new CWidget();
+
+		widget.setMinimumSize(100, 50);
+
+		expect(widget.minimumSize().width()).toBe(100);
+		expect(widget.minimumSize().height()).toBe(50);
+	});
+
+	test("minimumSize returns a copy", () => {
+		const widget = new CWidget();
+		widget.setMinimumSize(100, 50);
+
+		const size = widget.minimumSize();
+		size.resize(200, 100);
+
+		expect(widget.minimumSize().width()).toBe(100);
+		expect(widget.minimumSize().height()).toBe(50);
+	});
+
+	test("setting minimum size updates parent layout", () => {
+		class TestLayout extends CLayout {
+			updateCalls = 0;
+
+			override update(): void {
+				++this.updateCalls;
+			}
+		}
+
+		const parent = new CWidget();
+		const layout = new TestLayout();
+		parent.setLayout(layout);
+
+		const child = new CWidget(parent);
+
+		const before = layout.updateCalls;
+		child.setMinimumSize(100, 50);
+
+		expect(layout.updateCalls).toBe(before + 1);
+	});
+
+	test("setting same minimum size does not update parent layout", () => {
+		class TestLayout extends CLayout {
+			updateCalls = 0;
+
+			override update(): void {
+				++this.updateCalls;
+			}
+		}
+
+		const parent = new CWidget();
+		const layout = new TestLayout();
+		parent.setLayout(layout);
+
+		const child = new CWidget(parent);
+		child.setMinimumSize(100, 50);
+
+		const before = layout.updateCalls;
+		child.setMinimumSize(100, 50);
+
+		expect(layout.updateCalls).toBe(before);
+	});
+
+	test("has zero size hint by default", () => {
+		const widget = new CWidget();
+
+		expect(widget.sizeHint().width()).toBe(0);
+		expect(widget.sizeHint().height()).toBe(0);
+	});
+
+	test("sizeHint can be overridden", () => {
+		class HintWidget extends CWidget {
+			override sizeHint(): CSize {
+				return new CSize(120, 40);
+			}
+		}
+
+		const widget = new HintWidget();
+
+		expect(widget.sizeHint().width()).toBe(120);
+		expect(widget.sizeHint().height()).toBe(40);
+	});
+
+    test("sets palette only on widget by default", () => {
+	    const parent = new CWidget();
+	    const child = new CWidget(parent);
+
+	    const parentPalette = new CPalette();
+	    const childPalette = new CPalette();
+
+	    child.setPalette(childPalette);
+	    parent.setPalette(parentPalette);
+
+	    expect(parent.palette()).toBe(parentPalette);
+	    expect(child.palette()).toBe(childPalette);
+    });
+
+    test("propagates palette to children", () => {
+	    const parent = new CWidget();
+	    const child = new CWidget(parent);
+	    const grandchild = new CWidget(child);
+
+	    const palette = new CPalette();
+	    parent.setPalette(palette, true);
+
+	    expect(parent.palette()).toBe(palette);
+	    expect(child.palette()).toBe(palette);
+	    expect(grandchild.palette()).toBe(palette);
+    });
+
+    test("propagates palette even when widget already has same palette", () => {
+	    const parent = new CWidget();
+	    const child = new CWidget(parent);
+
+	    const palette = new CPalette();
+	    const otherPalette = new CPalette();
+
+	    parent.setPalette(palette);
+	    child.setPalette(otherPalette);
+	    parent.setPalette(palette, true);
+
+	    expect(parent.palette()).toBe(palette);
+	    expect(child.palette()).toBe(palette);
+    });
 });

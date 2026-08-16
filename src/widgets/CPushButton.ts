@@ -2,7 +2,8 @@ import { CSignal } from "../core/CSignal.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CWidget } from "./CWidget.js";
-import { CPoint } from "../geometry/CPoint";
+import { CPoint } from "../geometry/CPoint.js";
+import { CPaletteColorRole } from "../gui/CPalette.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
 
 export class CPushButton extends CWidget {
@@ -65,23 +66,8 @@ export class CPushButton extends CWidget {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
-        if (!this.isEnabled())
-		    painter.setFillStyle("#e0e0e0");
-	    else if (this.#m_down)
-		    painter.setFillStyle("#808080");
-	    else if (this.#m_hovered)
-		    painter.setFillStyle("#d0d0d0");
-	    else
-		    painter.setFillStyle("#c0c0c0");
-		painter.fillRect(this.rect());
-
-        painter.setFillStyle(this.isEnabled() ? "black" : "#808080");
-		painter.setFont("14px sans-serif");
-		painter.setTextAlign("center");
-		painter.setTextBaseline("middle");
-
-		painter.drawText(this.#m_text, this.width() / 2, this.height() / 2);
-	}
+	    this.style().drawPushButton(painter, this);
+    }
 
 	protected override mouseEnterEvent(event: CMouseEvent): void {
 		this.#m_hovered = true;

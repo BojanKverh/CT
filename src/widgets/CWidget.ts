@@ -8,6 +8,9 @@ import { CMouseEvent } from "../events/CMouseEvent.js";
 import { CFocusEvent } from "../events/CFocusEvent.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CLayout } from "../layouts/CLayout.js";
+import { CSize } from "../geometry/CSize.js";
+import { CPalette } from "../gui/CPalette.js";
+import { CStyle } from "../gui/CStyle.js";
 
 export class CWidget extends CObject {
     #m_geometry = new CRect();
@@ -16,23 +19,20 @@ export class CWidget extends CObject {
     #m_enabled = true;
 	#m_font: string;
     #m_layout: CLayout | null = null;
+    #m_minimumSize = new CSize(0, 0);
+    #m_palette: CPalette;
 
     constructor(parent: CWidget | null = null) {
-        /*
-         * Parent deliberately isn't passed to CObject here.
-         *
-         * CWidget.setParent() also maintains the application's
-         * top-level widget registry, so widget construction is
-         * handled explicitly after the base object is initialized.
-         */
         super(null);
 
         if (parent !== null) {
             super.setParent(parent);
             this.#m_font = parent.font();
+            this.#m_palette = parent.palette();
         } else {
             CApplication.instance().registerTopLevelWidget(this);
             this.#m_font = CApplication.instance().font();
+            this.#m_palette = CApplication.instance().palette();
         }
     }
 
@@ -50,11 +50,6 @@ export class CWidget extends CObject {
         if (oldParent === parent)
             return;
 
-        /*
-         * Let CObject validate the new hierarchy first.
-         * If it rejects the operation, the top-level registry
-         * must remain unchanged.
-         */
         super.setParent(parent);
 
         const app = CApplication.instance();
@@ -132,13 +127,42 @@ export class CWidget extends CObject {
 		return this.#m_font;
 	}
 
-	setFont(font: string): void {
-		if (this.#m_font === font)
-			return;
+	setFont(font: string, propagate = false): void {
+		const changed = this.#m_font !== font;
 
-		this.#m_font = font;
-		this.update();
+		if (changed)
+			this.#m_font = font;
+
+		if (propagate) {
+			for (const child of this.children())
+				child.setFont(font, true);
+		}
+
+		if (changed)
+			this.update();
 	}
+
+    palette() : CPalette {
+        return this.#m_palette;
+    }
+
+    setPalette(palette: CPalette, propagate = false): void {
+        const changed = this.#m_palette !== palette;
+        if (changed)
+	        this.#m_palette = palette;
+
+	    if (propagate) {
+		    for (const child of this.children())
+			    child.setPalette(palette, true);
+	    }
+
+        if (changed)
+	        this.update();
+    }
+
+    style(): CStyle {
+	    return CApplication.instance().style();
+    }
 
     show(): void {
         this.setVisible(true);
@@ -221,6 +245,28 @@ export class CWidget extends CObject {
 	    this.#m_layout = layout;
 	    layout.setParentWidget(this);
 	    layout.update();
+    }
+
+    minimumSize(): CSize {
+	    return new CSize(this.#m_minimumSize.width(),
+		    this.#m_minimumSize.height()
+    	);
+    }
+
+    setMinimumSize(width: number, height: number): void {
+    	if (this.#m_minimumSize.width() === width
+		        && this.#m_minimumSize.height() === height
+	    )
+		    return;
+
+	    this.#m_minimumSize.resize(width, height);
+    	const parent = this.parent();
+    	if (parent instanceof CWidget)
+	    	parent.layout()?.update();
+    }
+
+    sizeHint(): CSize {
+	    return new CSize(0, 0);
     }
 
     protected paintEvent(_painter: CPainter): void {

@@ -10,6 +10,8 @@ import { CPushButton } from "../../src/widgets/CPushButton.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { CPainter } from "../../src/painting/CPainter";
 import { TestPaintDevice } from "../helpers/createTestPaintEngine";
+import { CColor } from "../../src/gui/CColor.js";
+import { CPalette, CPaletteColorRole} from "../../src/gui/CPalette.js";
 
 class TestPushButton extends CPushButton {
 	mousePress(event: CMouseEvent): void {
@@ -233,7 +235,7 @@ describe("CPushButton", () => {
 		button.paint(painter);
 
 		expect(device.engine.setFillStyle).toHaveBeenCalledWith(
-			"#d0d0d0"
+			"rgba(255, 255, 255, 1)"
 		);
 	});
 
@@ -256,7 +258,7 @@ describe("CPushButton", () => {
 		button.paint(painter);
 
 		expect(device.engine.setFillStyle).toHaveBeenCalledWith(
-			"#808080"
+			"rgba(0, 120, 215, 1)"
 		);
 	});
 
@@ -270,7 +272,7 @@ describe("CPushButton", () => {
 		button.paint(painter);
 
 		expect(device.engine.setFillStyle).toHaveBeenCalledWith(
-			"#e0e0e0"
+			"rgba(240, 240, 240, 1)"
 		);
 	});
 
@@ -284,7 +286,7 @@ describe("CPushButton", () => {
 		button.paint(painter);
 
 		expect(device.engine.setFillStyle).toHaveBeenCalledWith(
-			"#808080"
+			"rgba(128, 128, 128, 1)"
 		);
 	});
 
@@ -323,4 +325,40 @@ describe("CPushButton", () => {
 
 		expect(clicked).not.toHaveBeenCalled();
 	});
+
+    test("uses widget palette when painting", () => {
+	    const button = new TestPushButton();
+	    const palette = new CPalette();
+	    palette.setColor(CPaletteColorRole.Button, new CColor(10, 20, 30));
+	    palette.setColor(CPaletteColorRole.ButtonText, new CColor(200, 210, 220));
+
+	    button.setPalette(palette);
+
+	    const device = new TestPaintDevice();
+	    const painter = new CPainter(device);
+
+	    button.paint(painter);
+
+	    expect(device.engine.setFillStyle).toHaveBeenCalledWith(
+		    "rgba(10, 20, 30, 1)"
+    	);
+	    expect(device.engine.setFillStyle).toHaveBeenCalledWith(
+		    "rgba(200, 210, 220, 1)"
+	    );
+    });
+
+    test("uses disabled text role from palette", () => {
+	    const button = new TestPushButton();
+    	const palette = new CPalette();
+	    palette.setColor(CPaletteColorRole.DisabledText, new CColor(90, 100, 110));
+	    button.setPalette(palette);
+	    button.setEnabled(false);
+	    const device = new TestPaintDevice();
+	    const painter = new CPainter(device);
+	    button.paint(painter);
+
+	    expect(device.engine.setFillStyle).toHaveBeenCalledWith(
+		    "rgba(90, 100, 110, 1)"
+	    );
+    });
 });

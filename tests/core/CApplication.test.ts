@@ -7,6 +7,7 @@ import { CFocusEvent } from "../../src/events/CFocusEvent";
 import { CKeyEvent } from "../../src/events/CKeyEvent";
 import { createTestCanvas } from "../helpers/createTestCanvas";
 import { createTestWindow } from "../helpers/createTestWindow.js";
+import { CHBoxLayout } from "../../src/layouts/CHBoxLayout";
 
 class RenderTrackingWidget extends CWidget {
     renderCalls = 0;
@@ -928,4 +929,34 @@ describe("CApplication", () => {
 		expect(meta).toBe(true);
 	});
 
+	test("updates layout when canvas size changes", () => {
+		const canvas = createTestCanvas(300, 100);
+		const app = new CApplication(canvas);
+
+		const parent = new CWidget();
+		parent.setGeometry(0, 0, 300, 100);
+
+		const layout = new CHBoxLayout();
+		parent.setLayout(layout);
+
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+
+		layout.addWidget(widget1);
+		layout.addWidget(widget2);
+
+		expect(widget1.width()).toBe(150);
+		expect(widget2.x()).toBe(150);
+		expect(widget2.width()).toBe(150);
+
+		canvas.width = 600;
+
+		parent.resize(canvas.width, canvas.height);
+
+		expect(widget1.width()).toBe(300);
+		expect(widget2.x()).toBe(300);
+		expect(widget2.width()).toBe(300);
+
+		expect(app.canvas().width).toBe(600);
+	});
 });

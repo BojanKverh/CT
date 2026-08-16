@@ -1,17 +1,12 @@
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	test
-} from "vitest";
-
+import {afterEach, beforeEach, describe, expect, test } from "vitest";
 import { CAlignment } from "../../src/core/CAlignment.js";
 import { CApplication } from "../../src/core/CApplication.js";
 import { CPainter } from "../../src/painting/CPainter.js";
 import { CLabel } from "../../src/widgets/CLabel.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { TestPaintDevice } from "../helpers/createTestPaintEngine.js";
+import { CColor } from "../../src/gui/CColor.js";
+import { CPalette, CPaletteColorRole} from "../../src/gui/CPalette.js";
 
 class TestLabel extends CLabel {
 	paint(painter: CPainter): void {
@@ -153,4 +148,26 @@ describe("CLabel", () => {
 			"18px serif"
 		);
 	});
+
+    test("uses widget palette when painting", () => {
+	    const label = new TestLabel();
+	    label.resize(200, 40);
+	    label.setText("Hello");
+
+	    const palette = new CPalette();
+	    palette.setColor(CPaletteColorRole.Base, new CColor(10, 20, 30) );
+	    palette.setColor(CPaletteColorRole.Text, new CColor(200, 210, 220));
+
+	    label.setPalette(palette);
+	    const device = new TestPaintDevice();
+	    const painter = new CPainter(device);
+    	label.paint(painter);
+
+	    expect(device.engine.setFillStyle).toHaveBeenCalledWith(
+		    "rgba(10, 20, 30, 1)"
+	    );
+	    expect(device.engine.setFillStyle).toHaveBeenCalledWith(
+		    "rgba(200, 210, 220, 1)"
+	    );
+    });
 });

@@ -8,6 +8,20 @@ import {
 import { CWidget } from "../../src/widgets/CWidget.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { createTestWindow } from "../helpers/createTestWindow.js";
+import { CSize } from "../../src/geometry/CSize.js"
+
+class HintWidget extends CWidget {
+	constructor(
+		private readonly hintWidth: number,
+		private readonly hintHeight: number
+	) {
+		super();
+	}
+
+	override sizeHint(): CSize {
+		return new CSize(this.hintWidth, this.hintHeight);
+	}
+}
 
 describe("CBoxLayout", () => {
 	beforeEach(() => {
@@ -434,4 +448,41 @@ describe("CBoxLayout", () => {
 		expect(widget1.y()).toBe(10);
 		expect(widget1.height()).toBe(80);
 	});
+
+    test("uses preferred sizes and distributes extra space by stretch", () => {
+	    const parent = new CWidget();
+	    parent.resize(500, 100);
+    	const layout = new CBoxLayout(
+	    	CBoxLayoutDirection.LeftToRight
+	    );
+
+    	parent.setLayout(layout);
+    	const widget1 = new HintWidget(100, 40);
+	    const widget2 = new HintWidget(150, 40);
+    	layout.addWidget(widget1, 1);
+	    layout.addWidget(widget2, 2);
+    	expect(widget1.width()).toBeCloseTo(183.333333);
+	    expect(widget2.width()).toBeCloseTo(316.666667);
+    	expect(widget1.x()).toBe(0);
+	    expect(widget2.x()).toBeCloseTo(183.333333);
+    });
+
+    test("shrinks preferred sizes toward minimum sizes", () => {
+	    const parent = new CWidget();
+	    parent.resize(200, 100);
+	    const layout = new CBoxLayout(
+		    CBoxLayoutDirection.LeftToRight
+	    );
+    	parent.setLayout(layout);
+    	const widget1 = new HintWidget(100, 40);
+	    const widget2 = new HintWidget(150, 40);
+    	widget1.setMinimumSize(50, 0);
+	    widget2.setMinimumSize(80, 0);
+    	layout.addWidget(widget1);
+	    layout.addWidget(widget2);
+    	expect(widget1.width()).toBeCloseTo(79.166667);
+        expect(widget2.width()).toBeCloseTo(120.833333);
+    	expect(widget1.width()).toBeGreaterThanOrEqual(50);
+	    expect(widget2.width()).toBeGreaterThanOrEqual(80);
+    });
 });

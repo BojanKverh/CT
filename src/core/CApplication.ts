@@ -9,6 +9,10 @@ import { CEventType } from "../events/CEvent.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CFocusEvent } from "../events/CFocusEvent.js";
+import { CPalette } from "../gui/CPalette.js";
+import { CDefaultStyle } from "../gui/CDefaultStyle.js";
+import type { CStyle } from "../gui/CStyle.js";
+
 
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
@@ -18,11 +22,11 @@ export class CApplication extends CObject {
 	#m_mouseGrabber: CWidget | null = null;
 	#m_hoverWidget: CWidget | null = null;
 	#m_focusWidget: CWidget | null = null;
-
 	#m_updatesEnabled = false;
 	#m_frameRequest: number | null = null;
-
 	#m_font = "14px sans-serif";
+    #m_palette = new CPalette();
+    #m_style: CStyle = new CDefaultStyle();
 
 	#onPointerDown = (event: PointerEvent): void => {
 		this.#dispatchMouseEvent(CEventType.MousePress, event);
@@ -119,6 +123,30 @@ export class CApplication extends CObject {
 		this.#m_font = font;
 		this.requestRepaint();
 	}
+
+    palette(): CPalette {
+	    return this.#m_palette;
+    }
+
+    setPalette(palette: CPalette): void {
+	    if (this.#m_palette === palette)
+		    return;
+
+	    this.#m_palette = palette;
+	    this.requestRepaint();
+    }
+
+    style(): CStyle {
+	    return this.#m_style;
+    }
+
+    setStyle(style: CStyle): void {
+	    if (this.#m_style === style)
+		    return;
+
+    	this.#m_style = style;
+	    this.requestRepaint();
+    }
 
 	registerTopLevelWidget(widget: CWidget): void {
 		if (widget.parent() !== null)
