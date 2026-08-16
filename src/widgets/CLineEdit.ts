@@ -10,6 +10,7 @@ export class CLineEdit extends CWidget {
 
 	#m_text = "";
 	#m_cursorPosition = 0;
+    #m_selectionAnchor = 0;
 
 	text(): string {
 		return this.#m_text;
@@ -21,6 +22,7 @@ export class CLineEdit extends CWidget {
 
 		this.#m_text = text;
 		this.#m_cursorPosition = text.length;
+        this.#m_selectionAnchor = this.#m_cursorPosition;
 
 		this.textChanged.emit(this.#m_text);
 		this.update();
@@ -30,33 +32,63 @@ export class CLineEdit extends CWidget {
 		return this.#m_cursorPosition;
 	}
 
-	setCursorPosition(position: number): void {
-		const clamped = Math.max(
-			0,
-			Math.min(position, this.#m_text.length)
-		);
-
-		if (this.#m_cursorPosition === clamped)
-			return;
-
-		this.#m_cursorPosition = clamped;
-		this.update();
-	}
+    setCursorPosition(position: number): void {
+	    this.#moveCursor(position, false);
+    }
 
 	insert(text: string): void {
-		if (text.length === 0)
-			return;
+	    if (text.length === 0)
+		    return;
+    	if (this.hasSelection()) {
+	    	const start = this.selectionStart();
+		    const end = this.selectionEnd();
+    		this.#m_text = this.#m_text.slice(0, start) + text
+			    + this.#m_text.slice(end);
+    		this.#m_cursorPosition = start + text.length;
+	    	this.#m_selectionAnchor = this.#m_cursorPosition;
+    		this.textChanged.emit(this.#m_text);
+	    	this.update();
+		    return;
+	    }
 
-		this.#m_text =
-			this.#m_text.slice(0, this.#m_cursorPosition)
-			+ text
-			+ this.#m_text.slice(this.#m_cursorPosition);
+	    this.#m_text = this.#m_text.slice(0, this.#m_cursorPosition) + text
+		    + this.#m_text.slice(this.#m_cursorPosition);
 
-		this.#m_cursorPosition += text.length;
+	    this.#m_cursorPosition += text.length;
+	    this.#m_selectionAnchor = this.#m_cursorPosition;
+    	this.textChanged.emit(this.#m_text);
+	    this.update();
+    }
 
-		this.textChanged.emit(this.#m_text);
-		this.update();
-	}
+    selectionStart(): number {
+	    return Math.min(this.#m_selectionAnchor, this.#m_cursorPosition);
+    }
+
+    selectionEnd(): number {
+	    return Math.max(this.#m_selectionAnchor, this.#m_cursorPosition);
+    }
+
+    hasSelection(): boolean {
+	    return this.#m_selectionAnchor !== this.#m_cursorPosition;
+    }
+
+    selectedText(): string {
+	    if (!this.hasSelection())
+		    return "";
+
+	    return this.#m_text.slice(this.selectionStart(), this.selectionEnd());
+    }
+
+    setSelection(anchor: number, position: number): void {
+	    const length = this.#m_text.length;
+    	this.#m_selectionAnchor = Math.max(0, Math.min(anchor, length));
+    	this.#m_cursorPosition = Math.max(0, Math.min(position, length));
+	    this.update();
+    }
+
+    clearSelection(): void {
+	    this.#m_selectionAnchor = this.#m_cursorPosition;
+    }
 
     protected override paintEvent(painter: CPainter): void {
 	    this.style().drawLineEdit(painter, this);
@@ -64,35 +96,50 @@ export class CLineEdit extends CWidget {
 
     protected override keyPressEvent(event: CKeyEvent): void {
 	    switch (event.key()) {
-	    case "ArrowLeft":
-		    this.setCursorPosition(this.#m_cursorPosition - 1);
-		    event.accept();
-		    return;
-    	case "ArrowRight":
-	    	this.setCursorPosition(this.#m_cursorPosition + 1);
-		    event.accept();
-		    return;
-    	case "Backspace":
-	    	if (this.#m_cursorPosition > 0) {
-		    	this.#m_text =
-			    	this.#m_text.slice(0, this.#m_cursorPosition - 1)
-				    + this.#m_text.slice(this.#m_cursorPosition);
-    			--this.#m_cursorPosition;
-    			this.textChanged.emit(this.#m_text);
-	    		this.update();
-		    }
-    		event.accept();
-	    	return;
-    	case "Delete":
-	    	if (this.#m_cursorPosition < this.#m_text.length) {
-		    	this.#m_text =
-			    	this.#m_text.slice(0, this.#m_cursorPosition)
-				    + this.#m_text.slice(this.#m_cursorPosition + 1);
-			    this.textChanged.emit(this.#m_text);
-			    this.update();
-		    }
-    		event.accept();
-	    	return;
+        case "ArrowLeft":
+	        this.#moveCursor(this.#m_cursorPosition - 1, event.shift());
+	        event.accept();
+	        return;
+
+        case "ArrowRight":
+	        this.#moveCursor(this.#m_cursorPosition + 1, event.shift());
+	        event.accept();
+	        return;
+
+        case "Backspace":
+	        if (this.#deleteSelection()) {
+		        event.accept();
+		        return;
+	        }
+
+	        if (this.#m_cursorPosition > 0) {
+		        this.#m_text = this.#m_text.slice(0, this.#m_cursorPosition - 1)
+			        + this.#m_text.slice(this.#m_cursorPosition);
+        		--this.#m_cursorPosition;
+		        this.#m_selectionAnchor = this.#m_cursorPosition;
+        		this.textChanged.emit(this.#m_text);
+		        this.update();
+	        }
+
+	        event.accept();
+	        return;
+
+        case "Delete":
+	        if (this.#deleteSelection()) {
+		        event.accept();
+		        return;
+	        }
+            
+        	if (this.#m_cursorPosition < this.#m_text.length) {
+		        this.#m_text = this.#m_text.slice(0, this.#m_cursorPosition)
+			        + this.#m_text.slice(this.#m_cursorPosition + 1);
+        		this.#m_selectionAnchor = this.#m_cursorPosition;
+        		this.textChanged.emit(this.#m_text);
+		        this.update();
+	        }
+
+	        event.accept();
+	        return;
 	    }
 
 	    if (event.key().length === 1) {
@@ -126,5 +173,28 @@ export class CLineEdit extends CWidget {
 	    }
 
 	    return this.#m_text.length;
+    }
+
+    #moveCursor(position: number, keepAnchor: boolean): void {
+	    const clamped = Math.max(0, Math.min(position, this.#m_text.length));
+    	if (this.#m_cursorPosition === clamped && (keepAnchor || this.#m_selectionAnchor === clamped))
+		    return;
+    	this.#m_cursorPosition = clamped;
+    	if (!keepAnchor)
+	    	this.#m_selectionAnchor = clamped;
+	    this.update();
+    }
+
+    #deleteSelection(): boolean {
+	    if (!this.hasSelection())
+		    return false;
+    	const start = this.selectionStart();
+	    const end = this.selectionEnd();
+    	this.#m_text = this.#m_text.slice(0, start) + this.#m_text.slice(end);
+    	this.#m_cursorPosition = start;
+	    this.#m_selectionAnchor = start;
+    	this.textChanged.emit(this.#m_text);
+	    this.update();
+    	return true;
     }
 }
