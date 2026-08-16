@@ -1,4 +1,5 @@
 import { CEvent, CEventType } from "./CEvent.js";
+import { CPoint } from "../geometry/CPoint.js";
 
 export enum CMouseButton {
     NoButton,
@@ -8,8 +9,7 @@ export enum CMouseButton {
 }
 
 export class CMouseEvent extends CEvent {
-    #m_x: number;
-    #m_y: number;
+    #m_pos: CPoint;
     #m_button: CMouseButton;
 
     constructor(
@@ -20,17 +20,20 @@ export class CMouseEvent extends CEvent {
     ) {
         super(type);
 
-        this.#m_x = x;
-        this.#m_y = y;
+        this.#m_pos = new CPoint(x, y);
         this.#m_button = button;
     }
 
     x(): number {
-        return this.#m_x;
+        return this.#m_pos.x();
     }
 
     y(): number {
-        return this.#m_y;
+        return this.#m_pos.y();
+    }
+
+    pos(): CPoint {
+        return this.#m_pos;
     }
 
     button(): CMouseButton {

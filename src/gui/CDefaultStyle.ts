@@ -4,6 +4,8 @@ import type { CPainter } from "../painting/CPainter.js";
 import type { CLabel } from "../widgets/CLabel.js";
 import type { CPushButton } from "../widgets/CPushButton.js";
 import { CStyle } from "./CStyle.js";
+import { CRect } from "../geometry/CRect.js";
+import type { CCheckBox } from "../widgets/CCheckBox.js";
 
 export class CDefaultStyle extends CStyle {
 	override drawLabel(painter: CPainter, label: CLabel): void {
@@ -87,4 +89,31 @@ export class CDefaultStyle extends CStyle {
 			button.height() / 2
 		);
 	}
+
+    override drawCheckBox(painter: CPainter, checkBox: CCheckBox): void {
+	    const palette = checkBox.palette();
+	    const boxSize = 16;
+	    const boxY = (checkBox.height() - boxSize) / 2;
+
+    	painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
+	    painter.fillRect(new CRect(0, boxY, boxSize, boxSize));
+
+	    painter.setStrokeStyle(palette.color(CPaletteColorRole.WindowText).toCss());
+	    painter.strokeRect(new CRect(0, boxY, boxSize, boxSize));
+
+	    if (checkBox.isChecked()) {
+		    painter.setFillStyle(palette.color(CPaletteColorRole.Highlight).toCss());
+		    painter.fillRect(new CRect(3, boxY + 3, boxSize - 6, boxSize - 6));
+	    }
+
+	    const textRole = checkBox.isEnabled()? CPaletteColorRole.Text
+            : CPaletteColorRole.DisabledText;
+
+    	painter.setFillStyle(palette.color(textRole).toCss());
+	    painter.setFont(checkBox.font());
+	    painter.setTextAlign("left");
+	    painter.setTextBaseline("middle");
+
+	    painter.drawText(checkBox.text(), boxSize + 6, checkBox.height() / 2);
+    }
 }

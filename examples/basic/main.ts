@@ -7,7 +7,8 @@ import {
     CMouseButton,
     CPushButton,
     CLabel,
-    CAlignment
+    CAlignment,
+    CCheckBox
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -60,7 +61,15 @@ lab.setText("Jaz sem CLabel");
 lab.setAlignment(CAlignment.Right | CAlignment.Top);
 
 const child = new BlueWidget(parent);
-child.setGeometry(350, 250, 150, 100);
+child.setGeometry(250, 200, 150, 100);
+
+const cbox = new CCheckBox(child);
+cbox.setText("Check me?");
+cbox.setGeometry(10, 10, 100, 30);
+
+const cbox2 = new CCheckBox(parent);
+cbox2.setText("Check me again");
+cbox2.setGeometry(10, 10, 150, 30);
 
 app.startUpdates();
 
