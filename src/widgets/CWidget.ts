@@ -359,11 +359,13 @@ export class CWidget extends CObject {
     }
 
     protected focusInEvent(event: CFocusEvent): void {
-        event.ignore();
+	    event.accept();
+	    this.update();
     }
 
     protected focusOutEvent(event: CFocusEvent): void {
-        event.ignore();
+	    event.accept();
+	    this.update();
     }
 
     protected keyPressEvent(event: CKeyEvent): void {

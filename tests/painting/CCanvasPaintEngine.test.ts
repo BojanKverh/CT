@@ -171,4 +171,29 @@ describe("CCanvasPaintEngine", () => {
 
 		expect(context.fillText).toHaveBeenCalledWith("Hello", 10, 20);
 	});
+
+    test("measures text width", () => {
+	    const measureText = vi.fn(() => ({width: 42}));
+    	const context = { measureText } as unknown as CanvasRenderingContext2D;
+    	const engine = new CCanvasPaintEngine(context);
+    	expect(engine.textWidth("Hello")).toBe(42);
+	    expect(measureText).toHaveBeenCalledWith("Hello");
+    });
+
+    test("draws line", () => {
+	    const beginPath = vi.fn();
+	    const moveTo = vi.fn();
+	    const lineTo = vi.fn();
+	    const stroke = vi.fn();
+
+	    const context = { beginPath, moveTo, lineTo, stroke } as 
+            unknown as CanvasRenderingContext2D;
+
+	    const engine = new CCanvasPaintEngine(context);
+	    engine.drawLine(10, 20, 30, 40);
+    	expect(beginPath).toHaveBeenCalledOnce();
+	    expect(moveTo).toHaveBeenCalledWith(10, 20);
+	    expect(lineTo).toHaveBeenCalledWith(30, 40);
+	    expect(stroke).toHaveBeenCalledOnce();
+    });
 });

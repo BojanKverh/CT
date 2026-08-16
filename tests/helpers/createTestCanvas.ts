@@ -24,7 +24,8 @@ export function createTestCanvas(width = 800, height = 600): HTMLCanvasElement {
 	    textBaseline: "alphabetic",
         fillStyle: "",
         strokeStyle: "",
-        lineWidth: 1
+        lineWidth: 1,
+        measureText: (text: string) => ({ width: text.length * 8 }),
     } as unknown as CanvasRenderingContext2D;
 
     return {

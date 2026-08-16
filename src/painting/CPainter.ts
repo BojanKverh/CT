@@ -72,6 +72,10 @@ export class CPainter {
 		);
 	}
 
+    textWidth(text: string): number {
+	    return this.#m_engine.textWidth(text);
+    }
+
     font() : string {
         return this.#m_engine.font();
     }
@@ -96,6 +100,9 @@ export class CPainter {
         return this.#m_engine.textBaseline();
     }
 
+    drawLine(x1: number, y1: number, x2: number, y2: number) : void {
+        this.#m_engine.drawLine(x1, y1, x2, y2);
+    }
 
 	drawText(text: string, x: number, y: number): void {
 		this.#m_engine.fillText(text, x, y);

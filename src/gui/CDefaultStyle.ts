@@ -6,6 +6,7 @@ import type { CPushButton } from "../widgets/CPushButton.js";
 import { CStyle } from "./CStyle.js";
 import { CRect } from "../geometry/CRect.js";
 import type { CCheckBox } from "../widgets/CCheckBox.js";
+import type { CLineEdit } from "../widgets/CLineEdit.js";
 
 export class CDefaultStyle extends CStyle {
 	override drawLabel(painter: CPainter, label: CLabel): void {
@@ -115,5 +116,30 @@ export class CDefaultStyle extends CStyle {
 	    painter.setTextBaseline("middle");
 
 	    painter.drawText(checkBox.text(), boxSize + 6, checkBox.height() / 2);
+    }
+
+    override drawLineEdit(painter: CPainter, lineEdit: CLineEdit): void {
+	    const palette = lineEdit.palette();
+    	painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
+	    painter.fillRect(lineEdit.rect());
+    	painter.setStrokeStyle(palette.color(CPaletteColorRole.WindowText).toCss());
+	    painter.strokeRect(lineEdit.rect());
+    	painter.setFillStyle(lineEdit.isEnabled() ? 
+            palette.color(CPaletteColorRole.Text).toCss() : 
+                palette.color(CPaletteColorRole.DisabledText).toCss()
+	    );
+
+	    painter.setFont(lineEdit.font());
+	    painter.setTextAlign("left");
+	    painter.setTextBaseline("middle");
+
+	    painter.drawText(lineEdit.text(), 4, lineEdit.height() / 2);
+
+        if (lineEdit.hasFocus()) {
+	        const beforeCursor = lineEdit.text().slice(0, lineEdit.cursorPosition());
+        	const cursorX = 5 + painter.textWidth(beforeCursor);
+        	painter.setStrokeStyle(palette.color(CPaletteColorRole.Text).toCss());
+	        painter.drawLine(cursorX, 3, cursorX, lineEdit.height() - 3);
+        }
     }
 }

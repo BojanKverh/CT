@@ -167,23 +167,23 @@ export class CApplication extends CObject {
 		return this.#m_focusWidget;
 	}
 
-	setFocusWidget(widget: CWidget | null): void {
-		if (this.#m_focusWidget === widget)
-			return;
+    setFocusWidget(widget: CWidget | null): void {
+	    if (this.#m_focusWidget === widget)
+		    return;
 
-		const oldWidget = this.#m_focusWidget;
-		this.#m_focusWidget = widget;
+	    const oldWidget = this.#m_focusWidget;
+	    this.#m_focusWidget = widget;
 
-		if (oldWidget !== null) {
-			const event = new CFocusEvent(CEventType.FocusOut);
-			oldWidget.event(event);
-		}
+	    if (oldWidget !== null) {
+		    const event = new CFocusEvent(CEventType.FocusOut);
+		    oldWidget.event(event);
+	    }
 
-		if (widget !== null) {
-			const event = new CFocusEvent(CEventType.FocusIn);
-			widget.event(event);
-		}
-	}
+	    if (widget !== null) {
+		    const event = new CFocusEvent(CEventType.FocusIn);
+		    widget.event(event);
+	    }
+    }
 
 	startUpdates(): void {
 		if (this.#m_updatesEnabled)

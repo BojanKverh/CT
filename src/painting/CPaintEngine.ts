@@ -28,6 +28,7 @@ export abstract class CPaintEngine {
     abstract setFillStyle(style: string): void;
     abstract setStrokeStyle(style: string): void;
     abstract setLineWidth(width: number): void;
+    abstract textWidth(text: string): number;
 
     abstract clipRect(x: number, y: number, width: number,
 		height: number): void;
@@ -38,5 +39,6 @@ export abstract class CPaintEngine {
     abstract setTextAlign(align: CanvasTextAlign) : void;
     abstract setTextBaseline(baseline: CanvasTextBaseline): void;
     abstract textBaseline() : CanvasTextBaseline;
+    abstract drawLine(x1: number, y1: number, x2: number, y2: number): void;
     abstract fillText(text: string, x: number, y: number): void;
 }

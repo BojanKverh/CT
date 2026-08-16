@@ -8,7 +8,8 @@ import {
     CPushButton,
     CLabel,
     CAlignment,
-    CCheckBox
+    CCheckBox,
+    CLineEdit
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -70,6 +71,10 @@ cbox.setGeometry(10, 10, 100, 30);
 const cbox2 = new CCheckBox(parent);
 cbox2.setText("Check me again");
 cbox2.setGeometry(10, 10, 150, 30);
+
+const le = new CLineEdit(parent);
+le.setGeometry(10, 200, 150, 20);
+le.setText("Edited text");
 
 app.startUpdates();
 

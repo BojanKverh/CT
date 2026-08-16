@@ -18,3 +18,4 @@ export { CPushButton } from "./widgets/CPushButton.js";
 export { CAlignment } from "./core/CAlignment.js";
 export { CLabel } from "./widgets/CLabel.js";
 export { CCheckBox } from "./widgets/CCheckBox.js";
+export { CLineEdit } from "./widgets/CLineEdit.js";

@@ -177,4 +177,19 @@ describe("CPainter", () => {
 			"Hello", 10, 20
 		);
 	});
+
+    test("returns text width from paint engine", () => {
+	    const device = new TestPaintDevice();
+	    const painter = new CPainter(device);
+    	device.engine.textWidth.mockReturnValue(42);
+    	expect(painter.textWidth("Hello")).toBe(42);
+	    expect(device.engine.textWidth).toHaveBeenCalledWith("Hello");
+    });
+
+    test("draws line", () => {
+	    const device = new TestPaintDevice();
+	    const painter = new CPainter(device);
+    	painter.drawLine(10, 20, 30, 40);
+    	expect(device.engine.drawLine).toHaveBeenCalledWith(10, 20, 30, 40);
+    });
 });

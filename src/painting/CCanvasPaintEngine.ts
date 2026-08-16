@@ -60,6 +60,10 @@ export class CCanvasPaintEngine extends CPaintEngine {
         this.#m_context.lineWidth = width;
     }
 
+    override textWidth(text: string): number {
+	    return this.#m_context.measureText(text).width;
+    }
+
     clipRect(x: number, y: number, width: number, height: number): void {
 		this.#m_context.beginPath();
 		this.#m_context.rect(x, y, width, height);
@@ -90,6 +94,13 @@ export class CCanvasPaintEngine extends CPaintEngine {
         return this.#m_context.textBaseline;
     }
 
+    drawLine(x1: number, y1: number, x2: number, y2: number): void {
+        this.#m_context.beginPath();
+	    this.#m_context.moveTo(x1, y1);
+	    this.#m_context.lineTo(x2, y2);
+	    this.#m_context.stroke();
+    }
+    
 	fillText(text: string, x: number, y: number): void {
 		this.#m_context.fillText(text, x, y);
 	}
