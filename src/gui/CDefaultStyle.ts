@@ -8,6 +8,7 @@ import { CRect } from "../geometry/CRect.js";
 import type { CCheckBox } from "../widgets/CCheckBox.js";
 import type { CLineEdit } from "../widgets/CLineEdit.js";
 import { CFontMetrics } from "./CFontMetrics.js";
+import { CSlider } from "../widgets/CSlider.js";
 
 export class CDefaultStyle extends CStyle {
 	override drawLabel(painter: CPainter, label: CLabel): void {
@@ -161,4 +162,31 @@ export class CDefaultStyle extends CStyle {
     		painter.drawLine(cursorX, 4, cursorX, lineEdit.height() - 4);
 	    }
     }
+
+	override drawSlider(painter: CPainter, slider: CSlider): void {
+		const palette = slider.palette();
+
+		const grooveHeight = 4;
+		const handleW = CSlider.HandleSize;
+		const handleH = 12;
+
+		const grooveX = handleW / 2;
+		const grooveY = (slider.height() - grooveHeight) / 2;
+		const grooveWidth = Math.max(0, slider.width() - handleW);
+
+		painter.setFillStyle(palette.color(CPaletteColorRole.Window).toCss());
+
+		painter.fillRect(new CRect(grooveX, grooveY, grooveWidth, grooveHeight));
+		const range = slider.maximum() - slider.minimum();
+		const ratio = range === 0? 0 : (slider.value() - slider.minimum()) / range;
+
+		const handleCenterX = grooveX + grooveWidth * ratio;
+
+		const handleY = (slider.height() - handleH) / 2;
+
+		painter.setFillStyle(palette.color(CPaletteColorRole.Highlight).toCss());
+
+		painter.fillRect(new CRect(handleCenterX - handleW / 2, handleY, handleW,
+			handleH));
+	}
 }

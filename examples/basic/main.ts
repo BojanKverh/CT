@@ -9,7 +9,8 @@ import {
     CLabel,
     CAlignment,
     CCheckBox,
-    CLineEdit
+    CLineEdit,
+    CSlider
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -75,6 +76,9 @@ cbox2.setGeometry(10, 10, 150, 30);
 const le = new CLineEdit(parent);
 le.setGeometry(10, 200, 150, 20);
 le.setText("Edited text");
+
+const sl = new CSlider(parent)
+sl.setGeometry(10, 250, 200, 16);
 
 app.startUpdates();
 
