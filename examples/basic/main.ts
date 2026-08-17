@@ -12,7 +12,8 @@ import {
     CLineEdit,
     CSlider,
     CProgressBar,
-    CGroupBox
+    CGroupBox,
+    CSpinBox
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -80,7 +81,7 @@ le.setGeometry(10, 150, 150, 20);
 le.setText("Edited text");
 
 const gb = new CGroupBox("Sliders & bars", parent);
-gb.setGeometry(5, 205, 210, 80);
+gb.setGeometry(5, 185, 210, 110);
 
 const sl = new CSlider(gb)
 sl.setGeometry(5, 15, 200, 16);
@@ -88,6 +89,13 @@ sl.setGeometry(5, 15, 200, 16);
 const pb = new CProgressBar(gb);
 pb.setGeometry(5, 45, 200, 16);
 pb.setValue(0);
+
+const sbox = new CSpinBox(gb);
+sbox.setGeometry(5, 75, 80, 28);
+sbox.setValue(30);
+sbox.valueChanged.connect(value => {
+	console.log("spin value:", value);
+});
 
 app.startUpdates();
 

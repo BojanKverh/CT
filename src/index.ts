@@ -22,3 +22,4 @@ export { CLineEdit } from "./widgets/CLineEdit.js";
 export { CSlider } from "./widgets/CSlider.js";
 export { CProgressBar } from "./widgets/CProgressBar.js";
 export { CGroupBox } from "./widgets/CGroupBox.js";
+export { CSpinBox } from "./widgets/CSpinBox.js";

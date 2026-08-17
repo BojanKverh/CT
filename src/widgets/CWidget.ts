@@ -364,7 +364,7 @@ export class CWidget extends CObject {
     }
 
     protected focusOutEvent(event: CFocusEvent): void {
-	    event.accept();
+        event.accept();
 	    this.update();
     }
 

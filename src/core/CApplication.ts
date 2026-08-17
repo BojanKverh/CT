@@ -315,19 +315,17 @@ export class CApplication extends CObject {
 			this.releaseMouse();
 	}
 
-	#dispatchKeyEvent(type: CEventType,
-		keyboardEvent: KeyboardEvent): void {
-		const target = this.#m_focusWidget;
-
+	#dispatchKeyEvent(type: CEventType, keyboardEvent: KeyboardEvent): void {
+		let target = this.#m_focusWidget;
 		if (target === null)
 			return;
-
-		const event = new CKeyEvent(type, keyboardEvent.key,
-			keyboardEvent.ctrlKey, keyboardEvent.shiftKey,
-			keyboardEvent.altKey, keyboardEvent.metaKey
-		);
-
-		target.event(event);
+		const event = new CKeyEvent(type, keyboardEvent.key, keyboardEvent.ctrlKey,
+			keyboardEvent.shiftKey, keyboardEvent.altKey, keyboardEvent.metaKey);
+		while (target !== null) {
+			if (target.event(event))
+				break;
+			target = target.parent();
+		}
 	}
 
 	#updateHoverWidget(pointerEvent: PointerEvent): void {

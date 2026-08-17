@@ -1,10 +1,4 @@
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	test
-} from "vitest";
+import {afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { CApplication } from "../../src/core/CApplication.js";
 import { CProgressBar } from "../../src/widgets/CProgressBar.js";

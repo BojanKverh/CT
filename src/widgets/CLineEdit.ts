@@ -16,6 +16,8 @@ export class CLineEdit extends CWidget {
 	#m_cursorVisible = true;
 	#m_cursorTimer: ReturnType<typeof setInterval> | null = null;
 
+	readonly editingFinished = new CSignal();
+
 	text(): string {
 		return this.#m_text;
 	}
@@ -274,6 +276,7 @@ export class CLineEdit extends CWidget {
 	protected override focusOutEvent(event: CFocusEvent): void {
 		this.#m_selectingWithMouse = false;
 		this.#stopCursorBlink();
+		this.editingFinished.emit();
 		super.focusOutEvent(event);
 	}
 
