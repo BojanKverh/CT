@@ -920,4 +920,89 @@ describe("CLineEdit", () => {
 
 		expect(event.isAccepted()).toBe(true);
 	});
+
+	test("validator accepts valid inserted text", () => {
+		const edit = new CLineEdit();
+
+		edit.setValidator(text => /^\d*$/.test(text));
+		edit.insert("123");
+
+		expect(edit.text()).toBe("123");
+		expect(edit.cursorPosition()).toBe(3);
+	});
+
+	test("validator rejects invalid inserted text", () => {
+		const edit = new CLineEdit();
+
+		edit.setValidator(text => /^\d*$/.test(text));
+		edit.insert("abc");
+
+		expect(edit.text()).toBe("");
+		expect(edit.cursorPosition()).toBe(0);
+	});
+
+	test("validator checks resulting text, not only inserted text", () => {
+		const edit = new CLineEdit();
+
+		edit.setValidator(text => /^\d*$/.test(text));
+		edit.setText("12");
+		edit.setCursorPosition(2);
+
+		edit.insert("a");
+
+		expect(edit.text()).toBe("12");
+		expect(edit.cursorPosition()).toBe(2);
+	});
+
+	test("validator allows replacing selection with valid text", () => {
+		const edit = new CLineEdit();
+
+		edit.setValidator(text => /^\d*$/.test(text));
+		edit.setText("1234");
+		edit.setSelection(1, 3);
+
+		edit.insert("99");
+
+		expect(edit.text()).toBe("1994");
+		expect(edit.cursorPosition()).toBe(3);
+		expect(edit.hasSelection()).toBe(false);
+	});
+
+	test("validator rejects replacing selection with invalid text", () => {
+		const edit = new CLineEdit();
+
+		edit.setValidator(text => /^\d*$/.test(text));
+		edit.setText("1234");
+		edit.setSelection(1, 3);
+
+		edit.insert("ab");
+
+		expect(edit.text()).toBe("1234");
+		expect(edit.selectionStart()).toBe(1);
+		expect(edit.selectionEnd()).toBe(3);
+	});
+
+	test("validator allows empty text", () => {
+		const edit = new CLineEdit();
+
+		edit.setValidator(text => /^\d*$/.test(text));
+		edit.setText("123");
+		edit.setSelection(0, 3);
+
+		edit.insert("");
+
+		expect(edit.text()).toBe("123");
+	});
+
+	test("validator rejects invalid pasted text", async () => {
+		vi.mocked(navigator.clipboard.readText)
+			.mockResolvedValue("abc");
+
+		const edit = new CLineEdit();
+		edit.setValidator(text => /^\d*$/.test(text));
+
+		await edit.paste();
+		expect(edit.text()).toBe("");
+	});
+
 });

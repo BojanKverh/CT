@@ -7,6 +7,7 @@ import { createTestWindow } from "../helpers/createTestWindow.js";
 import { CEventType } from "../../src/events/CEvent.js";
 import { CKeyEvent } from "../../src/events/CKeyEvent.js";
 import { CFocusEvent } from "../../src/events/CFocusEvent.js";
+import { CLineEdit } from "../../src/index.js";
 
 describe("CProgressBar", () => {
 	beforeEach(() => {
@@ -399,5 +400,27 @@ describe("CProgressBar", () => {
 
 		expect(spinBox.value()).toBe(42);
 		expect(spinBox.lineEdit().text()).toBe("42");
+	});
+
+	test("validator can allow negative integer input", () => {
+		const edit = new CLineEdit();
+
+		edit.setValidator(text => /^-?\d*$/.test(text));
+
+		edit.insert("-");
+		edit.insert("42");
+
+		expect(edit.text()).toBe("-42");
+	});
+
+	test("validator rejects letters in numeric input", () => {
+		const edit = new CLineEdit();
+
+		edit.setValidator(text => /^-?\d*$/.test(text));
+
+		edit.insert("12");
+		edit.insert("a");
+
+		expect(edit.text()).toBe("12");
 	});
 });

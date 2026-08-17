@@ -19,6 +19,10 @@ export class CSpinBox extends CWidget {
 	constructor(parent: CWidget | null = null) {
 		super(parent);
 
+		this.#m_editor.setValidator(text => {
+			return /^-?\d*$/.test(text);
+		});
+		
         this.#m_upButton.clicked.connect(() => {
 			this.stepUp();
 		});

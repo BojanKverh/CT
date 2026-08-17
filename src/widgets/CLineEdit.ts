@@ -15,6 +15,7 @@ export class CLineEdit extends CWidget {
 	#m_selectingWithMouse = false;
 	#m_cursorVisible = true;
 	#m_cursorTimer: ReturnType<typeof setInterval> | null = null;
+	#m_validator: ((text: string) => boolean) | null = null;
 
 	readonly editingFinished = new CSignal();
 
@@ -34,6 +35,10 @@ export class CLineEdit extends CWidget {
 		this.update();
 	}
 
+	setValidator(validator: ((text: string) => boolean) | null): void {
+		this.#m_validator = validator;
+	}
+
 	cursorPosition(): number {
 		return this.#m_cursorPosition;
 	}
@@ -47,30 +52,23 @@ export class CLineEdit extends CWidget {
 	}
 
 	insert(text: string): void {
-	    if (text.length === 0)
-		    return;
-    	if (this.hasSelection()) {
-	    	const start = this.selectionStart();
-		    const end = this.selectionEnd();
-    		this.#m_text = this.#m_text.slice(0, start) + text
-			    + this.#m_text.slice(end);
-    		this.#m_cursorPosition = start + text.length;
-	    	this.#m_selectionAnchor = this.#m_cursorPosition;
-    		this.textChanged.emit(this.#m_text);
-			this.#resetCursorBlink();
-	    	this.update();
-		    return;
-	    }
+		if (text.length === 0)
+			return;
+		const start = this.hasSelection()? this.selectionStart() : this.#m_cursorPosition;
+		const end = this.hasSelection()? this.selectionEnd() : this.#m_cursorPosition;
+		const newText = this.#m_text.slice(0, start) + text
+			+ this.#m_text.slice(end);
 
-	    this.#m_text = this.#m_text.slice(0, this.#m_cursorPosition) + text
-		    + this.#m_text.slice(this.#m_cursorPosition);
+		if (this.#m_validator !== null && !this.#m_validator(newText))
+			return;
 
-	    this.#m_cursorPosition += text.length;
-	    this.#m_selectionAnchor = this.#m_cursorPosition;
-    	this.textChanged.emit(this.#m_text);
+		this.#m_text = newText;
+		this.#m_cursorPosition = start + text.length;
+		this.#m_selectionAnchor = this.#m_cursorPosition;
+		this.textChanged.emit(this.#m_text);
 		this.#resetCursorBlink();
-	    this.update();
-    }
+		this.update();
+	}
 
     selectionStart(): number {
 	    return Math.min(this.#m_selectionAnchor, this.#m_cursorPosition);
