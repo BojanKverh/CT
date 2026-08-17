@@ -10,6 +10,7 @@ import type { CLineEdit } from "../widgets/CLineEdit.js";
 import { CFontMetrics } from "./CFontMetrics.js";
 import { CSlider } from "../widgets/CSlider.js";
 import type { CProgressBar } from "../widgets/CProgressBar.js";
+import type { CGroupBox } from "../widgets/CGroupBox.js";
 
 export class CDefaultStyle extends CStyle {
 	override drawLabel(painter: CPainter, label: CLabel): void {
@@ -217,5 +218,50 @@ export class CDefaultStyle extends CStyle {
 		painter.setTextBaseline("middle");
 
 		painter.drawText(`${percent} %`, progressBar.width() / 2, progressBar.height() / 2);
+	}
+
+	override drawGroupBox(painter: CPainter, groupBox: CGroupBox): void {
+		const palette = groupBox.palette();
+		const title = groupBox.title();
+
+		const titleMargin = 8;
+		const titlePadding = 4;
+		const frameY = 8;
+
+		painter.setStrokeStyle(palette.color(CPaletteColorRole.WindowText).toCss());
+
+		painter.setFillStyle(palette.color(groupBox.isEnabled()? CPaletteColorRole.Text
+					: CPaletteColorRole.DisabledText).toCss());
+
+		painter.setFont(groupBox.font());
+
+		if (title.length === 0) {
+			painter.strokeRect(new CRect(0, frameY, groupBox.width(), groupBox.height() - frameY));
+			return;
+		}
+
+		const metrics = new CFontMetrics(groupBox.font());
+		const titleWidth = metrics.textWidth(title);
+		const titleStart = titleMargin;
+		const titleEnd = titleStart + titleWidth + 2 * titlePadding;
+
+		// Top-left part of frame.
+		painter.drawLine(0, frameY, titleStart, frameY);
+
+		// Top-right part of frame.
+		painter.drawLine(titleEnd, frameY, groupBox.width(), frameY);
+
+		// Left side.
+		painter.drawLine(0, frameY, 0, groupBox.height());
+
+		// Right side.
+		painter.drawLine(groupBox.width(), frameY, groupBox.width(), groupBox.height());
+
+		// Bottom.
+		painter.drawLine(0, groupBox.height(), groupBox.width(), groupBox.height());
+
+		painter.setTextAlign("left");
+		painter.setTextBaseline("middle");
+		painter.drawText( title, titleStart + titlePadding, frameY);
 	}
 }

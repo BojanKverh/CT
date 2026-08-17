@@ -5,6 +5,7 @@ import type { CCheckBox } from "../widgets/CCheckBox.js";
 import type { CLineEdit } from "../widgets/CLineEdit.js";
 import type { CSlider } from "../widgets/CSlider.js";
 import type { CProgressBar } from "../widgets/CProgressBar.js";
+import type { CGroupBox } from "../widgets/CGroupBox.js";
 
 export abstract class CStyle {
 	
@@ -14,5 +15,5 @@ export abstract class CStyle {
     abstract drawLineEdit(painter: CPainter, lineEdit: CLineEdit): void;
     abstract drawSlider(painter: CPainter, slider: CSlider): void;
     abstract drawProgressBar(painter: CPainter, progressBar : CProgressBar): void;
-
+    abstract drawGroupBox(painter: CPainter, groupBox: CGroupBox): void;
 }

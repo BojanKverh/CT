@@ -11,7 +11,8 @@ import {
     CCheckBox,
     CLineEdit,
     CSlider,
-    CProgressBar
+    CProgressBar,
+    CGroupBox
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -75,14 +76,17 @@ cbox2.setText("Check me again");
 cbox2.setGeometry(10, 10, 150, 30);
 
 const le = new CLineEdit(parent);
-le.setGeometry(10, 200, 150, 20);
+le.setGeometry(10, 150, 150, 20);
 le.setText("Edited text");
 
-const sl = new CSlider(parent)
-sl.setGeometry(10, 250, 200, 16);
+const gb = new CGroupBox("Sliders & bars", parent);
+gb.setGeometry(5, 205, 210, 80);
 
-const pb = new CProgressBar(parent);
-pb.setGeometry(10, 280, 200, 16);
+const sl = new CSlider(gb)
+sl.setGeometry(5, 15, 200, 16);
+
+const pb = new CProgressBar(gb);
+pb.setGeometry(5, 45, 200, 16);
 pb.setValue(0);
 
 app.startUpdates();
