@@ -16,11 +16,23 @@ describe("CLineEdit", () => {
 			writable: true,
 			configurable: true
 		});
+		Object.defineProperty(globalThis, "navigator", {
+			value: {
+				clipboard: {
+					writeText: vi.fn().mockResolvedValue(undefined),
+					readText: vi.fn().mockResolvedValue("")
+				}
+			},
+			writable: true,
+			configurable: true
+		});
 
 		new CApplication(createTestCanvas());
 	});
 
 	afterEach(() => {
+		vi.useRealTimers();
+
 		if (CApplication.exists())
 			CApplication.instance().destroy();
 	});
@@ -411,4 +423,501 @@ describe("CLineEdit", () => {
 	    expect(edit.cursorPosition()).toBe(3);
 	    expect(edit.hasSelection()).toBe(false);
     });
+
+	test("selects text by dragging mouse to the right", () => {
+		const edit = new CLineEdit();
+		edit.resize(300, 30);
+		edit.setText("Hello");
+
+		const metrics = new CFontMetrics(edit.font());
+
+		const startX = 4 + metrics.textWidth("H");
+		const endX = 4 + metrics.textWidth("Hell");
+
+		edit.event(new CMouseEvent(
+			CEventType.MousePress,
+			startX,
+			15,
+			CMouseButton.LeftButton
+		));
+
+		edit.event(new CMouseEvent(
+			CEventType.MouseMove,
+			endX,
+			15,
+			CMouseButton.NoButton
+		));
+
+		expect(edit.hasSelection()).toBe(true);
+		expect(edit.selectionStart()).toBe(1);
+		expect(edit.selectionEnd()).toBe(4);
+		expect(edit.selectedText()).toBe("ell");
+	});
+
+	test("selects text by dragging mouse to the left", () => {
+		const edit = new CLineEdit();
+		edit.resize(300, 30);
+		edit.setText("Hello");
+
+		const metrics = new CFontMetrics(edit.font());
+
+		const startX = 5 + metrics.textWidth("Hell");
+		const endX = 5 + metrics.textWidth("H");
+
+		edit.event(new CMouseEvent(CEventType.MousePress, startX, 15, CMouseButton.LeftButton));
+		edit.event(new CMouseEvent(CEventType.MouseMove, endX, 15, CMouseButton.NoButton));
+
+		expect(edit.hasSelection()).toBe(true);
+		expect(edit.selectionStart()).toBe(1);
+		expect(edit.selectionEnd()).toBe(4);
+		expect(edit.selectedText()).toBe("ell");
+	});
+
+	test("mouse release finishes selection", () => {
+		const edit = new CLineEdit();
+		edit.resize(300, 30);
+		edit.setText("Hello");
+
+		const metrics = new CFontMetrics(edit.font());
+
+		const startX = 5 + metrics.textWidth("H");
+		const endX = 5 + metrics.textWidth("Hell");
+
+		edit.event(new CMouseEvent(CEventType.MousePress, startX, 15, CMouseButton.LeftButton));
+		edit.event(new CMouseEvent(CEventType.MouseMove, endX, 15, CMouseButton.NoButton));
+		edit.event(new CMouseEvent(CEventType.MouseRelease, endX, 15, CMouseButton.LeftButton));
+
+		expect(edit.selectionStart()).toBe(1);
+		expect(edit.selectionEnd()).toBe(4);
+		expect(edit.selectedText()).toBe("ell");
+	});
+
+	test("dragging past left edge selects to beginning", () => {
+		const edit = new CLineEdit();
+		edit.resize(300, 30);
+		edit.setText("Hello");
+
+		const metrics = new CFontMetrics(edit.font());
+		const startX = 5 + metrics.textWidth("Hell");
+
+		edit.event(new CMouseEvent(CEventType.MousePress, startX, 15, CMouseButton.LeftButton));
+		edit.event(new CMouseEvent(CEventType.MouseMove, -50, 15, CMouseButton.NoButton));
+
+		expect(edit.selectionStart()).toBe(0);
+		expect(edit.selectionEnd()).toBe(4);
+		expect(edit.selectedText()).toBe("Hell");
+	});
+
+	test("dragging past right edge selects to end", () => {
+		const edit = new CLineEdit();
+		edit.resize(300, 30);
+		edit.setText("Hello");
+
+		const metrics = new CFontMetrics(edit.font());
+		const startX = 4 + metrics.textWidth("H");
+
+		edit.event(new CMouseEvent(CEventType.MousePress, startX, 15, CMouseButton.LeftButton));
+		edit.event(new CMouseEvent(CEventType.MouseMove, 500, 15, CMouseButton.NoButton));
+
+		expect(edit.selectionStart()).toBe(1);
+		expect(edit.selectionEnd()).toBe(5);
+		expect(edit.selectedText()).toBe("ello");
+	});
+
+	test("mouse move without mouse press does not create selection", () => {
+		const edit = new CLineEdit();
+		edit.resize(300, 30);
+		edit.setText("Hello");
+
+		edit.event(new CMouseEvent(CEventType.MouseMove, 100, 15, CMouseButton.NoButton));
+		expect(edit.hasSelection()).toBe(false);
+	});
+
+	test("home moves cursor to beginning", () => {
+		const edit = new CLineEdit();
+		edit.setText("Hello");
+		edit.setCursorPosition(3);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Home"
+		));
+
+		expect(edit.cursorPosition()).toBe(0);
+		expect(edit.hasSelection()).toBe(false);
+	});
+
+	test("end moves cursor to end", () => {
+		const edit = new CLineEdit();
+		edit.setText("Hello");
+		edit.setCursorPosition(2);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"End"
+		));
+
+		expect(edit.cursorPosition()).toBe(5);
+		expect(edit.hasSelection()).toBe(false);
+	});
+
+	test("shift home selects to beginning", () => {
+		const edit = new CLineEdit();
+		edit.setText("Hello");
+		edit.setCursorPosition(3);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Home",
+			false,
+			true
+		));
+
+		expect(edit.cursorPosition()).toBe(0);
+		expect(edit.hasSelection()).toBe(true);
+		expect(edit.selectionStart()).toBe(0);
+		expect(edit.selectionEnd()).toBe(3);
+		expect(edit.selectedText()).toBe("Hel");
+	});
+
+	test("shift end selects to end", () => {
+		const edit = new CLineEdit();
+		edit.setText("Hello");
+		edit.setCursorPosition(2);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"End",
+			false,
+			true
+		));
+
+		expect(edit.cursorPosition()).toBe(5);
+		expect(edit.hasSelection()).toBe(true);
+		expect(edit.selectionStart()).toBe(2);
+		expect(edit.selectionEnd()).toBe(5);
+		expect(edit.selectedText()).toBe("llo");
+	});
+
+	test("home clears existing selection", () => {
+		const edit = new CLineEdit();
+		edit.setText("Hello");
+		edit.setSelection(1, 4);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Home"
+		));
+
+		expect(edit.cursorPosition()).toBe(0);
+		expect(edit.hasSelection()).toBe(false);
+	});
+
+	test("end clears existing selection", () => {
+		const edit = new CLineEdit();
+		edit.setText("Hello");
+		edit.setSelection(1, 3);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"End"
+		));
+
+		expect(edit.cursorPosition()).toBe(5);
+		expect(edit.hasSelection()).toBe(false);
+	});
+
+		test("shows cursor when line edit receives focus", () => {
+		vi.useFakeTimers();
+
+		const edit = new CLineEdit();
+
+		edit.setFocus();
+
+		expect(edit.cursorVisible()).toBe(true);
+
+		vi.useRealTimers();
+	});
+
+	test("toggles cursor visibility while focused", () => {
+		vi.useFakeTimers();
+
+		const edit = new CLineEdit();
+		edit.setFocus();
+
+		expect(edit.cursorVisible()).toBe(true);
+
+		vi.advanceTimersByTime(500);
+
+		expect(edit.cursorVisible()).toBe(false);
+
+		vi.advanceTimersByTime(500);
+
+		expect(edit.cursorVisible()).toBe(true);
+
+		vi.useRealTimers();
+	});
+
+	test("hides cursor when focus is cleared", () => {
+		vi.useFakeTimers();
+
+		const edit = new CLineEdit();
+		edit.setFocus();
+
+		edit.clearFocus();
+
+		expect(edit.cursorVisible()).toBe(false);
+
+		vi.advanceTimersByTime(1000);
+
+		expect(edit.cursorVisible()).toBe(false);
+
+		vi.useRealTimers();
+	});
+
+	test("moving cursor resets blinking and makes cursor visible", () => {
+		vi.useFakeTimers();
+
+		const edit = new CLineEdit();
+		edit.setText("Hello");
+		edit.setFocus();
+
+		vi.advanceTimersByTime(500);
+
+		expect(edit.cursorVisible()).toBe(false);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowLeft"
+		));
+
+		expect(edit.cursorVisible()).toBe(true);
+
+		vi.useRealTimers();
+	});
+
+	test("inserting text resets blinking and makes cursor visible", () => {
+		vi.useFakeTimers();
+
+		const edit = new CLineEdit();
+		edit.setFocus();
+
+		vi.advanceTimersByTime(500);
+
+		expect(edit.cursorVisible()).toBe(false);
+
+		edit.insert("A");
+
+		expect(edit.cursorVisible()).toBe(true);
+
+		vi.useRealTimers();
+	});
+
+	test("deleting text resets blinking and makes cursor visible", () => {
+		vi.useFakeTimers();
+
+		const edit = new CLineEdit();
+		edit.setText("Hello");
+		edit.setFocus();
+
+		vi.advanceTimersByTime(500);
+
+		expect(edit.cursorVisible()).toBe(false);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Backspace"
+		));
+
+		expect(edit.cursorVisible()).toBe(true);
+
+		vi.useRealTimers();
+	});
+
+	test("copies selected text with Ctrl+C", async () => {
+		const edit = new CLineEdit();
+		edit.setText("HelloWorld");
+		edit.setSelection(0, 5);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"c",
+			true
+		));
+
+		await Promise.resolve();
+
+		expect(navigator.clipboard.writeText)
+			.toHaveBeenCalledWith("Hello");
+		expect(edit.text()).toBe("HelloWorld");
+		expect(edit.selectedText()).toBe("Hello");
+	});
+
+	test("Ctrl+C does nothing without selection", async () => {
+		const edit = new CLineEdit();
+		edit.setText("Hello");
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"c",
+			true
+		));
+
+		await Promise.resolve();
+
+		expect(navigator.clipboard.writeText)
+			.not.toHaveBeenCalled();
+	});
+
+	test("cuts selected text with Ctrl+X", async () => {
+		const edit = new CLineEdit();
+		edit.setText("HelloWorld");
+		edit.setSelection(0, 5);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"x",
+			true
+		));
+
+		await Promise.resolve();
+
+		expect(navigator.clipboard.writeText)
+			.toHaveBeenCalledWith("Hello");
+
+		expect(edit.text()).toBe("World");
+		expect(edit.cursorPosition()).toBe(0);
+		expect(edit.hasSelection()).toBe(false);
+	});
+
+	test("Ctrl+X does nothing without selection", async () => {
+		const edit = new CLineEdit();
+		edit.setText("Hello");
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"x",
+			true
+		));
+
+		await Promise.resolve();
+
+		expect(navigator.clipboard.writeText)
+			.not.toHaveBeenCalled();
+
+		expect(edit.text()).toBe("Hello");
+	});
+
+	test("pastes clipboard text with Ctrl+V", async () => {
+		vi.mocked(navigator.clipboard.readText)
+			.mockResolvedValue("XY");
+
+		const edit = new CLineEdit();
+		edit.setText("Hello");
+		edit.setCursorPosition(2);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"v",
+			true
+		));
+
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(navigator.clipboard.readText)
+			.toHaveBeenCalledOnce();
+
+		expect(edit.text()).toBe("HeXYllo");
+		expect(edit.cursorPosition()).toBe(4);
+	});
+
+	test("paste replaces selected text", async () => {
+		vi.mocked(navigator.clipboard.readText)
+			.mockResolvedValue("XY");
+
+		const edit = new CLineEdit();
+		edit.setText("HelloWorld");
+		edit.setSelection(3, 5);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"v",
+			true
+		));
+
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(edit.text()).toBe("HelXYWorld");
+		expect(edit.cursorPosition()).toBe(5);
+		expect(edit.hasSelection()).toBe(false);
+	});
+
+	test("pasting empty clipboard text does nothing", async () => {
+		vi.mocked(navigator.clipboard.readText)
+			.mockResolvedValue("");
+
+		const edit = new CLineEdit();
+		edit.setText("Hello");
+		edit.setCursorPosition(2);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"v",
+			true
+		));
+
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(edit.text()).toBe("Hello");
+		expect(edit.cursorPosition()).toBe(2);
+	});
+
+	test("Ctrl+C is accepted", () => {
+		const edit = new CLineEdit();
+		edit.setText("Hello");
+		edit.setSelection(0, 5);
+
+		const event = new CKeyEvent(
+			CEventType.KeyPress,
+			"c",
+			true
+		);
+
+		edit.event(event);
+
+		expect(event.isAccepted()).toBe(true);
+	});
+
+	test("Ctrl+X is accepted", () => {
+		const edit = new CLineEdit();
+		edit.setText("Hello");
+		edit.setSelection(0, 5);
+
+		const event = new CKeyEvent(
+			CEventType.KeyPress,
+			"x",
+			true
+		);
+
+		edit.event(event);
+
+		expect(event.isAccepted()).toBe(true);
+	});
+
+	test("Ctrl+V is accepted", () => {
+		const edit = new CLineEdit();
+
+		const event = new CKeyEvent(
+			CEventType.KeyPress,
+			"v",
+			true
+		);
+
+		edit.event(event);
+
+		expect(event.isAccepted()).toBe(true);
+	});
 });

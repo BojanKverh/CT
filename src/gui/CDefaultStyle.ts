@@ -154,8 +154,8 @@ export class CDefaultStyle extends CStyle {
 		    painter.drawText(after, selectionEndX, textY);
 	    }
 
-    	if (lineEdit.hasFocus()) {
-	    	const beforeCursor = lineEdit.text().slice(0, lineEdit.cursorPosition());
+		if (lineEdit.hasFocus() && lineEdit.cursorVisible()) {
+    		const beforeCursor = lineEdit.text().slice(0, lineEdit.cursorPosition());
     		const cursorX = textX + metrics.textWidth(beforeCursor);
     		painter.setStrokeStyle(palette.color(CPaletteColorRole.Text).toCss());
     		painter.drawLine(cursorX, 4, cursorX, lineEdit.height() - 4);

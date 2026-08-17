@@ -4,13 +4,17 @@ import { CKeyEvent } from "../events/CKeyEvent.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CFontMetrics } from "../gui/CFontMetrics.js";
+import { CFocusEvent } from "../events/CFocusEvent.js";
 
 export class CLineEdit extends CWidget {
 	readonly textChanged = new CSignal<[string]>();
-
+	
 	#m_text = "";
 	#m_cursorPosition = 0;
     #m_selectionAnchor = 0;
+	#m_selectingWithMouse = false;
+	#m_cursorVisible = true;
+	#m_cursorTimer: ReturnType<typeof setInterval> | null = null;
 
 	text(): string {
 		return this.#m_text;
@@ -36,6 +40,10 @@ export class CLineEdit extends CWidget {
 	    this.#moveCursor(position, false);
     }
 
+	cursorVisible(): boolean {
+		return this.#m_cursorVisible;
+	}
+
 	insert(text: string): void {
 	    if (text.length === 0)
 		    return;
@@ -47,6 +55,7 @@ export class CLineEdit extends CWidget {
     		this.#m_cursorPosition = start + text.length;
 	    	this.#m_selectionAnchor = this.#m_cursorPosition;
     		this.textChanged.emit(this.#m_text);
+			this.#resetCursorBlink();
 	    	this.update();
 		    return;
 	    }
@@ -57,6 +66,7 @@ export class CLineEdit extends CWidget {
 	    this.#m_cursorPosition += text.length;
 	    this.#m_selectionAnchor = this.#m_cursorPosition;
     	this.textChanged.emit(this.#m_text);
+		this.#resetCursorBlink();
 	    this.update();
     }
 
@@ -90,11 +100,59 @@ export class CLineEdit extends CWidget {
 	    this.#m_selectionAnchor = this.#m_cursorPosition;
     }
 
+	async copy(): Promise<void> {
+		if (!this.hasSelection())
+			return;
+
+		await navigator.clipboard.writeText(
+			this.selectedText()
+		);
+	}
+
+	async cut(): Promise<void> {
+		if (!this.hasSelection())
+			return;
+
+		await navigator.clipboard.writeText(
+			this.selectedText()
+		);
+
+		this.#deleteSelection();
+	}
+
+	async paste(): Promise<void> {
+		const text = await navigator.clipboard.readText();
+
+		if (text.length === 0)
+			return;
+
+		this.insert(text);
+	}
+
     protected override paintEvent(painter: CPainter): void {
 	    this.style().drawLineEdit(painter, this);
     }
 
     protected override keyPressEvent(event: CKeyEvent): void {
+		if (event.ctrl()) {
+			switch (event.key().toLowerCase()) {
+			case "c":
+				void this.copy();
+				event.accept();
+				return;
+
+			case "x":
+				void this.cut();
+				event.accept();
+				return;
+
+			case "v":
+				void this.paste();
+				event.accept();
+				return;
+			}
+		}
+
 	    switch (event.key()) {
         case "ArrowLeft":
 	        this.#moveCursor(this.#m_cursorPosition - 1, event.shift());
@@ -118,6 +176,7 @@ export class CLineEdit extends CWidget {
         		--this.#m_cursorPosition;
 		        this.#m_selectionAnchor = this.#m_cursorPosition;
         		this.textChanged.emit(this.#m_text);
+				this.#resetCursorBlink();
 		        this.update();
 	        }
 
@@ -135,12 +194,23 @@ export class CLineEdit extends CWidget {
 			        + this.#m_text.slice(this.#m_cursorPosition + 1);
         		this.#m_selectionAnchor = this.#m_cursorPosition;
         		this.textChanged.emit(this.#m_text);
+				this.#resetCursorBlink();
 		        this.update();
 	        }
 
 	        event.accept();
 	        return;
-	    }
+
+		case "Home":
+			this.#moveCursor(0, event.shift());
+			event.accept();
+			return;
+
+		case "End":
+			this.#moveCursor(this.#m_text.length, event.shift());
+			event.accept();
+			return;
+	    }			
 
 	    if (event.key().length === 1) {
 		    this.insert(event.key());
@@ -151,13 +221,61 @@ export class CLineEdit extends CWidget {
     }
 
     protected override mousePressEvent(event: CMouseEvent): void {
-	    if (event.button() !== CMouseButton.LeftButton) {
-		    event.ignore();
-		    return;
-	    }
-        this.setCursorPosition(this.cursorPositionAt(event.x()));
-    	event.accept();
-    }
+		if (event.button() !== CMouseButton.LeftButton) {
+			event.ignore();
+			return;
+		}
+
+		const position = this.cursorPositionAt(event.x());
+		this.#m_cursorPosition = position;
+		this.#m_selectionAnchor = position;
+		this.#m_selectingWithMouse = true;
+
+		event.accept();
+		this.update();
+	}
+
+	protected override mouseMoveEvent(event: CMouseEvent): void {
+		if (!this.#m_selectingWithMouse) {
+			event.ignore();
+			return;
+		}
+
+		const position = this.cursorPositionAt(event.x());
+
+		this.#moveCursor(position, true);
+		event.accept();
+	}
+
+	protected override mouseReleaseEvent(event: CMouseEvent): void {
+		if (event.button() !== CMouseButton.LeftButton) {
+			event.ignore();
+			return;
+		}
+
+		if (!this.#m_selectingWithMouse) {
+			event.ignore();
+			return;
+		}
+
+		this.#m_selectingWithMouse = false;
+		const position = this.cursorPositionAt(event.x());
+		this.#moveCursor(position, true);
+
+		event.accept();
+	}
+
+	protected override focusInEvent(event: CFocusEvent): void {
+		this.#startCursorBlink();
+		event.accept();
+		this.update();
+	}
+
+	protected override focusOutEvent(event: CFocusEvent): void {
+		this.#m_selectingWithMouse = false;
+		this.#stopCursorBlink();
+		super.focusOutEvent(event);
+	}
 
     private cursorPositionAt(x: number): number {
 	    const fm = new CFontMetrics(this.font());
@@ -182,6 +300,7 @@ export class CLineEdit extends CWidget {
     	this.#m_cursorPosition = clamped;
     	if (!keepAnchor)
 	    	this.#m_selectionAnchor = clamped;
+		this.#resetCursorBlink();
 	    this.update();
     }
 
@@ -194,7 +313,32 @@ export class CLineEdit extends CWidget {
     	this.#m_cursorPosition = start;
 	    this.#m_selectionAnchor = start;
     	this.textChanged.emit(this.#m_text);
+		this.#resetCursorBlink();
 	    this.update();
     	return true;
     }
+
+	#startCursorBlink(): void {
+		this.#stopCursorBlink();
+		this.#m_cursorVisible = true;
+		this.#m_cursorTimer = setInterval(() => {
+			this.#m_cursorVisible = !this.#m_cursorVisible;
+			this.update();
+		}, 500);
+	}
+
+	#stopCursorBlink(): void {
+		if (this.#m_cursorTimer !== null) {
+			clearInterval(this.#m_cursorTimer);
+			this.#m_cursorTimer = null;
+		}
+
+		this.#m_cursorVisible = false;
+	}
+
+	#resetCursorBlink(): void {
+		if (!this.hasFocus())
+			return;
+		this.#startCursorBlink();
+	}
 }
