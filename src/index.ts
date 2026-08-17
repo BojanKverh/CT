@@ -20,3 +20,4 @@ export { CLabel } from "./widgets/CLabel.js";
 export { CCheckBox } from "./widgets/CCheckBox.js";
 export { CLineEdit } from "./widgets/CLineEdit.js";
 export { CSlider } from "./widgets/CSlider.js";
+export { CProgressBar } from "./widgets/CProgressBar.js";

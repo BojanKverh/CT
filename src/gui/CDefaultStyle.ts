@@ -9,6 +9,7 @@ import type { CCheckBox } from "../widgets/CCheckBox.js";
 import type { CLineEdit } from "../widgets/CLineEdit.js";
 import { CFontMetrics } from "./CFontMetrics.js";
 import { CSlider } from "../widgets/CSlider.js";
+import type { CProgressBar } from "../widgets/CProgressBar.js";
 
 export class CDefaultStyle extends CStyle {
 	override drawLabel(painter: CPainter, label: CLabel): void {
@@ -188,5 +189,33 @@ export class CDefaultStyle extends CStyle {
 
 		painter.fillRect(new CRect(handleCenterX - handleW / 2, handleY, handleW,
 			handleH));
+	}
+
+	override drawProgressBar(painter: CPainter, progressBar: CProgressBar): void {
+		const palette = progressBar.palette();
+
+		const range = progressBar.maximum() - progressBar.minimum();
+
+		const ratio = range === 0? 0 : (progressBar.value() - progressBar.minimum()) / range;
+		const fillWidth = progressBar.width() * ratio;
+		painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
+		painter.fillRect(progressBar.rect());
+
+		painter.setFillStyle(palette.color(CPaletteColorRole.Highlight).toCss());
+		painter.fillRect(new CRect(0, 0, fillWidth, progressBar.height()));
+
+		painter.setStrokeStyle(palette.color(CPaletteColorRole.WindowText).toCss());
+		painter.strokeRect(progressBar.rect());
+
+		const percent = range === 0? 0 : Math.round(ratio * 100);
+
+		const textRole = progressBar.isEnabled()? CPaletteColorRole.Text
+			: CPaletteColorRole.DisabledText;
+		painter.setFillStyle(palette.color(textRole).toCss());
+		painter.setFont(progressBar.font());
+		painter.setTextAlign("center");
+		painter.setTextBaseline("middle");
+
+		painter.drawText(`${percent} %`, progressBar.width() / 2, progressBar.height() / 2);
 	}
 }

@@ -4,6 +4,7 @@ import type { CPushButton } from "../widgets/CPushButton.js";
 import type { CCheckBox } from "../widgets/CCheckBox.js";
 import type { CLineEdit } from "../widgets/CLineEdit.js";
 import type { CSlider } from "../widgets/CSlider.js";
+import type { CProgressBar } from "../widgets/CProgressBar.js";
 
 export abstract class CStyle {
 	
@@ -12,5 +13,6 @@ export abstract class CStyle {
     abstract drawCheckBox(painter: CPainter, checkBox: CCheckBox): void;
     abstract drawLineEdit(painter: CPainter, lineEdit: CLineEdit): void;
     abstract drawSlider(painter: CPainter, slider: CSlider): void;
+    abstract drawProgressBar(painter: CPainter, progressBar : CProgressBar): void;
 
 }

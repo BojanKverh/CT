@@ -10,7 +10,8 @@ import {
     CAlignment,
     CCheckBox,
     CLineEdit,
-    CSlider
+    CSlider,
+    CProgressBar
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -51,7 +52,7 @@ if (canvas === null)
 const app = new CApplication(canvas);
 
 const parent = new RedWidget();
-parent.setGeometry(100, 100, 400, 300);
+parent.setGeometry(0, 50, 400, 300);
 
 const but = new CPushButton(parent);
 but.setGeometry(50, 50, 100, 30);
@@ -80,9 +81,14 @@ le.setText("Edited text");
 const sl = new CSlider(parent)
 sl.setGeometry(10, 250, 200, 16);
 
+const pb = new CProgressBar(parent);
+pb.setGeometry(10, 280, 200, 16);
+pb.setValue(0);
+
 app.startUpdates();
 
 setInterval(() => {
-    if (parent.x() < 250)
+    if (parent.x() <= 250)
         parent.move(parent.x() + 1, parent.y() + 1);
+        pb.setValue(Math.round(parent.x() / 2.5));
 }, 10);

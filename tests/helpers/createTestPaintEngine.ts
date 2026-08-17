@@ -18,6 +18,7 @@ export class TestPaintEngine extends CPaintEngine {
 	setLineWidth = vi.fn();
     drawLine = vi.fn();
     textWidth = vi.fn();
+	drawText = vi.fn();
 
 	font = vi.fn(() => "");
 	setFont = vi.fn();
