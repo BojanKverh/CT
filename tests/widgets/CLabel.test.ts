@@ -208,4 +208,21 @@ describe("CLabel", () => {
 
 		expect(device.engine.drawPixmap).toHaveBeenCalledWith(image, 76, 26, 48, 48 );
 	});
+
+	test("scales larger pixmap down preserving aspect ratio", () => {
+		const label = new TestLabel();
+		label.resize(100, 100);
+
+		const image = {} as CanvasImageSource;
+		const pixmap = new CPixmap(image, 200, 100);
+
+		label.setPixmap(pixmap);
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		label.paint(painter);
+
+		expect(device.engine.drawPixmap).toHaveBeenCalledWith(pixmap, 3, 26.5, 94, 47);
+	});
 });
