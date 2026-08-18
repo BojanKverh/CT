@@ -1,17 +1,13 @@
-import { CSignal } from "../core/CSignal.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import type { CPainter } from "../painting/CPainter.js";
-import { CWidget } from "./CWidget.js";
 import { CPoint } from "../geometry/CPoint.js";
-import { CPaletteColorRole } from "../gui/CPalette.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
+import { CAbstractButton } from "./CAbstractButton.js";
+import { CWidget } from "./CWidget.js";
 
-export class CPushButton extends CWidget {
-	readonly clicked = new CSignal();
-
+export class CPushButton extends CAbstractButton {
 	#m_down = false;
-    #m_text = "";
-    #m_hovered = false;
+	#m_hovered = false;
 
 	#m_autoRepeatDelay = -1;
 	#m_autoRepeatInterval = -1;
@@ -19,23 +15,16 @@ export class CPushButton extends CWidget {
 	#m_repeatTimeout: ReturnType<typeof setTimeout> | null = null;
 	#m_repeatIntervalTimer: ReturnType<typeof setInterval> | null = null;
 
+	constructor(parent: CWidget | null = null) {
+		super(parent);
+		this.setCheckable(false);
+	}
+
 	isDown(): boolean {
 		return this.#m_down;
 	}
 
-    text(): string {
-		return this.#m_text;
-	}
-
-	setText(text: string): void {
-		if (this.#m_text === text)
-			return;
-
-		this.#m_text = text;
-		this.update();
-	}
-
-    isHovered(): boolean {
+	isHovered(): boolean {
 		return this.#m_hovered;
 	}
 
@@ -59,7 +48,7 @@ export class CPushButton extends CWidget {
 	}
 
 	isAutoRepeat(): boolean {
-		return (this.#m_autoRepeatDelay >= 0 && this.#m_autoRepeatInterval > 0);
+		return this.#m_autoRepeatDelay >= 0 && this.#m_autoRepeatInterval > 0;
 	}
 
 	protected override mousePressEvent(event: CMouseEvent): void {
@@ -69,10 +58,9 @@ export class CPushButton extends CWidget {
 		}
 
 		this.#m_down = true;
-
 		event.accept();
 		this.update();
-		
+
 		if (this.isAutoRepeat())
 			this.#startAutoRepeat();
 	}
@@ -85,10 +73,7 @@ export class CPushButton extends CWidget {
 
 		const wasDown = this.#m_down;
 		this.#m_down = false;
-
-		const inside = this.rect().contains(
-			new CPoint(event.x(), event.y())
-		);
+		const inside = this.rect().contains(new CPoint(event.x(), event.y()));
 
 		event.accept();
 		this.update();
@@ -101,8 +86,8 @@ export class CPushButton extends CWidget {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
-	    this.style().drawPushButton(painter, this);
-    }
+		this.style().drawPushButton(painter, this);
+	}
 
 	protected override mouseEnterEvent(event: CMouseEvent): void {
 		this.#m_hovered = true;
@@ -155,17 +140,20 @@ export class CPushButton extends CWidget {
 
 		this.#m_repeatTimeout = setTimeout(() => {
 			this.clicked.emit();
-
 			this.#m_repeatIntervalTimer = setInterval(() => {
 				this.clicked.emit();
 			}, this.#m_autoRepeatInterval);
 		}, this.#m_autoRepeatDelay);
 	}
 
-	#stopAutoRepeat() : void {
-		if (this.#m_repeatIntervalTimer !== null)
+	#stopAutoRepeat(): void {
+		if (this.#m_repeatIntervalTimer !== null) {
 			clearInterval(this.#m_repeatIntervalTimer);
-		if (this.#m_repeatTimeout !== null)
+			this.#m_repeatIntervalTimer = null;
+		}
+		if (this.#m_repeatTimeout !== null) {
 			clearTimeout(this.#m_repeatTimeout);
+			this.#m_repeatTimeout = null;
+		}
 	}
 }

@@ -109,14 +109,21 @@ export class CPainter {
 		this.#m_engine.fillText(text, x, y);
 	}
 
-    drawPixmap(
-        pixmap: CPixmap, 
-        x: number, 
-        y: number, 
+    drawPixmap(pixmap: CPixmap, x: number,  y: number, 
         w: number = pixmap !== null? pixmap.width() : 0,
         h: number = pixmap !== null? pixmap.height() : 0
     ): void {
         if (pixmap !== null)
             this.#m_engine.drawPixmap(pixmap, x, y, w, h);
+    }
+
+    drawEllipse(x: number, y: number, w: number, h: number)
+    {
+        this.#m_engine.drawEllipse(x, y, w, h);
+    }
+
+    fillEllipse(x: number, y: number, w: number, h: number)
+    {
+        this.#m_engine.fillEllipse(x, y, w, h);
     }
 }

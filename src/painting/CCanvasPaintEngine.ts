@@ -112,4 +112,19 @@ export class CCanvasPaintEngine extends CPaintEngine {
                 pixmap.image(), 0, 0, pixmap.width(), pixmap.height(), x, y, w, h);
         }
     }
+
+    drawEllipse(x: number, y: number, w: number, h: number): void
+    {
+        this.#m_context.beginPath();
+        this.#m_context.ellipse(x, y, w, h, 0, 0, 2 * Math.PI);
+        this.#m_context.stroke();
+    }
+
+    fillEllipse(x: number, y: number, w: number, h: number): void
+    {
+        this.#m_context.beginPath();
+        this.#m_context.ellipse(x, y, w, h, 0, 0, 2 * Math.PI);
+        this.#m_context.fill();
+    }
+
 }

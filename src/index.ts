@@ -26,3 +26,4 @@ export { CSpinBox } from "./widgets/CSpinBox.js";
 export { COrientation } from "./gui/COrientation.js";
 export { CScrollBar } from "./widgets/CScrollBar.js";
 export { CPixmap } from "./painting/CPixmap.js";
+export { CRadioButton } from "./widgets/CRadioButton.js";

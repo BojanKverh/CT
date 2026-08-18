@@ -14,6 +14,7 @@ import type { CGroupBox } from "../widgets/CGroupBox.js";
 import type { CScrollBar } from "../widgets/CScrollBar.js";
 import { COrientation } from "./COrientation.js";
 import { CPixmap } from "../painting/CPixmap.js";
+import { CRadioButton } from "../widgets/CRadioButton.js";
 
 export class CDefaultStyle extends CStyle {
 	override drawLabel(painter: CPainter, label: CLabel): void {
@@ -329,5 +330,35 @@ export class CDefaultStyle extends CStyle {
 
 		painter.setStrokeStyle(palette.color(CPaletteColorRole.WindowText).toCss());
 		painter.strokeRect(scrollBar.rect());
+	}
+
+	override drawRadioButton(painter: CPainter, radioButton: CRadioButton): void {
+		const palette = radioButton.palette();
+		const indicatorSize = 14;
+		const indicatorX = 2;
+		const indicatorY = (radioButton.height() - indicatorSize) / 2;
+		const centerX = indicatorX + indicatorSize / 2;
+		const centerY = indicatorY + indicatorSize / 2;
+
+		painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
+		painter.fillRect(radioButton.rect());
+
+		painter.setStrokeStyle(palette.color(CPaletteColorRole.WindowText).toCss());
+		painter.drawEllipse(centerX, centerY, indicatorSize / 2, indicatorSize / 2);
+
+		if (radioButton.isChecked()) {
+			painter.setFillStyle(palette.color(CPaletteColorRole.Highlight).toCss());
+			painter.fillEllipse(centerX, centerY, 4, 4);
+		}
+
+		painter.setFillStyle(radioButton.isEnabled()
+			? palette.color(CPaletteColorRole.Text).toCss()
+			: palette.color(CPaletteColorRole.DisabledText).toCss());
+
+		painter.setFont(radioButton.font());
+		painter.setTextAlign("left");
+		painter.setTextBaseline("middle");
+		painter.drawText(radioButton.text(), indicatorX + indicatorSize + 6,
+			radioButton.height() / 2);
 	}
 }
