@@ -1,6 +1,7 @@
 import type { CPaintDevice } from "./CPaintDevice.js";
 import type { CPaintEngine } from "./CPaintEngine.js";
 import { CRect } from "../geometry/CRect.js";
+import { CPixmap } from "../painting/CPixmap.js";
 
 export class CPainter {
     #m_device: CPaintDevice;
@@ -108,7 +109,14 @@ export class CPainter {
 		this.#m_engine.fillText(text, x, y);
 	}
 
-    drawPixmap(pixmap: CanvasImageSource, x: number, y: number): void {
-        this.#m_engine.drawPixmap(pixmap, x, y);
+    drawPixmap(
+        pixmap: CPixmap, 
+        x: number, 
+        y: number, 
+        w: number = pixmap !== null? pixmap.width() : 0,
+        h: number = pixmap !== null? pixmap.height() : 0
+    ): void {
+        if (pixmap !== null)
+            this.#m_engine.drawPixmap(pixmap, x, y, w, h);
     }
 }

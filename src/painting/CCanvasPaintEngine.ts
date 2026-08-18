@@ -1,4 +1,5 @@
 import { CPaintEngine } from "./CPaintEngine.js";
+import { CPixmap } from "./CPixmap.js"
 
 export class CCanvasPaintEngine extends CPaintEngine {
     #m_context: CanvasRenderingContext2D;
@@ -105,7 +106,10 @@ export class CCanvasPaintEngine extends CPaintEngine {
 		this.#m_context.fillText(text, x, y);
 	}
 
-    drawPixmap(pixmap: CanvasImageSource, x: number, y: number): void {
-        this.#m_context.drawImage(pixmap, x, y);
+    drawPixmap(pixmap: CPixmap, x: number, y: number, w: number, h: number): void {
+        if (pixmap !== null) {
+            this.#m_context.drawImage(
+                pixmap.image(), 0, 0, pixmap.width(), pixmap.height(), x, y, w, h);
+        }
     }
 }

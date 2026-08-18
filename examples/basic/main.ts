@@ -52,7 +52,7 @@ lab.setText("Jaz sem CLabel");
 lab.setAlignment(CAlignment.Right | CAlignment.Top);
 
 const lab2 = new CLabel(parent);
-lab2.setGeometry(250, 100, 120, 120);
+lab2.setGeometry(250, 100, 60, 60);
 lab2.setPixmap(await CPixmap.fromUrl("https://lh3.googleusercontent.com/a/ACg8ocLmgw58KyM8NCkoYwv98Z1rhTAHr5doS1DcOM8s60xFXhZIN3Qb=s96-c"));
 
 const child = new BlueWidget(parent);

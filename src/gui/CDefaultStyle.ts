@@ -53,12 +53,21 @@ export class CDefaultStyle extends CStyle {
 			painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
 			painter.fillRect(label.rect());
 			const pix = label.pixmap();
-			const w = pix !== null? pix.width() : 0;
-			const h = pix !== null? pix.height() : 0;
+			const margin = 3;
+			const maxWidth = Math.max(0, label.width() - 2 * margin);
+			const maxHeight = Math.max(0, label.height() - 2 * margin);
+			let w = pix !== null? pix.width() : 0;
+			let h = pix !== null? pix.height() : 0;
+
+			if (w > maxWidth || h > maxHeight) {
+				const scale = Math.min(maxWidth / w, maxHeight / h);
+				w *= scale;
+				h *= scale;
+			}
 			const x = (label.width() - w) / 2;
 			const y = (label.height() - h) / 2;
 			if (pix !== null)
-				painter.drawPixmap(pix.image(), x, y);
+				painter.drawPixmap(pix, x, y, w, h);
 		}
 	}
 

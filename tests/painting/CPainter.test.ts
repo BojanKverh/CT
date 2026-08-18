@@ -199,8 +199,8 @@ describe("CPainter", () => {
 	    const pixmap = new CPixmap(image, 48, 48);
 	    const device = new TestPaintDevice();
         const painter = new CPainter(device);
-        painter.drawPixmap(pixmap.image(), 10, 20);
+        painter.drawPixmap(pixmap, 10, 20);
 
-	    expect(device.engine.drawPixmap).toHaveBeenCalledWith(image, 10, 20);
+	    expect(device.engine.drawPixmap).toHaveBeenCalledWith(pixmap, 10, 20, 48, 48);
     });
 });

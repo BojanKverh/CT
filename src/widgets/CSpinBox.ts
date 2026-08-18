@@ -133,10 +133,10 @@ export class CSpinBox extends CWidget {
 	    const buttonWidth = 20;
 	    const halfHeight = this.height() / 2;
 	    this.#m_editor.setGeometry(0, 0, this.width() - buttonWidth, this.height());
-	    this.#m_upButton.setGeometry(this.width() - buttonWidth,0, 
-            buttonWidth, halfHeight);
+	    this.#m_upButton.setGeometry(this.width() - buttonWidth, 1, 
+            buttonWidth - 1, halfHeight - 1);
 	    this.#m_downButton.setGeometry(this.width() - buttonWidth, halfHeight, 
-            buttonWidth, this.height() - halfHeight);
+            buttonWidth - 1, this.height() - halfHeight - 1);
     }
 
 	#commitEditorValue(): void {

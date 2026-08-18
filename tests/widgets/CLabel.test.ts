@@ -206,6 +206,6 @@ describe("CLabel", () => {
 
 		label.paint(painter);
 
-		expect(device.engine.drawPixmap).toHaveBeenCalledWith(image, 76, 26 );
+		expect(device.engine.drawPixmap).toHaveBeenCalledWith(image, 76, 26, 48, 48 );
 	});
 });

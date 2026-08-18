@@ -1,3 +1,5 @@
+import { CPixmap } from "./CPixmap.js";
+
 export abstract class CPaintEngine {
     abstract save(): void;
     abstract restore(): void;
@@ -41,5 +43,5 @@ export abstract class CPaintEngine {
     abstract textBaseline() : CanvasTextBaseline;
     abstract drawLine(x1: number, y1: number, x2: number, y2: number): void;
     abstract fillText(text: string, x: number, y: number): void;
-    abstract drawPixmap(pixmap: CanvasImageSource, x: number, y: number): void;
+    abstract drawPixmap(pixmap: CPixmap, x: number, y: number, w: number, h: number): void;
 }
