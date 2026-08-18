@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, test, vi } from "vitest";
 
 import { CApplication } from "../../src/core/CApplication.js";
 import {
@@ -40,6 +40,9 @@ describe("CPushButton", () => {
         if (CApplication.exists())
 		    CApplication.instance().destroy();
 		new CApplication(createTestCanvas());
+	});
+	afterEach(() => {
+		vi.useRealTimers();
 	});
 
 	test("is not down by default", () => {
@@ -361,4 +364,102 @@ describe("CPushButton", () => {
 		    "rgba(90, 100, 110, 1)"
 	    );
     });
+
+	test("auto repeat is disabled by default", () => {
+		const button = new CPushButton();
+		expect(button.isAutoRepeat()).toBe(false);
+	});
+
+	test("enables auto repeat", () => {
+		const button = new CPushButton();
+		button.setAutoRepeat(400, 60);
+		expect(button.isAutoRepeat()).toBe(true);
+	});
+
+	test("resetAutoRepeat disables auto repeat", () => {
+		const button = new CPushButton();
+		button.setAutoRepeat(400, 60);
+		button.resetAutoRepeat();
+		expect(button.isAutoRepeat()).toBe(false);
+	});
+
+	test("auto repeat starts after delay", () => {
+		vi.useFakeTimers();
+		const button = new CPushButton();
+		button.resize(100, 30);
+		button.setAutoRepeat(400, 60);
+		const slot = vi.fn();
+		button.clicked.connect(slot);
+		button.event(new CMouseEvent(CEventType.MousePress, 50, 15, CMouseButton.LeftButton));
+
+		vi.advanceTimersByTime(399);
+		expect(slot).not.toHaveBeenCalled();
+		vi.advanceTimersByTime(1);
+		expect(slot).toHaveBeenCalledOnce();
+		vi.useRealTimers();
+	});
+
+	test("auto repeat repeats at configured interval", () => {
+		vi.useFakeTimers();
+
+		const button = new CPushButton();
+		button.resize(100, 30);
+		button.setAutoRepeat(400, 60);
+
+		const slot = vi.fn();
+		button.clicked.connect(slot);
+
+		button.event(new CMouseEvent(CEventType.MousePress, 50, 15, CMouseButton.LeftButton));
+
+		vi.advanceTimersByTime(400);
+		expect(slot).toHaveBeenCalledTimes(1);
+		vi.advanceTimersByTime(60);
+		expect(slot).toHaveBeenCalledTimes(2);
+		vi.advanceTimersByTime(120);
+		expect(slot).toHaveBeenCalledTimes(4);
+		vi.useRealTimers();
+	});
+
+	test("mouse release stops auto repeat", () => {
+		vi.useFakeTimers();
+
+		const button = new CPushButton();
+		button.resize(100, 30);
+		button.setAutoRepeat(400, 60);
+
+		const slot = vi.fn();
+		button.clicked.connect(slot);
+		button.event(new CMouseEvent(CEventType.MousePress, 50, 15, CMouseButton.LeftButton));
+		vi.advanceTimersByTime(400);
+		expect(slot).toHaveBeenCalledTimes(1);
+		button.event(new CMouseEvent(CEventType.MouseRelease, 50, 15, CMouseButton.LeftButton));
+
+		const callsAfterRelease = slot.mock.calls.length;
+		vi.advanceTimersByTime(500);
+		expect(slot).toHaveBeenCalledTimes(callsAfterRelease);
+		vi.useRealTimers();
+	});
+
+	test("resetAutoRepeat stops running timers", () => {
+		vi.useFakeTimers();
+
+		const button = new CPushButton();
+		button.resize(100, 30);
+		button.setAutoRepeat(400, 60);
+
+		const slot = vi.fn();
+		button.clicked.connect(slot);
+
+		button.event(new CMouseEvent(CEventType.MousePress, 50, 15, CMouseButton.LeftButton));
+
+		vi.advanceTimersByTime(400);
+		expect(slot).toHaveBeenCalledTimes(1);
+		button.resetAutoRepeat();
+		vi.advanceTimersByTime(500);
+
+		expect(slot).toHaveBeenCalledTimes(1);
+		expect(button.isAutoRepeat()).toBe(false);
+
+		vi.useRealTimers();
+	});
 });

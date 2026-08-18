@@ -38,6 +38,8 @@ export class CSpinBox extends CWidget {
 		this.#m_editor.setText(String(this.#m_value));
         this.#m_upButton.setText("▲");
         this.#m_downButton.setText("▼");
+		this.#m_upButton.setAutoRepeat(400, 60);
+		this.#m_downButton.setAutoRepeat(400, 60);
 	}
 
 	minimum(): number {

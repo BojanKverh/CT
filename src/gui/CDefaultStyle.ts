@@ -11,6 +11,8 @@ import { CFontMetrics } from "./CFontMetrics.js";
 import { CSlider } from "../widgets/CSlider.js";
 import type { CProgressBar } from "../widgets/CProgressBar.js";
 import type { CGroupBox } from "../widgets/CGroupBox.js";
+import type { CScrollBar } from "../widgets/CScrollBar.js";
+import { COrientation } from "./COrientation.js";
 
 export class CDefaultStyle extends CStyle {
 	override drawLabel(painter: CPainter, label: CLabel): void {
@@ -263,5 +265,54 @@ export class CDefaultStyle extends CStyle {
 		painter.setTextAlign("left");
 		painter.setTextBaseline("middle");
 		painter.drawText( title, titleStart + titlePadding, frameY);
+	}
+
+	override drawScrollBar(painter: CPainter, scrollBar: CScrollBar): void {
+		const palette = scrollBar.palette();
+		const buttonSize = scrollBar.buttonSize();
+		const trackStart = scrollBar.trackStart();
+		const trackLength = scrollBar.trackLength();
+		const thumbStart = scrollBar.thumbStart();
+		const thumbLength = scrollBar.thumbLength();
+
+		painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
+		painter.fillRect(scrollBar.rect());
+
+		painter.setFillStyle(palette.color(CPaletteColorRole.Button).toCss());
+
+		if (scrollBar.orientation() === COrientation.Horizontal) {
+			painter.fillRect(new CRect(0, 0, buttonSize, scrollBar.height()));
+			painter.fillRect(new CRect(scrollBar.width() - buttonSize, 0, buttonSize, scrollBar.height()));
+			painter.setFillStyle(palette.color(CPaletteColorRole.Window).toCss());
+			painter.fillRect(new CRect(trackStart, 0, trackLength, scrollBar.height()));
+			painter.setFillStyle(palette.color(CPaletteColorRole.Highlight).toCss());
+			painter.fillRect(new CRect(thumbStart, 0, thumbLength, scrollBar.height()));
+
+			painter.setFillStyle(scrollBar.isEnabled() ? palette.color(CPaletteColorRole.ButtonText).toCss()
+					: palette.color(CPaletteColorRole.DisabledText).toCss()
+			);
+
+			painter.setFont(scrollBar.font());
+			painter.setTextAlign("center");
+			painter.setTextBaseline("middle");
+		} else {
+			painter.fillRect(new CRect(0, 0, scrollBar.width(), buttonSize));
+			painter.fillRect(new CRect(0, scrollBar.height() - buttonSize, scrollBar.width(), buttonSize ));
+			painter.setFillStyle(palette.color(CPaletteColorRole.Window).toCss());
+			painter.fillRect(new CRect(0, trackStart, scrollBar.width(), trackLength));
+			painter.setFillStyle(palette.color(CPaletteColorRole.Highlight).toCss());
+			painter.fillRect(new CRect(0, thumbStart, scrollBar.width(), thumbLength));
+
+			painter.setFillStyle(scrollBar.isEnabled()? palette.color(CPaletteColorRole.ButtonText).toCss()
+				: palette.color(CPaletteColorRole.DisabledText).toCss()
+			);
+
+			painter.setFont(scrollBar.font());
+			painter.setTextAlign("center");
+			painter.setTextBaseline("middle");
+		}
+
+		painter.setStrokeStyle(palette.color(CPaletteColorRole.WindowText).toCss());
+		painter.strokeRect(scrollBar.rect());
 	}
 }

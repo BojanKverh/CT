@@ -1,19 +1,5 @@
-import {
-    CApplication,
-    CWidget,
-    CPainter,
-    CRect,
-    CMouseEvent,
-    CMouseButton,
-    CPushButton,
-    CLabel,
-    CAlignment,
-    CCheckBox,
-    CLineEdit,
-    CSlider,
-    CProgressBar,
-    CGroupBox,
-    CSpinBox
+import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
+    CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -77,11 +63,11 @@ cbox2.setText("Check me again");
 cbox2.setGeometry(10, 10, 150, 30);
 
 const le = new CLineEdit(parent);
-le.setGeometry(10, 150, 150, 20);
+le.setGeometry(10, 100, 150, 20);
 le.setText("Edited text");
 
 const gb = new CGroupBox("Sliders & bars", parent);
-gb.setGeometry(5, 185, 210, 110);
+gb.setGeometry(5, 135, 210, 160);
 
 const sl = new CSlider(gb)
 sl.setGeometry(5, 15, 200, 16);
@@ -96,6 +82,12 @@ sbox.setValue(30);
 sbox.valueChanged.connect(value => {
 	console.log("spin value:", value);
 });
+
+const sbar = new CScrollBar(COrientation.Horizontal, gb);
+sbar.setGeometry(5, 115, 200, 16);
+
+const vbar = new CScrollBar(COrientation.Vertical, parent);
+vbar.setGeometry(220, 50, 16, 200);
 
 app.startUpdates();
 
