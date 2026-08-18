@@ -1,6 +1,6 @@
 import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
-    CRadioButton
+    CRadioButton, CButtonGroup
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -67,8 +67,16 @@ const cbox2 = new CCheckBox(parent);
 cbox2.setText("Check me again");
 cbox2.setGeometry(10, 10, 150, 30);
 
-const rb = new CRadioButton("Radio buttons", parent);
-rb.setGeometry(360, 100, 120, 20);
+const rb1 = new CRadioButton("Radio buttons", parent);
+rb1.setGeometry(360, 100, 120, 20);
+const rb2 = new CRadioButton("Check boxes", parent);
+rb2.setGeometry(360, 120, 120, 20);
+const rb3 = new CRadioButton("PushButtons", parent);
+rb3.setGeometry(360, 140, 120, 20);
+const cb = new CButtonGroup(parent);
+cb.addButton(rb1);
+cb.addButton(rb2);
+cb.addButton(rb3);
 
 const le = new CLineEdit(parent);
 le.setGeometry(10, 100, 150, 20);

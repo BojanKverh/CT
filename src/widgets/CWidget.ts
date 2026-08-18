@@ -205,7 +205,8 @@ export class CWidget extends CObject {
 			this.paintEvent(painter);
 
 			for (const child of this.children())
-				child.render(painter);
+                if (child instanceof CWidget)
+				    child.render(painter);
 		} finally {
 			painter.restore();
 		}
@@ -222,6 +223,8 @@ export class CWidget extends CObject {
 
         for (let i = children.length - 1; i >= 0; --i) {
             const child = children[i]!;
+            if (!(child instanceof CWidget))
+                continue;
             const widget = child.widgetAt(
                 x - child.x(),
                 y - child.y()

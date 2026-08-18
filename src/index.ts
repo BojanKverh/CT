@@ -27,3 +27,4 @@ export { COrientation } from "./gui/COrientation.js";
 export { CScrollBar } from "./widgets/CScrollBar.js";
 export { CPixmap } from "./painting/CPixmap.js";
 export { CRadioButton } from "./widgets/CRadioButton.js";
+export { CButtonGroup } from "./widgets/CButtonGroup.js";
