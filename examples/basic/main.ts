@@ -1,6 +1,6 @@
 import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
-    CRadioButton, CButtonGroup
+    CRadioButton, CButtonGroup, CHBoxLayout
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -41,7 +41,7 @@ if (canvas === null)
 const app = new CApplication(canvas);
 
 const parent = new RedWidget();
-parent.setGeometry(0, 0, 500, 350);
+parent.setGeometry(0, 0, 640, 480);
 
 const but = new CPushButton(parent);
 but.setGeometry(50, 50, 100, 30);
@@ -104,6 +104,21 @@ sbar.setGeometry(5, 115, 200, 16);
 
 const vbar = new CScrollBar(COrientation.Vertical, parent);
 vbar.setGeometry(220, 50, 16, 200);
+
+const w = new CWidget(parent);
+w.setGeometry(0, 440, 640, 40);
+const pb1 = new CPushButton(w);
+pb1.setText("OK");
+const pb2 = new CPushButton(w);
+pb2.setText("Cancel");
+const layout = new CHBoxLayout();
+layout.setContentsMargins(3, 3, 3, 3);
+layout.setSpacing(6);
+layout.addStretch(2);
+layout.addWidget(pb1, 0);
+layout.addWidget(pb2, 0);
+w.setLayout(layout);
+
 
 app.startUpdates();
 

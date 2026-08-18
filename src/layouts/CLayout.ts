@@ -1,6 +1,7 @@
 import type { CWidget } from "../widgets/CWidget.js";
 import { CWidgetItem } from "./CWidgetItem.js";
 import type { CLayoutItem } from "./CLayoutItem.js";
+import { CBoxLayoutItem } from "./CBoxLayoutItem.js";
 
 export interface CMargins {
 	left: number;
@@ -37,6 +38,10 @@ export abstract class CLayout {
     addWidget(widget: CWidget): void {
 	    this.addItem(new CWidgetItem(widget));
     }
+
+	addStretch(stretch: number): void {
+		this.addItem(new CBoxLayoutItem(null, stretch));
+	}
 
 	count(): number {
 		return this.#m_items.length;

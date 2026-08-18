@@ -4,6 +4,8 @@ import { CPoint } from "../geometry/CPoint.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CAbstractButton } from "./CAbstractButton.js";
 import { CWidget } from "./CWidget.js";
+import { CFontMetrics } from "../gui/CFontMetrics.js";
+import { CSize } from "../geometry/CSize.js";
 
 export class CPushButton extends CAbstractButton {
 	#m_down = false;
@@ -49,6 +51,11 @@ export class CPushButton extends CAbstractButton {
 
 	isAutoRepeat(): boolean {
 		return this.#m_autoRepeatDelay >= 0 && this.#m_autoRepeatInterval > 0;
+	}
+
+	override sizeHint(): CSize {
+		const fm = new CFontMetrics(this.font());
+		return new CSize(Math.max(80, fm.textWidth(this.text()) + 24), 30);
 	}
 
 	protected override mousePressEvent(event: CMouseEvent): void {

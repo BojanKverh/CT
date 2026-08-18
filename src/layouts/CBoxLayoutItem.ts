@@ -4,7 +4,7 @@ import { CWidgetItem } from "./CWidgetItem.js";
 export class CBoxLayoutItem extends CWidgetItem {
 	#m_stretch: number;
 
-	constructor(widget: CWidget, stretch = 0) {
+	constructor(widget: CWidget | null, stretch = 0) {
 		super(widget);
 
 		this.#m_stretch = Math.max(0, stretch);
