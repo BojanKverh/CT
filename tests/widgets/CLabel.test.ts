@@ -7,6 +7,7 @@ import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { TestPaintDevice } from "../helpers/createTestPaintEngine.js";
 import { CColor } from "../../src/gui/CColor.js";
 import { CPalette, CPaletteColorRole} from "../../src/gui/CPalette.js";
+import { CPixmap } from "../../src/painting/CPixmap.js";
 
 class TestLabel extends CLabel {
 	paint(painter: CPainter): void {
@@ -170,4 +171,41 @@ describe("CLabel", () => {
 		    "rgba(200, 210, 220, 1)"
 	    );
     });
+
+	test("stores pixmap", () => {
+		const label = new CLabel();
+		const pixmap = new CPixmap({} as CanvasImageSource, 48, 48);
+		label.setPixmap(pixmap);
+		expect(label.pixmap()).toBe(pixmap);
+	});
+
+	test("pixmap is null by default", () => {
+		const label = new CLabel();
+		expect(label.pixmap()).toBeNull();
+	});
+
+	test("pixmap can be cleared", () => {
+		const label = new CLabel();
+		const pixmap = new CPixmap({} as CanvasImageSource, 48, 48);
+		label.setPixmap(pixmap);
+		label.setPixmap(null);
+		expect(label.pixmap()).toBeNull();
+	});
+
+	test("draws pixmap centered", () => {
+		const label = new TestLabel();
+		label.resize(200, 100);
+
+		const image = {} as CanvasImageSource;
+		const pixmap = new CPixmap(image, 48, 48);
+
+		label.setPixmap(pixmap);
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		label.paint(painter);
+
+		expect(device.engine.drawPixmap).toHaveBeenCalledWith(image, 76, 26 );
+	});
 });

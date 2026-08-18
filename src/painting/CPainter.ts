@@ -107,4 +107,8 @@ export class CPainter {
 	drawText(text: string, x: number, y: number): void {
 		this.#m_engine.fillText(text, x, y);
 	}
+
+    drawPixmap(pixmap: CanvasImageSource, x: number, y: number): void {
+        this.#m_engine.drawPixmap(pixmap, x, y);
+    }
 }

@@ -32,6 +32,7 @@ export class TestPaintEngine extends CPaintEngine {
 	setTextBaseline = vi.fn();
 
 	fillText = vi.fn();
+	drawPixmap = vi.fn();
 }
 
 export class TestPaintDevice extends CPaintDevice {

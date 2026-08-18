@@ -25,3 +25,4 @@ export { CGroupBox } from "./widgets/CGroupBox.js";
 export { CSpinBox } from "./widgets/CSpinBox.js";
 export { COrientation } from "./gui/COrientation.js";
 export { CScrollBar } from "./widgets/CScrollBar.js";
+export { CPixmap } from "./painting/CPixmap.js";

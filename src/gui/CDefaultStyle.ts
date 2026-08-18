@@ -13,47 +13,53 @@ import type { CProgressBar } from "../widgets/CProgressBar.js";
 import type { CGroupBox } from "../widgets/CGroupBox.js";
 import type { CScrollBar } from "../widgets/CScrollBar.js";
 import { COrientation } from "./COrientation.js";
+import { CPixmap } from "../painting/CPixmap.js";
 
 export class CDefaultStyle extends CStyle {
 	override drawLabel(painter: CPainter, label: CLabel): void {
 		const palette = label.palette();
+		if (label.pixmap() === null) {
+			painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
+			painter.fillRect(label.rect());
+			painter.setFillStyle(palette.color(CPaletteColorRole.Text).toCss());
+			painter.setFont(label.font());
 
-		painter.setFillStyle(
-			palette.color(CPaletteColorRole.Base).toCss()
-		);
-		painter.fillRect(label.rect());
+			let x: number;
+			let y: number;
+			if (label.alignment() & CAlignment.Right) {
+				painter.setTextAlign("right");
+				x = label.width();
+			} else if (label.alignment() & CAlignment.HCenter) {
+				painter.setTextAlign("center");
+				x = label.width() / 2;
+			} else {
+				painter.setTextAlign("left");
+				x = 0;
+			}
 
-		painter.setFillStyle(
-			palette.color(CPaletteColorRole.Text).toCss()
-		);
-		painter.setFont(label.font());
+			if (label.alignment() & CAlignment.Bottom) {
+				painter.setTextBaseline("bottom");
+				y = label.height();
+			} else if (label.alignment() & CAlignment.VCenter) {
+				painter.setTextBaseline("middle");
+				y = label.height() / 2;
+			} else {
+				painter.setTextBaseline("top");
+				y = 0;
+			}
 
-		let x: number;
-		let y: number;
-
-		if (label.alignment() & CAlignment.Right) {
-			painter.setTextAlign("right");
-			x = label.width();
-		} else if (label.alignment() & CAlignment.HCenter) {
-			painter.setTextAlign("center");
-			x = label.width() / 2;
+			painter.drawText(label.text(), x, y);
 		} else {
-			painter.setTextAlign("left");
-			x = 0;
+			painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
+			painter.fillRect(label.rect());
+			const pix = label.pixmap();
+			const w = pix !== null? pix.width() : 0;
+			const h = pix !== null? pix.height() : 0;
+			const x = (label.width() - w) / 2;
+			const y = (label.height() - h) / 2;
+			if (pix !== null)
+				painter.drawPixmap(pix.image(), x, y);
 		}
-
-		if (label.alignment() & CAlignment.Bottom) {
-			painter.setTextBaseline("bottom");
-			y = label.height();
-		} else if (label.alignment() & CAlignment.VCenter) {
-			painter.setTextBaseline("middle");
-			y = label.height() / 2;
-		} else {
-			painter.setTextBaseline("top");
-			y = 0;
-		}
-
-		painter.drawText(label.text(), x, y);
 	}
 
 	override drawPushButton(painter: CPainter, button: CPushButton): void {

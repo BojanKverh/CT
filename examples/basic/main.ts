@@ -1,5 +1,5 @@
 import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
-    CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation
+    CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -40,7 +40,7 @@ if (canvas === null)
 const app = new CApplication(canvas);
 
 const parent = new RedWidget();
-parent.setGeometry(0, 50, 400, 300);
+parent.setGeometry(0, 0, 500, 350);
 
 const but = new CPushButton(parent);
 but.setGeometry(50, 50, 100, 30);
@@ -51,8 +51,12 @@ lab.setGeometry(250, 50, 130, 40);
 lab.setText("Jaz sem CLabel");
 lab.setAlignment(CAlignment.Right | CAlignment.Top);
 
+const lab2 = new CLabel(parent);
+lab2.setGeometry(250, 100, 120, 120);
+lab2.setPixmap(await CPixmap.fromUrl("https://lh3.googleusercontent.com/a/ACg8ocLmgw58KyM8NCkoYwv98Z1rhTAHr5doS1DcOM8s60xFXhZIN3Qb=s96-c"));
+
 const child = new BlueWidget(parent);
-child.setGeometry(250, 200, 150, 100);
+child.setGeometry(250, 250, 150, 100);
 
 const cbox = new CCheckBox(child);
 cbox.setText("Check me?");

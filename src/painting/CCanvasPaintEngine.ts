@@ -104,4 +104,8 @@ export class CCanvasPaintEngine extends CPaintEngine {
 	fillText(text: string, x: number, y: number): void {
 		this.#m_context.fillText(text, x, y);
 	}
+
+    drawPixmap(pixmap: CanvasImageSource, x: number, y: number): void {
+        this.#m_context.drawImage(pixmap, x, y);
+    }
 }

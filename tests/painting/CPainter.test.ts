@@ -4,6 +4,7 @@ import { CPaintDevice } from "../../src/painting/CPaintDevice";
 import { CPaintEngine } from "../../src/painting/CPaintEngine";
 import { CRect } from "../../src/geometry/CRect";
 import { TestPaintEngine } from "../helpers/createTestPaintEngine";
+import { CPixmap } from "../../src/painting/CPixmap";
 
 class TestPaintDevice extends CPaintDevice {
     readonly engine = new TestPaintEngine();
@@ -191,5 +192,15 @@ describe("CPainter", () => {
 	    const painter = new CPainter(device);
     	painter.drawLine(10, 20, 30, 40);
     	expect(device.engine.drawLine).toHaveBeenCalledWith(10, 20, 30, 40);
+    });
+
+    test("drawPixmap delegates to paint engine", () => {
+	    const image = {} as CanvasImageSource;
+	    const pixmap = new CPixmap(image, 48, 48);
+	    const device = new TestPaintDevice();
+        const painter = new CPainter(device);
+        painter.drawPixmap(pixmap.image(), 10, 20);
+
+	    expect(device.engine.drawPixmap).toHaveBeenCalledWith(image, 10, 20);
     });
 });
