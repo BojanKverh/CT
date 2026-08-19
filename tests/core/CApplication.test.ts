@@ -8,6 +8,7 @@ import { CKeyEvent } from "../../src/events/CKeyEvent";
 import { createTestCanvas } from "../helpers/createTestCanvas";
 import { createTestWindow } from "../helpers/createTestWindow.js";
 import { CHBoxLayout } from "../../src/layouts/CHBoxLayout";
+import { CPopupWidget } from "../../src/widgets/CPopupWidget";
 
 class RenderTrackingWidget extends CWidget {
     renderCalls = 0;
@@ -958,5 +959,74 @@ describe("CApplication", () => {
 		expect(widget2.width()).toBe(300);
 
 		expect(app.canvas().width).toBe(600);
+	});
+
+	test("registers popup widgets", () => {
+		const app = new CApplication(createTestCanvas());
+		const popup = new CPopupWidget();
+
+		app.registerPopupWidget(popup);
+
+		expect(app.popupWidgets()).toEqual([popup]);
+	});
+
+	test("does not duplicate registered popup widget", () => {
+		const app = new CApplication(createTestCanvas());
+		const popup = new CPopupWidget();
+
+		app.registerPopupWidget(popup);
+		app.registerPopupWidget(popup);
+
+		expect(app.popupWidgets()).toEqual([popup]);
+	});
+
+	test("registering popup again moves it to top", () => {
+		const app = new CApplication(createTestCanvas());
+		const popup1 = new CPopupWidget();
+		const popup2 = new CPopupWidget();
+
+		app.registerPopupWidget(popup1);
+		app.registerPopupWidget(popup2);
+		app.registerPopupWidget(popup1);
+
+		expect(app.popupWidgets()).toEqual([
+			popup2,
+			popup1
+		]);
+	});
+
+	test("unregisters popup widget", () => {
+		const app = new CApplication(createTestCanvas());
+		const popup1 = new CPopupWidget();
+		const popup2 = new CPopupWidget();
+
+		app.registerPopupWidget(popup1);
+		app.registerPopupWidget(popup2);
+
+		app.unregisterPopupWidget(popup1);
+
+		expect(app.popupWidgets()).toEqual([popup2]);
+	});
+
+	test("unregistering unknown popup does nothing", () => {
+		const app = new CApplication(createTestCanvas());
+		const popup = new CPopupWidget();
+
+		expect(() => app.unregisterPopupWidget(popup)).not.toThrow();
+		expect(app.popupWidgets()).toEqual([]);
+	});
+
+	test("returns a copy of popup widget list", () => {
+		const app = new CApplication(createTestCanvas());
+		const popup = new CPopupWidget();
+
+		app.registerPopupWidget(popup);
+
+		const widgets = app.popupWidgets();
+		const mutableWidgets = widgets as CPopupWidget[];
+
+		mutableWidgets.length = 0;
+
+		expect(app.popupWidgets()).toEqual([popup]);
 	});
 });

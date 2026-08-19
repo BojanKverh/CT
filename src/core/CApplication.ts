@@ -13,7 +13,7 @@ import { CWheelEvent } from "../events/CWheelEvent.js";
 import { CPalette } from "../gui/CPalette.js";
 import { CDefaultStyle } from "../gui/CDefaultStyle.js";
 import type { CStyle } from "../gui/CStyle.js";
-
+import { CPopupWidget } from "../widgets/CPopupWidget.js";
 
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
@@ -28,6 +28,8 @@ export class CApplication extends CObject {
 	#m_font = "14px sans-serif";
     #m_palette = new CPalette();
     #m_style: CStyle = new CDefaultStyle();
+    #m_popupWidgets: CPopupWidget[] = [];
+
 
 	#onPointerDown = (event: PointerEvent): void => {
 		this.#dispatchMouseEvent(CEventType.MousePress, event);
@@ -92,10 +94,12 @@ export class CApplication extends CObject {
 		}
 
 		this.#m_topLevelWidgets.clear();
+		this.#m_popupWidgets.length = 0;
 		this.#m_mouseGrabber = null;
 		this.#m_hoverWidget = null;
         this.#m_focusWidget = null;
 		CApplication.#m_instance = null;
+
 	}
 
 	static instance(): CApplication {
@@ -243,6 +247,30 @@ export class CApplication extends CObject {
 		return this.#m_hoverWidget;
 	}
 
+	popupWidgets(): readonly CPopupWidget[] {
+		return [...this.#m_popupWidgets];
+	}
+
+	registerPopupWidget(widget: CPopupWidget): void {
+		const index = this.#m_popupWidgets.indexOf(widget);
+
+		if (index !== -1)
+			this.#m_popupWidgets.splice(index, 1);
+
+		this.#m_popupWidgets.push(widget);
+		this.requestRepaint();
+	}
+
+	unregisterPopupWidget(widget: CPopupWidget): void {
+		const index = this.#m_popupWidgets.indexOf(widget);
+
+		if (index === -1)
+			return;
+
+		this.#m_popupWidgets.splice(index, 1);
+		this.requestRepaint();
+	}
+
 	#mouseButton(button: number): CMouseButton {
 		switch (button) {
 		case 0:
@@ -270,15 +298,18 @@ export class CApplication extends CObject {
 	}
 
 	#widgetAt(x: number, y: number): CWidget | null {
+		for (let i = this.#m_popupWidgets.length - 1; i >= 0; --i) {
+			const popup = this.#m_popupWidgets[i]!;
+			const target = popup.widgetAt(x - popup.x(), y - popup.y());
+			if (target !== null)
+				return target;
+		}
+
 		const widgets = [...this.#m_topLevelWidgets];
 
 		for (let i = widgets.length - 1; i >= 0; --i) {
 			const widget = widgets[i]!;
-
-			const target = widget.widgetAt(
-				x - widget.x(), y - widget.y()
-			);
-
+			const target = widget.widgetAt(x - widget.x(), y - widget.y());
 			if (target !== null)
 				return target;
 		}
@@ -296,6 +327,9 @@ export class CApplication extends CObject {
 
 		for (const widget of this.#m_topLevelWidgets)
 			widget.render(painter);
+
+		for (const popup of this.#m_popupWidgets)
+			popup.render(painter);
 	}
 
 	#dispatchMouseEvent(type: CEventType, pointerEvent: PointerEvent): void {
