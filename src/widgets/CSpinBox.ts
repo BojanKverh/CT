@@ -3,6 +3,7 @@ import { CWidget } from "./CWidget.js";
 import { CLineEdit } from "../widgets/CLineEdit.js";
 import { CPushButton } from "./CPushButton.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
+import { CWheelEvent } from "../../src/events/CWheelEvent.js";
 
 export class CSpinBox extends CWidget {
     #m_editor = new CLineEdit(this);
@@ -127,6 +128,18 @@ export class CSpinBox extends CWidget {
 			return;
 		}
 		super.keyPressEvent(event);
+	}
+
+	protected override wheelEvent(event: CWheelEvent): void {
+		if (event.deltaY() < 0)
+			this.stepUp();
+		else if (event.deltaY() > 0)
+			this.stepDown();
+		else {
+			event.ignore();
+			return;
+		}
+		event.accept();
 	}
 
 	#updateChildGeometry(): void {

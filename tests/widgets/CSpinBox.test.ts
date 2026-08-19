@@ -8,6 +8,7 @@ import { CEventType } from "../../src/events/CEvent.js";
 import { CKeyEvent } from "../../src/events/CKeyEvent.js";
 import { CFocusEvent } from "../../src/events/CFocusEvent.js";
 import { CLineEdit } from "../../src/index.js";
+import { CWheelEvent } from "../../src/events/CWheelEvent.js";
 
 describe("CProgressBar", () => {
 	beforeEach(() => {
@@ -422,5 +423,21 @@ describe("CProgressBar", () => {
 		edit.insert("a");
 
 		expect(edit.text()).toBe("12");
+	});
+
+	test("changes value with mouse wheel", () => {
+		const spinBox = new CSpinBox();
+
+		spinBox.setRange(0, 100);
+		spinBox.setValue(50);
+		spinBox.setSingleStep(5);
+
+		spinBox.event(new CWheelEvent(0, -120));
+
+		expect(spinBox.value()).toBe(55);
+
+		spinBox.event(new CWheelEvent(0, 120));
+
+		expect(spinBox.value()).toBe(50);
 	});
 });
