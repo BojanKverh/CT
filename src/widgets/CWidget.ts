@@ -7,6 +7,7 @@ import { CEvent, CEventType } from "../events/CEvent.js";
 import { CMouseEvent } from "../events/CMouseEvent.js";
 import { CFocusEvent } from "../events/CFocusEvent.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
+import { CWheelEvent } from "../events/CWheelEvent.js";
 import { CLayout } from "../layouts/CLayout.js";
 import { CSize } from "../geometry/CSize.js";
 import { CPalette } from "../gui/CPalette.js";
@@ -321,6 +322,10 @@ export class CWidget extends CObject {
 		case CEventType.KeyRelease:
 			this.keyReleaseEvent(event as CKeyEvent);
 			return event.isAccepted();
+
+        case CEventType.Wheel:
+	        this.wheelEvent(event as CWheelEvent);
+	        return event.isAccepted();
 		}
 
 		return false;
@@ -377,5 +382,9 @@ export class CWidget extends CObject {
 
     protected keyReleaseEvent(event: CKeyEvent): void {
         event.ignore();
+    }
+
+    protected wheelEvent(event: CWheelEvent): void {
+	    event.ignore();
     }
 }

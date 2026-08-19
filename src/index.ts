@@ -29,3 +29,4 @@ export { CPixmap } from "./painting/CPixmap.js";
 export { CRadioButton } from "./widgets/CRadioButton.js";
 export { CButtonGroup } from "./widgets/CButtonGroup.js";
 export { CHBoxLayout } from "./layouts/CHBoxLayout.js";
+export { CScrollArea } from "./widgets/CScrollArea.js";

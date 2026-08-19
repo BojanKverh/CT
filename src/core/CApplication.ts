@@ -9,6 +9,7 @@ import { CEventType } from "../events/CEvent.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CFocusEvent } from "../events/CFocusEvent.js";
+import { CWheelEvent } from "../events/CWheelEvent.js";
 import { CPalette } from "../gui/CPalette.js";
 import { CDefaultStyle } from "../gui/CDefaultStyle.js";
 import type { CStyle } from "../gui/CStyle.js";
@@ -41,6 +42,10 @@ export class CApplication extends CObject {
 		this.#dispatchMouseEvent(CEventType.MouseMove, event);
 	};
 
+	#onWheel = (event: WheelEvent) : void => {
+		this.#dispatchWheelEvent(CEventType.Wheel, event);
+	}
+
     #onKeyDown = (event: KeyboardEvent): void => {
 		this.#dispatchKeyEvent(CEventType.KeyPress, event);
 	};
@@ -61,6 +66,8 @@ export class CApplication extends CObject {
 		canvas.addEventListener("pointerdown", this.#onPointerDown);
 		canvas.addEventListener("pointerup", this.#onPointerUp);
 		canvas.addEventListener("pointermove", this.#onPointerMove);
+		canvas.addEventListener("wheel", this.#onWheel);
+
         if (typeof window !== "undefined") {
 	        window.addEventListener("keydown", this.#onKeyDown);
 	        window.addEventListener("keyup", this.#onKeyUp);
@@ -77,6 +84,8 @@ export class CApplication extends CObject {
 		canvas.removeEventListener("pointerdown", this.#onPointerDown);
 		canvas.removeEventListener("pointerup", this.#onPointerUp);
 		canvas.removeEventListener("pointermove", this.#onPointerMove);
+		canvas.removeEventListener("wheel", this.#onWheel);
+
 		if (typeof window !== "undefined") {
 			window.removeEventListener("keydown", this.#onKeyDown);
 			window.removeEventListener("keyup", this.#onKeyUp);
@@ -289,8 +298,7 @@ export class CApplication extends CObject {
 			widget.render(painter);
 	}
 
-	#dispatchMouseEvent(type: CEventType,
-		pointerEvent: PointerEvent): void {
+	#dispatchMouseEvent(type: CEventType, pointerEvent: PointerEvent): void {
 		const position = this.#canvasPosition(pointerEvent);
 
 		let target = this.#m_mouseGrabber;
@@ -313,6 +321,23 @@ export class CApplication extends CObject {
 
 		if (type === CEventType.MouseRelease)
 			this.releaseMouse();
+	}
+
+	#dispatchWheelEvent(type: CEventType, wheelEvent: WheelEvent) : void {
+		let target = this.#m_hoverWidget;
+		if (target === null)
+			return;
+
+		while (target !== null) {
+			if (this.#sendWheelEvent(target, type, wheelEvent)) {
+				if (type === CEventType.Wheel) {
+					target.setFocus();
+					this.grabMouse(target);
+                }
+				break;
+			}
+			target = target.parent();
+		}
 	}
 
 	#dispatchKeyEvent(type: CEventType, keyboardEvent: KeyboardEvent): void {
@@ -349,8 +374,7 @@ export class CApplication extends CObject {
 			);
 	}
 
-	#sendMouseEvent(widget: CWidget, type: CEventType,
-		pointerEvent: PointerEvent): boolean {
+	#sendMouseEvent(widget: CWidget, type: CEventType, pointerEvent: PointerEvent): boolean {
 		const position = this.#canvasPosition(pointerEvent);
 		const localPosition = widget.mapFromCanvas(
 			position.x(), position.y()
@@ -361,6 +385,11 @@ export class CApplication extends CObject {
 			this.#mouseButton(pointerEvent.button)
 		);
 
+		return widget.event(event);
+	}
+
+	#sendWheelEvent(widget: CWidget, type: CEventType, wheelEvent: WheelEvent): boolean {
+		const event = new CWheelEvent(wheelEvent.deltaX, wheelEvent.deltaY);
 		return widget.event(event);
 	}
 }

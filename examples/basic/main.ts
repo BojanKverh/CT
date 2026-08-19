@@ -1,6 +1,6 @@
 import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
-    CRadioButton, CButtonGroup, CHBoxLayout
+    CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -33,6 +33,39 @@ class BlueWidget extends CWidget {
 	}
 }
 
+class ScrollContentWidget extends CWidget {
+	protected override paintEvent(painter: CPainter): void {
+		painter.setFillStyle("#ffffff");
+		painter.fillRect(new CRect(0, 0, this.width(), this.height()));
+
+		painter.setStrokeStyle("#d0d0d0");
+		painter.setFillStyle("#202020");
+		painter.setFont("14px sans-serif");
+
+		for (let x = 0; x <= this.width(); x += 100) {
+			painter.drawLine(x, 0, x, this.height());
+			painter.drawText(`${x}`, x + 4, 18);
+		}
+
+		for (let y = 0; y <= this.height(); y += 100) {
+			painter.drawLine(0, y, this.width(), y);
+			painter.drawText(`${y}`, 4, y + 18);
+		}
+
+		painter.setFillStyle("#f0f0f0");
+		painter.fillRect(new CRect(120, 100, 220, 120));
+
+		painter.setFillStyle("#202020");
+		painter.drawText("Top-left area", 140, 140);
+
+		painter.setFillStyle("#f0f0f0");
+		painter.fillRect(new CRect(700, 500, 220, 120));
+
+		painter.setFillStyle("#202020");
+		painter.drawText("Bottom-right area", 720, 540);
+	}
+}
+
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas");
 
 if (canvas === null)
@@ -41,7 +74,7 @@ if (canvas === null)
 const app = new CApplication(canvas);
 
 const parent = new RedWidget();
-parent.setGeometry(0, 0, 640, 480);
+parent.setGeometry(200, 0, 640, 480);
 
 const but = new CPushButton(parent);
 but.setGeometry(50, 50, 100, 30);
@@ -119,6 +152,13 @@ layout.addWidget(pb1, 0);
 layout.addWidget(pb2, 0);
 w.setLayout(layout);
 
+const scrollArea = new CScrollArea();
+scrollArea.setGeometry(20, 530, 420, 260);
+
+const scrollContent = new ScrollContentWidget();
+scrollContent.resize(1000, 700);
+
+scrollArea.setWidget(scrollContent);
 
 app.startUpdates();
 
