@@ -267,16 +267,16 @@ export class CDefaultStyle extends CStyle {
 		painter.drawLine(0, frameY, titleStart, frameY);
 
 		// Top-right part of frame.
-		painter.drawLine(titleEnd, frameY, groupBox.width(), frameY);
+		painter.drawLine(titleEnd + 0.5, frameY + 0.5, groupBox.width() - 0.5, frameY - 0.5);
 
 		// Left side.
-		painter.drawLine(0, frameY, 0, groupBox.height());
+		painter.drawLine(0.5, frameY + 0.5, 0.5, groupBox.height() - 0.5);
 
 		// Right side.
-		painter.drawLine(groupBox.width(), frameY, groupBox.width(), groupBox.height());
+		painter.drawLine(groupBox.width() - 0.5, frameY + 0.5, groupBox.width() - 0.5, groupBox.height() -0.5);
 
 		// Bottom.
-		painter.drawLine(0, groupBox.height(), groupBox.width(), groupBox.height());
+		painter.drawLine(0.5, groupBox.height() - 0.5, groupBox.width() - 0.5, groupBox.height() - 0.5);
 
 		painter.setTextAlign("left");
 		painter.setTextBaseline("middle");

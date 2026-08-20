@@ -193,6 +193,18 @@ scrollArea.setWidget(scrollContent);
 	menu.addAction(saveAction);
 	menu.addSeparator();
 	menu.addAction(checkAction);
+	
+	const optionsMenu = new CMenu();
+
+	const generalAction = new CAction("General");
+	const displayAction = new CAction("Display");
+	const advancedAction = new CAction("Advanced");
+
+	optionsMenu.addAction(generalAction);
+	optionsMenu.addAction(displayAction);
+	optionsMenu.addAction(advancedAction);
+
+	menu.addMenu("Options", optionsMenu);
 	menu.addSeparator();
 	menu.addAction(exitAction);
 
