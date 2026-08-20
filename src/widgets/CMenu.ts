@@ -4,6 +4,7 @@ import type { CPainter } from "../painting/CPainter.js";
 import type { CMouseEvent } from "../events/CMouseEvent.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
+import { CSignal } from "../core/CSignal.js";
 
 type CMenuItem =
 	| { type: "action"; action: CAction }
@@ -20,6 +21,7 @@ export class CMenu extends CPopupWidget {
 	#m_hoveredIndex = -1;
     #m_openSubMenu: CMenu | null = null;
     #m_parentMenu: CMenu | null = null;
+    readonly closed = new CSignal<[]>();
 
 	addAction(action: CAction): CAction {
 		this.#m_items.push({ type: "action", action });
@@ -70,8 +72,12 @@ export class CMenu extends CPopupWidget {
 	}
 
 	override close(): void {
+        if (!this.isOpen())
+            return;
+
 		this.#closeSubMenu();
 		super.close();
+        this.closed.emit();
 	}
 
     currentIndex(): number {
@@ -206,9 +212,9 @@ export class CMenu extends CPopupWidget {
                     painter.drawRect(x, y + CMenu.ItemHeight / 4, size, size);
                 }
                 if (item.action.isChecked()) {
-                    painter.setBrush(this.palette().color(CPaletteColorRole.Text).toCss());
-                    painter.setPen(this.palette().color(CPaletteColorRole.Text).toCss());
-                    painter.drawRect(x + 4, y + CMenu.ItemHeight / 4 + 4, size - 8, size - 8)
+                    painter.setBrush(this.palette().color(CPaletteColorRole.Highlight).toCss());
+                    painter.setPen(this.palette().color(CPaletteColorRole.Highlight).toCss());
+                    painter.drawRect(x + 3, y + CMenu.ItemHeight / 4 + 3, size - 6, size - 6);
 				}
 
                 painter.setPen(clr.toCss());

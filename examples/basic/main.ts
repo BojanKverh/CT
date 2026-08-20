@@ -1,6 +1,6 @@
 import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
-    CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction
+    CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -87,7 +87,8 @@ lab.setAlignment(CAlignment.Right | CAlignment.Top);
 
 const lab2 = new CLabel(parent);
 lab2.setGeometry(250, 100, 60, 60);
-lab2.setPixmap(await CPixmap.fromUrl("https://lh3.googleusercontent.com/a/ACg8ocLmgw58KyM8NCkoYwv98Z1rhTAHr5doS1DcOM8s60xFXhZIN3Qb=s96-c"));
+//lab2.setPixmap(await CPixmap.fromUrl("https://lh3.googleusercontent.com/a/ACg8ocLmgw58KyM8NCkoYwv98Z1rhTAHr5doS1DcOM8s60xFXhZIN3Qb=s96-c"));
+lab2.setText("Bojan");
 
 const child = new BlueWidget(parent);
 child.setGeometry(250, 250, 150, 100);
@@ -160,58 +161,57 @@ scrollContent.resize(1000, 700);
 
 scrollArea.setWidget(scrollContent);
 
-	const menuButton = new CPushButton();
-	menuButton.setText("Menu");
-	menuButton.setGeometry(20, 20, 90, 30);
+const menuBar = new CMenuBar();
+menuBar.setGeometry(0, 0, canvas.width, 28);
 
-	const menu = new CMenu();
+const fileMenu = new CMenu();
+fileMenu.addAction(new CAction("New"));
+fileMenu.addAction(new CAction("Open"));
+fileMenu.addAction(new CAction("Save"));
+fileMenu.addSeparator();
+fileMenu.addAction(new CAction("Exit"));
 
-	const openAction = new CAction("Open");
-	const saveAction = new CAction("Save");
-	const checkAction = new CAction("Show grid");
-	const exitAction = new CAction("Exit");
+const editMenu = new CMenu();
+editMenu.addAction(new CAction("Undo"));
+editMenu.addAction(new CAction("Redo"));
+editMenu.addSeparator();
+editMenu.addAction(new CAction("Cut"));
+editMenu.addAction(new CAction("Copy"));
+editMenu.addAction(new CAction("Paste"));
 
-	checkAction.setCheckable(true);
+const viewMenu = new CMenu();
 
-	openAction.triggered.connect(() => {
-		console.log("Open triggered");
-	});
+const showGridAction = new CAction("Show grid");
+showGridAction.setCheckable(true);
+showGridAction.setChecked(true);
 
-	saveAction.triggered.connect(() => {
-		console.log("Save triggered");
-	});
+viewMenu.addAction(showGridAction);
+viewMenu.addSeparator();
 
-	checkAction.toggled.connect(checked => {
-		console.log("Show grid:", checked);
-	});
+const panelsMenu = new CMenu();
+panelsMenu.addAction(new CAction("Properties"));
+panelsMenu.addAction(new CAction("Inspector"));
+panelsMenu.addAction(new CAction("Console"));
 
-	exitAction.triggered.connect(() => {
-		console.log("Exit triggered");
-	});
+viewMenu.addMenu("Panels", panelsMenu);
 
-	menu.addAction(openAction);
-	menu.addAction(saveAction);
-	menu.addSeparator();
-	menu.addAction(checkAction);
-	
-	const optionsMenu = new CMenu();
+const toolsMenu = new CMenu();
+toolsMenu.addAction(new CAction("Options"));
+toolsMenu.addAction(new CAction("Customize"));
 
-	const generalAction = new CAction("General");
-	const displayAction = new CAction("Display");
-	const advancedAction = new CAction("Advanced");
+const helpMenu = new CMenu();
+helpMenu.addAction(new CAction("Documentation"));
+helpMenu.addSeparator();
+helpMenu.addAction(new CAction("About Clara Toolkit"));
 
-	optionsMenu.addAction(generalAction);
-	optionsMenu.addAction(displayAction);
-	optionsMenu.addAction(advancedAction);
+menuBar.addMenu("File", fileMenu);
+menuBar.addMenu("Edit", editMenu);
+menuBar.addMenu("View", viewMenu);
 
-	menu.addMenu("Options", optionsMenu);
-	menu.addSeparator();
-	menu.addAction(exitAction);
+menuBar.addSeparator();
 
-	menuButton.clicked.connect(() => {
-		menu.move(menuButton.x(), menuButton.y() + menuButton.height());
-		menu.open();
-	});
+menuBar.addMenu("Tools", toolsMenu);
+menuBar.addMenu("Help", helpMenu);
 
 app.startUpdates();
 
