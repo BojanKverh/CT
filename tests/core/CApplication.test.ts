@@ -7,8 +7,8 @@ import { CFocusEvent } from "../../src/events/CFocusEvent";
 import { CKeyEvent } from "../../src/events/CKeyEvent";
 import { createTestCanvas } from "../helpers/createTestCanvas";
 import { createTestWindow } from "../helpers/createTestWindow.js";
-import { CHBoxLayout } from "../../src/layouts/CHBoxLayout";
-import { CPopupWidget } from "../../src/widgets/CPopupWidget";
+import { CHBoxLayout } from "../../src/layouts/CHBoxLayout.js";
+import { CPopupWidget } from "../../src/widgets/CPopupWidget.js";
 
 class RenderTrackingWidget extends CWidget {
     renderCalls = 0;
@@ -31,7 +31,6 @@ function installAnimationFrameMock(): void {
         callback: FrameRequestCallback
     ): number => {
         const id = nextAnimationFrameId++;
-
         animationFrameCallbacks.set(id, callback);
 
         return id;
@@ -1028,5 +1027,149 @@ describe("CApplication", () => {
 		mutableWidgets.length = 0;
 
 		expect(app.popupWidgets()).toEqual([popup]);
+	});
+
+	test("popup receives mouse press before underlying widget", () => {
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+
+		const calls: string[] = [];
+
+		class TestWidget extends CWidget {
+			constructor(private readonly name: string) {
+				super();
+			}
+
+			protected override mousePressEvent(event: CMouseEvent): void {
+				calls.push(this.name);
+				event.accept();
+			}
+		}
+
+		const widget = new TestWidget("widget");
+		widget.setGeometry(100, 100, 200, 100);
+
+		const popup = new CPopupWidget();
+		popup.setGeometry(120, 120, 100, 60);
+		popup.open();
+
+		class PopupContent extends CWidget {
+			protected override mousePressEvent(event: CMouseEvent): void {
+				calls.push("popup");
+				event.accept();
+			}
+		}
+
+		const popupContent = new PopupContent(popup);
+		popupContent.setGeometry(0, 0, 100, 60);
+
+		canvas.dispatchEvent({
+			type: "pointerdown",
+			clientX: 150,
+			clientY: 140,
+			button: 0
+		} as PointerEvent);
+
+		expect(calls).toEqual(["popup"]);
+		expect(app.popupWidgets()).toEqual([popup]);
+	});
+
+	test("click outside top popup closes it", () => {
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+
+		const popup = new CPopupWidget();
+		popup.setGeometry(100, 100, 120, 80);
+		popup.open();
+
+		canvas.dispatchEvent({
+			type: "pointerdown",
+			clientX: 300,
+			clientY: 300,
+			button: 0
+		} as PointerEvent);
+
+		expect(popup.isOpen()).toBe(false);
+		expect(app.popupWidgets()).toEqual([]);
+	});
+
+	test("click inside popup does not close it", () => {
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+
+		const popup = new CPopupWidget();
+		popup.setGeometry(100, 100, 120, 80);
+		popup.open();
+
+		canvas.dispatchEvent({
+			type: "pointerdown",
+			clientX: 130,
+			clientY: 120,
+			button: 0
+		} as PointerEvent);
+
+		expect(popup.isOpen()).toBe(true);
+		expect(app.popupWidgets()).toEqual([popup]);
+	});
+
+	test("escape closes topmost popup", () => {
+		const app = new CApplication(createTestCanvas());
+		const popup1 = new CPopupWidget();
+		const popup2 = new CPopupWidget();
+
+		popup1.open();
+		popup2.open();
+
+		window.dispatchEvent({
+			type: "keydown",
+			key: "Escape",
+			ctrlKey: false,
+			shiftKey: false,
+			altKey: false,
+			metaKey: false,
+			preventDefault: () => {}
+		} as unknown as KeyboardEvent);
+
+		expect(popup1.isOpen()).toBe(true);
+		expect(popup2.isOpen()).toBe(false);
+		expect(app.popupWidgets()).toEqual([popup1]);
+	});
+
+	test("escape closes popups one at a time", () => {
+		const app = new CApplication(createTestCanvas());
+		const popup1 = new CPopupWidget();
+		const popup2 = new CPopupWidget();
+		const popup3 = new CPopupWidget();
+
+		popup1.open();
+		popup2.open();
+		popup3.open();
+
+		const pressEscape = (): void => {
+			window.dispatchEvent({
+				type: "keydown",
+				key: "Escape",
+				ctrlKey: false,
+				shiftKey: false,
+				altKey: false,
+				metaKey: false,
+				preventDefault: () => {}
+			} as unknown as KeyboardEvent);
+		};
+
+		pressEscape();
+
+		expect(app.popupWidgets()).toEqual([popup1, popup2]);
+		expect(popup3.isOpen()).toBe(false);
+
+		pressEscape();
+
+		expect(app.popupWidgets()).toEqual([popup1]);
+		expect(popup2.isOpen()).toBe(false);
+
+		pressEscape();
+
+		expect(app.popupWidgets()).toEqual([]);
+		expect(popup1.isOpen()).toBe(false);
 	});
 });

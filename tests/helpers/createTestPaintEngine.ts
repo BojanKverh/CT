@@ -21,6 +21,7 @@ export class TestPaintEngine extends CPaintEngine {
 	drawText = vi.fn();
 	drawEllipse = vi.fn();
 	fillEllipse = vi.fn();
+	drawRect = vi.fn();
 
 	font = vi.fn(() => "");
 	setFont = vi.fn();

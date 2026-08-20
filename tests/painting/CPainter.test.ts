@@ -174,7 +174,7 @@ describe("CPainter", () => {
 
 		painter.drawText("Hello", 10, 20);
 
-		expect(device.engine.fillText).toHaveBeenCalledWith(
+		expect(device.engine.drawText).toHaveBeenCalledWith(
 			"Hello", 10, 20
 		);
 	});

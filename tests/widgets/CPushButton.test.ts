@@ -180,7 +180,7 @@ describe("CPushButton", () => {
 		expect(device.engine.setTextBaseline).toHaveBeenCalledWith(
 			"middle"
 		);
-		expect(device.engine.fillText).toHaveBeenCalledWith(
+		expect(device.engine.drawText).toHaveBeenCalledWith(
 			"Click me", 60, 25
 		);
 	});

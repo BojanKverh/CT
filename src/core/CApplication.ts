@@ -335,6 +335,18 @@ export class CApplication extends CObject {
 	#dispatchMouseEvent(type: CEventType, pointerEvent: PointerEvent): void {
 		const position = this.#canvasPosition(pointerEvent);
 
+		if (type === CEventType.MousePress && this.#m_popupWidgets.length > 0) {
+			const popup = this.#m_popupWidgets[this.#m_popupWidgets.length - 1]!;
+			const popupTarget = popup.widgetAt(
+				position.x() - popup.x(), position.y() - popup.y()
+			);
+
+			if (popupTarget === null) {
+				popup.close();
+				return;
+			}
+		}
+
 		let target = this.#m_mouseGrabber;
 
 		if (target === null)
@@ -375,6 +387,15 @@ export class CApplication extends CObject {
 	}
 
 	#dispatchKeyEvent(type: CEventType, keyboardEvent: KeyboardEvent): void {
+		if (type === CEventType.KeyPress && keyboardEvent.key === "Escape" &&
+			this.#m_popupWidgets.length > 0) {
+			const popup = this.#m_popupWidgets[this.#m_popupWidgets.length - 1]!;
+
+			popup.close();
+			keyboardEvent.preventDefault();
+			return;
+		}
+		
 		let target = this.#m_focusWidget;
 		if (target === null)
 			return;

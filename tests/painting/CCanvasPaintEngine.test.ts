@@ -12,7 +12,7 @@ function createContext(): CanvasRenderingContext2D {
         beginPath: vi.fn(),
         rect: vi.fn(),
         clip: vi.fn(),
-    	fillText: vi.fn(),
+    	strokeText: vi.fn(),
 
         fillStyle: "",
         strokeStyle: "",
@@ -167,9 +167,9 @@ describe("CCanvasPaintEngine", () => {
 		const context = createContext();
 		const engine = new CCanvasPaintEngine(context);
 
-		engine.fillText("Hello", 10, 20);
+		engine.drawText("Hello", 10, 20);
 
-		expect(context.fillText).toHaveBeenCalledWith("Hello", 10, 20);
+		expect(context.strokeText).toHaveBeenCalledWith("Hello", 10, 20);
 	});
 
     test("measures text width", () => {

@@ -102,8 +102,11 @@ export class CCanvasPaintEngine extends CPaintEngine {
 	    this.#m_context.stroke();
     }
     
-	fillText(text: string, x: number, y: number): void {
+	drawText(text: string, x: number, y: number): void {
+		const old = this.#m_context.fillStyle;
+        this.#m_context.fillStyle = this.#m_context.strokeStyle;
 		this.#m_context.fillText(text, x, y);
+        this.#m_context.fillStyle = old;
 	}
 
     drawPixmap(pixmap: CPixmap, x: number, y: number, w: number, h: number): void {
@@ -125,6 +128,15 @@ export class CCanvasPaintEngine extends CPaintEngine {
         this.#m_context.beginPath();
         this.#m_context.ellipse(x, y, w, h, 0, 0, 2 * Math.PI);
         this.#m_context.fill();
+    }
+
+    drawRect(x: number, y: number, w: number, h: number): void {
+        this.#m_context.beginPath();
+        this.#m_context.rect(x, y, w, h);
+        this.#m_context.fill();
+        this.#m_context.beginPath();
+        this.#m_context.rect(x, y, w, h);
+        this.#m_context.stroke();
     }
 
 }

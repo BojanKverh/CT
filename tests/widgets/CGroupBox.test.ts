@@ -81,7 +81,7 @@ describe("CGroupBox", () => {
 
 		groupBox.paint(painter);
 
-		expect(device.engine.fillText).toHaveBeenCalledWith(
+		expect(device.engine.drawText).toHaveBeenCalledWith(
 			"Settings",
 			expect.any(Number),
 			8

@@ -106,7 +106,7 @@ export class CPainter {
     }
 
 	drawText(text: string, x: number, y: number): void {
-		this.#m_engine.fillText(text, x, y);
+		this.#m_engine.drawText(text, x, y);
 	}
 
     drawPixmap(pixmap: CPixmap, x: number,  y: number, 
@@ -117,13 +117,23 @@ export class CPainter {
             this.#m_engine.drawPixmap(pixmap, x, y, w, h);
     }
 
-    drawEllipse(x: number, y: number, w: number, h: number)
-    {
+    drawEllipse(x: number, y: number, w: number, h: number): void {
         this.#m_engine.drawEllipse(x, y, w, h);
     }
 
-    fillEllipse(x: number, y: number, w: number, h: number)
-    {
+    fillEllipse(x: number, y: number, w: number, h: number): void {
         this.#m_engine.fillEllipse(x, y, w, h);
+    }
+
+    setBrush(brush: string): void {
+        this.#m_engine.setFillStyle(brush);
+    }
+
+    setPen(pen: string): void {
+        this.#m_engine.setStrokeStyle(pen);
+    }
+
+    drawRect(x: number, y: number, w: number, h: number): void {
+        this.#m_engine.drawRect(x, y, w, h);
     }
 }

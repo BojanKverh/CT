@@ -238,7 +238,7 @@ describe("CProgressBar", () => {
 
 		progressBar.paint(painter);
 
-		expect(device.engine.fillText).toHaveBeenCalledWith("53 %", 100, 10);
+		expect(device.engine.drawText).toHaveBeenCalledWith("53 %", 100, 10);
 	});
 
 	test("calculates percentage from custom range", () => {
@@ -254,7 +254,7 @@ describe("CProgressBar", () => {
 
 		expect(device.engine.fillRect).toHaveBeenCalledWith(0, 0, 100, 20);
 
-		expect(device.engine.fillText).toHaveBeenCalledWith("50 %", 100, 10);
+		expect(device.engine.drawText).toHaveBeenCalledWith("50 %", 100, 10);
 	});
 
 	test("uses widget palette when painting", () => {

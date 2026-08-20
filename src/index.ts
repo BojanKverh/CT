@@ -30,3 +30,5 @@ export { CRadioButton } from "./widgets/CRadioButton.js";
 export { CButtonGroup } from "./widgets/CButtonGroup.js";
 export { CHBoxLayout } from "./layouts/CHBoxLayout.js";
 export { CScrollArea } from "./widgets/CScrollArea.js";
+export { CMenu } from "./widgets/CMenu.js";
+export { CAction } from "./core/CAction.js"

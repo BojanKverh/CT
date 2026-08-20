@@ -42,8 +42,9 @@ export abstract class CPaintEngine {
     abstract setTextBaseline(baseline: CanvasTextBaseline): void;
     abstract textBaseline() : CanvasTextBaseline;
     abstract drawLine(x1: number, y1: number, x2: number, y2: number): void;
-    abstract fillText(text: string, x: number, y: number): void;
+    abstract drawText(text: string, x: number, y: number): void;
     abstract drawPixmap(pixmap: CPixmap, x: number, y: number, w: number, h: number): void;
     abstract drawEllipse(x: number, y: number, w: number, h: number): void;
     abstract fillEllipse(x: number, y: number, w: number, h: number): void;
+    abstract drawRect(x: number, y: number, w: number, h: number): void;
 }

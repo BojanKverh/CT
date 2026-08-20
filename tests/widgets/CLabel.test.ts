@@ -55,7 +55,7 @@ describe("CLabel", () => {
 		expect(device.engine.setTextBaseline).toHaveBeenCalledWith(
 			"middle"
 		);
-		expect(device.engine.fillText).toHaveBeenCalledWith(
+		expect(device.engine.drawText).toHaveBeenCalledWith(
 			"Hello", 0, 20
 		);
 	});
@@ -85,7 +85,7 @@ describe("CLabel", () => {
 
 		expect(device.engine.setTextAlign).toHaveBeenCalledWith("left");
 		expect(device.engine.setTextBaseline).toHaveBeenCalledWith("top");
-		expect(device.engine.fillText).toHaveBeenCalledWith(
+		expect(device.engine.drawText).toHaveBeenCalledWith(
 			"Hello", 0, 0
 		);
 	});
@@ -107,7 +107,7 @@ describe("CLabel", () => {
 		expect(device.engine.setTextBaseline).toHaveBeenCalledWith(
 			"middle"
 		);
-		expect(device.engine.fillText).toHaveBeenCalledWith(
+		expect(device.engine.drawText).toHaveBeenCalledWith(
 			"Hello", 100, 20
 		);
 	});
@@ -129,7 +129,7 @@ describe("CLabel", () => {
 		expect(device.engine.setTextBaseline).toHaveBeenCalledWith(
 			"bottom"
 		);
-		expect(device.engine.fillText).toHaveBeenCalledWith(
+		expect(device.engine.drawText).toHaveBeenCalledWith(
 			"Hello", 200, 40
 		);
 	});

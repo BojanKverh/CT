@@ -1,6 +1,6 @@
 import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
-    CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea
+    CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -159,6 +159,47 @@ const scrollContent = new ScrollContentWidget();
 scrollContent.resize(1000, 700);
 
 scrollArea.setWidget(scrollContent);
+
+	const menuButton = new CPushButton();
+	menuButton.setText("Menu");
+	menuButton.setGeometry(20, 20, 90, 30);
+
+	const menu = new CMenu();
+
+	const openAction = new CAction("Open");
+	const saveAction = new CAction("Save");
+	const checkAction = new CAction("Show grid");
+	const exitAction = new CAction("Exit");
+
+	checkAction.setCheckable(true);
+
+	openAction.triggered.connect(() => {
+		console.log("Open triggered");
+	});
+
+	saveAction.triggered.connect(() => {
+		console.log("Save triggered");
+	});
+
+	checkAction.toggled.connect(checked => {
+		console.log("Show grid:", checked);
+	});
+
+	exitAction.triggered.connect(() => {
+		console.log("Exit triggered");
+	});
+
+	menu.addAction(openAction);
+	menu.addAction(saveAction);
+	menu.addSeparator();
+	menu.addAction(checkAction);
+	menu.addSeparator();
+	menu.addAction(exitAction);
+
+	menuButton.clicked.connect(() => {
+		menu.move(menuButton.x(), menuButton.y() + menuButton.height());
+		menu.open();
+	});
 
 app.startUpdates();
 
