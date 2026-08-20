@@ -336,15 +336,14 @@ export class CApplication extends CObject {
 		const position = this.#canvasPosition(pointerEvent);
 
 		if (type === CEventType.MousePress && this.#m_popupWidgets.length > 0) {
-			const popup = this.#m_popupWidgets[this.#m_popupWidgets.length - 1]!;
-			const popupTarget = popup.widgetAt(
-				position.x() - popup.x(), position.y() - popup.y()
-			);
+			const popupIndex = this.#popupAt(position.x(), position.y());
 
-			if (popupTarget === null) {
-				popup.close();
+			if (popupIndex === -1) {
+				this.#closeAllPopups();
 				return;
 			}
+
+			this.#closePopupsAbove(popupIndex);
 		}
 
 		let target = this.#m_mouseGrabber;
@@ -357,7 +356,7 @@ export class CApplication extends CObject {
 				if (type === CEventType.MousePress) {
 					target.setFocus();
 					this.grabMouse(target);
-                }
+				}
 
 				break;
 			}
@@ -446,5 +445,31 @@ export class CApplication extends CObject {
 	#sendWheelEvent(widget: CWidget, type: CEventType, wheelEvent: WheelEvent): boolean {
 		const event = new CWheelEvent(wheelEvent.deltaX, wheelEvent.deltaY);
 		return widget.event(event);
+	}
+
+	#popupAt(x: number, y: number): number {
+		for (let i = this.#m_popupWidgets.length - 1; i >= 0; --i) {
+			const popup = this.#m_popupWidgets[i]!;
+			const target = popup.widgetAt(x - popup.x(), y - popup.y());
+
+			if (target !== null)
+				return i;
+		}
+
+		return -1;
+	}
+
+	#closePopupsAbove(index: number): void {
+		const popups = [...this.#m_popupWidgets];
+
+		for (let i = popups.length - 1; i > index; --i)
+			popups[i]!.close();
+	}
+
+	#closeAllPopups(): void {
+		const popups = [...this.#m_popupWidgets];
+
+		for (let i = popups.length - 1; i >= 0; --i)
+			popups[i]!.close();
 	}
 }

@@ -6,22 +6,33 @@ import { CPaletteColorRole } from "../gui/CPalette.js";
 
 type CMenuItem =
 	| { type: "action"; action: CAction }
+	| { type: "menu"; text: string; menu: CMenu }
 	| { type: "separator" };
 
 export class CMenu extends CPopupWidget {
 	static readonly ItemHeight = 28;
 	static readonly SeparatorHeight = 9;
 	static readonly HorizontalPadding = 12;
-    static readonly CheckColumnWidth = 20;
+	static readonly CheckColumnWidth = 20;
 
 	#m_items: CMenuItem[] = [];
 	#m_hoveredIndex = -1;
+    #m_openSubMenu: CMenu | null = null;
+    #m_parentMenu: CMenu | null = null;
 
 	addAction(action: CAction): CAction {
 		this.#m_items.push({ type: "action", action });
 		this.#updateGeometry();
 
 		return action;
+	}
+
+	addMenu(text: string, menu: CMenu): CMenu {
+        menu.#m_parentMenu = this;
+		this.#m_items.push({ type: "menu", text, menu });
+		this.#updateGeometry();
+
+		return menu;
 	}
 
 	addSeparator(): void {
@@ -48,14 +59,28 @@ export class CMenu extends CPopupWidget {
 		return item.action;
 	}
 
+	menuAt(index: number): CMenu | null {
+		const item = this.#m_items[index];
+
+		if (item === undefined || item.type !== "menu")
+			return null;
+
+		return item.menu;
+	}
+
+	override close(): void {
+		this.#closeSubMenu();
+		super.close();
+	}
+
 	protected override mouseMoveEvent(event: CMouseEvent): void {
 		const index = this.#itemIndexAt(event.y());
 
 		if (index !== this.#m_hoveredIndex) {
 			this.#m_hoveredIndex = index;
+			this.#updateSubMenu();
 			this.update();
 		}
-
 		event.accept();
 	}
 
@@ -78,13 +103,23 @@ export class CMenu extends CPopupWidget {
 
 		const item = this.#m_items[index]!;
 
-		if (item.type !== "action" || !item.action.isEnabled()) {
+		if (item.type === "separator") {
+			event.accept();
+			return;
+		}
+
+		if (item.type === "menu") {
+			event.accept();
+			return;
+		}
+
+		if (!item.action.isEnabled()) {
 			event.accept();
 			return;
 		}
 
 		item.action.trigger();
-		this.close();
+		this.#closeMenuChain();
 
 		event.accept();
 	}
@@ -93,8 +128,8 @@ export class CMenu extends CPopupWidget {
 		painter.setBrush(this.palette().color(CPaletteColorRole.Base).toCss());
 		painter.setPen(this.palette().color(CPaletteColorRole.Text).toCss());
 		painter.drawRect(0, 0, this.width(), this.height());
-        painter.setFont(this.font());
-
+		painter.setFont(this.font());
+        
 		let y = 0;
 
 		for (let i = 0; i < this.#m_items.length; ++i) {
@@ -112,24 +147,39 @@ export class CMenu extends CPopupWidget {
 				continue;
 			}
 
-            if (item.action.isChecked()) {
-				painter.setPen("#202020");
-				painter.drawText("✓", CMenu.HorizontalPadding, y + 3 * CMenu.ItemHeight / 4);
-			}
+			const enabled = item.type === "action"
+				? item.action.isEnabled() : true;
+            const clr = (i === this.#m_hoveredIndex && enabled)? 
+                this.palette().color(CPaletteColorRole.HighlightedText) : 
+                    this.palette().color(CPaletteColorRole.Text);
+                 
 
-			if (i === this.#m_hoveredIndex && item.action.isEnabled()) {
+            if (i === this.#m_hoveredIndex && enabled) {
 				painter.setBrush(this.palette().color(CPaletteColorRole.Highlight).toCss());
 				painter.drawRect(1, y, this.width() - 2, CMenu.ItemHeight);
-                painter.setPen(this.palette().color(CPaletteColorRole.HighlightedText).toCss());
-			}   else {
-                painter.setPen(this.palette().color(CPaletteColorRole.Text).toCss());
             }
 
-			painter.drawText(
-				item.action.text(),
-				CMenu.HorizontalPadding + CMenu.CheckColumnWidth,
-				y + 3 * CMenu.ItemHeight / 4
-			);
+			if (item.type === "action") {
+                const size = CMenu.ItemHeight / 2;
+                const x = CMenu.HorizontalPadding;
+                if (item.action.isCheckable()) {
+                    painter.setBrush(this.palette().color(CPaletteColorRole.Base).toCss());
+                    painter.setPen(this.palette().color(CPaletteColorRole.Text).toCss());
+                    painter.drawRect(x, y + CMenu.ItemHeight / 4, size, size);
+                }
+                if (item.action.isChecked()) {
+                    painter.setBrush(this.palette().color(CPaletteColorRole.Text).toCss());
+                    painter.setPen(this.palette().color(CPaletteColorRole.Text).toCss());
+                    painter.drawRect(x + 4, y + CMenu.ItemHeight / 4 + 4, size - 8, size - 8)
+				}
+
+                painter.setPen(clr.toCss());
+				painter.drawText(item.action.text(), CMenu.HorizontalPadding + CMenu.CheckColumnWidth, y + 3 * CMenu.ItemHeight / 4);
+			} else {
+                painter.setPen(clr.toCss());
+				painter.drawText(item.text, CMenu.HorizontalPadding + CMenu.CheckColumnWidth, y + 3 * CMenu.ItemHeight / 4);
+				painter.drawText("▶", this.width() - CMenu.HorizontalPadding - 8, y + 3 * CMenu.ItemHeight / 4);
+			}
 
 			y += CMenu.ItemHeight;
 		}
@@ -157,13 +207,82 @@ export class CMenu extends CPopupWidget {
 		let width = 120;
 
 		for (const item of this.#m_items) {
-			height += item.type === "separator"
-				? CMenu.SeparatorHeight : CMenu.ItemHeight;
+			if (item.type === "separator") {
+				height += CMenu.SeparatorHeight;
+				continue;
+			}
 
-			if (item.type === "action")
-				width = Math.max(width, item.action.text().length * 8 + 24);
+			height += CMenu.ItemHeight;
+
+			const text = item.type === "action"
+				? item.action.text() : item.text;
+
+			const submenuWidth = item.type === "menu" ? 20 : 0;
+
+			width = Math.max(
+				width,
+				text.length * 8 +
+				CMenu.CheckColumnWidth +
+				CMenu.HorizontalPadding * 2 +
+				submenuWidth
+			);
 		}
 
 		this.resize(width, height);
+	}
+
+    #itemY(index: number): number {
+		let y = 0;
+
+		for (let i = 0; i < index; ++i) {
+			y += this.#m_items[i]!.type === "separator"
+				? CMenu.SeparatorHeight
+				: CMenu.ItemHeight;
+		}
+
+		return y;
+	}
+
+	#updateSubMenu(): void {
+		const item = this.#m_items[this.#m_hoveredIndex];
+
+		if (item === undefined || item.type !== "menu") {
+			this.#closeSubMenu();
+			return;
+		}
+
+		if (this.#m_openSubMenu === item.menu)
+			return;
+
+		this.#closeSubMenu();
+
+		const itemY = this.#itemY(this.#m_hoveredIndex);
+
+		item.menu.move(
+			this.x() + this.width(),
+			this.y() + itemY
+		);
+
+		item.menu.open();
+		this.#m_openSubMenu = item.menu;
+	}
+
+	#closeSubMenu(): void {
+		if (this.#m_openSubMenu === null)
+			return;
+
+		this.#m_openSubMenu.close();
+		this.#m_openSubMenu = null;
+	}
+
+	#closeMenuChain(): void {
+		let menu: CMenu | null = this;
+
+		while (menu !== null) {
+            const parent: CMenu | null = menu.#m_parentMenu;
+
+			menu.close();
+			menu = parent;
+		}
 	}
 }

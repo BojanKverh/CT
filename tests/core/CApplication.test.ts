@@ -1172,4 +1172,58 @@ describe("CApplication", () => {
 		expect(app.popupWidgets()).toEqual([]);
 		expect(popup1.isOpen()).toBe(false);
 	});
+
+	test("click outside popup chain closes all popups", () => {
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+
+		const popup1 = new CPopupWidget();
+		const popup2 = new CPopupWidget();
+		const popup3 = new CPopupWidget();
+
+		popup1.setGeometry(10, 10, 100, 100);
+		popup2.setGeometry(110, 10, 100, 100);
+		popup3.setGeometry(210, 10, 100, 100);
+
+		popup1.open();
+		popup2.open();
+		popup3.open();
+
+		canvas.dispatchEvent({
+			type: "pointerdown",
+			clientX: 500,
+			clientY: 500,
+			button: 0
+		} as PointerEvent);
+
+		expect(app.popupWidgets()).toEqual([]);
+		expect(popup1.isOpen()).toBe(false);
+		expect(popup2.isOpen()).toBe(false);
+		expect(popup3.isOpen()).toBe(false);
+	});
+
+	test("click in parent popup closes popups above it", () => {
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+
+		const popup1 = new CPopupWidget();
+		const popup2 = new CPopupWidget();
+
+		popup1.setGeometry(10, 10, 100, 100);
+		popup2.setGeometry(110, 10, 100, 100);
+
+		popup1.open();
+		popup2.open();
+
+		canvas.dispatchEvent({
+			type: "pointerdown",
+			clientX: 50,
+			clientY: 50,
+			button: 0
+		} as PointerEvent);
+
+		expect(popup1.isOpen()).toBe(true);
+		expect(popup2.isOpen()).toBe(false);
+		expect(app.popupWidgets()).toEqual([popup1]);
+	});
 });
