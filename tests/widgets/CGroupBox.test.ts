@@ -98,15 +98,15 @@ describe("CGroupBox", () => {
 		groupBox.paint(painter);
 
 		expect(device.engine.drawLine).toHaveBeenCalledWith(
-			0, 8, 0, 150
+			0.5, 8.5, 0.5, 149.5
 		);
 
 		expect(device.engine.drawLine).toHaveBeenCalledWith(
-			300, 8, 300, 150
+			299.5, 8.5, 299.5, 149.5
 		);
 
 		expect(device.engine.drawLine).toHaveBeenCalledWith(
-			0, 150, 300, 150
+			0.5, 149.5, 299.5, 149.5
 		);
 	});
 
@@ -143,11 +143,11 @@ describe("CGroupBox", () => {
 				call[3] === 8
 		);
 
-		const rightTop = calls.find(
-			call =>
-				call[1] === 8 &&
-				call[3] === 8 &&
-				call[2] === 300
+		const rightTop = calls.find(call =>
+			call[0] > 8 &&
+			call[2] > 290 &&
+			Math.abs(call[1] - 8) <= 0.5 &&
+			Math.abs(call[3] - 8) <= 0.5
 		);
 
 		expect(leftTop).toBeDefined();

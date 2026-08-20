@@ -130,13 +130,9 @@ export class CCanvasPaintEngine extends CPaintEngine {
         this.#m_context.fill();
     }
 
-    drawRect(x: number, y: number, w: number, h: number): void {
-        this.#m_context.beginPath();
-        this.#m_context.rect(x, y, w, h);
-        this.#m_context.fill();
-        this.#m_context.beginPath();
-        this.#m_context.rect(x, y, w, h);
-        this.#m_context.stroke();
+    drawRect(x: number, y: number, w: number, h: number): void 
+    {
+        this.#m_context.fillRect(x, y, w, h);
+        this.#m_context.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
     }
-
 }
