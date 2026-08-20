@@ -19,9 +19,10 @@ export class CPopupWidget extends CWidget {
 			return;
 
 		this.#m_open = true;
-		this.show();
 
 		CApplication.instance().registerPopupWidget(this);
+		this.show();
+		this.setFocus();
 	}
 
 	close(): void {

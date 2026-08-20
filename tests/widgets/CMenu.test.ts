@@ -7,6 +7,7 @@ import { CMouseButton, CMouseEvent } from "../../src/events/CMouseEvent.js";
 import { CMenu } from "../../src/widgets/CMenu.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { createTestWindow } from "../helpers/createTestWindow.js";
+import { CKeyEvent } from "../../src/events/CKeyEvent.js";
 
 describe("CMenu", () => {
 	beforeEach(() => {
@@ -168,5 +169,160 @@ describe("CMenu", () => {
 		));
 
 		expect(action.isChecked()).toBe(true);
+	});
+
+	test("arrow down selects next action", () => {
+		const menu = new CMenu();
+
+		const action1 = new CAction("Open");
+		const action2 = new CAction("Save");
+
+		menu.addAction(action1);
+		menu.addAction(action2);
+		menu.open();
+		menu.setFocus();
+
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
+
+		expect(menu.currentIndex()).toBe(0);
+
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
+
+		expect(menu.currentIndex()).toBe(1);
+	});
+
+	test("arrow up selects previous action", () => {
+		const menu = new CMenu();
+
+		menu.addAction(new CAction("Open"));
+		menu.addAction(new CAction("Save"));
+		menu.open();
+		menu.setFocus();
+
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowUp"));
+
+		expect(menu.currentIndex()).toBe(1);
+
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowUp"));
+
+		expect(menu.currentIndex()).toBe(0);
+	});
+
+	test("keyboard navigation skips separators", () => {
+		const menu = new CMenu();
+
+		menu.addAction(new CAction("Open"));
+		menu.addSeparator();
+		menu.addAction(new CAction("Save"));
+		menu.open();
+		menu.setFocus();
+
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
+		expect(menu.currentIndex()).toBe(0);
+
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
+		expect(menu.currentIndex()).toBe(2);
+	});
+
+	test("keyboard navigation skips disabled actions", () => {
+		const menu = new CMenu();
+
+		const disabledAction = new CAction("Disabled");
+		disabledAction.setEnabled(false);
+
+		menu.addAction(new CAction("Open"));
+		menu.addAction(disabledAction);
+		menu.addAction(new CAction("Save"));
+		menu.open();
+		menu.setFocus();
+
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
+		expect(menu.currentIndex()).toBe(0);
+
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
+		expect(menu.currentIndex()).toBe(2);
+	});
+
+	test("enter triggers current action and closes menu", () => {
+		const menu = new CMenu();
+		const action = new CAction("Open");
+		const slot = vi.fn();
+
+		action.triggered.connect(slot);
+
+		menu.addAction(action);
+		menu.open();
+		menu.setFocus();
+
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
+		menu.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		expect(slot).toHaveBeenCalledOnce();
+		expect(menu.isOpen()).toBe(false);
+	});
+
+	test("arrow right enters open submenu", () => {
+		const menu = new CMenu();
+		const submenu = new CMenu();
+
+		submenu.addAction(new CAction("General"));
+		menu.addMenu("Options", submenu);
+
+		menu.open();
+		menu.setFocus();
+
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
+
+		expect(submenu.isOpen()).toBe(true);
+
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowRight"));
+
+		expect(submenu.hasFocus()).toBe(true);
+		expect(submenu.currentIndex()).toBe(0);
+	});
+
+	test("arrow left closes submenu and returns focus to parent", () => {
+		const menu = new CMenu();
+		const submenu = new CMenu();
+
+		submenu.addAction(new CAction("General"));
+		menu.addMenu("Options", submenu);
+
+		menu.open();
+		menu.setFocus();
+
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowRight"));
+
+		submenu.event(new CKeyEvent(CEventType.KeyPress, "ArrowLeft"));
+
+		expect(submenu.isOpen()).toBe(false);
+		expect(menu.isOpen()).toBe(true);
+		expect(menu.hasFocus()).toBe(true);
+		expect(menu.currentIndex()).toBe(0);
+	});
+
+	test("submenu action closes entire menu chain", () => {
+		const menu = new CMenu();
+		const submenu = new CMenu();
+		const action = new CAction("General");
+		const slot = vi.fn();
+
+		action.triggered.connect(slot);
+
+		submenu.addAction(action);
+		menu.addMenu("Options", submenu);
+
+		menu.open();
+		menu.setFocus();
+
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowRight"));
+
+		submenu.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		expect(slot).toHaveBeenCalledOnce();
+		expect(submenu.isOpen()).toBe(false);
+		expect(menu.isOpen()).toBe(false);
 	});
 });

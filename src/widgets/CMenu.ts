@@ -3,6 +3,7 @@ import { CAction } from "../core/CAction.js";
 import type { CPainter } from "../painting/CPainter.js";
 import type { CMouseEvent } from "../events/CMouseEvent.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
+import { CKeyEvent } from "../events/CKeyEvent.js";
 
 type CMenuItem =
 	| { type: "action"; action: CAction }
@@ -73,6 +74,10 @@ export class CMenu extends CPopupWidget {
 		super.close();
 	}
 
+    currentIndex(): number {
+		return this.#m_hoveredIndex;
+	}
+
 	protected override mouseMoveEvent(event: CMouseEvent): void {
 		const index = this.#itemIndexAt(event.y());
 
@@ -122,6 +127,39 @@ export class CMenu extends CPopupWidget {
 		this.#closeMenuChain();
 
 		event.accept();
+	}
+
+	protected override keyPressEvent(event: CKeyEvent): void {
+		switch (event.key()) {
+			case "ArrowDown":
+				this.#selectNextItem();
+				event.accept();
+				break;
+
+			case "ArrowUp":
+				this.#selectPreviousItem();
+				event.accept();
+				break;
+
+			case "Enter":
+				this.#activateCurrentItem();
+				event.accept();
+				break;
+
+        	case "ArrowLeft":
+				this.#closeToParentMenu();
+				event.accept();
+				break;
+
+            case "ArrowRight":
+				this.#enterSubMenu();
+				event.accept();
+				break;
+
+			default:
+				event.ignore();
+				break;
+		}
 	}
 
 	protected override paintEvent(painter: CPainter): void {
@@ -284,5 +322,97 @@ export class CMenu extends CPopupWidget {
 			menu.close();
 			menu = parent;
 		}
+	}
+
+	#selectNextItem(): void {
+		if (this.#m_items.length === 0)
+			return;
+
+		let index = this.#m_hoveredIndex;
+
+		for (let i = 0; i < this.#m_items.length; ++i) {
+			index = (index + 1) % this.#m_items.length;
+
+			if (this.#isSelectableItem(index)) {
+				this.#setCurrentIndex(index);
+				return;
+			}
+		}
+	}
+
+	#selectPreviousItem(): void {
+		if (this.#m_items.length === 0)
+			return;
+
+		let index = this.#m_hoveredIndex;
+
+		if (index === -1)
+			index = 0;
+
+		for (let i = 0; i < this.#m_items.length; ++i) {
+			index = (index - 1 + this.#m_items.length) %
+				this.#m_items.length;
+
+			if (this.#isSelectableItem(index)) {
+				this.#setCurrentIndex(index);
+				return;
+			}
+		}
+	}
+
+	#isSelectableItem(index: number): boolean {
+		const item = this.#m_items[index];
+
+		if (item === undefined || item.type === "separator")
+			return false;
+
+		if (item.type === "action")
+			return item.action.isEnabled();
+
+		return true;
+	}
+
+	#setCurrentIndex(index: number): void {
+		if (index === this.#m_hoveredIndex)
+			return;
+
+		this.#m_hoveredIndex = index;
+		this.#updateSubMenu();
+		this.update();
+	}
+
+	#activateCurrentItem(): void {
+		const item = this.#m_items[this.#m_hoveredIndex];
+
+		if (item === undefined || item.type !== "action")
+			return;
+
+		if (!item.action.isEnabled())
+			return;
+
+		item.action.trigger();
+		this.#closeMenuChain();
+	}
+
+	#closeToParentMenu(): void {
+		if (this.#m_parentMenu === null)
+			return;
+
+		const parent = this.#m_parentMenu;
+
+		this.close();
+		parent.setFocus();
+	}
+
+	#enterSubMenu(): void {
+		const item = this.#m_items[this.#m_hoveredIndex];
+
+		if (item === undefined || item.type !== "menu")
+			return;
+
+		this.#updateSubMenu();
+
+		item.menu.setFocus();
+		item.menu.#selectNextItem();
 	}
 }
