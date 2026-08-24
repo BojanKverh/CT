@@ -1,7 +1,7 @@
 import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
-	CPaletteColorRole
+	CDialogButtonBox, CStandardButton
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -86,21 +86,16 @@ but.clicked.connect(() => {
 		dlg.setGeometry(250, 150, 400, 250);
 		dlg.setWindowTitle("Settings");
 
-		const okButton = new CPushButton(dlg);
-		okButton.setGeometry(210, 200, 80, 30);
-		okButton.setText("OK");
+		const buttonBox = new CDialogButtonBox(
+			CStandardButton.Ok | CStandardButton.Cancel, dlg );
 
-		const cancelButton = new CPushButton(dlg);
-		cancelButton.setGeometry(300, 200, 80, 30);
-		cancelButton.setText("Cancel");
+		buttonBox.setGeometry(10, 200, 380, 30);
 
-		okButton.clicked.connect(() =>
-		{
+		buttonBox.accepted.connect(() => {
 			dlg.accept();
 		});
 
-		cancelButton.clicked.connect(() =>
-		{
+		buttonBox.rejected.connect(() => {
 			dlg.reject();
 		});
 

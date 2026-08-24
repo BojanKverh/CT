@@ -87,6 +87,12 @@ export abstract class CLayout {
 		this.update();
 	}
 
+	clear()
+	{
+		this.#m_items.length = 0;
+		this.update();
+	}
+
 	protected addItem(item: CLayoutItem): boolean {
 		const widget = item.widget();
 

@@ -35,3 +35,4 @@ export { CMenu } from "./widgets/CMenu.js";
 export { CAction } from "./core/CAction.js";
 export { CMenuBar } from "./widgets/CMenuBar.js";
 export { CDialog } from "./widgets/CDialog.js";
+export { CStandardButton, CDialogButtonBox } from "./widgets/CDialogButtonBox.js";
