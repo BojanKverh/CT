@@ -6,6 +6,8 @@ export function createTestCanvas(width = 800, height = 600): HTMLCanvasElement {
         EventListenerOrEventListenerObject[]
     >();
 
+    const capturedPointers = new Set<number>();
+
     const context = {
         save: vi.fn(),
         restore: vi.fn(),
@@ -50,6 +52,21 @@ export function createTestCanvas(width = 800, height = 600): HTMLCanvasElement {
             height,
             toJSON: () => ({})
         }),
+
+        setPointerCapture: (pointerId: number): void =>
+		{
+			capturedPointers.add(pointerId);
+		},
+
+		releasePointerCapture: (pointerId: number): void =>
+		{
+			capturedPointers.delete(pointerId);
+		},
+
+		hasPointerCapture: (pointerId: number): boolean =>
+		{
+			return capturedPointers.has(pointerId);
+		},
 
         addEventListener: (
             type: string,

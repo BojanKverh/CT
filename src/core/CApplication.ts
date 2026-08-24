@@ -508,10 +508,8 @@ export class CApplication extends CObject {
 			position.x(), position.y()
 		);
 
-		const event = new CMouseEvent(
-			type, localPosition.x(), localPosition.y(),
-			this.#mouseButton(pointerEvent.button)
-		);
+		const event = new CMouseEvent(type, localPosition.x(), localPosition.y(),
+				this.#mouseButton(pointerEvent.button), pointerEvent.shiftKey);
 
 		return widget.event(event);
 	}

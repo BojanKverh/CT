@@ -1,7 +1,7 @@
 import { CSignal } from "../core/CSignal.js";
 import type { CKeyEvent } from "../events/CKeyEvent.js";
 import type { CMouseEvent } from "../events/CMouseEvent.js";
-import { CMouseButton } from "../events/CMouseEvent.js";
+import { CKeyboardModifier, CMouseButton } from "../events/CMouseEvent.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CRect } from "../geometry/CRect.js";
@@ -56,7 +56,7 @@ class CListContentWidget extends CWidget
 		const row = this.#m_listWidget.rowAt(event.y());
 
 		this.#m_listWidget.setFocus();
-		this.#m_listWidget.activateRow(row);
+		this.#m_listWidget.activateRow(row, event.modifiers());
 
 		event.accept();
 	}
@@ -384,39 +384,48 @@ export class CListWidget extends CScrollArea
 		this.#m_contentWidget.update();
 	}
 
-	activateRow(row: number): void
+	activateRow(row: number, modifiers: number): void
 	{
 		if (!this.#isSelectableRow(row))
 			return;
 
-		const oldCurrentRow = this.#m_currentRow;
+		const anchorRow = this.#m_currentRow;
+		const currentChanged = row !== this.#m_currentRow;
 
 		this.#m_currentRow = row;
 
-		if (oldCurrentRow !== row)
-			this.currentRowChanged.emit(row);
+		const oldSelection = this.selectedRows();
+		const shiftPressed = (modifiers & CKeyboardModifier.ShiftModifier) > 0;
 
-		if (this.#m_selectionMode === CSelectionMode.SingleSelection) {
-			const changed =
-				this.#m_selectedRows.size !== 1 ||
-				!this.#m_selectedRows.has(row);
+		if (this.#m_selectionMode === CSelectionMode.MultiSelection && shiftPressed && anchorRow !== -1) {
+			const first = Math.min(anchorRow, row);
+			const last = Math.max(anchorRow, row);
 
-			this.#m_selectedRows.clear();
-			this.#m_selectedRows.add(row);
-
-			if (changed)
-				this.itemSelectionChanged.emit();
-		} else {
+			for (let i = first; i <= last; ++i) {
+				if (this.#isSelectableRow(i))
+					this.#m_selectedRows.add(i);
+			}
+		} else if (this.#m_selectionMode === CSelectionMode.MultiSelection) {
 			if (this.#m_selectedRows.has(row))
 				this.#m_selectedRows.delete(row);
 			else
 				this.#m_selectedRows.add(row);
-
-			this.itemSelectionChanged.emit();
+		} else {
+			this.#m_selectedRows.clear();
+			this.#m_selectedRows.add(row);
 		}
 
-		this.#m_contentWidget.update();
+		const selectionChanged =
+			oldSelection.length !== this.#m_selectedRows.size ||
+			oldSelection.some(oldRow => !this.#m_selectedRows.has(oldRow));
 
+		if (currentChanged)
+			this.currentRowChanged.emit(row);
+
+		if (selectionChanged)
+			this.itemSelectionChanged.emit();
+
+		this.#m_contentWidget.update();
 		this.itemClicked.emit(this.#m_items[row]!);
 	}
 
