@@ -321,4 +321,133 @@ describe("CDialog", () =>
 		expect(dialog.x()).toBe(x);
 		expect(dialog.y()).toBe(y);
 	});
+
+	test("close button rejects dialog", () =>
+	{
+		const dialog = new CDialog();
+		const slot = vi.fn();
+
+		dialog.rejected.connect(slot);
+		dialog.setGeometry(100, 100, 400, 250);
+		dialog.exec();
+
+		dialog.event(new CMouseEvent(
+			CEventType.MousePress,
+			dialog.width() - 10,
+			10,
+			CMouseButton.LeftButton
+		));
+
+		dialog.event(new CMouseEvent(
+			CEventType.MouseRelease,
+			dialog.width() - 10,
+			10,
+			CMouseButton.LeftButton
+		));
+
+		expect(dialog.isOpen()).toBe(false);
+		expect(dialog.result()).toBe(CDialogResult.Rejected);
+		expect(slot).toHaveBeenCalledOnce();
+	});
+
+	test("pressing close button does not start dragging", () =>
+	{
+		const dialog = new CDialog();
+
+		dialog.setGeometry(100, 100, 400, 250);
+		dialog.exec();
+
+		dialog.event(new CMouseEvent(
+			CEventType.MousePress,
+			dialog.width() - 10,
+			10,
+			CMouseButton.LeftButton
+		));
+
+		dialog.event(new CMouseEvent(
+			CEventType.MouseMove,
+			dialog.width() - 40,
+			40,
+			CMouseButton.NoButton
+		));
+
+		expect(dialog.x()).toBe(100);
+		expect(dialog.y()).toBe(100);
+	});
+
+	test("clicking title bar outside close button does not close dialog", () =>
+	{
+		const dialog = new CDialog();
+
+		dialog.setGeometry(100, 100, 400, 250);
+		dialog.exec();
+
+		dialog.event(new CMouseEvent(
+			CEventType.MousePress,
+			20,
+			10,
+			CMouseButton.LeftButton
+		));
+
+		dialog.event(new CMouseEvent(
+			CEventType.MouseRelease,
+			20,
+			10,
+			CMouseButton.LeftButton
+		));
+
+		expect(dialog.isOpen()).toBe(true);
+	});
+
+	test("release outside close button does not close dialog", () =>
+	{
+		const dialog = new CDialog();
+
+		dialog.setGeometry(100, 100, 400, 250);
+		dialog.exec();
+
+		dialog.event(new CMouseEvent(
+			CEventType.MousePress,
+			dialog.width() - 10,
+			10,
+			CMouseButton.LeftButton
+		));
+
+		dialog.event(new CMouseEvent(
+			CEventType.MouseRelease,
+			200,
+			100,
+			CMouseButton.LeftButton
+		));
+
+		expect(dialog.isOpen()).toBe(true);
+	});
+
+	test("close button rejects only once", () =>
+	{
+		const dialog = new CDialog();
+		const slot = vi.fn();
+
+		dialog.rejected.connect(slot);
+		dialog.setGeometry(100, 100, 400, 250);
+		dialog.exec();
+
+		dialog.event(new CMouseEvent(
+			CEventType.MousePress,
+			dialog.width() - 10,
+			10,
+			CMouseButton.LeftButton
+		));
+
+		dialog.event(new CMouseEvent(
+			CEventType.MouseRelease,
+			dialog.width() - 10,
+			10,
+			CMouseButton.LeftButton
+		));
+
+		dialog.reject();
+
+		expect(slot).toHaveBeenCalledOnce();
+	});
 });

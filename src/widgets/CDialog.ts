@@ -5,6 +5,7 @@ import type { CPainter } from "../painting/CPainter.js";
 import { CApplication } from "../core/CApplication.js";
 import { CWidget } from "./CWidget.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
+import { CRect } from "../geometry/CRect.js";
 
 export enum CDialogResult {
 	Rejected = 0,
@@ -21,9 +22,12 @@ export class CDialog extends CWidget
     #m_dragging = false;
     #m_dragOffsetX = 0;
     #m_dragOffsetY = 0;
+    #m_closeButtonHovered = false;
 
 	readonly accepted = new CSignal<[]>();
 	readonly rejected = new CSignal<[]>();
+
+    static readonly CloseButtonWidth = 24;
 
 	constructor(parent: CWidget | null = null)
 	{
@@ -154,12 +158,30 @@ export class CDialog extends CWidget
 	    painter.setFont(this.font());
 
 	    painter.drawText(this.#m_windowTitle, 10, 3 * CDialog.TitleBarHeight / 4);
+        painter.setPen(highlightedText);
+        
+        if (this.#m_closeButtonHovered) {
+        	painter.setBrush(this.palette().color(CPaletteColorRole.HighlightedText).toCss());
+            painter.setPen(this.palette().color(CPaletteColorRole.Highlight).toCss());
+        }
+
+	    painter.fillRect(new CRect(this.width() - CDialog.CloseButtonWidth, 0, CDialog.CloseButtonWidth, CDialog.TitleBarHeight));
+        painter.setFont(this.font());
+        painter.setTextAlign("center");
+        painter.setTextBaseline("middle");
+
+        painter.drawText("×", this.width() - CDialog.CloseButtonWidth / 2, CDialog.TitleBarHeight / 2);
     }
 
     protected override mousePressEvent(event: CMouseEvent): void
     {
 	    if (event.button() !== CMouseButton.LeftButton) {
 		    event.ignore();
+		    return;
+	    }
+
+	    if (this.#isCloseButtonAt(event.x(), event.y())) {
+		    event.accept();
 		    return;
 	    }
 
@@ -171,26 +193,41 @@ export class CDialog extends CWidget
 	    this.#m_dragging = true;
 	    this.#m_dragOffsetX = event.x();
 	    this.#m_dragOffsetY = event.y();
+
 	    event.accept();
     }
 
     protected override mouseMoveEvent(event: CMouseEvent): void
     {
+	    const closeButtonHovered = this.#isCloseButtonAt(event.x(), event.y());
+	    if (closeButtonHovered !== this.#m_closeButtonHovered) { 
+            this.#m_closeButtonHovered = closeButtonHovered;
+		    this.update();
+	    }
+
 	    if (!this.#m_dragging) {
 		    event.ignore();
 		    return;
 	    }
 
-	    this.move(
-		    this.x() + event.x() - this.#m_dragOffsetX,
-		    this.y() + event.y() - this.#m_dragOffsetY
-	    );
-
+	    this.move(this.x() + event.x() - this.#m_dragOffsetX, this.y() + event.y() - this.#m_dragOffsetY);
 	    event.accept();
     }
 
     protected override mouseReleaseEvent(event: CMouseEvent): void
     {
+	    if (event.button() !== CMouseButton.LeftButton) {
+		    event.ignore();
+		    return;
+	    }
+
+	    if (this.#isCloseButtonAt(event.x(), event.y())) {
+		    this.#m_dragging = false;
+		    this.reject();
+		    event.accept();
+		    return;
+	    }
+
 	    if (!this.#m_dragging) {
 		    event.ignore();
 		    return;
@@ -198,5 +235,17 @@ export class CDialog extends CWidget
 
 	    this.#m_dragging = false;
 	    event.accept();
+    }
+
+    protected override mouseLeaveEvent(event: CMouseEvent): void {
+        this.#m_closeButtonHovered = false;
+        this.update();
+        event.accept();
+    }
+
+    #isCloseButtonAt(x: number, y: number): boolean
+    {
+	    return x >= this.width() - CDialog.CloseButtonWidth && x < this.width() && y >= 0 &&
+		    y < CDialog.TitleBarHeight;
     }
 }
