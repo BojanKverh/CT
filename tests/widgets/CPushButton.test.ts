@@ -238,7 +238,7 @@ describe("CPushButton", () => {
 		button.paint(painter);
 
 		expect(device.engine.setFillStyle).toHaveBeenCalledWith(
-			"rgba(255, 255, 255, 1)"
+			"rgba(0, 120, 215, 1)"
 		);
 	});
 
@@ -288,7 +288,7 @@ describe("CPushButton", () => {
 
 		button.paint(painter);
 
-		expect(device.engine.setFillStyle).toHaveBeenCalledWith(
+		expect(device.engine.setStrokeStyle).toHaveBeenCalledWith(
 			"rgba(128, 128, 128, 1)"
 		);
 	});
@@ -345,9 +345,9 @@ describe("CPushButton", () => {
 	    expect(device.engine.setFillStyle).toHaveBeenCalledWith(
 		    "rgba(10, 20, 30, 1)"
     	);
-	    expect(device.engine.setFillStyle).toHaveBeenCalledWith(
-		    "rgba(200, 210, 220, 1)"
-	    );
+	  	expect(device.engine.setStrokeStyle).toHaveBeenCalledWith(
+			"rgba(200, 210, 220, 1)"
+		);
     });
 
     test("uses disabled text role from palette", () => {
@@ -360,9 +360,7 @@ describe("CPushButton", () => {
 	    const painter = new CPainter(device);
 	    button.paint(painter);
 
-	    expect(device.engine.setFillStyle).toHaveBeenCalledWith(
-		    "rgba(90, 100, 110, 1)"
-	    );
+		expect(device.engine.setStrokeStyle).toHaveBeenCalledWith("rgba(90, 100, 110, 1)");
     });
 
 	test("auto repeat is disabled by default", () => {

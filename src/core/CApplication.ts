@@ -29,29 +29,24 @@ export class CApplication extends CObject {
     #m_palette = new CPalette();
     #m_style: CStyle = new CDefaultStyle();
     #m_popupWidgets: CPopupWidget[] = [];
-
+	#m_modalWidgets: CWidget[] = [];
 
 	#onPointerDown = (event: PointerEvent): void => {
 		this.#dispatchMouseEvent(CEventType.MousePress, event);
 	};
-
 	#onPointerUp = (event: PointerEvent): void => {
 		this.#dispatchMouseEvent(CEventType.MouseRelease, event);
 	};
-
 	#onPointerMove = (event: PointerEvent): void => {
 		this.#updateHoverWidget(event);
 		this.#dispatchMouseEvent(CEventType.MouseMove, event);
 	};
-
 	#onWheel = (event: WheelEvent) : void => {
 		this.#dispatchWheelEvent(CEventType.Wheel, event);
 	}
-
     #onKeyDown = (event: KeyboardEvent): void => {
 		this.#dispatchKeyEvent(CEventType.KeyPress, event);
 	};
-
 	#onKeyUp = (event: KeyboardEvent): void => {
 		this.#dispatchKeyEvent(CEventType.KeyRelease, event);
 	};
@@ -98,6 +93,7 @@ export class CApplication extends CObject {
 		this.#m_mouseGrabber = null;
 		this.#m_hoverWidget = null;
         this.#m_focusWidget = null;
+		this.#m_modalWidgets.length = 0;
 		CApplication.#m_instance = null;
 
 	}
@@ -247,6 +243,14 @@ export class CApplication extends CObject {
 		return this.#m_hoverWidget;
 	}
 
+	closeAllPopups(): void
+	{
+		const popups = [...this.#m_popupWidgets];
+
+		for (let i = popups.length - 1; i >= 0; --i)
+			popups[i]!.close();
+	}
+
 	popupWidgets(): readonly CPopupWidget[] {
 		return [...this.#m_popupWidgets];
 	}
@@ -269,6 +273,40 @@ export class CApplication extends CObject {
 
 		this.#m_popupWidgets.splice(index, 1);
 		this.requestRepaint();
+	}
+
+	registerModalWidget(widget: CWidget): void
+	{
+		this.closeAllPopups();
+		const index = this.#m_modalWidgets.indexOf(widget);
+
+		if (index !== -1)
+			this.#m_modalWidgets.splice(index, 1);
+
+		this.#m_modalWidgets.push(widget);
+	}
+
+	unregisterModalWidget(widget: CWidget): void
+	{
+		const index = this.#m_modalWidgets.indexOf(widget);
+
+		if (index === -1)
+			return;
+
+		this.#m_modalWidgets.splice(index, 1);
+	}
+
+	modalWidgets(): readonly CWidget[]
+	{
+		return [...this.#m_modalWidgets];
+	}
+
+	topModalWidget(): CWidget | null
+	{
+		if (this.#m_modalWidgets.length === 0)
+			return null;
+
+		return this.#m_modalWidgets[this.#m_modalWidgets.length - 1]!;
 	}
 
 	#mouseButton(button: number): CMouseButton {
@@ -297,19 +335,39 @@ export class CApplication extends CObject {
 		);
 	}
 
-	#widgetAt(x: number, y: number): CWidget | null {
+	#widgetAt(x: number, y: number): CWidget | null
+	{
 		for (let i = this.#m_popupWidgets.length - 1; i >= 0; --i) {
 			const popup = this.#m_popupWidgets[i]!;
-			const target = popup.widgetAt(x - popup.x(), y - popup.y());
+
+			const target = popup.widgetAt(
+				x - popup.x(),
+				y - popup.y()
+			);
+
 			if (target !== null)
 				return target;
+		}
+
+		const modal = this.topModalWidget();
+
+		if (modal !== null) {
+			return modal.widgetAt(
+				x - modal.x(),
+				y - modal.y()
+			);
 		}
 
 		const widgets = [...this.#m_topLevelWidgets];
 
 		for (let i = widgets.length - 1; i >= 0; --i) {
 			const widget = widgets[i]!;
-			const target = widget.widgetAt(x - widget.x(), y - widget.y());
+
+			const target = widget.widgetAt(
+				x - widget.x(),
+				y - widget.y()
+			);
+
 			if (target !== null)
 				return target;
 		}
@@ -446,6 +504,20 @@ export class CApplication extends CObject {
 	#sendWheelEvent(widget: CWidget, type: CEventType, wheelEvent: WheelEvent): boolean {
 		const event = new CWheelEvent(wheelEvent.deltaX, wheelEvent.deltaY);
 		return widget.event(event);
+	}
+
+	#belongsToModal(widget: CWidget, modal: CWidget): boolean
+	{
+		let current: CWidget | null = widget;
+
+		while (current !== null) {
+			if (current === modal)
+				return true;
+
+			current = current.parent();
+		}
+
+		return false;
 	}
 
 	#popupAt(x: number, y: number): number {

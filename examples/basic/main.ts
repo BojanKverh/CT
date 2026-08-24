@@ -1,6 +1,7 @@
 import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
-    CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar
+    CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
+	CPaletteColorRole
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -79,6 +80,41 @@ parent.setGeometry(200, 0, 640, 480);
 const but = new CPushButton(parent);
 but.setGeometry(50, 50, 100, 30);
 but.setText("Click me");
+
+but.clicked.connect(() => {
+		const dlg = new CDialog;
+		dlg.setGeometry(250, 150, 400, 250);
+		dlg.setWindowTitle("Settings");
+
+		const okButton = new CPushButton(dlg);
+		okButton.setGeometry(210, 200, 80, 30);
+		okButton.setText("OK");
+
+		const cancelButton = new CPushButton(dlg);
+		cancelButton.setGeometry(300, 200, 80, 30);
+		cancelButton.setText("Cancel");
+
+		okButton.clicked.connect(() =>
+		{
+			dlg.accept();
+		});
+
+		cancelButton.clicked.connect(() =>
+		{
+			dlg.reject();
+		});
+
+		dlg.accepted.connect(() =>
+		{
+			console.log("Dlg accepted");
+		});
+
+		dlg.rejected.connect(() =>
+		{
+			console.log("Dialog rejected");
+		});
+		dlg.exec();
+	});
 
 const lab = new CLabel(parent);
 lab.setGeometry(250, 50, 130, 40);

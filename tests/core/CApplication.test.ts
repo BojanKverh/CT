@@ -9,6 +9,7 @@ import { createTestCanvas } from "../helpers/createTestCanvas";
 import { createTestWindow } from "../helpers/createTestWindow.js";
 import { CHBoxLayout } from "../../src/layouts/CHBoxLayout.js";
 import { CPopupWidget } from "../../src/widgets/CPopupWidget.js";
+import { CDialog } from "../../src/widgets/CDialog.js";
 
 class RenderTrackingWidget extends CWidget {
     renderCalls = 0;
@@ -1225,5 +1226,113 @@ describe("CApplication", () => {
 		expect(popup1.isOpen()).toBe(true);
 		expect(popup2.isOpen()).toBe(false);
 		expect(app.popupWidgets()).toEqual([popup1]);
+	});
+
+	test("registers modal widget", () =>
+	{
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+		const dialog = new CDialog();
+
+		app.registerModalWidget(dialog);
+
+		expect(app.modalWidgets()).toEqual([dialog]);
+		expect(app.topModalWidget()).toBe(dialog);
+	});
+
+	test("does not duplicate registered modal widget", () =>
+	{
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+		const dialog = new CDialog();
+
+		app.registerModalWidget(dialog);
+		app.registerModalWidget(dialog);
+
+		expect(app.modalWidgets()).toEqual([dialog]);
+	});
+
+	test("registering modal widget again moves it to top", () =>
+	{
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+		const dialog1 = new CDialog();
+		const dialog2 = new CDialog();
+
+		app.registerModalWidget(dialog1);
+		app.registerModalWidget(dialog2);
+		app.registerModalWidget(dialog1);
+
+		expect(app.modalWidgets()).toEqual([
+			dialog2,
+			dialog1
+		]);
+
+		expect(app.topModalWidget()).toBe(dialog1);
+	});
+
+	test("unregisters modal widget", () =>
+	{
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+		const dialog = new CDialog();
+
+		app.registerModalWidget(dialog);
+		app.unregisterModalWidget(dialog);
+
+		expect(app.modalWidgets()).toEqual([]);
+		expect(app.topModalWidget()).toBeNull();
+	});
+
+	test("registering modal widget closes open popups", () =>
+	{
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+		const popup1 = new CPopupWidget();
+		const popup2 = new CPopupWidget();
+		const dialog = new CDialog();
+
+		popup1.open();
+		popup2.open();
+
+		expect(app.popupWidgets()).toEqual([
+			popup1,
+			popup2
+		]);
+
+		app.registerModalWidget(dialog);
+
+		expect(popup1.isOpen()).toBe(false);
+		expect(popup2.isOpen()).toBe(false);
+		expect(app.popupWidgets()).toEqual([]);
+		expect(app.topModalWidget()).toBe(dialog);
+	});
+
+	test("topModalWidget returns topmost modal widget", () =>
+	{
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+		const dialog1 = new CDialog();
+		const dialog2 = new CDialog();
+
+		app.registerModalWidget(dialog1);
+		app.registerModalWidget(dialog2);
+
+		expect(app.topModalWidget()).toBe(dialog2);
+	});
+
+	test("unregistering top modal reveals previous modal", () =>
+	{
+		const canvas = createTestCanvas();
+		const app = new CApplication(canvas);
+		const dialog1 = new CDialog();
+		const dialog2 = new CDialog();
+
+		app.registerModalWidget(dialog1);
+		app.registerModalWidget(dialog2);
+
+		app.unregisterModalWidget(dialog2);
+
+		expect(app.topModalWidget()).toBe(dialog1);
 	});
 });

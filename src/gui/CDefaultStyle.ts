@@ -76,32 +76,22 @@ export class CDefaultStyle extends CStyle {
 		const palette = button.palette();
 
 		if (!button.isEnabled()) {
-			painter.setFillStyle(
-				palette.color(CPaletteColorRole.Window).toCss()
-			);
+			painter.setBrush(palette.color(CPaletteColorRole.Window).toCss());
 		} else if (button.isDown()) {
-			painter.setFillStyle(
-				palette.color(CPaletteColorRole.Highlight).toCss()
-			);
+			painter.setBrush(palette.color(CPaletteColorRole.Highlight).toCss());
 		} else if (button.isHovered()) {
-			painter.setFillStyle(
-				palette.color(CPaletteColorRole.Base).toCss()
-			);
+			painter.setBrush(palette.color(CPaletteColorRole.Highlight).toCss());
 		} else {
-			painter.setFillStyle(
-				palette.color(CPaletteColorRole.Button).toCss()
-			);
+			painter.setBrush(palette.color(CPaletteColorRole.Button).toCss());
 		}
 
 		painter.fillRect(button.rect());
 
 		const textRole = button.isEnabled()
-			? CPaletteColorRole.ButtonText
+			? (button.isHovered()? CPaletteColorRole.HighlightedText : CPaletteColorRole.ButtonText)
 			: CPaletteColorRole.DisabledText;
 
-		painter.setFillStyle(
-			palette.color(textRole).toCss()
-		);
+		painter.setPen(palette.color(textRole).toCss());
 		painter.setFont(button.font());
 		painter.setTextAlign("center");
 		painter.setTextBaseline("middle");
