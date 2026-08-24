@@ -128,6 +128,11 @@ export class CScrollArea extends CWidget {
 	    event.accept();
     }
 
+	protected updateScrollBars(): void
+	{
+		this.#updateGeometry();
+	}
+
 	#updateWidgetPosition(): void {
 		if (this.#m_widget === null)
 			return;

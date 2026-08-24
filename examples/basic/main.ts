@@ -1,7 +1,7 @@
 import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
-	CDialogButtonBox, CStandardButton
+	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -108,6 +108,33 @@ but.clicked.connect(() => {
 		{
 			console.log("Dialog rejected");
 		});
+
+		const list = new CListWidget(dlg);
+		list.setGeometry(20, 50, 180, 160);
+		list.addItem("Slovenia");
+		list.addItem("Austria");
+		list.addItem("Germany");
+		list.addItem("Italy");
+		list.addItem("France");
+		list.addItem("Spain");
+		list.addItem("Portugal");
+		list.addItem("Croatia");
+		const disabledItem = new CListWidgetItem("Disabled");
+		disabledItem.setEnabled(false);
+		list.addItem(disabledItem);
+		list.addItem("Hungary");
+		list.addItem("Poland");
+
+		list.currentRowChanged.connect(row =>
+		{
+			console.log("current row:", row);
+		});
+
+		list.itemClicked.connect(item =>
+		{
+			console.log("clicked:", item.text());
+		});
+		list.setSelectionMode(CSelectionMode.MultiSelection);
 		dlg.exec();
 	});
 

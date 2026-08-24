@@ -50,6 +50,11 @@ export class CApplication extends CObject {
 	#onKeyUp = (event: KeyboardEvent): void => {
 		this.#dispatchKeyEvent(CEventType.KeyRelease, event);
 	};
+	#onPointerCancel = (event: PointerEvent): void => {
+		this.releaseMouse();
+		if (this.#m_paintDevice.canvas().hasPointerCapture(event.pointerId))
+			this.#m_paintDevice.canvas().releasePointerCapture(event.pointerId);
+	};
 
 	constructor(canvas: HTMLCanvasElement) {
 		super();
@@ -64,6 +69,7 @@ export class CApplication extends CObject {
 		canvas.addEventListener("pointerup", this.#onPointerUp);
 		canvas.addEventListener("pointermove", this.#onPointerMove);
 		canvas.addEventListener("wheel", this.#onWheel);
+		canvas.addEventListener("pointercancel", this.#onPointerCancel);
 
         if (typeof window !== "undefined") {
 	        window.addEventListener("keydown", this.#onKeyDown);
@@ -82,6 +88,8 @@ export class CApplication extends CObject {
 		canvas.removeEventListener("pointerup", this.#onPointerUp);
 		canvas.removeEventListener("pointermove", this.#onPointerMove);
 		canvas.removeEventListener("wheel", this.#onWheel);
+		canvas.removeEventListener("pointercancel", this.#onPointerCancel);
+
 
 		if (typeof window !== "undefined") {
 			window.removeEventListener("keydown", this.#onKeyDown);
@@ -390,9 +398,9 @@ export class CApplication extends CObject {
 			popup.render(painter);
 	}
 
-	#dispatchMouseEvent(type: CEventType, pointerEvent: PointerEvent): void {
+	#dispatchMouseEvent(type: CEventType, pointerEvent: PointerEvent): void
+	{
 		const position = this.#canvasPosition(pointerEvent);
-
 		if (type === CEventType.MousePress && this.#m_popupWidgets.length > 0) {
 			const popupIndex = this.#popupAt(position.x(), position.y());
 
@@ -405,39 +413,46 @@ export class CApplication extends CObject {
 		}
 
 		let target = this.#m_mouseGrabber;
-
 		if (target === null)
 			target = this.#widgetAt(position.x(), position.y());
 
 		while (target !== null) {
 			const oldFocus = this.#m_focusWidget;
+
 			if (this.#sendMouseEvent(target, type, pointerEvent)) {
 				if (type === CEventType.MousePress) {
 					if (this.#m_focusWidget === oldFocus)
 						target.setFocus();
 
 					this.grabMouse(target);
+
+					this.#m_paintDevice.canvas().setPointerCapture(pointerEvent.pointerId);
 				}
 				break;
 			}
+
 			target = target.parent();
 		}
 
-		if (type === CEventType.MouseRelease)
+		if (type === CEventType.MouseRelease) {
 			this.releaseMouse();
+			if (this.#m_paintDevice.canvas().hasPointerCapture(pointerEvent.pointerId)) {
+				this.#m_paintDevice.canvas().releasePointerCapture(
+					pointerEvent.pointerId
+				);
+			}
+		}
 	}
 
-	#dispatchWheelEvent(type: CEventType, wheelEvent: WheelEvent) : void {
+	#dispatchWheelEvent(type: CEventType, wheelEvent: WheelEvent): void {
 		let target = this.#m_hoverWidget;
 		if (target === null)
 			return;
 
 		while (target !== null) {
 			if (this.#sendWheelEvent(target, type, wheelEvent)) {
-				if (type === CEventType.Wheel) {
+				if (type === CEventType.Wheel)
 					target.setFocus();
-					this.grabMouse(target);
-                }
 				break;
 			}
 			target = target.parent();
