@@ -174,21 +174,20 @@ describe("CMenu", () => {
 	test("arrow down selects next action", () => {
 		const menu = new CMenu();
 
-		const action1 = new CAction("Open");
-		const action2 = new CAction("Save");
-
-		menu.addAction(action1);
-		menu.addAction(action2);
+		menu.addAction(new CAction("Open"));
+		menu.addAction(new CAction("Save"));
 		menu.open();
 		menu.setFocus();
-
-		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
 
 		expect(menu.currentIndex()).toBe(0);
 
 		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
 
 		expect(menu.currentIndex()).toBe(1);
+
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
+
+		expect(menu.currentIndex()).toBe(0);
 	});
 
 	test("arrow up selects previous action", () => {
@@ -217,13 +216,17 @@ describe("CMenu", () => {
 		menu.open();
 		menu.setFocus();
 
-		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
 		expect(menu.currentIndex()).toBe(0);
 
 		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
-		expect(menu.currentIndex()).toBe(2);
-	});
 
+		expect(menu.currentIndex()).toBe(2);
+
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
+
+		expect(menu.currentIndex()).toBe(0);
+	});
+	
 	test("keyboard navigation skips disabled actions", () => {
 		const menu = new CMenu();
 
@@ -236,11 +239,15 @@ describe("CMenu", () => {
 		menu.open();
 		menu.setFocus();
 
-		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
 		expect(menu.currentIndex()).toBe(0);
 
 		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
+
 		expect(menu.currentIndex()).toBe(2);
+
+		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
+
+		expect(menu.currentIndex()).toBe(0);
 	});
 
 	test("enter triggers current action and closes menu", () => {
@@ -265,14 +272,19 @@ describe("CMenu", () => {
 		const menu = new CMenu();
 		const submenu = new CMenu();
 
-		submenu.addAction(new CAction("General"));
+		menu.addAction(new CAction("Open"));
 		menu.addMenu("Options", submenu);
+
+		submenu.addAction(new CAction("General"));
 
 		menu.open();
 		menu.setFocus();
 
+		expect(menu.currentIndex()).toBe(0);
+
 		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
 
+		expect(menu.currentIndex()).toBe(1);
 		expect(submenu.isOpen()).toBe(true);
 
 		menu.event(new CKeyEvent(CEventType.KeyPress, "ArrowRight"));
@@ -280,7 +292,7 @@ describe("CMenu", () => {
 		expect(submenu.hasFocus()).toBe(true);
 		expect(submenu.currentIndex()).toBe(0);
 	});
-
+	
 	test("arrow left closes submenu and returns focus to parent", () => {
 		const menu = new CMenu();
 		const submenu = new CMenu();

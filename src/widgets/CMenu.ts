@@ -5,6 +5,7 @@ import type { CMouseEvent } from "../events/CMouseEvent.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CSignal } from "../core/CSignal.js";
+import type { CMenuBar } from "./CMenuBar.js";
 
 type CMenuItem =
 	| { type: "action"; action: CAction }
@@ -21,6 +22,8 @@ export class CMenu extends CPopupWidget {
 	#m_hoveredIndex = -1;
     #m_openSubMenu: CMenu | null = null;
     #m_parentMenu: CMenu | null = null;
+	#m_menuBar: CMenuBar | null = null;
+
     readonly closed = new CSignal<[]>();
 
 	addAction(action: CAction): CAction {
@@ -71,6 +74,20 @@ export class CMenu extends CPopupWidget {
 		return item.menu;
 	}
 
+	setMenuBar(menuBar: CMenuBar | null): void
+	{
+		this.#m_menuBar = menuBar;
+	}
+
+	override open(): void
+	{
+		super.open();
+
+		if (!this.#isSelectableItem(this.#m_hoveredIndex))
+			this.selectFirstItem();
+		this.#updateSubMenu();
+	}
+
 	override close(): void {
         if (!this.isOpen())
             return;
@@ -78,10 +95,33 @@ export class CMenu extends CPopupWidget {
 		this.#closeSubMenu();
 		super.close();
         this.closed.emit();
+
+		const parent: CMenu | null = this.#m_parentMenu;
+		if (parent !== null && parent.isOpen())
+			parent.setFocus();
 	}
 
     currentIndex(): number {
 		return this.#m_hoveredIndex;
+	}
+
+	selectFirstItem(): void
+	{
+		for (let i = 0; i < this.#m_items.length; ++i) {
+			if (this.#isSelectableItem(i)) {
+				this.#setCurrentIndex(i);
+				return;
+			}
+		}
+	}
+
+	focusOpenSubMenu(): boolean
+	{
+		if (this.#m_openSubMenu === null)
+			return false;
+
+		this.#m_openSubMenu.setFocus();
+		return true;
 	}
 
 	protected override mouseMoveEvent(event: CMouseEvent): void {
@@ -137,6 +177,24 @@ export class CMenu extends CPopupWidget {
 
 	protected override keyPressEvent(event: CKeyEvent): void {
 		switch (event.key()) {
+			case "ArrowRight":
+				if (this.#m_parentMenu !== null)
+					this.#enterSubMenu();
+				else if (this.#m_menuBar !== null)
+					this.#m_menuBar.selectMenu(1);
+
+				event.accept();
+				break;
+
+			case "ArrowLeft":
+				if (this.#m_parentMenu !== null)
+					this.#closeToParentMenu();
+				else if (this.#m_menuBar !== null)
+					this.#m_menuBar.selectMenu(-1);
+
+				event.accept();
+				break;
+
 			case "ArrowDown":
 				this.#selectNextItem();
 				event.accept();
@@ -149,16 +207,6 @@ export class CMenu extends CPopupWidget {
 
 			case "Enter":
 				this.#activateCurrentItem();
-				event.accept();
-				break;
-
-        	case "ArrowLeft":
-				this.#closeToParentMenu();
-				event.accept();
-				break;
-
-            case "ArrowRight":
-				this.#enterSubMenu();
 				event.accept();
 				break;
 

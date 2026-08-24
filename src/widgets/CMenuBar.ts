@@ -5,6 +5,7 @@ import { CPoint } from "../geometry/CPoint.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 import type { CPainter } from "../painting/CPainter.js";
 import type { CMouseEvent } from "../events/CMouseEvent.js";
+import type { CKeyEvent } from "../events/CKeyEvent.js";
 
 type CMenuBarItem =
 	| { type: "menu"; text: string; menu: CMenu }
@@ -29,15 +30,19 @@ export class CMenuBar extends CWidget
 
 	addMenu(text: string, menu: CMenu): CMenu
 	{
+		menu.setMenuBar(this);
 		this.#m_items.push({type: "menu", text, menu});
-	    menu.closed.connect(() => {
-		    if (this.#m_openMenu === menu) {
-			    this.#m_openMenu = null;
-			    this.update();
-		    }
-	    });
-	    this.update();
-	    return menu;
+
+		menu.closed.connect(() => {
+			if (this.#m_openMenu !== menu)
+				return;
+
+			this.#m_openMenu = null;
+			this.setFocus();
+			this.update();
+		});
+		this.update();
+		return menu;
 	}
 
 	addSeparator(): void
@@ -74,25 +79,19 @@ export class CMenuBar extends CWidget
 		return item.menu;
 	}
 
+	selectMenu(direction: 1 | -1): void
+	{
+		this.#selectMenu(direction);
+	}
+
     protected override mouseMoveEvent(event: CMouseEvent): void
-    {
-	    const index = this.#itemIndexAt(event.x(), event.y());
-	    if (index !== this.#m_hoveredIndex) {
-		    this.#m_hoveredIndex = index;
-		    const newItem = this.#m_items[index];
-		    if (this.#m_openMenu !== null && newItem !== undefined && newItem.type === "menu" &&
-			    newItem.menu !== this.#m_openMenu) {
-			    this.#m_openMenu.close();
-			    const rect = this.#itemRect(index)!;
-                const x = this.#menuPositionX(rect, newItem.menu);
-		        newItem.menu.move(x, this.y() + this.height());
-			    newItem.menu.open();
-			    this.#m_openMenu = newItem.menu;
-		    }
-		    this.update();
-	    }
-	    event.accept();
-    }
+	{
+		const index = this.#itemIndexAt(event.x(), event.y());
+
+		this.#setCurrentIndex(index);
+
+		event.accept();
+	}
 
 	protected override mouseLeaveEvent(event: CMouseEvent): void
 	{
@@ -145,9 +144,34 @@ export class CMenuBar extends CWidget
 
 		this.#m_openMenu = item.menu;
 		this.#m_hoveredIndex = index;
-
+		this.#m_openMenu.setFocus();
+		
 		this.update();
 		event.accept();
+	}
+
+	protected override keyPressEvent(event: CKeyEvent): void
+	{
+		switch (event.key()) {
+			case "ArrowRight":
+				this.#selectMenu(1);
+				event.accept();
+				break;
+
+			case "ArrowLeft":
+				this.#selectMenu(-1);
+				event.accept();
+				break;
+
+			case "ArrowDown":
+				this.#openCurrentMenu();
+				event.accept();
+				break;
+
+			default:
+				event.ignore();
+				break;
+		}
 	}
 
 	protected override paintEvent(painter: CPainter): void
@@ -180,6 +204,28 @@ export class CMenuBar extends CWidget
 				rect.x() + CMenuBar.HorizontalPadding,
 				3 * this.height() / 4
 			);
+		}
+	}
+
+	#selectMenu(direction: 1 | -1): void
+	{
+		if (this.#m_items.length === 0)
+			return;
+
+		let index = this.#m_hoveredIndex;
+
+		if (index === -1 && direction === -1)
+			index = 0;
+
+		for (let i = 0; i < this.#m_items.length; ++i) {
+			index = (
+				index + direction + this.#m_items.length
+			) % this.#m_items.length;
+
+			if (this.#m_items[index]?.type === "menu") {
+				this.#setCurrentIndex(index);
+				return;
+			}
 		}
 	}
 
@@ -279,4 +325,62 @@ export class CMenuBar extends CWidget
 		    x = menuBarRight - menu.width();
 	    return x;
     }
+
+	#setCurrentIndex(index: number): void
+	{
+		if (index === this.#m_hoveredIndex)
+			return;
+
+		this.#m_hoveredIndex = index;
+
+		if (this.#m_openMenu !== null)
+			this.#switchOpenMenu(index);
+
+		this.update();
+	}
+
+	#openCurrentMenu(): void
+	{
+		const item = this.#m_items[this.#m_hoveredIndex];
+		if (item === undefined || item.type !== "menu")
+			return;
+
+		if (!item.menu.isOpen()) {
+			const rect = this.#itemRect(this.#m_hoveredIndex);
+			if (rect === null)
+				return;
+
+			const x = this.#menuPositionX(rect, item.menu);
+			item.menu.move(x, this.y() + this.height());
+			item.menu.open();
+			this.#m_openMenu = item.menu;
+		}
+
+		if (!item.menu.focusOpenSubMenu())
+			item.menu.setFocus();
+	}
+
+	#switchOpenMenu(index: number): void
+	{
+		const item = this.#m_items[index];
+
+		if (item === undefined || item.type !== "menu")
+			return;
+
+		const rect = this.#itemRect(index);
+
+		if (rect === null)
+			return;
+
+		this.#m_openMenu?.close();
+
+		const x = this.#menuPositionX(rect, item.menu);
+
+		item.menu.move(x, this.y() + this.height());
+		item.menu.open();
+
+		this.#m_openMenu = item.menu;
+		if (!item.menu.focusOpenSubMenu())
+			item.menu.setFocus();
+	}
 }

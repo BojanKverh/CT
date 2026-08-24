@@ -8,6 +8,7 @@ import { CMenu } from "../../src/widgets/CMenu.js";
 import { CMenuBar } from "../../src/widgets/CMenuBar.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { createTestWindow } from "../helpers/createTestWindow.js";
+import { CKeyEvent } from "../../src/events/CKeyEvent.js";
 
 describe("CMenuBar", () =>
 {
@@ -314,5 +315,228 @@ describe("CMenuBar", () =>
 
 		expect(slot).toHaveBeenCalledOnce();
 		expect(menu.isOpen()).toBe(false);
+	});
+
+	test("arrow down opens current menu and gives it focus", () =>
+	{
+		const app = CApplication.instance();
+		const menuBar = new CMenuBar();
+		const fileMenu = new CMenu();
+
+		fileMenu.addAction(new CAction("New"));
+		fileMenu.addAction(new CAction("Open"));
+
+		menuBar.resize(500, CMenuBar.DefaultHeight);
+		menuBar.addMenu("File", fileMenu);
+
+		menuBar.setFocus();
+
+		menuBar.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowRight"
+		));
+
+		menuBar.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowDown"
+		));
+
+		expect(fileMenu.isOpen()).toBe(true);
+		expect(fileMenu.currentIndex()).toBe(0);
+		expect(app.focusWidget()).toBe(fileMenu);
+	});
+
+	test("first arrow down in open menu moves to next selectable item", () =>
+	{
+		const menuBar = new CMenuBar();
+		const fileMenu = new CMenu();
+
+		fileMenu.addAction(new CAction("New"));
+		fileMenu.addSeparator();
+		fileMenu.addAction(new CAction("Open"));
+
+		menuBar.resize(500, CMenuBar.DefaultHeight);
+		menuBar.addMenu("File", fileMenu);
+
+		menuBar.setFocus();
+
+		menuBar.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowRight"
+		));
+
+		menuBar.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowDown"
+		));
+
+		expect(fileMenu.currentIndex()).toBe(0);
+
+		fileMenu.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowDown"
+		));
+
+		expect(fileMenu.currentIndex()).toBe(2);
+	});
+
+	test("reopening menu restores last selected item", () =>
+	{
+		const menu = new CMenu();
+
+		menu.addAction(new CAction("New"));
+		menu.addAction(new CAction("Open"));
+		menu.addAction(new CAction("Save"));
+
+		menu.open();
+
+		expect(menu.currentIndex()).toBe(0);
+
+		menu.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowDown"
+		));
+
+		expect(menu.currentIndex()).toBe(1);
+
+		menu.close();
+		menu.open();
+
+		expect(menu.currentIndex()).toBe(1);
+	});
+
+	test("reopening menu opens submenu of current item", () =>
+	{
+		const menu = new CMenu();
+		const submenu = new CMenu();
+
+		menu.addAction(new CAction("Open"));
+		menu.addMenu("Options", submenu);
+
+		submenu.addAction(new CAction("General"));
+		submenu.addAction(new CAction("Display"));
+
+		menu.open();
+
+		expect(menu.currentIndex()).toBe(0);
+
+		menu.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowDown"
+		));
+
+		expect(menu.currentIndex()).toBe(1);
+		expect(submenu.isOpen()).toBe(true);
+
+		menu.close();
+
+		expect(submenu.isOpen()).toBe(false);
+
+		menu.open();
+
+		expect(menu.currentIndex()).toBe(1);
+		expect(submenu.isOpen()).toBe(true);
+	});
+
+	test("keyboard opening menu focuses automatically opened submenu", () =>
+	{
+		const app = CApplication.instance();
+		const menuBar = new CMenuBar();
+		const viewMenu = new CMenu();
+		const panelsMenu = new CMenu();
+
+		viewMenu.addAction(new CAction("Show grid"));
+		viewMenu.addMenu("Panels", panelsMenu);
+
+		panelsMenu.addAction(new CAction("Properties"));
+		panelsMenu.addAction(new CAction("Inspector"));
+
+		viewMenu.open();
+
+		viewMenu.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowDown"
+		));
+
+		expect(viewMenu.currentIndex()).toBe(1);
+		expect(panelsMenu.isOpen()).toBe(true);
+
+		viewMenu.close();
+
+		expect(viewMenu.isOpen()).toBe(false);
+		expect(panelsMenu.isOpen()).toBe(false);
+
+		menuBar.resize(500, CMenuBar.DefaultHeight);
+		menuBar.addMenu("View", viewMenu);
+
+		menuBar.setFocus();
+
+		menuBar.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowRight"
+		));
+
+		menuBar.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowDown"
+		));
+
+		expect(viewMenu.isOpen()).toBe(true);
+		expect(panelsMenu.isOpen()).toBe(true);
+		expect(app.focusWidget()).toBe(panelsMenu);
+	});
+
+	test("arrow down navigates submenu when it was opened automatically", () =>
+	{
+		const app = CApplication.instance();
+		const menuBar = new CMenuBar();
+		const viewMenu = new CMenu();
+		const panelsMenu = new CMenu();
+
+		viewMenu.addAction(new CAction("Show grid"));
+		viewMenu.addMenu("Panels", panelsMenu);
+
+		panelsMenu.addAction(new CAction("Properties"));
+		panelsMenu.addAction(new CAction("Inspector"));
+
+		viewMenu.open();
+
+		viewMenu.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowDown"
+		));
+
+		expect(viewMenu.currentIndex()).toBe(1);
+		expect(panelsMenu.isOpen()).toBe(true);
+
+		viewMenu.close();
+
+		menuBar.resize(500, CMenuBar.DefaultHeight);
+		menuBar.addMenu("View", viewMenu);
+
+		menuBar.setFocus();
+
+		menuBar.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowRight"
+		));
+
+		menuBar.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowDown"
+		));
+
+		expect(app.focusWidget()).toBe(panelsMenu);
+		expect(panelsMenu.currentIndex()).toBe(0);
+
+		panelsMenu.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowDown"
+		));
+
+		expect(panelsMenu.currentIndex()).toBe(1);
+
+		expect(viewMenu.currentIndex()).toBe(1);
+		expect(panelsMenu.isOpen()).toBe(true);
 	});
 });

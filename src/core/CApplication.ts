@@ -352,15 +352,16 @@ export class CApplication extends CObject {
 			target = this.#widgetAt(position.x(), position.y());
 
 		while (target !== null) {
+			const oldFocus = this.#m_focusWidget;
 			if (this.#sendMouseEvent(target, type, pointerEvent)) {
 				if (type === CEventType.MousePress) {
-					target.setFocus();
+					if (this.#m_focusWidget === oldFocus)
+						target.setFocus();
+
 					this.grabMouse(target);
 				}
-
 				break;
 			}
-
 			target = target.parent();
 		}
 
