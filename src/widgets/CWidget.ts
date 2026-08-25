@@ -22,8 +22,9 @@ export class CWidget extends CObject {
     #m_layout: CLayout | null = null;
     #m_minimumSize = new CSize(0, 0);
     #m_palette: CPalette;
+    #m_toolTip = "";
 
-    constructor(parent: CWidget | null = null) {
+	constructor(parent: CWidget | null = null) {
         super(null);
 
         if (parent !== null) {
@@ -294,8 +295,15 @@ export class CWidget extends CObject {
 	    return new CSize(0, 0);
     }
 
-    protected paintEvent(_painter: CPainter): void {
-    }
+    setToolTip(toolTip: string): void
+	{
+		this.#m_toolTip = toolTip;
+	}
+
+	toolTip(): string
+	{
+		return this.#m_toolTip;
+	}
 
     update(): void {
         CApplication.instance().requestRepaint();
@@ -365,6 +373,9 @@ export class CWidget extends CObject {
         }
 
         return new CPoint(localX, localY);
+    }
+
+    protected paintEvent(_painter: CPainter): void {
     }
 
     protected mousePressEvent(event: CMouseEvent): void {

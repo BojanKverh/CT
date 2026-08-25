@@ -1158,4 +1158,30 @@ describe("CWidget", () => {
 	    expect(parent.palette()).toBe(palette);
 	    expect(child.palette()).toBe(palette);
     });
+
+    test("has empty tooltip by default", () =>
+	{
+		const widget = new CWidget();
+
+		expect(widget.toolTip()).toBe("");
+	});
+
+	test("sets tooltip", () =>
+	{
+		const widget = new CWidget();
+
+		widget.setToolTip("Hello");
+
+		expect(widget.toolTip()).toBe("Hello");
+	});
+
+	test("clears tooltip", () =>
+	{
+		const widget = new CWidget();
+
+		widget.setToolTip("Hello");
+		widget.setToolTip("");
+
+		expect(widget.toolTip()).toBe("");
+	});
 });

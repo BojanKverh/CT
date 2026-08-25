@@ -15,7 +15,8 @@ import type { CScrollBar } from "../widgets/CScrollBar.js";
 import { COrientation } from "./COrientation.js";
 import { CPixmap } from "../painting/CPixmap.js";
 import { CRadioButton } from "../widgets/CRadioButton.js";
-import type { CTabWidget } from "../widgets/CTabWidget.js";
+import { CTabWidget } from "../widgets/CTabWidget.js";
+import { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 
 export class CDefaultStyle extends CStyle {
 	override drawLabel(painter: CPainter, label: CLabel): void {
@@ -398,5 +399,22 @@ export class CDefaultStyle extends CStyle {
 			painter.setTextBaseline("middle");
 			painter.drawText(tabWidget.tabText(i), x + tabWidth / 2, tabHeight / 2);
 		}
+	}
+
+	override drawToolTip(painter: CPainter, toolTip: CToolTipWidget): void {
+		const palette = toolTip.palette();
+
+		painter.setFillStyle(palette.color(CPaletteColorRole.ToolTipBase).toCss());
+		painter.fillRect(toolTip.rect());
+
+		painter.setStrokeStyle(palette.color(CPaletteColorRole.WindowText).toCss());
+		painter.strokeRect(toolTip.rect());
+
+		painter.setFillStyle(palette.color(CPaletteColorRole.ToolTipText).toCss());
+		painter.setFont(toolTip.font());
+		painter.setTextAlign("left");
+		painter.setTextBaseline("middle");
+
+		painter.drawText(toolTip.text(), CToolTipWidget.HorizontalPadding, toolTip.height() / 2);
 	}
 }

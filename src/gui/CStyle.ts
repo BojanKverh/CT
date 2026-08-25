@@ -9,6 +9,7 @@ import type { CGroupBox } from "../widgets/CGroupBox.js";
 import type { CScrollBar } from "../widgets/CScrollBar.js";
 import type { CRadioButton } from "../widgets/CRadioButton.js";
 import type { CTabWidget } from "../widgets/CTabWidget.js";
+import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 
 export abstract class CStyle {
 	
@@ -22,4 +23,5 @@ export abstract class CStyle {
     abstract drawScrollBar(painter: CPainter, scrollBar: CScrollBar): void;
     abstract drawRadioButton(painter: CPainter, radioButton: CRadioButton): void
     abstract drawTabWidget(painter: CPainter, tabWidget: CTabWidget): void
+    abstract drawToolTip(painter: CPainter, toolTip: CToolTipWidget): void;
 }

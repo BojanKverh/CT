@@ -14,6 +14,7 @@ import { CPalette } from "../gui/CPalette.js";
 import { CDefaultStyle } from "../gui/CDefaultStyle.js";
 import type { CStyle } from "../gui/CStyle.js";
 import { CPopupWidget } from "../widgets/CPopupWidget.js";
+import { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
@@ -30,17 +31,32 @@ export class CApplication extends CObject {
     #m_style: CStyle = new CDefaultStyle();
     #m_popupWidgets: CPopupWidget[] = [];
 	#m_modalWidgets: CWidget[] = [];
+	#m_toolTipWidget: CToolTipWidget;
+	#m_toolTipTarget: CWidget | null = null;
+	#m_toolTipTimer: ReturnType<typeof setTimeout> | null = null;
+	#m_mouseX = 0;
+	#m_mouseY = 0;
+
+	static readonly #TOOL_TIP_DELAY = 700;
+	static readonly #TOOL_TIP_OFFSET_X = 12;
+	static readonly #TOOL_TIP_OFFSET_Y = 18;
 
 	#onPointerDown = (event: PointerEvent): void => {
 		this.#dispatchMouseEvent(CEventType.MousePress, event);
 	};
 	#onPointerUp = (event: PointerEvent): void => {
+		this.#dismissToolTip();
 		this.#dispatchMouseEvent(CEventType.MouseRelease, event);
 	};
 	#onPointerMove = (event: PointerEvent): void => {
+		const position = this.#canvasPosition(event);
+		this.#m_mouseX = position.x();
+		this.#m_mouseY = position.y();
 		this.#updateHoverWidget(event);
+		this.#updateToolTipTarget();
 		this.#dispatchMouseEvent(CEventType.MouseMove, event);
 	};
+
 	#onWheel = (event: WheelEvent) : void => {
 		this.#dispatchWheelEvent(CEventType.Wheel, event);
 	}
@@ -75,6 +91,10 @@ export class CApplication extends CObject {
 	        window.addEventListener("keydown", this.#onKeyDown);
 	        window.addEventListener("keyup", this.#onKeyUp);
         }
+
+		this.#m_toolTipWidget = new CToolTipWidget();
+		this.unregisterTopLevelWidget(this.#m_toolTipWidget);
+		this.#m_toolTipWidget.hide();
 	}
 
     destroy(): void {
@@ -95,6 +115,10 @@ export class CApplication extends CObject {
 			window.removeEventListener("keydown", this.#onKeyDown);
 			window.removeEventListener("keyup", this.#onKeyUp);
 		}
+
+		this.#cancelToolTipTimer();
+		this.#m_toolTipWidget.hide();
+		this.#m_toolTipTarget = null;
 
 		this.#m_topLevelWidgets.clear();
 		this.#m_popupWidgets.length = 0;
@@ -317,6 +341,11 @@ export class CApplication extends CObject {
 		return this.#m_modalWidgets[this.#m_modalWidgets.length - 1]!;
 	}
 
+	toolTipVisible(): boolean
+	{
+		return this.#m_toolTipWidget.isVisible();
+	}
+
 	#mouseButton(button: number): CMouseButton {
 		switch (button) {
 		case 0:
@@ -396,6 +425,9 @@ export class CApplication extends CObject {
 
 		for (const popup of this.#m_popupWidgets)
 			popup.render(painter);
+
+		if (this.#m_toolTipWidget.isVisible())
+			this.#m_toolTipWidget.render(painter);
 	}
 
 	#dispatchMouseEvent(type: CEventType, pointerEvent: PointerEvent): void
@@ -557,5 +589,84 @@ export class CApplication extends CObject {
 
 		for (let i = popups.length - 1; i >= 0; --i)
 			popups[i]!.close();
+	}
+
+	#updateToolTipTarget(): void
+	{
+		let target = this.#m_hoverWidget;
+
+		while (target !== null && target.toolTip().length === 0)
+			target = target.parent();
+
+		if (target === this.#m_toolTipTarget)
+			return;
+
+		this.#cancelToolTipTimer();
+		this.#hideToolTip();
+
+		this.#m_toolTipTarget = target;
+
+		if (target === null)
+			return;
+
+		this.#m_toolTipTimer = setTimeout(() =>
+		{
+			this.#m_toolTipTimer = null;
+			this.#showToolTip();
+		}, CApplication.#TOOL_TIP_DELAY);
+	}
+
+	#showToolTip(): void
+	{
+		const target = this.#m_toolTipTarget;
+
+		if (target === null || target.toolTip().length === 0)
+			return;
+
+		this.#m_toolTipWidget.setText(target.toolTip());
+
+		let x = this.#m_mouseX + CApplication.#TOOL_TIP_OFFSET_X;
+		let y = this.#m_mouseY + CApplication.#TOOL_TIP_OFFSET_Y;
+
+		const canvas = this.canvas();
+
+		if (x + this.#m_toolTipWidget.width() > canvas.width)
+			x = canvas.width - this.#m_toolTipWidget.width();
+
+		if (y + this.#m_toolTipWidget.height() > canvas.height)
+			y = this.#m_mouseY - this.#m_toolTipWidget.height() - 8;
+
+		x = Math.max(0, x);
+		y = Math.max(0, y);
+
+		this.#m_toolTipWidget.move(x, y);
+		this.#m_toolTipWidget.show();
+
+		this.requestRepaint();
+	}
+
+	#hideToolTip(): void
+	{
+		if (!this.#m_toolTipWidget.isVisible())
+			return;
+
+		this.#m_toolTipWidget.hide();
+		this.requestRepaint();
+	}
+
+	#cancelToolTipTimer(): void
+	{
+		if (this.#m_toolTipTimer === null)
+			return;
+
+		clearTimeout(this.#m_toolTipTimer);
+		this.#m_toolTipTimer = null;
+	}
+
+	#dismissToolTip(): void
+	{
+		this.#cancelToolTipTimer();
+		this.#hideToolTip();
+		this.#m_toolTipTarget = null;
 	}
 }

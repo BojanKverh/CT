@@ -10,7 +10,9 @@ export enum CPaletteColorRole {
 	DisabledText,
     Highlight,
 	HighlightedText,
-	Hover
+	Hover,
+	ToolTipBase,
+	ToolTipText
 }
 
 export class CPalette {
@@ -27,6 +29,8 @@ export class CPalette {
 		this.#m_colors.set(CPaletteColorRole.Highlight, new CColor(0, 120, 215));
 		this.#m_colors.set(CPaletteColorRole.HighlightedText, new CColor(255, 255, 255));
 		this.#m_colors.set(CPaletteColorRole.Hover, new CColor(255, 128, 0));
+		this.#m_colors.set(CPaletteColorRole.ToolTipBase, new CColor(255, 255, 220));
+		this.#m_colors.set(CPaletteColorRole.ToolTipText, new CColor(0, 0, 0));
 	}
 
 	color(role: CPaletteColorRole): CColor {

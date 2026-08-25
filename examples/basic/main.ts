@@ -198,6 +198,7 @@ but.clicked.connect(() => {
 const lab = new CLabel(parent);
 lab.setGeometry(250, 50, 130, 40);
 lab.setText("Jaz sem CLabel");
+lab.setToolTip("This is CLabel, you won't believe that...");
 lab.setAlignment(CAlignment.Right | CAlignment.Top);
 
 const lab2 = new CLabel(parent);
@@ -206,6 +207,7 @@ lab2.setGeometry(250, 100, 60, 60);
 lab2.setText("Bojan");
 
 const child = new BlueWidget(parent);
+child.setToolTip("Blue widget");
 child.setGeometry(250, 250, 150, 100);
 
 const cbox = new CCheckBox(child);

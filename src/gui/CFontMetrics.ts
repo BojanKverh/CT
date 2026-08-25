@@ -2,9 +2,17 @@ import { CApplication } from "../core/CApplication.js";
 
 export class CFontMetrics {
 	#m_font: string;
+	#m_context: CanvasRenderingContext2D;
 
 	constructor(font: string) {
 		this.#m_font = font;
+
+		const context = CApplication.instance().canvas().getContext("2d");
+
+		if (context === null)
+			throw new Error("Canvas 2D context is not available.");
+
+		this.#m_context = context;
 	}
 
 	font(): string {
@@ -12,20 +20,33 @@ export class CFontMetrics {
 	}
 
 	textWidth(text: string): number {
-		const context = CApplication.instance()
-			.canvas()
-			.getContext("2d");
 
-		if (context === null)
+		if (this.#m_context === null)
 			throw new Error("Canvas 2D context is not available.");
 
-		context.save();
-		context.font = this.#m_font;
+		this.#m_context.save();
+		this.#m_context.font = this.#m_font;
 
-		const width = context.measureText(text).width;
+		const width = this.#m_context.measureText(text).width;
 
-		context.restore();
+		this.#m_context.restore();
 
 		return width;
+	}
+
+	height(): number {
+		if (this.#m_context === null)
+			throw new Error("Canvas 2D context is not available.");
+
+		this.#m_context.save();
+		this.#m_context.font = this.#m_font;
+
+		const metrics = this.#m_context.measureText("Mg");
+		const height = metrics.actualBoundingBoxAscent +
+			metrics.actualBoundingBoxDescent;
+
+		this.#m_context.restore();
+
+		return height;
 	}
 }
