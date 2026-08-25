@@ -455,13 +455,13 @@ export class CListWidget extends CScrollArea
 			const y = row * CListWidget.ItemHeight;
 
 			const selected = this.#m_selectedRows.has(row);
+			const hovered = (row === this.#m_hoveredRow);
 
-			if (selected) {
-				painter.setBrush(
-					palette.color(
-						CPaletteColorRole.Highlight
-					).toCss()
-				);
+			if (selected || hovered) {
+				if (selected)
+					painter.setBrush(palette.color(CPaletteColorRole.Highlight).toCss());
+				else
+					painter.setBrush(palette.color(CPaletteColorRole.Hover).toCss());
 
 				painter.fillRect(
 					new CRect(

@@ -1,7 +1,8 @@
 import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
-	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget
+	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
+	CTabWidget
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -83,13 +84,13 @@ but.setText("Click me");
 
 but.clicked.connect(() => {
 		const dlg = new CDialog;
-		dlg.setGeometry(150, 150, 600, 250);
+		dlg.setGeometry(150, 150, 600, 550);
 		dlg.setWindowTitle("Settings");
 
 		const buttonBox = new CDialogButtonBox(
 			CStandardButton.Ok | CStandardButton.Cancel, dlg );
 
-		buttonBox.setGeometry(10, 200, 380, 30);
+		buttonBox.setGeometry(10, 500, 580, 30);
 
 		buttonBox.accepted.connect(() => {
 			dlg.accept();
@@ -183,6 +184,14 @@ but.clicked.connect(() => {
 		{
 			console.log("Current page:", index);
 		});
+
+		const tw = new CTabWidget(dlg);
+		tw.setGeometry(10, 300, 300, 150);
+		const rw = new RedWidget(tw);
+		const bw = new BlueWidget(tw);
+		tw.addTab(rw, "Red");
+		tw.addTab(bw, "Blue");
+
 		dlg.exec();
 	});
 

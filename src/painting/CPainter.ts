@@ -136,4 +136,8 @@ export class CPainter {
     drawRect(x: number, y: number, w: number, h: number): void {
         this.#m_engine.drawRect(x, y, w, h);
     }
+
+    drawRoundedRect(x: number, y: number, w: number, h: number, r: number | number[] ): void {
+        this.#m_engine.drawRoundedRect(x, y, w, h, r);
+    }
 }

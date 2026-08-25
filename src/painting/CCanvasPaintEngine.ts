@@ -135,4 +135,14 @@ export class CCanvasPaintEngine extends CPaintEngine {
         this.#m_context.fillRect(x, y, w, h);
         this.#m_context.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
     }
+
+    drawRoundedRect(x: number, y: number, w: number, h: number, r: number | number[] ): void
+    {
+        this.#m_context.beginPath();
+        this.#m_context.roundRect(x, y, w, h, r);
+        this.#m_context.stroke();
+        this.#m_context.beginPath();
+        this.#m_context.roundRect(x, y, w, h, r);
+        this.#m_context.fill();
+    }
 }

@@ -15,6 +15,7 @@ import type { CScrollBar } from "../widgets/CScrollBar.js";
 import { COrientation } from "./COrientation.js";
 import { CPixmap } from "../painting/CPixmap.js";
 import { CRadioButton } from "../widgets/CRadioButton.js";
+import type { CTabWidget } from "../widgets/CTabWidget.js";
 
 export class CDefaultStyle extends CStyle {
 	override drawLabel(painter: CPainter, label: CLabel): void {
@@ -350,5 +351,52 @@ export class CDefaultStyle extends CStyle {
 		painter.setTextBaseline("middle");
 		painter.drawText(radioButton.text(), indicatorX + indicatorSize + 6,
 			radioButton.height() / 2);
+	}
+
+	override drawTabWidget(painter: CPainter, tabWidget: CTabWidget): void {
+		const palette = tabWidget.palette();
+		const tabWidth = tabWidget.tabWidth();
+		const tabHeight = tabWidget.tabHeight();
+
+		painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
+		painter.fillRect(new CRect(0, 0, tabWidget.width(), tabHeight));
+
+		for (let i = 0; i < tabWidget.count(); ++i) {
+			const x = i * tabWidth;
+			const enabled = tabWidget.isTabEnabled(i);
+			const current = i === tabWidget.currentIndex();
+			const hovered = tabWidget.isTabHovered(i);
+			const pressed = tabWidget.isTabPressed(i);
+
+			let backgroundRole = CPaletteColorRole.Button;
+			let foregroundRole = CPaletteColorRole.Text;
+
+			if (!enabled) {
+				backgroundRole = CPaletteColorRole.Window;
+				foregroundRole = CPaletteColorRole.DisabledText;
+			} else if (current || pressed) {
+				backgroundRole = CPaletteColorRole.Highlight;
+				foregroundRole = CPaletteColorRole.HighlightedText;
+			} else if (hovered) {
+				backgroundRole = CPaletteColorRole.Hover;
+			}
+
+			painter.setFillStyle(palette.color(backgroundRole).toCss());			
+			painter.setStrokeStyle(palette.color(foregroundRole).toCss());
+			painter.drawRoundedRect(x + 1, 1, tabWidth - 1, tabHeight - 2, [9, 9, 0, 0]);
+
+			let textRole = CPaletteColorRole.ButtonText;
+
+			if (!enabled)
+				textRole = CPaletteColorRole.DisabledText;
+			else if (current || pressed || hovered)
+				textRole = CPaletteColorRole.HighlightedText;
+
+			painter.setFillStyle(palette.color(textRole).toCss());
+			painter.setFont(tabWidget.font());
+			painter.setTextAlign("center");
+			painter.setTextBaseline("middle");
+			painter.drawText(tabWidget.tabText(i), x + tabWidth / 2, tabHeight / 2);
+		}
 	}
 }

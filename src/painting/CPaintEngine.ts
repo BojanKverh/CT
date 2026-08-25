@@ -47,4 +47,5 @@ export abstract class CPaintEngine {
     abstract drawEllipse(x: number, y: number, w: number, h: number): void;
     abstract fillEllipse(x: number, y: number, w: number, h: number): void;
     abstract drawRect(x: number, y: number, w: number, h: number): void;
+    abstract drawRoundedRect(x: number, y: number, w: number, h: number, r: number | number[] ): void;
 }
