@@ -6,6 +6,7 @@ import { CWidget } from "../../src/widgets/CWidget.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { createTestWindow } from "../helpers/createTestWindow.js";
 import { CWheelEvent } from "../../src/events/CWheelEvent.js";
+import { CFrame } from "../../src/index.js";
 
 describe("CScrollArea", () => {
 	beforeEach(() => {
@@ -78,10 +79,12 @@ describe("CScrollArea", () => {
 
 		area.resize(300, 200);
 
-		expect(area.viewport().x()).toBe(0);
-		expect(area.viewport().y()).toBe(0);
-		expect(area.viewport().width()).toBe(300);
-		expect(area.viewport().height()).toBe(200);
+		const frameWidth = area.frameWidth();
+
+		expect(area.viewport().x()).toBe(frameWidth);
+		expect(area.viewport().y()).toBe(frameWidth);
+		expect(area.viewport().width()).toBe(300 - 2 * frameWidth);
+		expect(area.viewport().height()).toBe(200 - 2 * frameWidth);
 	});
 
 	test("updates viewport when geometry changes", () => {
@@ -89,10 +92,12 @@ describe("CScrollArea", () => {
 
 		area.setGeometry(50, 60, 400, 250);
 
-		expect(area.viewport().x()).toBe(0);
-		expect(area.viewport().y()).toBe(0);
-		expect(area.viewport().width()).toBe(400);
-		expect(area.viewport().height()).toBe(250);
+		const frameWidth = area.frameWidth();
+
+		expect(area.viewport().x()).toBe(frameWidth);
+		expect(area.viewport().y()).toBe(frameWidth);
+		expect(area.viewport().width()).toBe(400 - 2 * frameWidth);
+		expect(area.viewport().height()).toBe(250 - 2 * frameWidth);
 	});
 
 	test("replaces content widget and returns previous widget", () => {
@@ -147,11 +152,13 @@ describe("CScrollArea", () => {
 		widget.resize(200, 100);
 		area.setWidget(widget);
 
+		const frameWidth = area.frameWidth();
+
 		expect(area.horizontalScrollBar().isVisible()).toBe(false);
 		expect(area.verticalScrollBar().isVisible()).toBe(false);
 
-		expect(area.viewport().width()).toBe(300);
-		expect(area.viewport().height()).toBe(200);
+		expect(area.viewport().width()).toBe(300 - 2 * frameWidth);
+		expect(area.viewport().height()).toBe(200 - 2 * frameWidth);
 	});
 
 	test("shows horizontal scroll bar when content is too wide", () => {
@@ -162,11 +169,16 @@ describe("CScrollArea", () => {
 		widget.resize(500, 100);
 		area.setWidget(widget);
 
+		const frameWidth = area.frameWidth();
+		const scrollBarSize = area.horizontalScrollBar().height();
+
 		expect(area.horizontalScrollBar().isVisible()).toBe(true);
 		expect(area.verticalScrollBar().isVisible()).toBe(false);
 
-		expect(area.viewport().width()).toBe(300);
-		expect(area.viewport().height()).toBe(184);
+		expect(area.viewport().width()).toBe(300 - 2 * frameWidth);
+		expect(area.viewport().height()).toBe(
+			200 - 2 * frameWidth - scrollBarSize
+		);
 	});
 
 	test("shows vertical scroll bar when content is too tall", () => {
@@ -177,11 +189,16 @@ describe("CScrollArea", () => {
 		widget.resize(100, 500);
 		area.setWidget(widget);
 
+		const frameWidth = area.frameWidth();
+		const scrollBarSize = area.verticalScrollBar().width();
+
 		expect(area.horizontalScrollBar().isVisible()).toBe(false);
 		expect(area.verticalScrollBar().isVisible()).toBe(true);
 
-		expect(area.viewport().width()).toBe(284);
-		expect(area.viewport().height()).toBe(200);
+		expect(area.viewport().width()).toBe(
+			300 - 2 * frameWidth - scrollBarSize
+		);
+		expect(area.viewport().height()).toBe(200 - 2 * frameWidth);
 	});
 
 	test("shows both scroll bars when content exceeds viewport", () => {
@@ -192,11 +209,19 @@ describe("CScrollArea", () => {
 		widget.resize(500, 400);
 		area.setWidget(widget);
 
+		const frameWidth = area.frameWidth();
+		const horizontalSize = area.horizontalScrollBar().height();
+		const verticalSize = area.verticalScrollBar().width();
+
 		expect(area.horizontalScrollBar().isVisible()).toBe(true);
 		expect(area.verticalScrollBar().isVisible()).toBe(true);
 
-		expect(area.viewport().width()).toBe(284);
-		expect(area.viewport().height()).toBe(184);
+		expect(area.viewport().width()).toBe(
+			300 - 2 * frameWidth - verticalSize
+		);
+		expect(area.viewport().height()).toBe(
+			200 - 2 * frameWidth - horizontalSize
+		);
 	});
 
 	test("horizontal scroll bar scrolls content horizontally", () => {
@@ -236,17 +261,25 @@ describe("CScrollArea", () => {
 		area.resize(300, 200);
 
 		/*
-		 * Vertical scrolling is required first. Its 16 px width reduces
-		 * the viewport to 284 px, which then requires horizontal scrolling.
+		 * Vertical scrolling is required first. Its width reduces
+		 * the viewport enough to require horizontal scrolling.
 		 */
 		widget.resize(290, 300);
 		area.setWidget(widget);
 
+		const frameWidth = area.frameWidth();
+		const horizontalSize = area.horizontalScrollBar().height();
+		const verticalSize = area.verticalScrollBar().width();
+
 		expect(area.horizontalScrollBar().isVisible()).toBe(true);
 		expect(area.verticalScrollBar().isVisible()).toBe(true);
 
-		expect(area.viewport().width()).toBe(284);
-		expect(area.viewport().height()).toBe(184);
+		expect(area.viewport().width()).toBe(
+			300 - 2 * frameWidth - verticalSize
+		);
+		expect(area.viewport().height()).toBe(
+			200 - 2 * frameWidth - horizontalSize
+		);
 	});
 
 	test("configures horizontal scroll bar range and page step", () => {
@@ -258,8 +291,12 @@ describe("CScrollArea", () => {
 		area.setWidget(widget);
 
 		expect(area.horizontalScrollBar().minimum()).toBe(0);
-		expect(area.horizontalScrollBar().maximum()).toBe(200);
-		expect(area.horizontalScrollBar().pageStep()).toBe(300);
+		expect(area.horizontalScrollBar().maximum()).toBe(
+			widget.width() - area.viewport().width()
+		);
+		expect(area.horizontalScrollBar().pageStep()).toBe(
+			area.viewport().width()
+		);
 	});
 
 	test("configures vertical scroll bar range and page step", () => {
@@ -271,8 +308,12 @@ describe("CScrollArea", () => {
 		area.setWidget(widget);
 
 		expect(area.verticalScrollBar().minimum()).toBe(0);
-		expect(area.verticalScrollBar().maximum()).toBe(300);
-		expect(area.verticalScrollBar().pageStep()).toBe(200);
+		expect(area.verticalScrollBar().maximum()).toBe(
+			widget.height() - area.viewport().height()
+		);
+		expect(area.verticalScrollBar().pageStep()).toBe(
+			area.viewport().height()
+		);
 	});
 
 	test("accounts for both scroll bars in ranges and page steps", () => {
@@ -283,43 +324,53 @@ describe("CScrollArea", () => {
 		widget.resize(500, 400);
 		area.setWidget(widget);
 
-		expect(area.horizontalScrollBar().maximum()).toBe(216);
-		expect(area.horizontalScrollBar().pageStep()).toBe(284);
+		expect(area.horizontalScrollBar().maximum()).toBe(
+			widget.width() - area.viewport().width()
+		);
+		expect(area.horizontalScrollBar().pageStep()).toBe(
+			area.viewport().width()
+		);
 
-		expect(area.verticalScrollBar().maximum()).toBe(216);
-		expect(area.verticalScrollBar().pageStep()).toBe(184);
+		expect(area.verticalScrollBar().maximum()).toBe(
+			widget.height() - area.viewport().height()
+		);
+		expect(area.verticalScrollBar().pageStep()).toBe(
+			area.viewport().height()
+		);
 	});
 
-    test("scrolls vertically with wheel event", () => {
-	    const area = new CScrollArea();
-	    const widget = new CWidget();
+	test("scrolls vertically with wheel event", () => {
+		const area = new CScrollArea();
+		const widget = new CWidget();
 
-	    area.resize(300, 200);
-	    widget.resize(100, 500);
-	    area.setWidget(widget);
+		area.resize(300, 200);
+		widget.resize(100, 500);
+		area.setWidget(widget);
 
-	    const event = new CWheelEvent(0, 60);
+		const event = new CWheelEvent(0, 60);
 
-	    area.event(event);
+		area.event(event);
 
-	    expect(area.scrollY()).toBe(15);
-	    expect(widget.y()).toBe(-15);
-	    expect(event.isAccepted()).toBe(true);
-    });
+		expect(area.scrollY()).toBe(15);
+		expect(widget.y()).toBe(-15);
+		expect(event.isAccepted()).toBe(true);
+	});
 
-    test("clamps wheel scrolling to content", () => {
-	    const area = new CScrollArea();
-	    const widget = new CWidget();
+	test("clamps wheel scrolling to content", () => {
+		const area = new CScrollArea();
+		const widget = new CWidget();
 
-	    area.resize(300, 200);
-	    widget.resize(100, 500);
-	    area.setWidget(widget);
+		area.resize(300, 200);
+		widget.resize(100, 500);
+		area.setWidget(widget);
 
-	    area.event(new CWheelEvent(0, 5000));
+		area.event(new CWheelEvent(0, 5000));
 
-	    expect(area.scrollY()).toBe(300);
-	    expect(widget.y()).toBe(-300);
-    });
+		const maximum = widget.height() - area.viewport().height();
+
+		expect(area.scrollY()).toBe(maximum);
+		expect(widget.y()).toBe(-maximum);
+	});
 
 	test("scrolls vertically with wheel event", () => {
 		const area = new CScrollArea();
@@ -347,8 +398,10 @@ describe("CScrollArea", () => {
 
 		area.event(new CWheelEvent(0, 5000));
 
-		expect(area.scrollY()).toBe(300);
-		expect(widget.y()).toBe(-300);
+		const maximum = widget.height() - area.viewport().height();
+
+		expect(area.scrollY()).toBe(maximum);
+		expect(widget.y()).toBe(-maximum);
 	});
 
 	test("mouse wheel scrolls content vertically", () => {
@@ -391,9 +444,11 @@ describe("CScrollArea", () => {
 
 		area.event(new CWheelEvent(0, 5000));
 
-		expect(area.scrollY()).toBe(300);
-		expect(widget.y()).toBe(-300);
-		expect(area.verticalScrollBar().value()).toBe(300);
+		const maximum = widget.height() - area.viewport().height();
+
+		expect(area.scrollY()).toBe(maximum);
+		expect(widget.y()).toBe(-maximum);
+		expect(area.verticalScrollBar().value()).toBe(maximum);
 	});
 
 	test("mouse wheel clamps scrolling at top", () => {
@@ -426,5 +481,11 @@ describe("CScrollArea", () => {
 		expect(area.scrollY()).toBe(0);
 		expect(widget.y()).toBe(0);
 		expect(event.isAccepted()).toBe(false);
+	});
+
+	test("inherits CFrame", () => {
+		const scrollArea = new CScrollArea();
+
+		expect(scrollArea).toBeInstanceOf(CFrame);
 	});
 });

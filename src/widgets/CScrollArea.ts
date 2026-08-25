@@ -1,9 +1,10 @@
 import { CWidget } from "./CWidget.js";
+import { CFrame, CFrameShadow, CFrameShape } from "./CFrame.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CScrollBar } from "./CScrollBar.js";
 import { CWheelEvent } from "../events/CWheelEvent.js";
 
-export class CScrollArea extends CWidget {
+export class CScrollArea extends CFrame {
 	#m_viewport: CWidget;
 	#m_widget: CWidget | null = null;
 	#m_scrollX = 0;
@@ -26,6 +27,8 @@ export class CScrollArea extends CWidget {
 			this.setScrollY(value);
 		});
 
+		this.setFrameShape(CFrameShape.Panel);
+		this.setFrameShadow(CFrameShadow.Sunken);
 		this.#updateGeometry();
 	}
 
@@ -118,6 +121,11 @@ export class CScrollArea extends CWidget {
 		this.#updateGeometry();
 	}
 
+	protected override frameChanged(): void
+	{
+		this.#updateGeometry();
+	}
+
     protected override wheelEvent(event: CWheelEvent): void {
     	if (!this.#m_verticalScrollBar.isVisible()) {
 	    	event.ignore();
@@ -145,12 +153,13 @@ export class CScrollArea extends CWidget {
 
 	#updateGeometry(): void {
 		const scrollBarSize = 16;
+		const frameWidth = this.frameWidth();
 
 		const contentWidth = this.#m_widget?.width() ?? 0;
 		const contentHeight = this.#m_widget?.height() ?? 0;
 
-		let viewportWidth = this.width();
-		let viewportHeight = this.height();
+		let viewportWidth = Math.max(0, this.width() - 2 * frameWidth);
+		let viewportHeight = Math.max(0, this.height() - 2 * frameWidth);
 
 		let horizontalVisible = contentWidth > viewportWidth;
 		let verticalVisible = contentHeight > viewportHeight;
@@ -174,14 +183,19 @@ export class CScrollArea extends CWidget {
 		viewportWidth = Math.max(0, viewportWidth);
 		viewportHeight = Math.max(0, viewportHeight);
 
-		this.#m_viewport.setGeometry(0, 0, viewportWidth, viewportHeight);
+		this.#m_viewport.setGeometry(
+			frameWidth, frameWidth, viewportWidth, viewportHeight
+		);
 
 		this.#m_horizontalScrollBar.setVisible(horizontalVisible);
 		this.#m_verticalScrollBar.setVisible(verticalVisible);
 
 		if (horizontalVisible) {
 			this.#m_horizontalScrollBar.setGeometry(
-				0, viewportHeight, viewportWidth, scrollBarSize
+				frameWidth,
+				frameWidth + viewportHeight,
+				viewportWidth,
+				scrollBarSize
 			);
 
 			this.#m_horizontalScrollBar.setRange(
@@ -194,7 +208,10 @@ export class CScrollArea extends CWidget {
 
 		if (verticalVisible) {
 			this.#m_verticalScrollBar.setGeometry(
-				viewportWidth, 0, scrollBarSize, viewportHeight
+				frameWidth + viewportWidth,
+				frameWidth,
+				scrollBarSize,
+				viewportHeight
 			);
 
 			this.#m_verticalScrollBar.setRange(

@@ -17,6 +17,7 @@ import { CPixmap } from "../painting/CPixmap.js";
 import { CRadioButton } from "../widgets/CRadioButton.js";
 import { CTabWidget } from "../widgets/CTabWidget.js";
 import { CToolTipWidget } from "../widgets/CToolTipWidget.js";
+import { CFrame, CFrameShadow, CFrameShape } from "../widgets/CFrame.js";
 
 export class CDefaultStyle extends CStyle {
 	override drawLabel(painter: CPainter, label: CLabel): void {
@@ -416,5 +417,240 @@ export class CDefaultStyle extends CStyle {
 		painter.setTextBaseline("middle");
 
 		painter.drawText(toolTip.text(), CToolTipWidget.HorizontalPadding, toolTip.height() / 2);
+	}
+
+	override drawFrame(painter: CPainter, frame: CFrame): void {
+		const shape = frame.frameShape();
+
+		if (shape === CFrameShape.NoFrame)
+			return;
+
+		const palette = frame.palette();
+		const rect = frame.frameRect();
+		const lineWidth = frame.lineWidth();
+		const midLineWidth = frame.midLineWidth();
+
+		if (lineWidth <= 0)
+			return;
+
+		if (shape === CFrameShape.HLine) {
+			this.#drawFrameHLine(
+				painter, frame, rect, lineWidth, midLineWidth
+			);
+			return;
+		}
+
+		if (shape === CFrameShape.VLine) {
+			this.#drawFrameVLine(
+				painter, frame, rect, lineWidth, midLineWidth
+			);
+			return;
+		}
+
+		if (frame.frameShadow() === CFrameShadow.Plain) {
+			const offset = lineWidth / 2;
+			const left = rect.x() + offset;
+			const top = rect.y() + offset;
+			const right = rect.x() + rect.width() - offset;
+			const bottom = rect.y() + rect.height() - offset;
+
+			painter.setPen(
+				palette.color(CPaletteColorRole.WindowText).toCss()
+			);
+			painter.setLineWidth(lineWidth);
+
+			painter.drawLine(left, top, right, top);
+			painter.drawLine(left, top, left, bottom);
+			painter.drawLine(left, bottom, right, bottom);
+			painter.drawLine(right, top, right, bottom);
+			return;
+		}
+
+		const raised = frame.frameShadow() === CFrameShadow.Raised;
+		const topLeftRole = raised ?
+			CPaletteColorRole.Light : CPaletteColorRole.Dark;
+		const bottomRightRole = raised ?
+			CPaletteColorRole.Dark : CPaletteColorRole.Light;
+
+		const offset = lineWidth / 2;
+		const left = rect.x() + offset;
+		const top = rect.y() + offset;
+		const right = rect.x() + rect.width() - offset;
+		const bottom = rect.y() + rect.height() - offset;
+
+		painter.setLineWidth(lineWidth);
+		painter.setPen(palette.color(topLeftRole).toCss());
+
+		painter.drawLine(left, top, right, top);
+		painter.drawLine(left, top, left, bottom);
+
+		painter.setPen(palette.color(bottomRightRole).toCss());
+
+		painter.drawLine(left, bottom, right, bottom);
+		painter.drawLine(right, top, right, bottom);
+
+		if (shape === CFrameShape.Panel)
+			return;
+
+		const innerOffset =
+			lineWidth + midLineWidth + lineWidth / 2;
+
+		const innerLeft = rect.x() + innerOffset;
+		const innerTop = rect.y() + innerOffset;
+		const innerRight =
+			rect.x() + rect.width() - innerOffset;
+		const innerBottom =
+			rect.y() + rect.height() - innerOffset;
+
+		if (midLineWidth > 0) {
+			const midOffset = lineWidth + midLineWidth / 2;
+			const midLeft = rect.x() + midOffset;
+			const midTop = rect.y() + midOffset;
+			const midRight =
+				rect.x() + rect.width() - midOffset;
+			const midBottom =
+				rect.y() + rect.height() - midOffset;
+
+			painter.setPen(
+				palette.color(CPaletteColorRole.Mid).toCss()
+			);
+			painter.setLineWidth(midLineWidth);
+
+			painter.drawLine(midLeft, midTop, midRight, midTop);
+			painter.drawLine(midLeft, midTop, midLeft, midBottom);
+			painter.drawLine(
+				midLeft, midBottom, midRight, midBottom
+			);
+			painter.drawLine(
+				midRight, midTop, midRight, midBottom
+			);
+		}
+
+		painter.setLineWidth(lineWidth);
+		painter.setPen(palette.color(bottomRightRole).toCss());
+
+		painter.drawLine(
+			innerLeft, innerTop, innerRight, innerTop
+		);
+		painter.drawLine(
+			innerLeft, innerTop, innerLeft, innerBottom
+		);
+
+		painter.setPen(palette.color(topLeftRole).toCss());
+
+		painter.drawLine(
+			innerLeft, innerBottom, innerRight, innerBottom
+		);
+		painter.drawLine(
+			innerRight, innerTop, innerRight, innerBottom
+		);
+	}
+
+	#drawFrameHLine(
+		painter: CPainter,
+		frame: CFrame,
+		rect: CRect,
+		lineWidth: number,
+		midLineWidth: number
+	): void {
+		const palette = frame.palette();
+		const center = rect.y() + rect.height() / 2;
+
+		if (frame.frameShadow() === CFrameShadow.Plain) {
+			painter.setPen(
+				palette.color(CPaletteColorRole.WindowText).toCss()
+			);
+			painter.setLineWidth(lineWidth);
+			painter.drawLine(
+				rect.x(), center, rect.x() + rect.width(), center
+			);
+			return;
+		}
+
+		const raised = frame.frameShadow() === CFrameShadow.Raised;
+		const topRole = raised ?
+			CPaletteColorRole.Light : CPaletteColorRole.Dark;
+		const bottomRole = raised ?
+			CPaletteColorRole.Dark : CPaletteColorRole.Light;
+
+		const frameWidth = 2 * lineWidth + midLineWidth;
+		const top = center - frameWidth / 2 + lineWidth / 2;
+		const bottom = center + frameWidth / 2 - lineWidth / 2;
+
+		painter.setLineWidth(lineWidth);
+		painter.setPen(palette.color(topRole).toCss());
+		painter.drawLine(
+			rect.x(), top, rect.x() + rect.width(), top
+		);
+
+		if (midLineWidth > 0) {
+			painter.setLineWidth(midLineWidth);
+			painter.setPen(
+				palette.color(CPaletteColorRole.Mid).toCss()
+			);
+			painter.drawLine(
+				rect.x(), center, rect.x() + rect.width(), center
+			);
+		}
+
+		painter.setLineWidth(lineWidth);
+		painter.setPen(palette.color(bottomRole).toCss());
+		painter.drawLine(
+			rect.x(), bottom, rect.x() + rect.width(), bottom
+		);
+	}
+
+	#drawFrameVLine(
+		painter: CPainter,
+		frame: CFrame,
+		rect: CRect,
+		lineWidth: number,
+		midLineWidth: number
+	): void {
+		const palette = frame.palette();
+		const center = rect.x() + rect.width() / 2;
+
+		if (frame.frameShadow() === CFrameShadow.Plain) {
+			painter.setPen(
+				palette.color(CPaletteColorRole.WindowText).toCss()
+			);
+			painter.setLineWidth(lineWidth);
+			painter.drawLine(
+				center, rect.y(), center, rect.y() + rect.height()
+			);
+			return;
+		}
+
+		const raised = frame.frameShadow() === CFrameShadow.Raised;
+		const leftRole = raised ?
+			CPaletteColorRole.Light : CPaletteColorRole.Dark;
+		const rightRole = raised ?
+			CPaletteColorRole.Dark : CPaletteColorRole.Light;
+
+		const frameWidth = 2 * lineWidth + midLineWidth;
+		const left = center - frameWidth / 2 + lineWidth / 2;
+		const right = center + frameWidth / 2 - lineWidth / 2;
+
+		painter.setLineWidth(lineWidth);
+		painter.setPen(palette.color(leftRole).toCss());
+		painter.drawLine(
+			left, rect.y(), left, rect.y() + rect.height()
+		);
+
+		if (midLineWidth > 0) {
+			painter.setLineWidth(midLineWidth);
+			painter.setPen(
+				palette.color(CPaletteColorRole.Mid).toCss()
+			);
+			painter.drawLine(
+				center, rect.y(), center, rect.y() + rect.height()
+			);
+		}
+
+		painter.setLineWidth(lineWidth);
+		painter.setPen(palette.color(rightRole).toCss());
+		painter.drawLine(
+			right, rect.y(), right, rect.y() + rect.height()
+		);
 	}
 }

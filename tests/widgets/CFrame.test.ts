@@ -1,0 +1,327 @@
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
+import { CApplication } from "../../src/core/CApplication.js";
+import {
+	CFrame,
+	CFrameShadow,
+	CFrameShape
+} from "../../src/widgets/CFrame.js";
+import { createTestCanvas } from "../helpers/createTestCanvas.js";
+
+describe("CFrame", () => {
+	beforeEach(() => {
+		new CApplication(createTestCanvas());
+	});
+
+	afterEach(() => {
+		if (CApplication.exists())
+			CApplication.instance().destroy();
+	});
+
+	test("uses NoFrame shape by default", () => {
+		const frame = new CFrame();
+
+		expect(frame.frameShape()).toBe(CFrameShape.NoFrame);
+	});
+
+	test("uses Plain shadow by default", () => {
+		const frame = new CFrame();
+
+		expect(frame.frameShadow()).toBe(CFrameShadow.Plain);
+	});
+
+	test("uses line width 1 by default", () => {
+		const frame = new CFrame();
+
+		expect(frame.lineWidth()).toBe(1);
+	});
+
+	test("uses mid line width 0 by default", () => {
+		const frame = new CFrame();
+
+		expect(frame.midLineWidth()).toBe(0);
+	});
+
+	test("NoFrame has frame width 0", () => {
+		const frame = new CFrame();
+
+		expect(frame.frameWidth()).toBe(0);
+	});
+
+	test("sets frame shape", () => {
+		const frame = new CFrame();
+
+		frame.setFrameShape(CFrameShape.Box);
+
+		expect(frame.frameShape()).toBe(CFrameShape.Box);
+	});
+
+	test("sets frame shadow", () => {
+		const frame = new CFrame();
+
+		frame.setFrameShadow(CFrameShadow.Sunken);
+
+		expect(frame.frameShadow()).toBe(CFrameShadow.Sunken);
+	});
+
+	test("sets line width", () => {
+		const frame = new CFrame();
+
+		frame.setLineWidth(4);
+
+		expect(frame.lineWidth()).toBe(4);
+	});
+
+	test("sets mid line width", () => {
+		const frame = new CFrame();
+
+		frame.setMidLineWidth(3);
+
+		expect(frame.midLineWidth()).toBe(3);
+	});
+
+	test("line width cannot be negative", () => {
+		const frame = new CFrame();
+
+		frame.setLineWidth(-10);
+
+		expect(frame.lineWidth()).toBe(0);
+	});
+
+	test("mid line width cannot be negative", () => {
+		const frame = new CFrame();
+
+		frame.setMidLineWidth(-10);
+
+		expect(frame.midLineWidth()).toBe(0);
+	});
+
+	test("Plain Box frame width equals line width", () => {
+		const frame = new CFrame();
+
+		frame.setFrameShape(CFrameShape.Box);
+		frame.setFrameShadow(CFrameShadow.Plain);
+		frame.setLineWidth(3);
+		frame.setMidLineWidth(4);
+
+		expect(frame.frameWidth()).toBe(3);
+	});
+
+	test("Raised Box includes two lines and mid line", () => {
+		const frame = new CFrame();
+
+		frame.setFrameShape(CFrameShape.Box);
+		frame.setFrameShadow(CFrameShadow.Raised);
+		frame.setLineWidth(2);
+		frame.setMidLineWidth(3);
+
+		expect(frame.frameWidth()).toBe(7);
+	});
+
+	test("Sunken Box includes two lines and mid line", () => {
+		const frame = new CFrame();
+
+		frame.setFrameShape(CFrameShape.Box);
+		frame.setFrameShadow(CFrameShadow.Sunken);
+		frame.setLineWidth(2);
+		frame.setMidLineWidth(3);
+
+		expect(frame.frameWidth()).toBe(7);
+	});
+
+	test("Raised Box without mid line has two line widths", () => {
+		const frame = new CFrame();
+
+		frame.setFrameShape(CFrameShape.Box);
+		frame.setFrameShadow(CFrameShadow.Raised);
+		frame.setLineWidth(2);
+
+		expect(frame.frameWidth()).toBe(4);
+	});
+
+	test("Panel frame width equals line width", () => {
+		const frame = new CFrame();
+
+		frame.setFrameShape(CFrameShape.Panel);
+		frame.setFrameShadow(CFrameShadow.Sunken);
+		frame.setLineWidth(3);
+		frame.setMidLineWidth(10);
+
+		expect(frame.frameWidth()).toBe(3);
+	});
+
+	test("Panel ignores mid line width for frame width", () => {
+		const frame = new CFrame();
+
+		frame.setFrameShape(CFrameShape.Panel);
+		frame.setFrameShadow(CFrameShadow.Raised);
+		frame.setLineWidth(1);
+		frame.setMidLineWidth(20);
+
+		expect(frame.frameWidth()).toBe(1);
+	});
+
+	test("Plain HLine frame width equals line width", () => {
+		const frame = new CFrame();
+
+		frame.setFrameShape(CFrameShape.HLine);
+		frame.setFrameShadow(CFrameShadow.Plain);
+		frame.setLineWidth(3);
+		frame.setMidLineWidth(4);
+
+		expect(frame.frameWidth()).toBe(3);
+	});
+
+	test("Sunken HLine includes two lines and mid line", () => {
+		const frame = new CFrame();
+
+		frame.setFrameShape(CFrameShape.HLine);
+		frame.setFrameShadow(CFrameShadow.Sunken);
+		frame.setLineWidth(2);
+		frame.setMidLineWidth(3);
+
+		expect(frame.frameWidth()).toBe(7);
+	});
+
+	test("Plain VLine frame width equals line width", () => {
+		const frame = new CFrame();
+
+		frame.setFrameShape(CFrameShape.VLine);
+		frame.setFrameShadow(CFrameShadow.Plain);
+		frame.setLineWidth(3);
+		frame.setMidLineWidth(4);
+
+		expect(frame.frameWidth()).toBe(3);
+	});
+
+	test("Raised VLine includes two lines and mid line", () => {
+		const frame = new CFrame();
+
+		frame.setFrameShape(CFrameShape.VLine);
+		frame.setFrameShadow(CFrameShadow.Raised);
+		frame.setLineWidth(2);
+		frame.setMidLineWidth(3);
+
+		expect(frame.frameWidth()).toBe(7);
+	});
+
+	test("frameRect equals widget rect", () => {
+		const frame = new CFrame();
+
+		frame.setGeometry(20, 30, 200, 100);
+
+		expect(frame.frameRect()).toEqual(frame.rect());
+	});
+
+	test("changing frame shape calls frameChanged", () => {
+		class TestFrame extends CFrame {
+			readonly changed = vi.fn();
+
+			protected override frameChanged(): void {
+				this.changed();
+			}
+		}
+
+		const frame = new TestFrame();
+
+		frame.setFrameShape(CFrameShape.Box);
+
+		expect(frame.changed).toHaveBeenCalledOnce();
+	});
+
+	test("setting same frame shape does not call frameChanged", () => {
+		class TestFrame extends CFrame {
+			readonly changed = vi.fn();
+
+			protected override frameChanged(): void {
+				this.changed();
+			}
+		}
+
+		const frame = new TestFrame();
+
+		frame.setFrameShape(CFrameShape.NoFrame);
+
+		expect(frame.changed).not.toHaveBeenCalled();
+	});
+
+	test("changing frame shadow calls frameChanged", () => {
+		class TestFrame extends CFrame {
+			readonly changed = vi.fn();
+
+			protected override frameChanged(): void {
+				this.changed();
+			}
+		}
+
+		const frame = new TestFrame();
+
+		frame.setFrameShadow(CFrameShadow.Sunken);
+
+		expect(frame.changed).toHaveBeenCalledOnce();
+	});
+
+	test("changing line width calls frameChanged", () => {
+		class TestFrame extends CFrame {
+			readonly changed = vi.fn();
+
+			protected override frameChanged(): void {
+				this.changed();
+			}
+		}
+
+		const frame = new TestFrame();
+
+		frame.setLineWidth(2);
+
+		expect(frame.changed).toHaveBeenCalledOnce();
+	});
+
+	test("changing mid line width calls frameChanged", () => {
+		class TestFrame extends CFrame {
+			readonly changed = vi.fn();
+
+			protected override frameChanged(): void {
+				this.changed();
+			}
+		}
+
+		const frame = new TestFrame();
+
+		frame.setMidLineWidth(2);
+
+		expect(frame.changed).toHaveBeenCalledOnce();
+	});
+
+	test("unchanged line width does not call frameChanged", () => {
+		class TestFrame extends CFrame {
+			readonly changed = vi.fn();
+
+			protected override frameChanged(): void {
+				this.changed();
+			}
+		}
+
+		const frame = new TestFrame();
+
+		frame.setLineWidth(1);
+
+		expect(frame.changed).not.toHaveBeenCalled();
+	});
+
+	test("unchanged mid line width does not call frameChanged", () => {
+		class TestFrame extends CFrame {
+			readonly changed = vi.fn();
+
+			protected override frameChanged(): void {
+				this.changed();
+			}
+		}
+
+		const frame = new TestFrame();
+
+		frame.setMidLineWidth(0);
+
+		expect(frame.changed).not.toHaveBeenCalled();
+	});
+});

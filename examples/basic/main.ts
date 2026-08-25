@@ -2,7 +2,9 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
 	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
-	CTabWidget
+	CTabWidget, CFrame,
+	CFrameShape,
+	CFrameShadow
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -125,6 +127,7 @@ but.clicked.connect(() => {
 		list.addItem(disabledItem);
 		list.addItem("Hungary");
 		list.addItem("Poland");
+		list.setMidLineWidth(4);
 
 		list.currentRowChanged.connect(row =>
 		{
@@ -192,6 +195,13 @@ but.clicked.connect(() => {
 		tw.addTab(rw, "Red");
 		tw.addTab(bw, "Blue");
 
+		const fr = new CFrame(rw);
+		fr.setGeometry(20, 20, 150, 60);
+		fr.setFrameShape(CFrameShape.Box);
+		fr.setFrameShadow(CFrameShadow.Sunken);
+		fr.setLineWidth(1);
+		fr.setMidLineWidth(1);
+
 		dlg.exec();
 	});
 
@@ -200,6 +210,8 @@ lab.setGeometry(250, 50, 130, 40);
 lab.setText("Jaz sem CLabel");
 lab.setToolTip("This is CLabel, you won't believe that...");
 lab.setAlignment(CAlignment.Right | CAlignment.Top);
+lab.setFrameShape(CFrameShape.VLine);
+lab.setFrameShadow(CFrameShadow.Raised);
 
 const lab2 = new CLabel(parent);
 lab2.setGeometry(250, 100, 60, 60);

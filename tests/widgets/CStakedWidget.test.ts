@@ -4,6 +4,7 @@ import { CApplication } from "../../src/core/CApplication.js";
 import { CStackedWidget } from "../../src/widgets/CStackedWidget.js";
 import { CWidget } from "../../src/widgets/CWidget.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
+import { CFrame } from "../../src/index.js";
 
 describe("CStackedWidget", () =>
 {
@@ -508,5 +509,11 @@ describe("CStackedWidget", () =>
 		const removed = stack.removeWidget(0);
 
 		expect(() => removed?.destroy()).not.toThrow();
+	});
+
+	test("inherits CFrame", () => {
+		const stack = new CStackedWidget();
+
+		expect(stack).toBeInstanceOf(CFrame);
 	});
 });

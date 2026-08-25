@@ -8,6 +8,7 @@ import { TestPaintDevice } from "../helpers/createTestPaintEngine.js";
 import { CColor } from "../../src/gui/CColor.js";
 import { CPalette, CPaletteColorRole} from "../../src/gui/CPalette.js";
 import { CPixmap } from "../../src/painting/CPixmap.js";
+import { CFrame } from "../../src/index.js";
 
 class TestLabel extends CLabel {
 	paint(painter: CPainter): void {
@@ -224,5 +225,11 @@ describe("CLabel", () => {
 		label.paint(painter);
 
 		expect(device.engine.drawPixmap).toHaveBeenCalledWith(pixmap, 3, 26.5, 94, 47);
+	});
+
+	test("inherits CFrame", () => {
+		const label = new CLabel();
+
+		expect(label).toBeInstanceOf(CFrame);
 	});
 });

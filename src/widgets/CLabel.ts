@@ -1,11 +1,11 @@
-import { CWidget } from "./CWidget.js";
+import { CFrame } from "./CFrame.js";
 import { CPainter } from "../painting/CPainter.js";
 import { CAlignment } from "../core/CAlignment.js";
 import { CRect } from "../geometry/CRect.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 import { CPixmap } from "../painting/CPixmap.js";
 
-export class CLabel extends CWidget {
+export class CLabel extends CFrame {
 	#m_text = "";
 	#m_alignment = CAlignment.Left | CAlignment.VCenter;
 	#m_pixmap: CPixmap | null = null;

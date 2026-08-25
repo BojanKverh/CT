@@ -1,7 +1,8 @@
 import { CSignal } from "../core/CSignal.js";
 import { CWidget } from "./CWidget.js";
+import { CFrame } from "./CFrame.js";
 
-export class CStackedWidget extends CWidget {
+export class CStackedWidget extends CFrame {
 	#m_widgets: CWidget[] = [];
 	#m_currentIndex = -1;
 
