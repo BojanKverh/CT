@@ -173,6 +173,27 @@ export class CWidget extends CObject {
         this.setVisible(false);
     }
 
+	destroy(): void
+	{
+		const app = CApplication.instance();
+
+		for (const child of [...this.children()])
+			child.destroy();
+
+		if (this.hasFocus())
+			this.clearFocus();
+
+		if (app.mouseGrabber() === this)
+			app.releaseMouse();
+
+		if (this.parent() === null)
+			app.unregisterTopLevelWidget(this);
+		else
+			super.setParent(null);
+
+		this.hide();
+	}
+
     isEnabled(): boolean {
         return this.#m_enabled;
     }

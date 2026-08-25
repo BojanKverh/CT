@@ -1,7 +1,7 @@
 import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
-	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem
+	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -83,7 +83,7 @@ but.setText("Click me");
 
 but.clicked.connect(() => {
 		const dlg = new CDialog;
-		dlg.setGeometry(250, 150, 400, 250);
+		dlg.setGeometry(150, 150, 600, 250);
 		dlg.setWindowTitle("Settings");
 
 		const buttonBox = new CDialogButtonBox(
@@ -135,6 +135,54 @@ but.clicked.connect(() => {
 			console.log("clicked:", item.text());
 		});
 		list.setSelectionMode(CSelectionMode.MultiSelection);
+
+		const sw = new CStackedWidget(dlg);
+		sw.setGeometry(250, 50, 200, 100);
+
+		const page1 = new CWidget();
+		const page2 = new CWidget();
+		const page3 = new CWidget();
+
+		const button1 = new CPushButton(page1);
+		button1.setGeometry(20, 20, 120, 30);
+		button1.setText("Page 1");
+
+		const button2 = new CPushButton(page2);
+		button2.setGeometry(20, 20, 120, 30);
+		button2.setText("Page 2");
+
+		const button3 = new CPushButton(page3);
+		button3.setGeometry(20, 20, 120, 30);
+		button3.setText("Page 3");
+
+		sw.addWidget(page1);
+		sw.addWidget(page2);
+		sw.addWidget(page3);
+
+		const previous = new CPushButton(dlg);
+		previous.setGeometry(450, 60, 100, 30);
+		previous.setText("Previous");
+
+		const next = new CPushButton(dlg);
+		next.setGeometry(450, 90, 100, 30);
+		next.setText("Next");
+
+		previous.clicked.connect(() =>
+		{
+			if (sw.currentIndex() > 0)
+				sw.setCurrentIndex(sw.currentIndex() - 1);
+		});
+
+		next.clicked.connect(() =>
+		{
+			if (sw.currentIndex() < sw.count() - 1)
+				sw.setCurrentIndex(sw.currentIndex() + 1);
+		});
+
+		sw.currentChanged.connect(index =>
+		{
+			console.log("Current page:", index);
+		});
 		dlg.exec();
 	});
 

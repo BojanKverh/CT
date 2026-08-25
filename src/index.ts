@@ -38,3 +38,4 @@ export { CDialog } from "./widgets/CDialog.js";
 export { CStandardButton, CDialogButtonBox } from "./widgets/CDialogButtonBox.js";
 export { CSelectionMode, CListWidget } from "./widgets/CListWidget.js";
 export { CListWidgetItem } from "./widgets/CListWidgetItem.js";
+export { CStackedWidget } from "./widgets/CStackedWidget.js";
