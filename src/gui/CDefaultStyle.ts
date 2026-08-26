@@ -357,14 +357,14 @@ export class CDefaultStyle extends CStyle {
 
 	override drawTabWidget(painter: CPainter, tabWidget: CTabWidget): void {
 		const palette = tabWidget.palette();
-		const tabWidth = tabWidget.tabWidth();
 		const tabHeight = tabWidget.tabHeight();
 
 		painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
 		painter.fillRect(new CRect(0, 0, tabWidget.width(), tabHeight));
 
+		let x = 0;
 		for (let i = 0; i < tabWidget.count(); ++i) {
-			const x = i * tabWidth;
+			const w = tabWidget.tabWidth(i)
 			const enabled = tabWidget.isTabEnabled(i);
 			const current = i === tabWidget.currentIndex();
 			const hovered = tabWidget.isTabHovered(i);
@@ -385,7 +385,7 @@ export class CDefaultStyle extends CStyle {
 
 			painter.setFillStyle(palette.color(backgroundRole).toCss());			
 			painter.setStrokeStyle(palette.color(foregroundRole).toCss());
-			painter.drawRoundedRect(x + 1, 1, tabWidth - 1, tabHeight - 2, [9, 9, 0, 0]);
+			painter.drawRoundedRect(x + 1, 1, w - 1, tabHeight - 2, [9, 9, 0, 0]);
 
 			let textRole = CPaletteColorRole.ButtonText;
 
@@ -398,7 +398,8 @@ export class CDefaultStyle extends CStyle {
 			painter.setFont(tabWidget.font());
 			painter.setTextAlign("center");
 			painter.setTextBaseline("middle");
-			painter.drawText(tabWidget.tabText(i), x + tabWidth / 2, tabHeight / 2);
+			painter.drawText(tabWidget.tabText(i), x + w / 2, tabHeight / 2);
+			x += w;
 		}
 	}
 

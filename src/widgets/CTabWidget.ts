@@ -1,5 +1,6 @@
 import { CSignal } from "../core/CSignal.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
+import { CFontMetrics } from "../gui/CFontMetrics.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CStackedWidget } from "./CStackedWidget.js";
 import { CWidget } from "./CWidget.js";
@@ -11,12 +12,14 @@ interface CTab {
 
 export class CTabWidget extends CWidget {
 	static readonly #TAB_HEIGHT = 24;
-	static readonly #TAB_WIDTH = 100;
+	static readonly #TAB_PADDING = 6;
+    static readonly #TAB_MIN_WIDTH = 50;
 
 	#m_tabs: CTab[] = [];
 	#m_stack: CStackedWidget;
 	#m_hoveredIndex = -1;
 	#m_pressedIndex = -1;
+    #m_fontMetrics : CFontMetrics;
 
 	readonly currentChanged = new CSignal<[number]>();
 	readonly tabClicked = new CSignal<[number]>();
@@ -29,6 +32,7 @@ export class CTabWidget extends CWidget {
 			this.currentChanged.emit(index);
 			this.update();
 		});
+        this.#m_fontMetrics = new CFontMetrics(this.font());
 	}
 
 	addTab(widget: CWidget, text: string): number {
@@ -159,20 +163,29 @@ export class CTabWidget extends CWidget {
 		return index === this.#m_pressedIndex;
 	}
 
+    tabWidth(i: number): number {
+        if (this.#m_tabs[i] !== undefined && this.#m_tabs[i].text !== undefined)
+            return Math.max(
+                CTabWidget.#TAB_MIN_WIDTH, 
+                this.#m_fontMetrics.textWidth(this.#m_tabs[i].text) + 2 * CTabWidget.#TAB_PADDING
+            );
+        else
+            return 0;
+    }
+
 	tabHeight(): number {
 		return CTabWidget.#TAB_HEIGHT;
 	}
 
-	tabWidth(): number {
-		return CTabWidget.#TAB_WIDTH;
-	}
-
-	override setGeometry(
-		x: number, y: number, width: number, height: number
-	): void {
+	override setGeometry(x: number, y: number, width: number, height: number): void {
 		super.setGeometry(x, y, width, height);
 		this.#updateStackGeometry();
 	}
+
+    override setFont(font: string): void {
+        super.setFont(font);
+        this.#m_fontMetrics = new CFontMetrics(this.font());
+    }
 
 	protected override mousePressEvent(event: CMouseEvent): void {
 		if (event.button() !== CMouseButton.LeftButton) {
@@ -254,12 +267,13 @@ export class CTabWidget extends CWidget {
 		if (x < 0)
 			return -1;
 
-		const index = Math.floor(x / CTabWidget.#TAB_WIDTH);
-
-		if (index >= this.#m_tabs.length)
-			return -1;
-
-		return index;
+        let sum = 0;
+        for (let i = 0; i < this.#m_tabs.length; ++i) {
+            sum += this.tabWidth(i);
+            if (x < sum)
+                return i;
+        }
+		return -1;
 	}
 
 	#updateStackGeometry(): void {

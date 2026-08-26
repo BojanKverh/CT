@@ -419,7 +419,7 @@ describe("CTabWidget", () =>
 		tabs.addTab(new CWidget(), "Two");
 
 		tabs.event(new CMouseEvent(
-			CEventType.MousePress, 150, 10, CMouseButton.LeftButton
+			CEventType.MousePress, 75, 10, CMouseButton.LeftButton
 		));
 
 		expect(tabs.isTabPressed(1)).toBe(true);
@@ -433,11 +433,11 @@ describe("CTabWidget", () =>
 		tabs.addTab(new CWidget(), "Two");
 
 		tabs.event(new CMouseEvent(
-			CEventType.MousePress, 150, 10, CMouseButton.LeftButton
+			CEventType.MousePress, 75, 10, CMouseButton.LeftButton
 		));
 
 		tabs.event(new CMouseEvent(
-			CEventType.MouseRelease, 150, 10, CMouseButton.LeftButton
+			CEventType.MouseRelease, 75, 10, CMouseButton.LeftButton
 		));
 
 		expect(tabs.currentIndex()).toBe(1);
@@ -491,11 +491,11 @@ describe("CTabWidget", () =>
 		tabs.tabClicked.connect(slot);
 
 		tabs.event(new CMouseEvent(
-			CEventType.MousePress, 150, 10, CMouseButton.LeftButton
+			CEventType.MousePress, 75, 10, CMouseButton.LeftButton
 		));
 
 		tabs.event(new CMouseEvent(
-			CEventType.MouseRelease, 150, 10, CMouseButton.LeftButton
+			CEventType.MouseRelease, 75, 10, CMouseButton.LeftButton
 		));
 
 		expect(slot).toHaveBeenCalledOnce();
@@ -510,7 +510,7 @@ describe("CTabWidget", () =>
 		tabs.addTab(new CWidget(), "Two");
 
 		tabs.event(new CMouseEvent(
-			CEventType.MouseMove, 150, 10, CMouseButton.NoButton
+			CEventType.MouseMove, 75, 10, CMouseButton.NoButton
 		));
 
 		expect(tabs.isTabHovered(1)).toBe(true);
@@ -524,13 +524,13 @@ describe("CTabWidget", () =>
 		tabs.addTab(new CWidget(), "One");
 
 		tabs.event(new CMouseEvent(
-			CEventType.MouseMove, 50, 10, CMouseButton.NoButton
+			CEventType.MouseMove, 30, 10, CMouseButton.NoButton
 		));
 
 		expect(tabs.isTabHovered(0)).toBe(true);
 
 		tabs.event(new CMouseEvent(
-			CEventType.MouseLeave, 50, 10, CMouseButton.NoButton
+			CEventType.MouseLeave, 60, 10, CMouseButton.NoButton
 		));
 
 		expect(tabs.isTabHovered(0)).toBe(false);
