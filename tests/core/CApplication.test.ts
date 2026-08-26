@@ -1390,15 +1390,10 @@ describe("CApplication", () => {
 
 		const child = new ClickWidget(dialog);
 		child.setGeometry(20, 30, 100, 40);
-
 		dialog.exec();
-
-		canvas.dispatchEvent({
-			type: "pointerdown",
-			clientX: 50 + 100 + 20 + 10,
-			clientY: 40 + 100 + 30 + 10,
-			button: 0,
-			pointerId: 1
+		canvas.dispatchEvent({type: "pointerdown", clientX: 50 + 100 + 20 + 10,
+			clientY: 40 + 100 + CDialog.TitleBarHeight + 30 + 10,
+			button: 0, pointerId: 1
 		} as PointerEvent);
 
 		expect(child.clicked).toBe(true);

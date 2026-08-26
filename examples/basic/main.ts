@@ -200,6 +200,13 @@ but.clicked.connect(() => {
 		fr.setLineWidth(1);
 		fr.setMidLineWidth(1);
 
+		var lyt = new CHBoxLayout;
+		lyt.setContentsMargins(0, 0, 0, 0);
+		var pb2 = new CPushButton();
+		pb2.setText("Pushbutton at 0,0");
+		lyt.addWidget(pb2);
+		fr.setLayout(lyt);
+
 		const cb = new CComboBox(dlg);
 		cb.setGeometry(300, 200, 200, 30);
 		cb.addItem("Bosnia and Herzegovina");
@@ -232,9 +239,8 @@ but2.clicked.connect(() => {
 		});
 
 	const gb = new CGroupBox("Settings", dlg);
-	gb.setGeometry(6, 30, 488, 220);
+	gb.setGeometry(6, 6, 488, 230);
 	const fl = new CFormLayout();
-	fl.setContentsMargins(6, 24, 6, 6);
 	gb.setLayout(fl);
 	const leName = new CLineEdit();
 	fl.addRow("Name", leName);

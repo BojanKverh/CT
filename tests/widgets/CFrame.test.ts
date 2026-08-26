@@ -6,6 +6,8 @@ import {
 	CFrameShadow,
 	CFrameShape
 } from "../../src/widgets/CFrame.js";
+import { CWidget } from "../../src/widgets/CWidget.js";
+import { CVBoxLayout } from "../../src/layouts/CVBoxLayout.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 
 describe("CFrame", () => {
@@ -211,6 +213,112 @@ describe("CFrame", () => {
 		frame.setGeometry(20, 30, 200, 100);
 
 		expect(frame.frameRect()).toEqual(frame.rect());
+	});
+
+
+	test("NoFrame contents rect equals widget rect", () => {
+		const frame = new CFrame();
+		frame.setGeometry(20, 30, 200, 100);
+
+		expect(frame.contentsRect()).toEqual(frame.rect());
+	});
+
+	test("Plain Box contents rect excludes frame", () => {
+		const frame = new CFrame();
+		frame.resize(200, 100);
+		frame.setFrameShape(CFrameShape.Box);
+		frame.setFrameShadow(CFrameShadow.Plain);
+		frame.setLineWidth(3);
+
+		const rect = frame.contentsRect();
+
+		expect(rect.x()).toBe(3);
+		expect(rect.y()).toBe(3);
+		expect(rect.width()).toBe(194);
+		expect(rect.height()).toBe(94);
+	});
+
+	test("Raised Box contents rect excludes complete frame width", () => {
+		const frame = new CFrame();
+		frame.resize(200, 100);
+		frame.setFrameShape(CFrameShape.Box);
+		frame.setFrameShadow(CFrameShadow.Raised);
+		frame.setLineWidth(2);
+		frame.setMidLineWidth(3);
+
+		const rect = frame.contentsRect();
+
+		expect(frame.frameWidth()).toBe(7);
+		expect(rect.x()).toBe(7);
+		expect(rect.y()).toBe(7);
+		expect(rect.width()).toBe(186);
+		expect(rect.height()).toBe(86);
+	});
+
+	test("Panel contents rect excludes line width", () => {
+		const frame = new CFrame();
+		frame.resize(200, 100);
+		frame.setFrameShape(CFrameShape.Panel);
+		frame.setFrameShadow(CFrameShadow.Raised);
+		frame.setLineWidth(3);
+		frame.setMidLineWidth(10);
+
+		const rect = frame.contentsRect();
+
+		expect(frame.frameWidth()).toBe(3);
+		expect(rect.x()).toBe(3);
+		expect(rect.y()).toBe(3);
+		expect(rect.width()).toBe(194);
+		expect(rect.height()).toBe(94);
+	});
+
+	test("contents rect never has negative size", () => {
+		const frame = new CFrame();
+		frame.resize(6, 4);
+		frame.setFrameShape(CFrameShape.Box);
+		frame.setFrameShadow(CFrameShadow.Raised);
+		frame.setLineWidth(4);
+
+		const rect = frame.contentsRect();
+
+		expect(rect.width()).toBe(0);
+		expect(rect.height()).toBe(0);
+	});
+
+	test("layout uses contents rect inside frame", () => {
+		const frame = new CFrame();
+		frame.resize(200, 100);
+		frame.setFrameShape(CFrameShape.Box);
+		frame.setFrameShadow(CFrameShadow.Plain);
+		frame.setLineWidth(2);
+
+		const layout = new CVBoxLayout();
+		frame.setLayout(layout);
+
+		const child = new CWidget();
+		layout.addWidget(child);
+
+		const margins = layout.contentsMargins();
+
+		expect(child.x()).toBe(2 + margins.left);
+		expect(child.y()).toBe(2 + margins.top);
+		expect(child.width()).toBe(196 - margins.left - margins.right);
+		expect(child.height()).toBe(96 - margins.top - margins.bottom);
+	});
+
+	test("manual child geometry still uses frame coordinates", () => {
+		const frame = new CFrame();
+		frame.resize(200, 100);
+		frame.setFrameShape(CFrameShape.Box);
+		frame.setLineWidth(2);
+
+		const child = new CWidget(frame);
+		child.setGeometry(0, 0, 200, 30);
+
+		expect(child.x()).toBe(0);
+		expect(child.y()).toBe(0);
+		expect(child.width()).toBe(200);
+		expect(child.height()).toBe(30);
 	});
 
 	test("changing frame shape calls frameChanged", () => {

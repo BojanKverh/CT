@@ -1,5 +1,6 @@
 import { CWidget } from "./CWidget.js";
 import type { CPainter } from "../painting/CPainter.js";
+import { CRect } from "../geometry/CRect.js";
 
 export class CGroupBox extends CWidget {
 	#m_title: string;
@@ -20,6 +21,12 @@ export class CGroupBox extends CWidget {
 
 		this.#m_title = title;
 		this.update();
+	}
+
+	override contentsRect(): CRect {
+		const titleHeight = this.fontMetrics().height();
+		const top = titleHeight;
+		return new CRect(0, top, this.width(), Math.max(0, this.height() - top));
 	}
 
     protected override paintEvent(painter: CPainter): void {

@@ -158,16 +158,19 @@ export class CFormLayout extends CLayout {
 		const margins = this.contentsMargins();
 		const horizontalSpacing = this.horizontalSpacing();
 		const verticalSpacing = this.verticalSpacing();
+		const contentsRect = parent.contentsRect();
 
+		const contentX = contentsRect.x() + margins.left;
+		const contentY = contentsRect.y() + margins.top;
 		const contentWidth = Math.max(
 			0,
-			parent.width() - margins.left - margins.right
+			contentsRect.width() - margins.left - margins.right
 		);
 
 		const labelWidth = this.#labelColumnWidth();
 		const hasLabelColumn = labelWidth > 0;
 
-		const fieldX = margins.left + labelWidth +
+		const fieldX = contentX + labelWidth +
 			(hasLabelColumn ? horizontalSpacing : 0);
 
 		const fieldWidth = Math.max(
@@ -176,7 +179,7 @@ export class CFormLayout extends CLayout {
 				(hasLabelColumn ? horizontalSpacing : 0)
 		);
 
-		let y = margins.top;
+		let y = contentY;
 
 		for (const row of this.#m_rows) {
 			const spanning = row.spanningItem?.widget() ?? null;
@@ -185,7 +188,7 @@ export class CFormLayout extends CLayout {
 				const height = this.#preferredHeight(spanning);
 
 				spanning.setGeometry(
-					margins.left,
+					contentX,
 					y,
 					contentWidth,
 					height
@@ -213,7 +216,7 @@ export class CFormLayout extends CLayout {
 
 			if (label !== null) {
 				label.setGeometry(
-					margins.left,
+					contentX,
 					y + (rowHeight - labelHeight) / 2,
 					labelWidth,
 					labelHeight

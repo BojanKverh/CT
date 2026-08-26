@@ -99,6 +99,13 @@ export class CFrame extends CWidget {
 		return this.rect();
 	}
 
+	override contentsRect(): CRect {
+		const frameWidth = this.frameWidth();
+		return new CRect(frameWidth, frameWidth, Math.max(0, this.width() - 2 * frameWidth),
+			Math.max(0, this.height() - 2 * frameWidth)
+		);
+	}
+
 	protected override paintEvent(painter: CPainter): void {
 		super.paintEvent(painter);
 

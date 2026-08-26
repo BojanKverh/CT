@@ -237,13 +237,40 @@ export class CWidget extends CObject {
 
 			this.paintEvent(painter);
 
-			for (const child of this.children())
-                if (child instanceof CWidget)
-				    child.render(painter);
+			const childOffset = this.childOffset();
+			const hasChildOffset =
+				childOffset.x() !== 0 || childOffset.y() !== 0;
+
+			if (hasChildOffset) {
+				painter.translate(
+					childOffset.x(),
+					childOffset.y()
+				);
+			}
+
+			for (const child of this.children()) {
+				if (child instanceof CWidget)
+					child.render(painter);
+			}
+
+			if (hasChildOffset) {
+				painter.translate(
+					-childOffset.x(),
+					-childOffset.y()
+				);
+			}
 		} finally {
 			painter.restore();
 		}
-	}    
+	}
+
+    contentsRect(): CRect {
+	    return this.rect();
+    }
+
+	protected childOffset(): CPoint {
+		return new CPoint(0, 0);
+	}
 
     widgetAt(x: number, y: number): CWidget | null {
         if (!this.isVisible())
@@ -253,14 +280,17 @@ export class CWidget extends CObject {
             return null;
 
         const children = this.children();
+        const childOffset = this.childOffset();
 
         for (let i = children.length - 1; i >= 0; --i) {
             const child = children[i]!;
+
             if (!(child instanceof CWidget))
                 continue;
+
             const widget = child.widgetAt(
-                x - child.x(),
-                y - child.y()
+                x - childOffset.x() - child.x(),
+                y - childOffset.y() - child.y()
             );
 
             if (widget !== null)
@@ -379,7 +409,16 @@ export class CWidget extends CObject {
             localX -= widget.x();
             localY -= widget.y();
 
-            widget = widget.parent();
+            const parent = widget.parent();
+
+            if (parent !== null) {
+                const childOffset = parent.childOffset();
+
+                localX -= childOffset.x();
+                localY -= childOffset.y();
+            }
+
+            widget = parent;
         }
 
         return new CPoint(localX, localY);

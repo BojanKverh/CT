@@ -6,6 +6,7 @@ import { CApplication } from "../core/CApplication.js";
 import { CWidget } from "./CWidget.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CRect } from "../geometry/CRect.js";
+import { CPoint } from "../geometry/CPoint.js";
 
 export enum CDialogResult {
 	Rejected = 0,
@@ -34,6 +35,23 @@ export class CDialog extends CWidget
 		super(parent);
 
 		this.hide();
+	}
+
+	override rect(): CRect {
+		return new CRect(
+			0,
+			0,
+			this.width(),
+			this.height() + CDialog.TitleBarHeight
+		);
+	}
+
+	override contentsRect(): CRect {
+		return new CRect(0, 0, this.width(), this.height());
+	}
+
+	protected override childOffset(): CPoint {
+		return new CPoint(0, CDialog.TitleBarHeight);
 	}
 
 	windowTitle(): string
@@ -149,7 +167,7 @@ export class CDialog extends CWidget
 
 	    painter.setBrush(base);
 	    painter.setPen(text);
-	    painter.drawRect(0, 0, this.width(), this.height());
+	    painter.drawRect(0, 0, this.width(), this.rect().height());
 	    painter.setBrush(highlight);
 	    painter.setPen(highlight);
 	    painter.drawRect(0, 0, this.width(), CDialog.TitleBarHeight);

@@ -36,14 +36,26 @@ export class CBoxLayout extends CLayout {
 
 		const spacing = this.spacing();
 		const margins = this.contentsMargins();
+		const contentsRect = parent.contentsRect();
 		const totalSpacing = spacing * (count - 1);
 
-		if (this.#m_direction === CBoxLayoutDirection.LeftToRight) {
-			const available = parent.width() - margins.left - margins.right - totalSpacing;
-			const sizes = this.#calculateSizes(available);
-			const crossAvailable = parent.height() - margins.top - margins.bottom;
+		const contentX = contentsRect.x() + margins.left;
+		const contentY = contentsRect.y() + margins.top;
+		const contentWidth = Math.max(
+			0,
+			contentsRect.width() - margins.left - margins.right
+		);
+		const contentHeight = Math.max(
+			0,
+			contentsRect.height() - margins.top - margins.bottom
+		);
 
-			let x = margins.left;
+		if (this.#m_direction === CBoxLayoutDirection.LeftToRight) {
+			const available = Math.max(0, contentWidth - totalSpacing);
+			const sizes = this.#calculateSizes(available);
+			const crossAvailable = contentHeight;
+
+			let x = contentX;
 
 			for (let i = 0; i < count; ++i) {
 				const item = this.itemAt(i) as CBoxLayoutItem;
@@ -52,17 +64,17 @@ export class CBoxLayout extends CLayout {
 
 				if (widget !== null) {
 					const height = this.#crossSize(widget, crossAvailable);
-					widget.setGeometry(x, margins.top, width, height);
+					widget.setGeometry(x, contentY, width, height);
 				}
 
 				x += width + spacing;
 			}
 		} else {
-			const available = parent.height() - margins.top - margins.bottom - totalSpacing;
+			const available = Math.max(0, contentHeight - totalSpacing);
 			const sizes = this.#calculateSizes(available);
-			const crossAvailable = parent.width() - margins.left - margins.right;
+			const crossAvailable = contentWidth;
 
-			let y = margins.top;
+			let y = contentY;
 
 			for (let i = 0; i < count; ++i) {
 				const item = this.itemAt(i) as CBoxLayoutItem;
@@ -71,7 +83,7 @@ export class CBoxLayout extends CLayout {
 
 				if (widget !== null) {
 					const width = this.#crossSize(widget, crossAvailable);
-					widget.setGeometry(margins.left, y, width, height);
+					widget.setGeometry(contentX, y, width, height);
 				}
 
 				y += height + spacing;
