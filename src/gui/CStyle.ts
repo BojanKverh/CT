@@ -11,6 +11,7 @@ import type { CRadioButton } from "../widgets/CRadioButton.js";
 import type { CTabWidget } from "../widgets/CTabWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import type { CFrame } from "../widgets/CFrame.js";
+import type { CComboBox } from "../widgets/CComboBox.js";
 
 export abstract class CStyle {
 	
@@ -26,4 +27,5 @@ export abstract class CStyle {
     abstract drawTabWidget(painter: CPainter, tabWidget: CTabWidget): void
     abstract drawToolTip(painter: CPainter, toolTip: CToolTipWidget): void;
     abstract drawFrame(painter: CPainter, frame: CFrame): void;
+    abstract drawComboBox(painter: CPainter, comboBox: CComboBox): void;
 }

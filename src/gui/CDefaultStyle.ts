@@ -18,6 +18,7 @@ import { CRadioButton } from "../widgets/CRadioButton.js";
 import { CTabWidget } from "../widgets/CTabWidget.js";
 import { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import { CFrame, CFrameShadow, CFrameShape } from "../widgets/CFrame.js";
+import { CComboBox } from "../widgets/CComboBox.js";
 
 export class CDefaultStyle extends CStyle {
 	override drawLabel(painter: CPainter, label: CLabel): void {
@@ -653,5 +654,37 @@ export class CDefaultStyle extends CStyle {
 		painter.drawLine(
 			right, rect.y(), right, rect.y() + rect.height()
 		);
+	}
+
+	override drawComboBox(painter: CPainter, comboBox: CComboBox): void {
+		const palette = comboBox.palette();
+		const arrowWidth = CComboBox.ArrowWidth;
+		const arrowX = comboBox.width() - arrowWidth;
+
+		let buttonRole = CPaletteColorRole.Button;
+		if (comboBox.isDown())
+			buttonRole = CPaletteColorRole.Highlight;
+		else if (comboBox.isArrowHovered())
+			buttonRole = CPaletteColorRole.Highlight;
+
+		painter.setBrush(palette.color(buttonRole).toCss());
+		painter.fillRect(new CRect(arrowX, 0, arrowWidth, comboBox.height()));
+
+		painter.setPen(palette.color(CPaletteColorRole.WindowText).toCss());
+		painter.setLineWidth(1);
+
+		painter.drawLine(arrowX + 0.5, 0, arrowX + 0.5, comboBox.height());
+
+		const centerX = arrowX + arrowWidth / 2;
+		const centerY = comboBox.height() / 2;
+
+		const arrowHalfWidth = 4;
+		const arrowHeight = 4;
+
+		painter.drawLine(centerX - arrowHalfWidth, centerY - arrowHeight / 2, centerX,
+			centerY + arrowHeight / 2);
+
+		painter.drawLine(centerX, centerY + arrowHeight / 2, centerX + arrowHalfWidth, 
+			centerY - arrowHeight / 2);
 	}
 }
