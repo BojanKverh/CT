@@ -13,13 +13,13 @@ export interface CMargins {
 export abstract class CLayout {
 	#m_parentWidget: CWidget | null = null;
 	#m_items: CLayoutItem[] = [];
-	#m_spacing = 0;
+	#m_spacing = 6;
 
 	#m_margins: CMargins = {
-		left: 0,
-		top: 0,
-		right: 0,
-		bottom: 0
+		left: 6,
+		top: 6,
+		right: 6,
+		bottom: 6
 	};
 
 	parentWidget(): CWidget | null {
@@ -35,9 +35,9 @@ export abstract class CLayout {
 		}
 	}
 
-    addWidget(widget: CWidget): void {
-	    this.addItem(new CWidgetItem(widget));
-    }
+	addWidget(widget: CWidget): void {
+		this.addItem(new CWidgetItem(widget));
+	}
 
 	addStretch(stretch: number): void {
 		this.addItem(new CBoxLayoutItem(null, stretch));
@@ -49,6 +49,16 @@ export abstract class CLayout {
 
 	widgetAt(index: number): CWidget | null {
 		return this.#m_items[index]?.widget() ?? null;
+	}
+
+	removeWidget(widget: CWidget): void {
+		const index = this.#indexOf(widget);
+
+		if (index === -1)
+			return;
+
+		this.#m_items.splice(index, 1);
+		this.update();
 	}
 
 	spacing(): number {
@@ -87,8 +97,7 @@ export abstract class CLayout {
 		this.update();
 	}
 
-	clear()
-	{
+	clear(): void {
 		this.#m_items.length = 0;
 		this.update();
 	}

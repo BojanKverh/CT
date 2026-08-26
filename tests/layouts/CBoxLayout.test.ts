@@ -24,6 +24,8 @@ class HintWidget extends CWidget {
 }
 
 describe("CBoxLayout", () => {
+	const spacing: number = 6;
+	const margin: number = 6;
 	beforeEach(() => {
 		Object.defineProperty(globalThis, "window", {
 			value: createTestWindow(),
@@ -98,21 +100,23 @@ describe("CBoxLayout", () => {
 		layout.addWidget(widget2);
 		layout.addWidget(widget3);
 
-		expect(widget1.geometry().x()).toBe(0);
-		expect(widget1.geometry().y()).toBe(0);
-		expect(widget1.geometry().width()).toBe(100);
-		expect(widget1.geometry().height()).toBe(100);
+		const width = (300 - 2 * margin - 2 * spacing) / 3;
 
-		expect(widget2.geometry().x()).toBe(100);
-		expect(widget2.geometry().y()).toBe(0);
-		expect(widget2.geometry().width()).toBe(100);
-		expect(widget2.geometry().height()).toBe(100);
+		expect(widget1.geometry().x()).toBe(margin);
+		expect(widget1.geometry().y()).toBe(margin);
+		expect(widget1.geometry().width()).toBeCloseTo(width);
+		expect(widget1.geometry().height()).toBe(100 - 2 * margin);
 
-		expect(widget3.geometry().x()).toBe(200);
-		expect(widget3.geometry().y()).toBe(0);
-		expect(widget3.geometry().width()).toBe(100);
-		expect(widget3.geometry().height()).toBe(100);
-	});
+		expect(widget2.geometry().x()).toBeCloseTo(margin + width + spacing);
+		expect(widget2.geometry().y()).toBe(margin);
+		expect(widget2.geometry().width()).toBeCloseTo(width);
+		expect(widget2.geometry().height()).toBe(100 - 2 * margin);
+
+		expect(widget3.geometry().x()).toBeCloseTo(margin + 2 * (width + spacing));
+		expect(widget3.geometry().y()).toBe(margin);
+		expect(widget3.geometry().width()).toBeCloseTo(width);
+		expect(widget3.geometry().height()).toBe(100 - 2 * margin);
+});
 
 	test("lays out widgets vertically", () => {
 		const parent = new CWidget();
@@ -132,21 +136,19 @@ describe("CBoxLayout", () => {
 		layout.addWidget(widget2);
 		layout.addWidget(widget3);
 
-		expect(widget1.geometry().x()).toBe(0);
-		expect(widget1.geometry().y()).toBe(0);
-		expect(widget1.geometry().width()).toBe(100);
-		expect(widget1.geometry().height()).toBe(100);
+		const height = (300 - 2 * margin - 2 * spacing) / 3;
 
-		expect(widget2.geometry().x()).toBe(0);
-		expect(widget2.geometry().y()).toBe(100);
-		expect(widget2.geometry().width()).toBe(100);
-		expect(widget2.geometry().height()).toBe(100);
+		expect(widget1.geometry().x()).toBe(margin);
+		expect(widget1.geometry().y()).toBe(margin);
+		expect(widget1.geometry().width()).toBe(100 - 2 * margin);
+		expect(widget1.geometry().height()).toBeCloseTo(height);
 
-		expect(widget3.geometry().x()).toBe(0);
-		expect(widget3.geometry().y()).toBe(200);
-		expect(widget3.geometry().width()).toBe(100);
-		expect(widget3.geometry().height()).toBe(100);
-	});
+		expect(widget2.geometry().y()).toBeCloseTo(margin + height + spacing);
+		expect(widget2.geometry().height()).toBeCloseTo(height);
+
+		expect(widget3.geometry().y()).toBeCloseTo(margin + 2 * (height + spacing));
+		expect(widget3.geometry().height()).toBeCloseTo(height);
+});
 
 	test("applies spacing horizontally", () => {
 		const parent = new CWidget();
@@ -167,15 +169,15 @@ describe("CBoxLayout", () => {
 		layout.addWidget(widget2);
 		layout.addWidget(widget3);
 
-		expect(widget1.geometry().x()).toBe(0);
-		expect(widget1.geometry().width()).toBe(100);
+		const width = (320 - 2 * margin - 2 * 10) / 3;
 
-		expect(widget2.geometry().x()).toBe(110);
-		expect(widget2.geometry().width()).toBe(100);
-
-		expect(widget3.geometry().x()).toBe(220);
-		expect(widget3.geometry().width()).toBe(100);
-	});
+		expect(widget1.geometry().x()).toBe(margin);
+		expect(widget1.geometry().width()).toBe(width);
+		expect(widget2.geometry().x()).toBe(margin + width + 10);
+		expect(widget2.geometry().width()).toBe(width);
+		expect(widget3.geometry().x()).toBe(margin + 2 * (width + 10));
+		expect(widget3.geometry().width()).toBe(width);
+});
 
 	test("applies spacing vertically", () => {
 		const parent = new CWidget();
@@ -196,15 +198,15 @@ describe("CBoxLayout", () => {
 		layout.addWidget(widget2);
 		layout.addWidget(widget3);
 
-		expect(widget1.geometry().y()).toBe(0);
-		expect(widget1.geometry().height()).toBe(100);
+		const height = (320 - 2 * margin - 2 * 10) / 3;
 
-		expect(widget2.geometry().y()).toBe(110);
-		expect(widget2.geometry().height()).toBe(100);
-
-		expect(widget3.geometry().y()).toBe(220);
-		expect(widget3.geometry().height()).toBe(100);
-	});
+		expect(widget1.geometry().y()).toBe(margin);
+		expect(widget1.geometry().height()).toBe(height);
+		expect(widget2.geometry().y()).toBe(margin + height + 10);
+		expect(widget2.geometry().height()).toBe(height);
+		expect(widget3.geometry().y()).toBe(margin + 2 * (height + 10));
+		expect(widget3.geometry().height()).toBe(height);
+});
 
 	test("relayouts widgets when spacing changes", () => {
 		const parent = new CWidget();
@@ -224,10 +226,12 @@ describe("CBoxLayout", () => {
 
 		layout.setSpacing(20);
 
-		expect(widget1.geometry().width()).toBe(140);
-		expect(widget2.geometry().x()).toBe(160);
-		expect(widget2.geometry().width()).toBe(140);
-	});
+		const width = (300 - 2 * margin - 20) / 2;
+
+		expect(widget1.geometry().width()).toBe(width);
+		expect(widget2.geometry().x()).toBe(margin + width + 20);
+		expect(widget2.geometry().width()).toBe(width);
+});
 
 	test("relayouts widgets when parent is resized", () => {
 		const parent = new CWidget();
@@ -245,15 +249,18 @@ describe("CBoxLayout", () => {
 		layout.addWidget(widget1);
 		layout.addWidget(widget2);
 
-		expect(widget1.geometry().width()).toBe(100);
-		expect(widget2.geometry().x()).toBe(100);
+		let width = (200 - 2 * margin - spacing) / 2;
+
+		expect(widget1.geometry().width()).toBe(width);
+		expect(widget2.geometry().x()).toBe(margin + width + spacing);
 
 		parent.resize(400, 100);
+		width = (400 - 2 * margin - spacing) / 2;
 
-		expect(widget1.geometry().width()).toBe(200);
-		expect(widget2.geometry().x()).toBe(200);
-		expect(widget2.geometry().width()).toBe(200);
-	});
+		expect(widget1.geometry().width()).toBe(width);
+		expect(widget2.geometry().x()).toBe(margin + width + spacing);
+		expect(widget2.geometry().width()).toBe(width);
+});
 
 	test("supports fractional widget sizes", () => {
 		const parent = new CWidget();
@@ -273,10 +280,12 @@ describe("CBoxLayout", () => {
 		layout.addWidget(widget2);
 		layout.addWidget(widget3);
 
-		expect(widget1.geometry().width()).toBeCloseTo(100 / 3);
-		expect(widget2.geometry().x()).toBeCloseTo(100 / 3);
-		expect(widget3.geometry().x()).toBeCloseTo(200 / 3);
-	});
+		const width = (100 - 2 * margin - 2 * spacing) / 3;
+
+		expect(widget1.geometry().width()).toBeCloseTo(width);
+		expect(widget2.geometry().x()).toBeCloseTo(margin + width + spacing);
+		expect(widget3.geometry().x()).toBeCloseTo(margin + 2 * (width + spacing));
+});
 
 	test("applies spacing inside contents margins", () => {
 		const parent = new CWidget();
@@ -327,15 +336,15 @@ describe("CBoxLayout", () => {
 		layout.addWidget(widget2, 2);
 		layout.addWidget(widget3, 1);
 
-		expect(widget1.x()).toBe(0);
-		expect(widget1.width()).toBe(100);
+		const available = 400 - 2 * margin - 2 * spacing;
 
-		expect(widget2.x()).toBe(100);
-		expect(widget2.width()).toBe(200);
-
-		expect(widget3.x()).toBe(300);
-		expect(widget3.width()).toBe(100);
-	});
+		expect(widget1.x()).toBe(margin);
+		expect(widget1.width()).toBe(available / 4);
+		expect(widget2.x()).toBe(margin + available / 4 + spacing);
+		expect(widget2.width()).toBe(available / 2);
+		expect(widget3.x()).toBe(margin + 3 * available / 4 + 2 * spacing);
+		expect(widget3.width()).toBe(available / 4);
+});
 
 	test("applies vertical stretch factors", () => {
 		const parent = new CWidget();
@@ -355,15 +364,15 @@ describe("CBoxLayout", () => {
 		layout.addWidget(widget2, 2);
 		layout.addWidget(widget3, 1);
 
-		expect(widget1.y()).toBe(0);
-		expect(widget1.height()).toBe(100);
+		const available = 400 - 2 * margin - 2 * spacing;
 
-		expect(widget2.y()).toBe(100);
-		expect(widget2.height()).toBe(200);
-
-		expect(widget3.y()).toBe(300);
-		expect(widget3.height()).toBe(100);
-	});
+		expect(widget1.y()).toBe(margin);
+		expect(widget1.height()).toBe(available / 4);
+		expect(widget2.y()).toBe(margin + available / 4 + spacing);
+		expect(widget2.height()).toBe(available / 2);
+		expect(widget3.y()).toBe(margin + 3 * available / 4 + 2 * spacing);
+		expect(widget3.height()).toBe(available / 4);
+});
 
 	test("uses equal sizes when stretch is zero", () => {
 		const parent = new CWidget();
@@ -383,10 +392,12 @@ describe("CBoxLayout", () => {
 		layout.addWidget(widget2, 0);
 		layout.addWidget(widget3, 0);
 
-		expect(widget1.width()).toBe(100);
-		expect(widget2.width()).toBe(100);
-		expect(widget3.width()).toBe(100);
-	});
+		const width = (300 - 2 * margin - 2 * spacing) / 3;
+
+		expect(widget1.width()).toBe(width);
+		expect(widget2.width()).toBe(width);
+		expect(widget3.width()).toBe(width);
+});
 
 	test("combines stretch factors with spacing", () => {
 		const parent = new CWidget();
@@ -407,15 +418,15 @@ describe("CBoxLayout", () => {
 		layout.addWidget(widget2, 2);
 		layout.addWidget(widget3, 1);
 
-		expect(widget1.width()).toBe(100);
-		expect(widget1.x()).toBe(0);
+		const available = 420 - 2 * margin - 2 * 10;
 
-		expect(widget2.width()).toBe(200);
-		expect(widget2.x()).toBe(110);
-
-		expect(widget3.width()).toBe(100);
-		expect(widget3.x()).toBe(320);
-	});
+		expect(widget1.width()).toBe(available / 4);
+		expect(widget1.x()).toBe(margin);
+		expect(widget2.width()).toBe(available / 2);
+		expect(widget2.x()).toBe(margin + available / 4 + 10);
+		expect(widget3.width()).toBe(available / 4);
+		expect(widget3.x()).toBe(margin + 3 * available / 4 + 20);
+});
 
 	test("combines stretch factors with contents margins", () => {
 		const parent = new CWidget();
@@ -436,18 +447,17 @@ describe("CBoxLayout", () => {
 		layout.addWidget(widget2, 2);
 		layout.addWidget(widget3, 1);
 
+		const available = 440 - 20 - 20 - 2 * spacing;
+
 		expect(widget1.x()).toBe(20);
-		expect(widget1.width()).toBe(100);
-
-		expect(widget2.x()).toBe(120);
-		expect(widget2.width()).toBe(200);
-
-		expect(widget3.x()).toBe(320);
-		expect(widget3.width()).toBe(100);
-
+		expect(widget1.width()).toBe(available / 4);
+		expect(widget2.x()).toBe(20 + available / 4 + spacing);
+		expect(widget2.width()).toBe(available / 2);
+		expect(widget3.x()).toBe(20 + 3 * available / 4 + 2 * spacing);
+		expect(widget3.width()).toBe(available / 4);
 		expect(widget1.y()).toBe(10);
 		expect(widget1.height()).toBe(80);
-	});
+});
 
     test("uses preferred sizes and distributes extra space by stretch", () => {
 	    const parent = new CWidget();
@@ -461,11 +471,14 @@ describe("CBoxLayout", () => {
 	    const widget2 = new HintWidget(150, 40);
     	layout.addWidget(widget1, 1);
 	    layout.addWidget(widget2, 2);
-    	expect(widget1.width()).toBeCloseTo(183.333333);
-	    expect(widget2.width()).toBeCloseTo(316.666667);
-    	expect(widget1.x()).toBe(0);
-	    expect(widget2.x()).toBeCloseTo(183.333333);
-    });
+		const available = 500 - 2 * margin - spacing;
+		const extra = available - 100 - 150;
+
+		expect(widget1.width()).toBeCloseTo(100 + extra / 3);
+		expect(widget2.width()).toBeCloseTo(150 + 2 * extra / 3);
+		expect(widget1.x()).toBe(margin);
+		expect(widget2.x()).toBeCloseTo(margin + widget1.width() + spacing);
+});
 
     test("shrinks preferred sizes toward minimum sizes", () => {
 	    const parent = new CWidget();
@@ -480,9 +493,14 @@ describe("CBoxLayout", () => {
 	    widget2.setMinimumSize(80, 0);
     	layout.addWidget(widget1);
 	    layout.addWidget(widget2);
-    	expect(widget1.width()).toBeCloseTo(79.166667);
-        expect(widget2.width()).toBeCloseTo(120.833333);
-    	expect(widget1.width()).toBeGreaterThanOrEqual(50);
-	    expect(widget2.width()).toBeGreaterThanOrEqual(80);
-    });
+		const available = 200 - 2 * margin - spacing;
+		const shrink = (250 - available) / ((100 - 50) + (150 - 80));
+		const expected1 = 100 - (100 - 50) * shrink;
+		const expected2 = 150 - (150 - 80) * shrink;
+
+		expect(widget1.width()).toBeCloseTo(expected1);
+		expect(widget2.width()).toBeCloseTo(expected2);
+		expect(widget1.width()).toBeGreaterThanOrEqual(50);
+		expect(widget2.width()).toBeGreaterThanOrEqual(80);
+});
 });

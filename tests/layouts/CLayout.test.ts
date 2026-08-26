@@ -15,6 +15,8 @@ class TestLayout extends CLayout {
 }
 
 describe("CLayout", () => {
+	const spacing: number = 6;
+	const margin: number = 6;
 	beforeEach(() => {
 		Object.defineProperty(globalThis, "window", {
 			value: createTestWindow(),
@@ -72,10 +74,10 @@ describe("CLayout", () => {
 		expect(layout.widgetAt(10)).toBeNull();
 	});
 
-	test("uses zero spacing by default", () => {
+	test("uses default spacing", () => {
 		const layout = new TestLayout();
 
-		expect(layout.spacing()).toBe(0);
+		expect(layout.spacing()).toBe(spacing);
 	});
 
 	test("sets spacing", () => {
@@ -140,14 +142,14 @@ describe("CLayout", () => {
 		expect(child2.parent()).toBe(parent);
 	});
 
-	test("uses zero contents margins by default", () => {
+	test("uses default contents margins", () => {
 		const layout = new TestLayout();
 
 		expect(layout.contentsMargins()).toEqual({
-			left: 0,
-			top: 0,
-			right: 0,
-			bottom: 0
+			left: margin,
+			top: margin,
+			right: margin,
+			bottom: margin
 		});
 	});
 

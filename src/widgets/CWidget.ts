@@ -12,6 +12,7 @@ import { CLayout } from "../layouts/CLayout.js";
 import { CSize } from "../geometry/CSize.js";
 import { CPalette } from "../gui/CPalette.js";
 import { CStyle } from "../gui/CStyle.js";
+import { CFontMetrics } from "../gui/CFontMetrics.js";
 
 export class CWidget extends CObject {
     #m_geometry = new CRect();
@@ -23,6 +24,7 @@ export class CWidget extends CObject {
     #m_minimumSize = new CSize(0, 0);
     #m_palette: CPalette;
     #m_toolTip = "";
+    #m_fontMetrics: CFontMetrics;
 
 	constructor(parent: CWidget | null = null) {
         super(null);
@@ -36,6 +38,8 @@ export class CWidget extends CObject {
             this.#m_font = CApplication.instance().font();
             this.#m_palette = CApplication.instance().palette();
         }
+
+        this.#m_fontMetrics = new CFontMetrics(this.#m_font);
     }
 
     override parent(): CWidget | null {
@@ -129,11 +133,17 @@ export class CWidget extends CObject {
 		return this.#m_font;
 	}
 
+    fontMetrics() : CFontMetrics {
+        return this.#m_fontMetrics;
+    }
+
 	setFont(font: string, propagate = false): void {
 		const changed = this.#m_font !== font;
 
 		if (changed)
 			this.#m_font = font;
+
+        this.#m_fontMetrics = new CFontMetrics(this.#m_font);
 
 		if (propagate) {
 			for (const child of this.children())

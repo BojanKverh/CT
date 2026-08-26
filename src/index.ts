@@ -42,3 +42,4 @@ export { CStackedWidget } from "./widgets/CStackedWidget.js";
 export { CTabWidget } from "./widgets/CTabWidget.js";
 export { CFrame, CFrameShape, CFrameShadow } from "./widgets/CFrame.js";
 export { CComboBox } from "./widgets/CComboBox.js";
+export { CFormLayout } from "./layouts/CFormLayout.js";

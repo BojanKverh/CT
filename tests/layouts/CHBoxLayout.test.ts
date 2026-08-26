@@ -9,6 +9,8 @@ import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { createTestWindow } from "../helpers/createTestWindow.js";
 
 describe("CHBoxLayout", () => {
+	const spacing: number = 6;
+	const margin: number = 6;
 	beforeEach(() => {
 		Object.defineProperty(globalThis, "window", {
 			value: createTestWindow(),
@@ -47,14 +49,15 @@ describe("CHBoxLayout", () => {
 		layout.addWidget(widget2);
 		layout.addWidget(widget3);
 
-		expect(widget1.x()).toBe(0);
-		expect(widget2.x()).toBe(100);
-		expect(widget3.x()).toBe(200);
+		const width = (300 - 2 * margin - 2 * spacing) / 3;
 
-		expect(widget1.height()).toBe(100);
-		expect(widget2.height()).toBe(100);
-		expect(widget3.height()).toBe(100);
-	});
+		expect(widget1.x()).toBe(margin);
+		expect(widget2.x()).toBeCloseTo(margin + width + spacing);
+		expect(widget3.x()).toBeCloseTo(margin + 2 * (width + spacing));
+		expect(widget1.height()).toBe(100 - 2 * margin);
+		expect(widget2.height()).toBe(100 - 2 * margin);
+		expect(widget3.height()).toBe(100 - 2 * margin);
+});
 
 	test("uses configured spacing", () => {
 		const parent = new CWidget();
@@ -70,10 +73,12 @@ describe("CHBoxLayout", () => {
 		layout.addWidget(widget1);
 		layout.addWidget(widget2);
 
-		expect(widget1.width()).toBe(100);
-		expect(widget2.x()).toBe(120);
-		expect(widget2.width()).toBe(100);
-	});
+		const width = (220 - 2 * margin - 20) / 2;
+
+		expect(widget1.width()).toBe(width);
+		expect(widget2.x()).toBe(margin + width + 20);
+		expect(widget2.width()).toBe(width);
+});
 
 	test("updates layout when parent width changes", () => {
 		const parent = new CWidget();
@@ -90,10 +95,13 @@ describe("CHBoxLayout", () => {
 
 		parent.resize(400, 50);
 
-		expect(widget1.width()).toBe(200);
-		expect(widget2.x()).toBe(200);
-		expect(widget2.width()).toBe(200);
-	});
+		parent.resize(400, 50);
+
+		const width = (400 - 2 * margin - spacing) / 2;
+		expect(widget1.width()).toBe(width);
+		expect(widget2.x()).toBe(margin + width + spacing);
+		expect(widget2.width()).toBe(width);
+});
 
 	test("applies contents margins horizontally", () => {
 		const parent = new CWidget();
@@ -112,14 +120,15 @@ describe("CHBoxLayout", () => {
 		layout.addWidget(widget1);
 		layout.addWidget(widget2);
 
+		const width = (340 - 10 - 30 - spacing) / 2;
+
 		expect(widget1.x()).toBe(10);
 		expect(widget1.y()).toBe(20);
-		expect(widget1.width()).toBe(150);
+		expect(widget1.width()).toBe(width);
 		expect(widget1.height()).toBe(70);
-
-		expect(widget2.x()).toBe(160);
+		expect(widget2.x()).toBe(10 + width + spacing);
 		expect(widget2.y()).toBe(20);
-		expect(widget2.width()).toBe(150);
+		expect(widget2.width()).toBe(width);
 		expect(widget2.height()).toBe(70);
-	});
+});
 });

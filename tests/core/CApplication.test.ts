@@ -77,6 +77,9 @@ afterEach(() => {
 });
 
 describe("CApplication", () => {
+	const spacing: number = 6;
+	const margin: number = 6;
+
     test("creates a singleton application", () => {
         const canvas = createTestCanvas();
         const app = new CApplication(canvas);
@@ -946,17 +949,19 @@ describe("CApplication", () => {
 		layout.addWidget(widget1);
 		layout.addWidget(widget2);
 
-		expect(widget1.width()).toBe(150);
-		expect(widget2.x()).toBe(150);
-		expect(widget2.width()).toBe(150);
+		const w = (300 - 2 * margin - spacing) / 2;
+		expect(widget1.width()).toBe(w);
+		expect(widget2.x()).toBe(margin + w + spacing);
+		expect(widget2.width()).toBe(w);
 
 		canvas.width = 600;
+		const w2 = (canvas.width - 2 * margin - spacing) / 2;
 
 		parent.resize(canvas.width, canvas.height);
 
-		expect(widget1.width()).toBe(300);
-		expect(widget2.x()).toBe(300);
-		expect(widget2.width()).toBe(300);
+		expect(widget1.width()).toBe(w2);
+		expect(widget2.x()).toBe(margin + w2 + spacing);
+		expect(widget2.width()).toBe(w2);
 
 		expect(app.canvas().width).toBe(600);
 	});
@@ -1360,5 +1365,42 @@ describe("CApplication", () => {
 		expect(CApplication.instance().toolTipVisible()).toBe(true);
 
 		vi.useRealTimers();
+	});
+
+	test("dispatches mouse events to child of modal dialog with parent", () => {
+		const canvas = createTestCanvas();
+		new CApplication(canvas);
+
+		const parent = new CWidget();
+		parent.setGeometry(50, 40, 700, 500);
+
+		const dialog = new CDialog(parent);
+		dialog.setGeometry(100, 100, 300, 200);
+
+		class ClickWidget extends CWidget {
+			clicked = false;
+
+			protected override mousePressEvent(
+				event: CMouseEvent
+			): void {
+				this.clicked = true;
+				event.accept();
+			}
+		}
+
+		const child = new ClickWidget(dialog);
+		child.setGeometry(20, 30, 100, 40);
+
+		dialog.exec();
+
+		canvas.dispatchEvent({
+			type: "pointerdown",
+			clientX: 50 + 100 + 20 + 10,
+			clientY: 40 + 100 + 30 + 10,
+			button: 0,
+			pointerId: 1
+		} as PointerEvent);
+
+		expect(child.clicked).toBe(true);
 	});
 });

@@ -5,6 +5,7 @@ import type { CPainter } from "../painting/CPainter.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CFontMetrics } from "../gui/CFontMetrics.js";
 import { CFocusEvent } from "../events/CFocusEvent.js";
+import { CSize } from "../geometry/CSize.js";
 
 export class CLineEdit extends CWidget {
 	readonly textChanged = new CSignal<[string]>();
@@ -99,6 +100,10 @@ export class CLineEdit extends CWidget {
     clearSelection(): void {
 	    this.#m_selectionAnchor = this.#m_cursorPosition;
     }
+
+	override sizeHint(): CSize {
+		return new CSize(160, 28);
+	}
 
 	async copy(): Promise<void> {
 		if (!this.hasSelection())

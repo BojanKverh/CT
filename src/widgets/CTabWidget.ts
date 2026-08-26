@@ -1,6 +1,5 @@
 import { CSignal } from "../core/CSignal.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
-import { CFontMetrics } from "../gui/CFontMetrics.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CStackedWidget } from "./CStackedWidget.js";
 import { CWidget } from "./CWidget.js";
@@ -19,8 +18,7 @@ export class CTabWidget extends CWidget {
 	#m_stack: CStackedWidget;
 	#m_hoveredIndex = -1;
 	#m_pressedIndex = -1;
-    #m_fontMetrics : CFontMetrics;
-
+    
 	readonly currentChanged = new CSignal<[number]>();
 	readonly tabClicked = new CSignal<[number]>();
 
@@ -32,7 +30,6 @@ export class CTabWidget extends CWidget {
 			this.currentChanged.emit(index);
 			this.update();
 		});
-        this.#m_fontMetrics = new CFontMetrics(this.font());
 	}
 
 	addTab(widget: CWidget, text: string): number {
@@ -167,7 +164,7 @@ export class CTabWidget extends CWidget {
         if (this.#m_tabs[i] !== undefined && this.#m_tabs[i].text !== undefined)
             return Math.max(
                 CTabWidget.#TAB_MIN_WIDTH, 
-                this.#m_fontMetrics.textWidth(this.#m_tabs[i].text) + 2 * CTabWidget.#TAB_PADDING
+                this.fontMetrics().textWidth(this.#m_tabs[i].text) + 2 * CTabWidget.#TAB_PADDING
             );
         else
             return 0;
@@ -182,12 +179,7 @@ export class CTabWidget extends CWidget {
 		this.#updateStackGeometry();
 	}
 
-    override setFont(font: string): void {
-        super.setFont(font);
-        this.#m_fontMetrics = new CFontMetrics(this.font());
-    }
-
-	protected override mousePressEvent(event: CMouseEvent): void {
+    protected override mousePressEvent(event: CMouseEvent): void {
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;

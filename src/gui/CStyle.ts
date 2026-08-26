@@ -8,7 +8,7 @@ import type { CProgressBar } from "../widgets/CProgressBar.js";
 import type { CGroupBox } from "../widgets/CGroupBox.js";
 import type { CScrollBar } from "../widgets/CScrollBar.js";
 import type { CRadioButton } from "../widgets/CRadioButton.js";
-import type { CTabWidget } from "../widgets/CTabWidget.js";
+import { CTabWidget } from "../widgets/CTabWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import type { CFrame } from "../widgets/CFrame.js";
 import type { CComboBox } from "../widgets/CComboBox.js";

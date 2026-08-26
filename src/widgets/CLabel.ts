@@ -1,14 +1,24 @@
 import { CFrame } from "./CFrame.js";
 import { CPainter } from "../painting/CPainter.js";
 import { CAlignment } from "../core/CAlignment.js";
-import { CRect } from "../geometry/CRect.js";
-import { CPaletteColorRole } from "../gui/CPalette.js";
 import { CPixmap } from "../painting/CPixmap.js";
+import { CSize } from "../geometry/CSize.js";
+import { CFontMetrics } from "../gui/CFontMetrics.js";
+import { CWidget } from "./CWidget.js";
 
 export class CLabel extends CFrame {
 	#m_text = "";
 	#m_alignment = CAlignment.Left | CAlignment.VCenter;
 	#m_pixmap: CPixmap | null = null;
+
+	static readonly #HPADDING: number = 6;
+	static readonly #VPADDING: number = 3;
+
+
+	constructor(parent: CWidget | null = null)
+	{
+		super(parent);
+	}
 
 	text(): string {
 		return this.#m_text;
@@ -43,6 +53,13 @@ export class CLabel extends CFrame {
 			return;
 		this.#m_pixmap = pixmap;
 		this.update();
+	}
+
+	override sizeHint(): CSize {
+		return new CSize(
+			this.fontMetrics().textWidth(this.text()) + 2 * CLabel.#HPADDING,
+			this.fontMetrics().height() + 2 * CLabel.#VPADDING
+		);
 	}
 
     protected override paintEvent(painter: CPainter): void {

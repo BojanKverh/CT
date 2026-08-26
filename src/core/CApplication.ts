@@ -387,12 +387,9 @@ export class CApplication extends CObject {
 		}
 
 		const modal = this.topModalWidget();
-
 		if (modal !== null) {
-			return modal.widgetAt(
-				x - modal.x(),
-				y - modal.y()
-			);
+			const pos = modal.mapFromCanvas(x, y);
+			return modal.widgetAt(pos.x(), pos.y());
 		}
 
 		const widgets = [...this.#m_topLevelWidgets];

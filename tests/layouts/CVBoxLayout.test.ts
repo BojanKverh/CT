@@ -23,6 +23,9 @@ describe("CVBoxLayout", () => {
 			CApplication.instance().destroy();
 	});
 
+	const spacing: number = 6;
+	const margin: number = 6;
+
 	test("uses top to bottom direction", () => {
 		const layout = new CVBoxLayout();
 
@@ -46,13 +49,16 @@ describe("CVBoxLayout", () => {
 		layout.addWidget(widget2);
 		layout.addWidget(widget3);
 
-		expect(widget1.y()).toBe(0);
-		expect(widget2.y()).toBe(100);
-		expect(widget3.y()).toBe(200);
+		const availableHeight = 300 - 2 * margin - 2 * spacing;
+		const itemHeight = availableHeight / 3;
 
-		expect(widget1.width()).toBe(100);
-		expect(widget2.width()).toBe(100);
-		expect(widget3.width()).toBe(100);
+		expect(widget1.y()).toBe(margin);
+		expect(widget2.y()).toBe(margin + itemHeight + spacing);
+		expect(widget3.y()).toBe(margin + 2 * (itemHeight + spacing));
+
+		expect(widget1.width()).toBe(100 - 2 * margin);
+		expect(widget2.width()).toBe(100 - 2 * margin);
+		expect(widget3.width()).toBe(100 - 2 * margin);
 	});
 
 	test("uses configured spacing", () => {
@@ -69,9 +75,11 @@ describe("CVBoxLayout", () => {
 		layout.addWidget(widget1);
 		layout.addWidget(widget2);
 
-		expect(widget1.height()).toBe(100);
-		expect(widget2.y()).toBe(120);
-		expect(widget2.height()).toBe(100);
+		const itemHeight = (220 - 2 * margin - 20) / 2;
+
+		expect(widget1.height()).toBe(itemHeight);
+		expect(widget2.y()).toBe(margin + itemHeight + 20);
+		expect(widget2.height()).toBe(itemHeight);
 	});
 
 	test("updates layout when parent height changes", () => {
@@ -89,9 +97,11 @@ describe("CVBoxLayout", () => {
 
 		parent.resize(50, 400);
 
-		expect(widget1.height()).toBe(200);
-		expect(widget2.y()).toBe(200);
-		expect(widget2.height()).toBe(200);
+		const itemHeight = (400 - 2 * margin - spacing) / 2;
+
+		expect(widget1.height()).toBe(itemHeight);
+		expect(widget2.y()).toBe(margin + itemHeight + spacing);
+		expect(widget2.height()).toBe(itemHeight);
 	});
 
 	test("applies contents margins vertically", () => {
@@ -114,11 +124,13 @@ describe("CVBoxLayout", () => {
 		expect(widget1.x()).toBe(20);
 		expect(widget1.y()).toBe(10);
 		expect(widget1.width()).toBe(70);
-		expect(widget1.height()).toBe(150);
+		const itemHeight = (340 - 10 - 30 - spacing) / 2;
+
+		expect(widget1.height()).toBe(itemHeight);
 
 		expect(widget2.x()).toBe(20);
-		expect(widget2.y()).toBe(160);
+		expect(widget2.y()).toBe(10 + itemHeight + spacing);
 		expect(widget2.width()).toBe(70);
-		expect(widget2.height()).toBe(150);
+		expect(widget2.height()).toBe(itemHeight);
 	});
 });
