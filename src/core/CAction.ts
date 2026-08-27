@@ -1,11 +1,13 @@
 import { CSignal } from "./CSignal.js";
+import { CPixmap } from "../painting/CPixmap.js";
 
 export class CAction {
 	#m_text: string;
+	#m_icon: CPixmap | null = null;
 	#m_enabled = true;
 	#m_checkable = false;
 	#m_checked = false;
-
+	
 	readonly changed = new CSignal<[]>();
 	readonly triggered = new CSignal<[]>();
 	readonly toggled = new CSignal<[boolean]>();
@@ -23,6 +25,18 @@ export class CAction {
 			return;
 
 		this.#m_text = text;
+		this.changed.emit();
+	}
+
+	icon(): CPixmap | null {
+		return this.#m_icon;
+	}
+
+	setIcon(icon: CPixmap | null): void {
+		if (this.#m_icon === icon)
+			return;
+
+		this.#m_icon = icon;
 		this.changed.emit();
 	}
 

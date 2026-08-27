@@ -2,7 +2,8 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
 	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
-	CTabWidget, CFrame, CFrameShape, CFrameShadow, CComboBox, CFormLayout, CToolButton, CToolButtonStyle
+	CTabWidget, CFrame, CFrameShape, CFrameShadow, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
+	CToolBar
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -82,7 +83,7 @@ const but = new CPushButton(parent);
 but.setGeometry(50, 50, 100, 30);
 but.setText("Click me");
 
-but.clicked.connect(() => {
+but.clicked.connect(async () => {
 		const dlg = new CDialog;
 		dlg.setGeometry(150, 150, 600, 550);
 		dlg.setWindowTitle("Settings");
@@ -109,6 +110,19 @@ but.clicked.connect(() => {
 		{
 			console.log("Dialog rejected");
 		});
+
+		const toolBar = new CToolBar(dlg);
+		toolBar.setGeometry(0, 0, 500, 36);
+
+		const newAction = new CAction("New");
+		const openAction = new CAction("Open");
+		const saveAction = new CAction();
+		const icon = await CPixmap.fromUrl("/icons/save.png");
+		saveAction.setIcon(icon);
+		toolBar.addAction(newAction);
+		toolBar.addAction(openAction);
+		toolBar.addSeparator();
+		toolBar.addAction(saveAction);
 
 		const list = new CListWidget(dlg);
 		list.setGeometry(20, 50, 180, 160);
@@ -229,6 +243,7 @@ but2.setText("Open dialog");
 but2.clicked.connect(() => {
 	const dlg = new CDialog(parent);
 	dlg.setGeometry(100, 100, 500, 300);
+
 	const bb = new CDialogButtonBox(CStandardButton.Ok | CStandardButton.Cancel, dlg);
 	bb.setGeometry(0, 260, 490, 30);
 

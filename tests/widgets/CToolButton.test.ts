@@ -5,12 +5,10 @@ import { CApplication } from "../../src/core/CApplication.js";
 import { CKeyEvent } from "../../src/events/CKeyEvent.js";
 import { CKeyboardModifier, CMouseButton, CMouseEvent } from "../../src/events/CMouseEvent.js";
 import { CPixmap } from "../../src/painting/CPixmap.js";
-import {
-	CToolButton,
-	CToolButtonStyle
-} from "../../src/widgets/CToolButton.js";
+import {CToolButton, CToolButtonStyle} from "../../src/widgets/CToolButton.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { CEvent, CEventType } from "../../src/index.js";
+import { CSize } from "../../src/index.js";
 
 describe("CToolButton", () => {
 	beforeEach(() => {
@@ -116,8 +114,20 @@ describe("CToolButton", () => {
 
 		const hint = button.sizeHint();
 
-		expect(hint.width()).toBe(52);
-		expect(hint.height()).toBe(42);
+		expect(hint.width()).toBe(28);
+		expect(hint.height()).toBe(28);
+	});
+
+	test("custom icon size affects size hint", () => {
+		const button = new CToolButton();
+		const image = {} as CanvasImageSource;
+		const icon = new CPixmap(image, 128, 128);
+		button.setIcon(icon);
+		button.setIconSize(new CSize(32, 24));
+
+		const hint = button.sizeHint();
+		expect(hint.width()).toBe(44);
+		expect(hint.height()).toBe(36);
 	});
 
 	test("TextUnderIcon size hint includes text and icon", () => {
@@ -274,14 +284,10 @@ describe("CToolButton", () => {
 		const action = new CAction("Save");
 		const button = new CToolButton();
 
-		button.setToolButtonStyle(
-			CToolButtonStyle.TextUnderIcon
-		);
 		button.setDefaultAction(action);
-
-		expect(button.toolButtonStyle()).toBe(
-			CToolButtonStyle.TextUnderIcon
-		);
+		button.setToolButtonStyle(CToolButtonStyle.TextUnderIcon);
+		action.setText("Save As");
+		expect(button.toolButtonStyle()).toBe(CToolButtonStyle.TextUnderIcon);
 	});
 
 	test("changes to default action are synchronized", () => {

@@ -23,6 +23,9 @@ export class CToolButton extends CAbstractButton {
 	#m_icon: CPixmap | null = null;
 	#m_toolButtonStyle = CToolButtonStyle.IconOnly;
 	#m_defaultAction: CAction | null = null;
+	#m_actionChangedHandler: (() => void) | null = null;
+    #m_iconSize = new CSize(16, 16);
+
 
 	constructor(parent: CWidget | null = null) {
 		super(parent);
@@ -83,6 +86,16 @@ export class CToolButton extends CAbstractButton {
 		this.update();
 	}
 
+    iconSize(): CSize {
+    	return this.#m_iconSize;
+    }
+
+    setIconSize(size: CSize): void {
+	    this.#m_iconSize = size;
+	    this.update();
+    }
+
+
 	defaultAction(): CAction | null {
 		return this.#m_defaultAction;
 	}
@@ -91,13 +104,19 @@ export class CToolButton extends CAbstractButton {
 		if (this.#m_defaultAction === action)
 			return;
 
+		this.#disconnectAction();
 		this.#m_defaultAction = action;
 
 		if (action !== null) {
-			action.changed.connect(() => {
-				if (this.#m_defaultAction === action)
-					this.#syncFromAction();
-			});
+			this.#connectAction(action);
+
+			if (action.icon() !== null && action.text().length > 0) {
+				this.#m_toolButtonStyle = CToolButtonStyle.TextUnderIcon;
+			} else  if (action.icon() !== null) {
+				this.#m_toolButtonStyle = CToolButtonStyle.IconOnly;
+			} else {
+				this.#m_toolButtonStyle = CToolButtonStyle.TextOnly;
+			}
 		}
 
 		this.#syncFromAction();
@@ -110,8 +129,8 @@ export class CToolButton extends CAbstractButton {
 		const textWidth = fm.textWidth(this.text());
 		const textHeight = fm.height();
 		const icon = this.#m_icon;
-		const iconWidth = icon?.width() ?? 0;
-		const iconHeight = icon?.height() ?? 0;
+		const iconWidth = icon !== null ? this.#m_iconSize.width() : 0;
+		const iconHeight = icon !== null ? this.#m_iconSize.height() : 0;
 
 		switch (this.#m_toolButtonStyle) {
 			case CToolButtonStyle.IconOnly:
@@ -252,9 +271,30 @@ export class CToolButton extends CAbstractButton {
 		}
 
 		super.setText(action.text());
+		this.#m_icon = action.icon();
 		this.setEnabled(action.isEnabled());
 		this.setCheckable(action.isCheckable());
 		this.setChecked(action.isChecked());
 		this.update();
+	}
+
+	#connectAction(action: CAction): void {
+		const handler = (): void => {
+			if (this.#m_defaultAction === action)
+				this.#syncFromAction();
+		};
+
+		this.#m_actionChangedHandler = handler;
+		action.changed.connect(handler);
+	}
+
+	#disconnectAction(): void {
+		const action = this.#m_defaultAction;
+		const handler = this.#m_actionChangedHandler;
+
+		if (action !== null && handler !== null)
+			action.changed.disconnect(handler);
+
+		this.#m_actionChangedHandler = null;
 	}
 }

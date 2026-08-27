@@ -44,3 +44,4 @@ export { CFrame, CFrameShape, CFrameShadow } from "./widgets/CFrame.js";
 export { CComboBox } from "./widgets/CComboBox.js";
 export { CFormLayout } from "./layouts/CFormLayout.js";
 export { CToolButtonStyle, CToolButton } from "./widgets/CToolButton.js";
+export { CToolBar } from "./widgets/CToolBar.js";
