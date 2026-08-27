@@ -424,6 +424,25 @@ export class CWidget extends CObject {
         return new CPoint(localX, localY);
     }
 
+    mapToCanvas(x: number, y: number): CPoint {
+	    let widget: CWidget | null = this;
+	    let canvasX = x;
+	    let canvasY = y;
+
+	    while (widget !== null) {
+		    canvasX += widget.x();
+		    canvasY += widget.y();
+		    const parent = widget.parent();
+		    if (parent !== null) {
+			    const childOffset = parent.childOffset();
+			    canvasX += childOffset.x();
+			    canvasY += childOffset.y();
+		    }
+		    widget = parent;
+	    }
+	    return new CPoint(canvasX, canvasY);
+    }
+
     protected paintEvent(_painter: CPainter): void {
     }
 

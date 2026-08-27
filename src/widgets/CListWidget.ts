@@ -609,15 +609,12 @@ export class CListWidget extends CScrollArea
 		return -1;
 	}
 
-	#updateContentGeometry(): void
-	{
+	#updateContentGeometry(): void {
 		const height = this.#m_items.length * CListWidget.ItemHeight;
-		this.#m_contentWidget.resize(this.width(), height);
-		this.updateScrollBars();
-
 		this.#m_contentWidget.resize(this.viewport().width(), height);
 		this.updateScrollBars();
-
+		this.#m_contentWidget.resize(this.viewport().width(), height);
+		this.updateScrollBars();
 		this.#m_contentWidget.update();
 	}
 }

@@ -6,6 +6,7 @@ export class CAction {
 	#m_checkable = false;
 	#m_checked = false;
 
+	readonly changed = new CSignal<[]>();
 	readonly triggered = new CSignal<[]>();
 	readonly toggled = new CSignal<[boolean]>();
 
@@ -18,7 +19,11 @@ export class CAction {
 	}
 
 	setText(text: string): void {
+		if (this.#m_text === text)
+			return;
+
 		this.#m_text = text;
+		this.changed.emit();
 	}
 
 	isEnabled(): boolean {
@@ -26,7 +31,11 @@ export class CAction {
 	}
 
 	setEnabled(enabled: boolean): void {
+		if (this.#m_enabled === enabled)
+			return;
+
 		this.#m_enabled = enabled;
+		this.changed.emit();
 	}
 
 	isCheckable(): boolean {
@@ -34,10 +43,15 @@ export class CAction {
 	}
 
 	setCheckable(checkable: boolean): void {
+		if (this.#m_checkable === checkable)
+			return;
+
 		this.#m_checkable = checkable;
 
 		if (!checkable)
 			this.setChecked(false);
+
+		this.changed.emit();
 	}
 
 	isChecked(): boolean {
@@ -53,6 +67,7 @@ export class CAction {
 
 		this.#m_checked = checked;
 		this.toggled.emit(checked);
+		this.changed.emit();
 	}
 
 	trigger(): void {

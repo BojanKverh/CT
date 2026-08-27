@@ -19,6 +19,7 @@ import { CTabWidget } from "../widgets/CTabWidget.js";
 import { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import { CFrame, CFrameShadow, CFrameShape } from "../widgets/CFrame.js";
 import { CComboBox } from "../widgets/CComboBox.js";
+import { CToolButton, CToolButtonStyle} from "../widgets/CToolButton.js";
 
 export class CDefaultStyle extends CStyle {
 	override drawLabel(painter: CPainter, label: CLabel): void {
@@ -107,7 +108,7 @@ export class CDefaultStyle extends CStyle {
 		);
 	}
 
-    override drawCheckBox(painter: CPainter, checkBox: CCheckBox): void {
+	override drawCheckBox(painter: CPainter, checkBox: CCheckBox): void {
 	    const palette = checkBox.palette();
 	    const boxSize = 16;
 	    const boxY = (checkBox.height() - boxSize) / 2;
@@ -546,6 +547,117 @@ export class CDefaultStyle extends CStyle {
 		painter.drawLine(
 			innerRight, innerTop, innerRight, innerBottom
 		);
+	}
+
+	override drawToolButton(painter: CPainter, button: CToolButton): void {
+		const palette = button.palette();
+		const active = button.isDown() || button.isHovered();
+		if (!button.autoRaise() || active) {
+			const backgroundRole = active? CPaletteColorRole.Highlight
+				: CPaletteColorRole.Button;
+
+			painter.setFillStyle(palette.color(backgroundRole).toCss());
+			painter.fillRect(button.rect());
+		}
+
+		const textRole = !button.isEnabled()? CPaletteColorRole.DisabledText
+			: active ? CPaletteColorRole.HighlightedText
+				: CPaletteColorRole.WindowText;
+
+		painter.setPen(palette.color(textRole).toCss());
+		painter.setFont(button.font());
+
+		const icon = button.icon();
+		const style = button.toolButtonStyle();
+		const margin = 4;
+
+		if (style === CToolButtonStyle.TextOnly) {
+			painter.setTextAlign("center");
+			painter.setTextBaseline("middle");
+
+			painter.drawText(button.text(), button.width() / 2, button.height() / 2);
+			return;
+		}
+
+		if (style === CToolButtonStyle.IconOnly) {
+			if (icon === null)
+				return;
+
+			const maxWidth = Math.max(0, button.width() - 2 * margin);
+			const maxHeight = Math.max(0, button.height() - 2 * margin);
+			let width = icon.width();
+			let height = icon.height();
+			if (width > maxWidth || height > maxHeight) {
+				const scale = Math.min(
+					maxWidth / width,
+					maxHeight / height
+				);
+
+				width *= scale;
+				height *= scale;
+			}
+
+			const x = (button.width() - width) / 2;
+			const y = (button.height() - height) / 2;
+			painter.drawPixmap(icon, x, y, width, height);
+			return;
+		}
+
+		if (style === CToolButtonStyle.TextUnderIcon) {
+			const fm = new CFontMetrics(button.font());
+			const textHeight = fm.height();
+			const iconAreaHeight = Math.max(0, button.height() - textHeight - 3 * margin);
+
+			if (icon !== null && iconAreaHeight > 0) {
+				const maxWidth = Math.max(0, button.width() - 2 * margin);
+				let width = icon.width();
+				let height = icon.height();
+				if (width > maxWidth || height > iconAreaHeight) {
+					const scale = Math.min(
+						maxWidth / width,
+						iconAreaHeight / height
+					);
+
+					width *= scale;
+					height *= scale;
+				}
+
+				const x = (button.width() - width) / 2;
+				const y = margin + (iconAreaHeight - height) / 2;
+
+				painter.drawPixmap(icon, x, y, width, height);
+			}
+
+			painter.setTextAlign("center");
+			painter.setTextBaseline("bottom");
+
+			painter.drawText(button.text(), button.width() / 2, button.height() - margin);
+			return;
+		}
+
+		if (style === CToolButtonStyle.TextBesideIcon) {
+			const fm = new CFontMetrics(button.font());
+			const textWidth = fm.textWidth(button.text());
+			const iconSize = Math.max(0, Math.min(button.height() - 2 * margin,
+					button.width() - textWidth - 3 * margin));
+
+			const totalWidth = iconSize + margin + textWidth;
+			const startX = (button.width() - totalWidth) / 2;
+
+			if (icon !== null && iconSize > 0) {
+				const scale = Math.min(iconSize / icon.width(), iconSize / icon.height());
+
+				const width = icon.width() * scale;
+				const height = icon.height() * scale;
+				const x = startX + (iconSize - width) / 2;
+				const y = (button.height() - height) / 2;
+				painter.drawPixmap(icon, x, y, width, height);
+			}
+
+			painter.setTextAlign("left");
+			painter.setTextBaseline("middle");
+			painter.drawText(button.text(), startX + iconSize + margin, button.height() / 2);
+		}
 	}
 
 	#drawFrameHLine(

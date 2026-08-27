@@ -219,6 +219,7 @@ export class CComboBox extends CWidget {
 		if (oldText !== this.currentText())
 			this.currentTextChanged.emit(this.currentText());
 
+        this.#updatePopupGeometry();
 		this.#m_listWidget.update();
 		this.update();
 	}
@@ -532,31 +533,23 @@ export class CComboBox extends CWidget {
 		this.#updatePopupGeometry();
 	}
 
-	#updatePopupGeometry(): void {
+    #updatePopupGeometry(): void {
 		const rows = Math.min(
-			this.#m_items.length,
-			CComboBox.MaxVisibleItems
+			this.#m_items.length, CComboBox.MaxVisibleItems
 		);
 
 		const frameWidth = this.#m_listWidget.frameWidth();
 		const height = rows * CListWidget.ItemHeight + 2 * frameWidth;
+		let popupWidth = this.width();
+		for (const text of this.#m_items) {
+			const textWidth = this.fontMetrics().textWidth(text);
 
-		let x = this.x();
-		let y = this.y() + this.height();
-		let parent = this.parent();
-
-		while (parent !== null) {
-			x += parent.x();
-			y += parent.y();
-			parent = parent.parent();
+			popupWidth = Math.max(popupWidth, Math.ceil(textWidth) +
+                2 * CListWidget.HorizontalPadding + 2 * frameWidth);
 		}
 
-		this.#m_popup.setGeometry(
-			x, y, this.width(), height
-		);
-
-		this.#m_listWidget.setGeometry(
-			0, 0, this.width(), height
-		);
+		const popupPosition = this.mapToCanvas(0, this.height());
+		this.#m_popup.setGeometry(popupPosition.x(), popupPosition.y(), popupWidth, height);
+		this.#m_listWidget.setGeometry(0, 0, popupWidth, height);
 	}
 }

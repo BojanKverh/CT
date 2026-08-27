@@ -12,11 +12,13 @@ import { CTabWidget } from "../widgets/CTabWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import type { CFrame } from "../widgets/CFrame.js";
 import type { CComboBox } from "../widgets/CComboBox.js";
+import type { CToolButton } from "../widgets/CToolButton.js";
 
 export abstract class CStyle {
 	
     abstract drawLabel(painter: CPainter, label: CLabel): void;
 	abstract drawPushButton(painter: CPainter, button: CPushButton): void;
+	abstract drawToolButton(painter: CPainter, button: CToolButton): void;
     abstract drawCheckBox(painter: CPainter, checkBox: CCheckBox): void;
     abstract drawLineEdit(painter: CPainter, lineEdit: CLineEdit): void;
     abstract drawSlider(painter: CPainter, slider: CSlider): void;

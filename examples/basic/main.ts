@@ -2,7 +2,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
 	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
-	CTabWidget, CFrame, CFrameShape, CFrameShadow, CComboBox, CFormLayout
+	CTabWidget, CFrame, CFrameShape, CFrameShadow, CComboBox, CFormLayout, CToolButton, CToolButtonStyle
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -217,7 +217,9 @@ but.clicked.connect(() => {
 		cb.addItem("Slovenia");
 		cb.setEditable(true);
 
-		
+		const tb = new CToolButton(dlg)
+		tb.setGeometry(350, 260, 60, 60);
+		tb.setText("TB");
 		dlg.exec();
 	});
 
