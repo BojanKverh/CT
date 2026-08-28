@@ -10,7 +10,7 @@ import { CApplication } from "../../src/core/CApplication.js";
 import { CSize } from "../../src/geometry/CSize.js";
 import {
 	CDockArea,
-	CDockAreaPosition
+	CDockWidgetArea
 } from "../../src/widgets/CDockArea.js";
 import { CWidget } from "../../src/widgets/CWidget.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
@@ -104,7 +104,7 @@ describe("CDockArea", () => {
 
 		area.setGeometry(0, 0, 400, 300);
 		area.addDockWidget(
-			CDockAreaPosition.Left,
+			CDockWidgetArea.Left,
 			dock
 		);
 
@@ -121,7 +121,7 @@ describe("CDockArea", () => {
 
 		area.setGeometry(0, 0, 400, 300);
 		area.addDockWidget(
-			CDockAreaPosition.Right,
+			CDockWidgetArea.Right,
 			dock
 		);
 
@@ -137,7 +137,7 @@ describe("CDockArea", () => {
 
 		area.setGeometry(0, 0, 400, 300);
 		area.addDockWidget(
-			CDockAreaPosition.Top,
+			CDockWidgetArea.Top,
 			dock
 		);
 
@@ -153,7 +153,7 @@ describe("CDockArea", () => {
 
 		area.setGeometry(0, 0, 400, 300);
 		area.addDockWidget(
-			CDockAreaPosition.Bottom,
+			CDockWidgetArea.Bottom,
 			dock
 		);
 
@@ -177,22 +177,22 @@ describe("CDockArea", () => {
 		area.setCentralWidget(central);
 
 		area.addDockWidget(
-			CDockAreaPosition.Left,
+			CDockWidgetArea.Left,
 			left
 		);
 
 		area.addDockWidget(
-			CDockAreaPosition.Right,
+			CDockWidgetArea.Right,
 			right
 		);
 
 		area.addDockWidget(
-			CDockAreaPosition.Top,
+			CDockWidgetArea.Top,
 			top
 		);
 
 		area.addDockWidget(
-			CDockAreaPosition.Bottom,
+			CDockWidgetArea.Bottom,
 			bottom
 		);
 
@@ -228,12 +228,12 @@ describe("CDockArea", () => {
 		area.setGeometry(0, 0, 400, 300);
 
 		area.addDockWidget(
-			CDockAreaPosition.Left,
+			CDockWidgetArea.Left,
 			first
 		);
 
 		area.addDockWidget(
-			CDockAreaPosition.Left,
+			CDockWidgetArea.Left,
 			second
 		);
 
@@ -253,12 +253,12 @@ describe("CDockArea", () => {
 		area.setGeometry(0, 0, 400, 300);
 
 		area.addDockWidget(
-			CDockAreaPosition.Right,
+			CDockWidgetArea.Right,
 			first
 		);
 
 		area.addDockWidget(
-			CDockAreaPosition.Right,
+			CDockWidgetArea.Right,
 			second
 		);
 
@@ -280,12 +280,12 @@ describe("CDockArea", () => {
 		area.setGeometry(0, 0, 400, 300);
 
 		area.addDockWidget(
-			CDockAreaPosition.Top,
+			CDockWidgetArea.Top,
 			first
 		);
 
 		area.addDockWidget(
-			CDockAreaPosition.Top,
+			CDockWidgetArea.Top,
 			second
 		);
 
@@ -305,12 +305,12 @@ describe("CDockArea", () => {
 		area.setGeometry(0, 0, 400, 300);
 
 		area.addDockWidget(
-			CDockAreaPosition.Bottom,
+			CDockWidgetArea.Bottom,
 			first
 		);
 
 		area.addDockWidget(
-			CDockAreaPosition.Bottom,
+			CDockWidgetArea.Bottom,
 			second
 		);
 
@@ -331,23 +331,23 @@ describe("CDockArea", () => {
 		const right = new CWidget();
 
 		area.addDockWidget(
-			CDockAreaPosition.Left,
+			CDockWidgetArea.Left,
 			left1
 		);
 
 		area.addDockWidget(
-			CDockAreaPosition.Left,
+			CDockWidgetArea.Left,
 			left2
 		);
 
 		area.addDockWidget(
-			CDockAreaPosition.Right,
+			CDockWidgetArea.Right,
 			right
 		);
 
 		expect(
 			area.dockWidgets(
-				CDockAreaPosition.Left
+				CDockWidgetArea.Left
 			)
 		).toEqual([
 			left1,
@@ -356,7 +356,7 @@ describe("CDockArea", () => {
 
 		expect(
 			area.dockWidgets(
-				CDockAreaPosition.Right
+				CDockWidgetArea.Right
 			)
 		).toEqual([
 			right
@@ -370,24 +370,24 @@ describe("CDockArea", () => {
 		area.setGeometry(0, 0, 400, 300);
 
 		area.addDockWidget(
-			CDockAreaPosition.Left,
+			CDockWidgetArea.Left,
 			dock
 		);
 
 		area.addDockWidget(
-			CDockAreaPosition.Right,
+			CDockWidgetArea.Right,
 			dock
 		);
 
 		expect(
 			area.dockWidgets(
-				CDockAreaPosition.Left
+				CDockWidgetArea.Left
 			)
 		).toEqual([]);
 
 		expect(
 			area.dockWidgets(
-				CDockAreaPosition.Right
+				CDockWidgetArea.Right
 			)
 		).toEqual([
 			dock
@@ -402,7 +402,7 @@ describe("CDockArea", () => {
 		const dock = new CWidget();
 
 		area.addDockWidget(
-			CDockAreaPosition.Left,
+			CDockWidgetArea.Left,
 			dock
 		);
 
@@ -412,7 +412,7 @@ describe("CDockArea", () => {
 
 		expect(
 			area.dockWidgets(
-				CDockAreaPosition.Left
+				CDockWidgetArea.Left
 			)
 		).toEqual([]);
 	});
@@ -437,7 +437,7 @@ describe("CDockArea", () => {
 		area.setCentralWidget(central);
 
 		area.addDockWidget(
-			CDockAreaPosition.Left,
+			CDockWidgetArea.Left,
 			left
 		);
 
@@ -466,12 +466,12 @@ describe("CDockArea", () => {
 		area.setCentralWidget(central);
 
 		area.addDockWidget(
-			CDockAreaPosition.Left,
+			CDockWidgetArea.Left,
 			left
 		);
 
 		area.addDockWidget(
-			CDockAreaPosition.Right,
+			CDockWidgetArea.Right,
 			right
 		);
 

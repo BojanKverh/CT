@@ -1,7 +1,7 @@
 import { CSize } from "../geometry/CSize.js";
 import { CWidget } from "./CWidget.js";
 
-export enum CDockAreaPosition {
+export enum CDockWidgetArea {
 	Left,
 	Right,
 	Top,
@@ -9,7 +9,7 @@ export enum CDockAreaPosition {
 }
 
 type CDockAreaItem = {
-	position: CDockAreaPosition;
+	position: CDockWidgetArea;
 	widget: CWidget;
 };
 
@@ -44,7 +44,7 @@ export class CDockArea extends CWidget {
 	}
 
 	addDockWidget(
-		position: CDockAreaPosition,
+		position: CDockWidgetArea,
 		widget: CWidget
 	): void {
 		const existing = this.#indexOf(widget);
@@ -77,7 +77,7 @@ export class CDockArea extends CWidget {
 	}
 
 	dockWidgets(
-		position: CDockAreaPosition
+		position: CDockWidgetArea
 	): readonly CWidget[] {
 		return this.#m_dockWidgets
 			.filter(item => item.position === position)
@@ -112,7 +112,7 @@ export class CDockArea extends CWidget {
 		);
 	}
 
-	#widgets(position: CDockAreaPosition): CWidget[] {
+	#widgets(position: CDockWidgetArea): CWidget[] {
 		return this.#m_dockWidgets
 			.filter(item => item.position === position)
 			.map(item => item.widget);
@@ -164,7 +164,7 @@ export class CDockArea extends CWidget {
 		right: number
 	): number {
 		const widgets =
-			this.#widgets(CDockAreaPosition.Top);
+			this.#widgets(CDockWidgetArea.Top);
 
 		for (const widget of widgets) {
 			const height =
@@ -189,7 +189,7 @@ export class CDockArea extends CWidget {
 		right: number
 	): number {
 		const widgets =
-			this.#widgets(CDockAreaPosition.Bottom);
+			this.#widgets(CDockWidgetArea.Bottom);
 
 		for (
 			let i = widgets.length - 1;
@@ -225,7 +225,7 @@ export class CDockArea extends CWidget {
 		bottom: number
 	): number {
 		const widgets =
-			this.#widgets(CDockAreaPosition.Left);
+			this.#widgets(CDockWidgetArea.Left);
 
 		for (const widget of widgets) {
 			const width =
@@ -250,7 +250,7 @@ export class CDockArea extends CWidget {
 		bottom: number
 	): number {
 		const widgets =
-			this.#widgets(CDockAreaPosition.Right);
+			this.#widgets(CDockWidgetArea.Right);
 
 		for (
 			let i = widgets.length - 1;
