@@ -3,7 +3,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
 	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
 	CTabWidget, CFrame, CFrameShape, CFrameShadow, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
-	CToolBar
+	CToolBar, CStatusBar
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -402,6 +402,19 @@ menuBar.addSeparator();
 
 menuBar.addMenu("Tools", toolsMenu);
 menuBar.addMenu("Help", helpMenu);
+
+const statusBar = new CStatusBar();
+
+const left = new CLabel(null);
+left.setText("Ready");
+const permanent = new CLabel(null);
+permanent.setText("INS");
+
+statusBar.addWidget(left);
+statusBar.addPermanentWidget(permanent);
+
+statusBar.showMessage("File saved", 3000);
+statusBar.setGeometry(700, 776, 300, 24);
 
 app.startUpdates();
 
