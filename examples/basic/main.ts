@@ -3,12 +3,12 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
 	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
 	CTabWidget, CFrame, CFrameShape, CFrameShadow, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
-	CToolBar, CStatusBar
+	CToolBar, CStatusBar, CMainWindow, CDockWidget, CDockWidgetArea
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
     protected override paintEvent(painter: CPainter): void {
-        painter.setFillStyle("red");
+        painter.setFillStyle("#ffa0a0");
         painter.fillRect(
             new CRect(0, 0, this.width(), this.height())
         );
@@ -76,15 +76,18 @@ if (canvas === null)
 
 const app = new CApplication(canvas);
 
+const mainWindow = new CMainWindow();
+mainWindow.setGeometry(0, 0, canvas.width, canvas.height);
+
 const parent = new RedWidget();
-parent.setGeometry(200, 0, 640, 480);
+mainWindow.setCentralWidget(parent);
 
 const but = new CPushButton(parent);
 but.setGeometry(50, 50, 100, 30);
 but.setText("Click me");
 
 but.clicked.connect(async () => {
-		const dlg = new CDialog;
+		const dlg = new CDialog(parent);
 		dlg.setGeometry(150, 150, 600, 550);
 		dlg.setWindowTitle("Settings");
 
@@ -343,8 +346,8 @@ layout.addWidget(pb1, 0);
 layout.addWidget(pb2, 0);
 w.setLayout(layout);
 
-const scrollArea = new CScrollArea();
-scrollArea.setGeometry(20, 530, 420, 260);
+const scrollArea = new CScrollArea(parent);
+scrollArea.setGeometry(20, 380, 420, 260);
 
 const scrollContent = new ScrollContentWidget();
 scrollContent.resize(1000, 700);
@@ -352,7 +355,7 @@ scrollContent.resize(1000, 700);
 scrollArea.setWidget(scrollContent);
 
 const menuBar = new CMenuBar();
-menuBar.setGeometry(0, 0, canvas.width, 28);
+mainWindow.setMenuBar(menuBar);
 
 const fileMenu = new CMenu();
 fileMenu.addAction(new CAction("New"));
@@ -404,6 +407,7 @@ menuBar.addMenu("Tools", toolsMenu);
 menuBar.addMenu("Help", helpMenu);
 
 const statusBar = new CStatusBar();
+mainWindow.setStatusBar(statusBar);
 
 const left = new CLabel(null);
 left.setText("Ready");
@@ -419,7 +423,6 @@ statusBar.setGeometry(700, 776, 300, 24);
 app.startUpdates();
 
 setInterval(() => {
-    if (parent.x() <= 250)
-        parent.move(parent.x() + 1, parent.y() + 1);
-        pb.setValue(Math.round(parent.x() / 2.5));
-}, 10);
+	if (pb.value() < 100)
+		pb.setValue(pb.value() + 1)
+}, 50);

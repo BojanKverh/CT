@@ -6,6 +6,7 @@ import { CPaletteColorRole } from "../gui/CPalette.js";
 import type { CPainter } from "../painting/CPainter.js";
 import type { CMouseEvent } from "../events/CMouseEvent.js";
 import type { CKeyEvent } from "../events/CKeyEvent.js";
+import { CSize } from "../geometry/CSize.js";
 
 type CMenuBarItem =
 	| { type: "menu"; text: string; menu: CMenu }
@@ -82,6 +83,10 @@ export class CMenuBar extends CWidget
 	selectMenu(direction: 1 | -1): void
 	{
 		this.#selectMenu(direction);
+	}
+
+	override sizeHint(): CSize {
+		return new CSize(0, CMenuBar.DefaultHeight);
 	}
 
     protected override mouseMoveEvent(event: CMouseEvent): void

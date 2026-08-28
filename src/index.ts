@@ -46,3 +46,6 @@ export { CFormLayout } from "./layouts/CFormLayout.js";
 export { CToolButtonStyle, CToolButton } from "./widgets/CToolButton.js";
 export { CToolBar } from "./widgets/CToolBar.js";
 export { CStatusBar } from "./widgets/CStatusBar.js";
+export { CDockArea, CDockWidgetArea } from "./widgets/CDockArea.js";
+export { CDockWidget } from "./widgets/CDockWidget.js";
+export { CMainWindow } from "./widgets/CMainWindow.js";
