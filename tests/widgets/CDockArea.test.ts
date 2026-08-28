@@ -1,18 +1,11 @@
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	test
-} from "vitest";
-
+import {afterEach, beforeEach, describe, expect, test} from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
 import { CSize } from "../../src/geometry/CSize.js";
-import {
-	CDockArea,
-	CDockWidgetArea
-} from "../../src/widgets/CDockArea.js";
+import { CDockArea, CDockWidgetArea } from "../../src/widgets/CDockArea.js";
 import { CWidget } from "../../src/widgets/CWidget.js";
+import { CDockWidget } from "../../src/widgets/CDockWidget.js";
+import { CMouseEvent, CMouseButton } from "../../src/index.js";
+import { CEventType } from "../../src/index.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 
 class TestWidget extends CWidget {
@@ -499,4 +492,85 @@ describe("CDockArea", () => {
 		expect(hint.width()).toBe(0);
 		expect(hint.height()).toBe(0);
 	});
+
+    test("hidden dock widget does not occupy space", () => {
+	    const area = new CDockArea();
+	    const central = new CWidget();
+	    const dock = new TestWidget(80, 20);
+	    area.setGeometry(0, 0, 400, 300);
+	    area.setCentralWidget(central);
+	    area.addDockWidget(CDockWidgetArea.Left, dock);
+
+	    expect(central.x()).toBe(80 + CDockArea.Spacing);
+	    expect(central.width()).toBe(400 - 80 - CDockArea.Spacing);
+
+	    dock.hide();
+
+	    expect(central.x()).toBe(0);
+	    expect(central.width()).toBe(400);
+    });
+
+    test("showing dock widget restores its space", () => {
+	    const area = new CDockArea();
+	    const central = new CWidget();
+	    const dock = new TestWidget(80, 20);
+	    area.setGeometry(0, 0, 400, 300);
+	    area.setCentralWidget(central);
+	    area.addDockWidget(CDockWidgetArea.Left, dock);
+
+	    dock.hide();
+
+	    expect(central.x()).toBe(0);
+	    expect(central.width()).toBe(400);
+
+	    dock.show();
+
+	    expect(central.x()).toBe(80 + CDockArea.Spacing);
+	    expect(central.width()).toBe(400 - 80 - CDockArea.Spacing);
+    });
+
+    test("hidden dock remains registered", () => {
+	    const area = new CDockArea();
+	    const dock = new TestWidget(80, 20);
+    	area.addDockWidget(CDockWidgetArea.Left, dock);
+	    dock.hide();
+
+    	expect(area.dockWidgets(CDockWidgetArea.Left)).toEqual([dock]);
+    });
+
+    test("hidden dock does not leave spacing behind", () => {
+	    const area = new CDockArea();
+	    const central = new CWidget();
+	    const first = new TestWidget(50, 20);
+	    const second = new TestWidget(70, 20);
+    	area.setGeometry(0, 0, 400, 300);
+	    area.setCentralWidget(central);
+	    area.addDockWidget(CDockWidgetArea.Left, first);
+	    area.addDockWidget(CDockWidgetArea.Left, second);
+	    first.hide();
+
+	    expect(second.x()).toBe(0);
+	    expect(central.x()).toBe(70 + CDockArea.Spacing);
+    });
+
+    test("closed dock widget releases dock space", () => {
+	    const area = new CDockArea();
+	    const central = new CWidget();
+	    const dock = new CDockWidget("Properties");
+
+	    area.setGeometry(0, 0, 400, 300);
+	    area.setCentralWidget(central);
+	    area.addDockWidget(CDockWidgetArea.Left, dock);
+
+	    expect(central.x()).toBe(dock.sizeHint().width() + CDockArea.Spacing);
+
+	    const event = new CMouseEvent(CEventType.MousePress, dock.width() - 2,
+            CDockWidget.TitleBarHeight / 2, CMouseButton.LeftButton);
+
+	    dock.event(event);
+
+	    expect(dock.isVisible()).toBe(false);
+	    expect(central.x()).toBe(0);
+	    expect(central.width()).toBe(400);
+    });
 });

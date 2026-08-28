@@ -110,11 +110,14 @@ export class CWidget extends CObject {
     }
 
     setVisible(visible: boolean): void {
-        if (this.#m_visible === visible)
-            return;
+	    if (this.#m_visible === visible)
+		    return;
 
-        this.#m_visible = visible;
-        this.update();
+	    this.#m_visible = visible;
+	    const parent = this.parent();
+	    if (parent !== null)
+		    parent.childVisibilityChanged(this);
+	    this.update();
     }
 
     setEnabled(enabled: boolean): void {
@@ -486,5 +489,10 @@ export class CWidget extends CObject {
 
     protected wheelEvent(event: CWheelEvent): void {
 	    event.ignore();
+    }
+
+    protected childVisibilityChanged(_child: CWidget): void {
+	    this.#m_layout?.update();
+	    this.update();
     }
 }

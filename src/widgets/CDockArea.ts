@@ -84,20 +84,13 @@ export class CDockArea extends CWidget {
 			.map(item => item.widget);
 	}
 
-	override setGeometry(
-		x: number,
-		y: number,
-		width: number,
-		height: number
-	): void {
+	override setGeometry(x: number, y: number, width: number, height: number): void {
 		super.setGeometry(x, y, width, height);
-
 		this.#updateGeometry();
 	}
 
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
-
 		this.#updateGeometry();
 	}
 
@@ -106,17 +99,21 @@ export class CDockArea extends CWidget {
 			?? new CSize(0, 0);
 	}
 
+    protected override childVisibilityChanged(_child: CWidget): void {
+	    this.#updateGeometry();
+	    this.update();
+    }
+
 	#indexOf(widget: CWidget): number {
 		return this.#m_dockWidgets.findIndex(
 			item => item.widget === widget
 		);
 	}
 
-	#widgets(position: CDockWidgetArea): CWidget[] {
-		return this.#m_dockWidgets
-			.filter(item => item.position === position)
-			.map(item => item.widget);
-	}
+    #widgets(position: CDockWidgetArea): CWidget[] {
+	    return this.#m_dockWidgets.filter(item => item.position === position &&
+				item.widget.isVisible()).map(item => item.widget);
+    }
 
 	#updateGeometry(): void {
 		let left = 0;
