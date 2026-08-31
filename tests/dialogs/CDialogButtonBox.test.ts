@@ -4,7 +4,7 @@ import { CApplication } from "../../src/core/CApplication.js";
 import {
 	CDialogButtonBox,
 	CStandardButton
-} from "../../src/widgets/CDialogButtonBox.js";
+} from "../../src/dialogs/CDialogButtonBox.js";
 import { CPushButton } from "../../src/widgets/CPushButton.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 

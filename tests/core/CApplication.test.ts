@@ -9,7 +9,7 @@ import { createTestCanvas } from "../helpers/createTestCanvas";
 import { createTestWindow } from "../helpers/createTestWindow.js";
 import { CHBoxLayout } from "../../src/layouts/CHBoxLayout.js";
 import { CPopupWidget } from "../../src/widgets/CPopupWidget.js";
-import { CDialog } from "../../src/widgets/CDialog.js";
+import { CDialog } from "../../src/dialogs/CDialog.js";
 
 class RenderTrackingWidget extends CWidget {
     renderCalls = 0;

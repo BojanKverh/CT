@@ -1,7 +1,7 @@
 import { CSignal } from "../core/CSignal.js";
 import { CHBoxLayout } from "../layouts/CHBoxLayout.js";
-import { CPushButton } from "./CPushButton.js";
-import { CWidget } from "./CWidget.js";
+import { CPushButton } from "../widgets/CPushButton.js";
+import { CWidget } from "../widgets/CWidget.js";
 
 export enum CStandardButton {
 	NoButton = 0,

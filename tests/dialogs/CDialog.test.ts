@@ -4,7 +4,7 @@ import { CApplication } from "../../src/core/CApplication.js";
 import { CEventType } from "../../src/events/CEvent.js";
 import { CKeyEvent } from "../../src/events/CKeyEvent.js";
 import { CMouseButton, CMouseEvent } from "../../src/events/CMouseEvent.js";
-import { CDialog, CDialogResult } from "../../src/widgets/CDialog.js";
+import { CDialog, CDialogResult } from "../../src/dialogs/CDialog.js";
 import { CPushButton } from "../../src/widgets/CPushButton.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 

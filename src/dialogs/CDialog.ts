@@ -3,7 +3,7 @@ import type { CKeyEvent } from "../events/CKeyEvent.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CApplication } from "../core/CApplication.js";
-import { CWidget } from "./CWidget.js";
+import { CWidget } from "../widgets/CWidget.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CRect } from "../geometry/CRect.js";
 import { CPoint } from "../geometry/CPoint.js";
