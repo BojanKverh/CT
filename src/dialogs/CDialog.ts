@@ -96,7 +96,9 @@ export class CDialog extends CWidget
 		if (this.#m_open)
 			return;
 
-		this.#center();
+		if (this.x() === 0 && this.y() === 0)
+			this.#center();
+		
 		this.#m_open = true;
 		this.#m_result = CDialogResult.Rejected;
 

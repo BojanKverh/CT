@@ -168,9 +168,8 @@ describe("CLabel", () => {
 	    expect(device.engine.setFillStyle).toHaveBeenCalledWith(
 		    "rgba(10, 20, 30, 1)"
 	    );
-	    expect(device.engine.setFillStyle).toHaveBeenCalledWith(
-		    "rgba(200, 210, 220, 1)"
-	    );
+		expect(device.engine.setStrokeStyle).toHaveBeenCalledWith(
+			"rgba(200, 210, 220, 1)");
     });
 
 	test("stores pixmap", () => {
