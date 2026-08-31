@@ -4,9 +4,6 @@ import { CSize } from "../geometry/CSize.js";
 import { CWidget } from "./CWidget.js";
 
 export class CToolTipWidget extends CWidget {
-	static readonly HorizontalPadding = 6;
-	static readonly VerticalPadding = 3;
-
 	#m_text = "";
 
 	constructor(parent: CWidget | null = null) {
@@ -32,8 +29,8 @@ export class CToolTipWidget extends CWidget {
     override sizeHint(): CSize {
 		const metrics = new CFontMetrics(this.font());
 
-		return new CSize(metrics.textWidth(this.#m_text) + 2 * CToolTipWidget.HorizontalPadding,
-			metrics.height() + 2 * CToolTipWidget.VerticalPadding);
+		return new CSize(metrics.textWidth(this.#m_text) + 2 * this.style().toolTipHorizontalPadding(),
+			metrics.height() + 2 * this.style().toolTipVerticalPadding());
 	}
 
 	protected override paintEvent(painter: CPainter): void {

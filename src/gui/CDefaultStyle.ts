@@ -8,27 +8,45 @@ import { CRect } from "../geometry/CRect.js";
 import type { CCheckBox } from "../widgets/CCheckBox.js";
 import type { CLineEdit } from "../widgets/CLineEdit.js";
 import { CFontMetrics } from "./CFontMetrics.js";
-import { CSlider } from "../widgets/CSlider.js";
 import type { CProgressBar } from "../widgets/CProgressBar.js";
 import type { CGroupBox } from "../widgets/CGroupBox.js";
 import type { CScrollBar } from "../widgets/CScrollBar.js";
 import { COrientation } from "./COrientation.js";
-import { CPixmap } from "../painting/CPixmap.js";
-import { CRadioButton } from "../widgets/CRadioButton.js";
-import { CTabWidget } from "../widgets/CTabWidget.js";
-import { CToolTipWidget } from "../widgets/CToolTipWidget.js";
-import { CFrame, CFrameShadow, CFrameShape } from "../widgets/CFrame.js";
-import { CComboBox } from "../widgets/CComboBox.js";
-import { CToolButton, CToolButtonStyle} from "../widgets/CToolButton.js";
-import { CToolBar } from "../widgets/CToolBar.js";
+import type { CRadioButton } from "../widgets/CRadioButton.js";
+import type { CTabWidget } from "../widgets/CTabWidget.js";
+import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
+import { CFrameShadow, CFrameShape } from "../widgets/CFrame.js";
+import type { CFrame } from "../widgets/CFrame.js";
+import type { CComboBox } from "../widgets/CComboBox.js";
+import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
+import type { CToolButton } from "../widgets/CToolButton.js";
+import type { CToolBar } from "../widgets/CToolBar.js";
+import type { CSlider } from "../widgets/CSlider.js";
 
 export class CDefaultStyle extends CStyle {
+
+	override sliderHandleSize(): number {
+		return 16;
+	}
+
+	override toolTipHorizontalPadding(): number {
+		return 6;
+	}
+
+	override toolTipVerticalPadding(): number {
+		return 3;
+	}
+
+	override comboBoxArrowWidth(): number {
+		return 24;
+	}
+
 	override drawLabel(painter: CPainter, label: CLabel): void {
 		const palette = label.palette();
 		if (label.pixmap() === null) {
-			painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
+			painter.setBrush(palette.color(CPaletteColorRole.Base).toCss());
 			painter.fillRect(label.rect());
-			painter.setFillStyle(palette.color(CPaletteColorRole.Text).toCss());
+			painter.setPen(palette.color(CPaletteColorRole.Text).toCss());
 			painter.setFont(label.font());
 
 			let x: number;
@@ -57,7 +75,7 @@ export class CDefaultStyle extends CStyle {
 
 			painter.drawText(label.text(), x, y);
 		} else {
-			painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
+			painter.setBrush(palette.color(CPaletteColorRole.Base).toCss());
 			painter.fillRect(label.rect());
 			const pix = label.pixmap();
 			const margin = 3;
@@ -183,7 +201,7 @@ export class CDefaultStyle extends CStyle {
 		const palette = slider.palette();
 
 		const grooveHeight = 4;
-		const handleW = CSlider.HandleSize;
+		const handleW = this.sliderHandleSize();
 		const handleH = 12;
 
 		const grooveX = handleW / 2;
@@ -420,7 +438,7 @@ export class CDefaultStyle extends CStyle {
 		painter.setTextAlign("left");
 		painter.setTextBaseline("middle");
 
-		painter.drawText(toolTip.text(), CToolTipWidget.HorizontalPadding, toolTip.height() / 2);
+		painter.drawText(toolTip.text(), this.toolTipHorizontalPadding(), toolTip.height() / 2);
 	}
 
 	override drawFrame(painter: CPainter, frame: CFrame): void {
@@ -669,7 +687,7 @@ export class CDefaultStyle extends CStyle {
 
 	override drawComboBox(painter: CPainter, comboBox: CComboBox): void {
 		const palette = comboBox.palette();
-		const arrowWidth = CComboBox.ArrowWidth;
+		const arrowWidth = this.comboBoxArrowWidth();
 		const arrowX = comboBox.width() - arrowWidth;
 
 		let buttonRole = CPaletteColorRole.Button;

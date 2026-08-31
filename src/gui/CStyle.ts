@@ -8,7 +8,7 @@ import type { CProgressBar } from "../widgets/CProgressBar.js";
 import type { CGroupBox } from "../widgets/CGroupBox.js";
 import type { CScrollBar } from "../widgets/CScrollBar.js";
 import type { CRadioButton } from "../widgets/CRadioButton.js";
-import { CTabWidget } from "../widgets/CTabWidget.js";
+import type { CTabWidget } from "../widgets/CTabWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import type { CFrame } from "../widgets/CFrame.js";
 import type { CComboBox } from "../widgets/CComboBox.js";
@@ -17,6 +17,11 @@ import type { CToolBar } from "../widgets/CToolBar.js";
 
 export abstract class CStyle {
 	
+    abstract sliderHandleSize(): number;
+    abstract toolTipHorizontalPadding(): number;
+    abstract toolTipVerticalPadding(): number;
+    abstract comboBoxArrowWidth(): number;
+    
     abstract drawLabel(painter: CPainter, label: CLabel): void;
 	abstract drawPushButton(painter: CPainter, button: CPushButton): void;
 	abstract drawToolButton(painter: CPainter, button: CToolButton): void;

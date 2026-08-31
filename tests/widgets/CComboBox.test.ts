@@ -583,7 +583,7 @@ describe("CComboBox", () => {
 		expect(combo.lineEdit().x()).toBe(0);
 		expect(combo.lineEdit().y()).toBe(0);
 		expect(combo.lineEdit().width()).toBe(
-			200 - CComboBox.ArrowWidth
+			200 - combo.style().comboBoxArrowWidth()
 		);
 		expect(combo.lineEdit().height()).toBe(30);
 	});
@@ -594,7 +594,7 @@ describe("CComboBox", () => {
 		combo.resize(300, 40);
 
 		expect(combo.lineEdit().width()).toBe(
-			300 - CComboBox.ArrowWidth
+			300 - combo.style().comboBoxArrowWidth()
 		);
 		expect(combo.lineEdit().height()).toBe(40);
 	});

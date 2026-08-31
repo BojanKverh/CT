@@ -1,4 +1,5 @@
 import { CSignal } from "../core/CSignal.js";
+import { CSize } from "../geometry/CSize.js";
 import { CHBoxLayout } from "../layouts/CHBoxLayout.js";
 import { CPushButton } from "../widgets/CPushButton.js";
 import { CWidget } from "../widgets/CWidget.js";
@@ -15,11 +16,14 @@ export enum CStandardButton {
 
 export class CDialogButtonBox extends CWidget
 {
+	static readonly SPACING: number = 3;
+
 	#m_standardButtons = CStandardButton.NoButton;
 	#m_layout = new CHBoxLayout();
 
 	readonly accepted = new CSignal<[]>();
 	readonly rejected = new CSignal<[]>();
+	readonly clicked = new CSignal<[CStandardButton]>();
 
 	constructor(
 		buttons = CStandardButton.NoButton,
@@ -96,5 +100,20 @@ export class CDialogButtonBox extends CWidget
 		}
 
 		this.#m_layout.clear();
+	}
+
+	override sizeHint(): CSize {
+		const n = this.#m_layout.count();
+		let w = 0;
+		let h = 0;
+		for (let i = 0; i < n; ++i) {
+			const widget = this.#m_layout.widgetAt(i);
+			if (widget) {
+				w += widget.sizeHint().width();
+				h = Math.max(h, widget.sizeHint().height());
+			}
+		}
+
+		return new CSize(w + (n - 1) * CDialogButtonBox.SPACING, h);
 	}
 }

@@ -56,8 +56,7 @@ class CComboLineEdit extends CLineEdit {
 }
 
 export class CComboBox extends CWidget {
-	static readonly ArrowWidth = 24;
-	static readonly MaxVisibleItems = 8;
+	static readonly MaxVisibleItems = 10;
 
 	#m_items: string[] = [];
 	#m_currentIndex = -1;
@@ -366,7 +365,7 @@ export class CComboBox extends CWidget {
 
 		if (
 			this.#m_editable &&
-			event.x() < this.width() - CComboBox.ArrowWidth
+			event.x() < this.width() - this.style().comboBoxArrowWidth()
 		) {
 			event.ignore();
 			return;
@@ -389,7 +388,7 @@ export class CComboBox extends CWidget {
 
 		event.accept();
 		const insideArrow =
-			event.x() >= this.width() - CComboBox.ArrowWidth &&
+			event.x() >= this.width() - this.style().comboBoxArrowWidth() &&
 			event.x() < this.width() &&
 			event.y() >= 0 &&
 			event.y() < this.height();
@@ -409,7 +408,7 @@ export class CComboBox extends CWidget {
 
 	protected override mouseMoveEvent(event: CMouseEvent): void
 	{
-		const hovered = event.x() >= this.width() - CComboBox.ArrowWidth;
+		const hovered = event.x() >= this.width() - this.style().comboBoxArrowWidth();
 
 		if (hovered !== this.#m_arrowHovered) {
 			this.#m_arrowHovered = hovered;
@@ -524,7 +523,7 @@ export class CComboBox extends CWidget {
 	}
 
 	#updateGeometry(): void {
-		const editWidth = Math.max(0, this.width() - CComboBox.ArrowWidth);
+		const editWidth = Math.max(0, this.width() - this.style().comboBoxArrowWidth());
 
 		this.#m_lineEdit.setGeometry(
 			0, 0, editWidth, this.height()

@@ -11,7 +11,7 @@ import { CWheelEvent } from "../events/CWheelEvent.js";
 import { CLayout } from "../layouts/CLayout.js";
 import { CSize } from "../geometry/CSize.js";
 import { CPalette } from "../gui/CPalette.js";
-import { CStyle } from "../gui/CStyle.js";
+import type { CStyle } from "../gui/CStyle.js";
 import { CFontMetrics } from "../gui/CFontMetrics.js";
 
 export class CWidget extends CObject {

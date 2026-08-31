@@ -6,10 +6,8 @@ import { CSize } from "../../src/geometry/CSize.js";
 import { COrientation } from "../../src/gui/COrientation.js";
 import { CPixmap } from "../../src/painting/CPixmap.js";
 import { CToolBar } from "../../src/widgets/CToolBar.js";
-import {
-	CToolButton,
-	CToolButtonStyle
-} from "../../src/widgets/CToolButton.js";
+import { CToolButton } from "../../src/widgets/CToolButton.js";
+import { CToolButtonStyle } from "../../src/gui/CToolButtonStyle.js";
 import { CWidget } from "../../src/widgets/CWidget.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 

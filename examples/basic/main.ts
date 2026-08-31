@@ -3,7 +3,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
 	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
 	CTabWidget, CFrame, CFrameShape, CFrameShadow, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
-	CToolBar, CStatusBar, CMainWindow, CDockWidget, CDockWidgetArea
+	CToolBar, CStatusBar, CMainWindow, CMessageBox
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -336,6 +336,9 @@ const w = new CWidget(parent);
 w.setGeometry(0, 440, 640, 40);
 const pb1 = new CPushButton(w);
 pb1.setText("OK");
+pb1.clicked.connect(() => {
+	CMessageBox.information(null, "This is message box!", "This is a brand new message box");
+})
 const pb2 = new CPushButton(w);
 pb2.setText("Cancel");
 const layout = new CHBoxLayout();

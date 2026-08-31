@@ -1,7 +1,7 @@
 import { CAction } from "../core/CAction.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CPainter } from "../painting/CPainter.js";
-import { CToolButton, CToolButtonStyle } from "./CToolButton.js";
+import { CToolButton } from "./CToolButton.js";
 import { CWidget } from "./CWidget.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 

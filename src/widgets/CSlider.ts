@@ -12,9 +12,7 @@ export class CSlider extends CWidget {
     #m_singleStep = 1;
     #m_pageStep = 10;
 
-    static readonly HandleSize = 16;
-
-	readonly valueChanged = new CSignal<[number]>();
+    readonly valueChanged = new CSignal<[number]>();
 
     constructor(parent: CWidget | null = null) {
 	    super(parent);
@@ -168,7 +166,7 @@ export class CSlider extends CWidget {
 	}
 
 	#valueFromPosition(x: number): number {
-		const handleSize = CSlider.HandleSize;
+		const handleSize = this.style().sliderHandleSize();
 		const start = handleSize / 2;
 		const length = Math.max(0, this.width() - handleSize);
 

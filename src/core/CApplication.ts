@@ -13,8 +13,8 @@ import { CWheelEvent } from "../events/CWheelEvent.js";
 import { CPalette } from "../gui/CPalette.js";
 import { CDefaultStyle } from "../gui/CDefaultStyle.js";
 import type { CStyle } from "../gui/CStyle.js";
-import { CPopupWidget } from "../widgets/CPopupWidget.js";
-import { CToolTipWidget } from "../widgets/CToolTipWidget.js";
+import type { CPopupWidget } from "../widgets/CPopupWidget.js";
+import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
@@ -31,7 +31,7 @@ export class CApplication extends CObject {
     #m_style: CStyle = new CDefaultStyle();
     #m_popupWidgets: CPopupWidget[] = [];
 	#m_modalWidgets: CWidget[] = [];
-	#m_toolTipWidget: CToolTipWidget;
+	#m_toolTipWidget: CToolTipWidget | null = null;
 	#m_toolTipTarget: CWidget | null = null;
 	#m_toolTipTimer: ReturnType<typeof setTimeout> | null = null;
 	#m_mouseX = 0;
@@ -91,10 +91,6 @@ export class CApplication extends CObject {
 	        window.addEventListener("keydown", this.#onKeyDown);
 	        window.addEventListener("keyup", this.#onKeyUp);
         }
-
-		this.#m_toolTipWidget = new CToolTipWidget();
-		this.unregisterTopLevelWidget(this.#m_toolTipWidget);
-		this.#m_toolTipWidget.hide();
 	}
 
     destroy(): void {
@@ -117,7 +113,8 @@ export class CApplication extends CObject {
 		}
 
 		this.#cancelToolTipTimer();
-		this.#m_toolTipWidget.hide();
+		this.#m_toolTipWidget?.hide();
+		this.#m_toolTipWidget = null;
 		this.#m_toolTipTarget = null;
 
 		this.#m_topLevelWidgets.clear();
@@ -343,7 +340,7 @@ export class CApplication extends CObject {
 
 	toolTipVisible(): boolean
 	{
-		return this.#m_toolTipWidget.isVisible();
+		return this.#m_toolTipWidget?.isVisible() ?? false;
 	}
 
 	#mouseButton(button: number): CMouseButton {
@@ -423,7 +420,7 @@ export class CApplication extends CObject {
 		for (const popup of this.#m_popupWidgets)
 			popup.render(painter);
 
-		if (this.#m_toolTipWidget.isVisible())
+		if (this.#m_toolTipWidget?.isVisible())
 			this.#m_toolTipWidget.render(painter);
 	}
 
@@ -609,42 +606,60 @@ export class CApplication extends CObject {
 		this.#m_toolTipTimer = setTimeout(() =>
 		{
 			this.#m_toolTipTimer = null;
-			this.#showToolTip();
+			void this.#showToolTip();
 		}, CApplication.#TOOL_TIP_DELAY);
 	}
 
-	#showToolTip(): void
+	async #ensureToolTipWidget(): Promise<CToolTipWidget>
 	{
-		const target = this.#m_toolTipTarget;
+		if (this.#m_toolTipWidget !== null)
+			return this.#m_toolTipWidget;
+
+		const { CToolTipWidget } = await import("../widgets/CToolTipWidget.js");
+		const widget = new CToolTipWidget();
+
+		this.unregisterTopLevelWidget(widget);
+		widget.hide();
+
+		this.#m_toolTipWidget = widget;
+
+		return widget;
+	}
+
+	async #showToolTip(): Promise<void>
+	{
+		let target = this.#m_toolTipTarget;
+		if (target === null || target.toolTip().length === 0)
+			return;
+
+		const toolTipWidget = await this.#ensureToolTipWidget();
+		target = this.#m_toolTipTarget;
 
 		if (target === null || target.toolTip().length === 0)
 			return;
 
-		this.#m_toolTipWidget.setText(target.toolTip());
-
+		toolTipWidget.setText(target.toolTip());
 		let x = this.#m_mouseX + CApplication.#TOOL_TIP_OFFSET_X;
 		let y = this.#m_mouseY + CApplication.#TOOL_TIP_OFFSET_Y;
-
 		const canvas = this.canvas();
 
-		if (x + this.#m_toolTipWidget.width() > canvas.width)
-			x = canvas.width - this.#m_toolTipWidget.width();
-
-		if (y + this.#m_toolTipWidget.height() > canvas.height)
-			y = this.#m_mouseY - this.#m_toolTipWidget.height() - 8;
+		if (x + toolTipWidget.width() > canvas.width)
+			x = canvas.width - toolTipWidget.width();
+		if (y + toolTipWidget.height() > canvas.height)
+			y = this.#m_mouseY - toolTipWidget.height() - 8;
 
 		x = Math.max(0, x);
 		y = Math.max(0, y);
 
-		this.#m_toolTipWidget.move(x, y);
-		this.#m_toolTipWidget.show();
+		toolTipWidget.move(x, y);
+		toolTipWidget.show();
 
 		this.requestRepaint();
 	}
 
 	#hideToolTip(): void
 	{
-		if (!this.#m_toolTipWidget.isVisible())
+		if (!this.#m_toolTipWidget?.isVisible())
 			return;
 
 		this.#m_toolTipWidget.hide();

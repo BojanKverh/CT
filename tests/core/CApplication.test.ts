@@ -1341,29 +1341,23 @@ describe("CApplication", () => {
 		expect(app.topModalWidget()).toBe(dialog1);
 	});
 
-	test("shows tooltip after tooltip delay", () =>
+	test("shows tooltip after tooltip delay", async () =>
 	{
 		vi.useFakeTimers();
-
 		const canvas = createTestCanvas();
 		new CApplication(canvas);
-
 		const widget = new CWidget();
 		widget.setGeometry(10, 10, 100, 50);
 		widget.setToolTip("Hello");
 
-		canvas.dispatchEvent({ type: "pointermove", clientX: 20,
-			clientY: 20, button: 0, pointerId: 1
-		} as PointerEvent);
+		canvas.dispatchEvent({type: "pointermove", clientX: 20, clientY: 20, button: 0,
+			pointerId: 1 } as PointerEvent);
 
 		vi.advanceTimersByTime(699);
-
 		expect(CApplication.instance().toolTipVisible()).toBe(false);
-
-		vi.advanceTimersByTime(1);
-
+		await vi.advanceTimersByTimeAsync(1);
+		await vi.dynamicImportSettled();
 		expect(CApplication.instance().toolTipVisible()).toBe(true);
-
 		vi.useRealTimers();
 	});
 

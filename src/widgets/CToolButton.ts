@@ -8,13 +8,7 @@ import type { CPainter } from "../painting/CPainter.js";
 import { CAbstractButton } from "./CAbstractButton.js";
 import { CWidget } from "./CWidget.js";
 import { CPixmap } from "../painting/CPixmap.js";
-
-export enum CToolButtonStyle {
-	IconOnly,
-	TextOnly,
-	TextBesideIcon,
-	TextUnderIcon
-}
+import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
 
 export class CToolButton extends CAbstractButton {
 	#m_down = false;

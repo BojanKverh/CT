@@ -96,6 +96,7 @@ export class CDialog extends CWidget
 		if (this.#m_open)
 			return;
 
+		this.#center();
 		this.#m_open = true;
 		this.#m_result = CDialogResult.Rejected;
 
@@ -266,4 +267,23 @@ export class CDialog extends CWidget
 	    return x >= this.width() - CDialog.CloseButtonWidth && x < this.width() && y >= 0 &&
 		    y < CDialog.TitleBarHeight;
     }
+
+	#center(): void
+	{
+		const parent = this.parent();
+		let width: number;
+		let height: number;
+
+		if (parent !== null) {
+			width = parent.width();
+			height = parent.height();
+		}	else {
+			const canvas = CApplication.instance().canvas();
+			width = canvas.width;
+			height = canvas.height;
+		}
+
+		this.move(Math.floor((width - this.width()) / 2),
+			Math.floor((height - this.rect().height()) / 2));
+	}
 }

@@ -40,11 +40,11 @@ describe("CToolTipWidget", () =>
 		toolTip.setText("Hello");
 
 		expect(toolTip.width()).toBe(
-			5 * 8 + 2 * CToolTipWidget.HorizontalPadding
+			5 * 8 + 2 * toolTip.style().toolTipHorizontalPadding()
 		);
 
 		expect(toolTip.height()).toBe(
-			13 + 2 * CToolTipWidget.VerticalPadding
+			13 + 2 * toolTip.style().toolTipVerticalPadding()
 		);
 	});
 
