@@ -4,6 +4,7 @@ import { CLineEdit } from "../widgets/CLineEdit.js";
 import { CPushButton } from "./CPushButton.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CWheelEvent } from "../../src/events/CWheelEvent.js";
+import { CSize } from "../geometry/CSize.js";
 
 export class CSpinBox extends CWidget {
     #m_editor = new CLineEdit(this);
@@ -109,6 +110,11 @@ export class CSpinBox extends CWidget {
         super.setGeometry(x, y, width, height);
         this.#updateChildGeometry();
     }
+
+	override sizeHint(): CSize {
+		return new CSize(16 + this.fontMetrics().textWidth(this.#m_maximum.toString()), 
+			Math.max(36, 6 + this.fontMetrics().height()));
+	}
 
 	protected override keyPressEvent(event: CKeyEvent): void {
 		switch (event.key()) {

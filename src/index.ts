@@ -51,3 +51,4 @@ export { CDockArea, CDockWidgetArea } from "./widgets/CDockArea.js";
 export { CDockWidget } from "./widgets/CDockWidget.js";
 export { CMainWindow } from "./widgets/CMainWindow.js";
 export { CMessageBox } from "./dialogs/CMessageBox.js";
+export { CInputDialog } from "./dialogs/CInputDialog.js";

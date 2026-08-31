@@ -3,7 +3,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
 	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
 	CTabWidget, CFrame, CFrameShape, CFrameShadow, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
-	CToolBar, CStatusBar, CMainWindow, CMessageBox
+	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -336,8 +336,15 @@ const w = new CWidget(parent);
 w.setGeometry(0, 440, 640, 40);
 const pb1 = new CPushButton(w);
 pb1.setText("OK");
-pb1.clicked.connect(() => {
-	CMessageBox.information(null, "This is message box!", "This is a brand new message box");
+pb1.clicked.connect(async () => {
+	//CMessageBox.information(null, "This is message box!", "This is a brand new message box");
+	const text = await CInputDialog.getText(null, "Input dialog", "Enter text: ");
+	if (text !== null)
+		console.log("TEXT: " + text);
+
+	const val = await CInputDialog.getInt(null, "Input dialog", "Enter value:", 100, 100, 200, 5);
+	if (val !== null)
+		console.log("INT: " + val);
 })
 const pb2 = new CPushButton(w);
 pb2.setText("Cancel");
