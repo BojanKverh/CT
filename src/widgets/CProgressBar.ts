@@ -1,5 +1,6 @@
 import { CWidget } from "./CWidget.js";
 import type { CPainter } from "../painting/CPainter.js";
+import { CSize } from "../geometry/CSize.js";
 
 export class CProgressBar extends CWidget {
 	#m_minimum = 0;
@@ -62,6 +63,10 @@ export class CProgressBar extends CWidget {
 
     reset(): void {
 		this.setValue(this.#m_minimum);
+	}
+
+	override sizeHint(): CSize {
+		return new CSize(200, 30);
 	}
 
 	protected override paintEvent(painter: CPainter): void {

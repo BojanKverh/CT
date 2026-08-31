@@ -3,7 +3,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
 	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
 	CTabWidget, CFrame, CFrameShape, CFrameShadow, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
-	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog
+	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -351,6 +351,15 @@ pb1.clicked.connect(async () => {
 });
 const pb2 = new CPushButton(w);
 pb2.setText("Cancel");
+pb2.clicked.connect(() => {
+	const pd = new CProgressDialog("Copying", false, 0, 100);
+	pd.setAutoClose(false);
+	pd.exec();
+	setInterval(() => {
+		if (pd.value() < 100)
+			pd.setValue(Math.min(100, pd.value() + 5));
+	}, 100);
+});
 const layout = new CHBoxLayout();
 layout.setContentsMargins(3, 3, 3, 3);
 layout.setSpacing(6);

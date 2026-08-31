@@ -53,3 +53,4 @@ export { CMainWindow } from "./widgets/CMainWindow.js";
 export { CMessageBox } from "./dialogs/CMessageBox.js";
 export { CInputDialog } from "./dialogs/CInputDialog.js";
 export { CFileDialog } from "./dialogs/CFileDialog.js";
+export { CProgressDialog } from "./dialogs/CProgressDialog.js";
