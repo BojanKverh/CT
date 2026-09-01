@@ -1,0 +1,102 @@
+import { CWidget } from "./CWidget.js";
+import { CSize } from "../geometry/CSize.js";
+import { COrientation } from "../gui/COrientation.js";
+import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
+import type { CSplitter } from "./CSplitter.js";
+
+export class CSplitterHandle extends CWidget
+{
+	#m_orientation: COrientation;
+	#m_splitter: CSplitter;
+	#m_index: number;
+	#m_pressed = false;
+
+	constructor(
+		orientation: COrientation,
+		splitter: CSplitter,
+		index: number
+	) {
+		super(splitter);
+
+		this.#m_orientation = orientation;
+		this.#m_splitter = splitter;
+		this.#m_index = index;
+	}
+
+	orientation(): COrientation
+	{
+		return this.#m_orientation;
+	}
+
+	setOrientation(orientation: COrientation): void
+	{
+		if (this.#m_orientation === orientation)
+			return;
+
+		this.#m_orientation = orientation;
+		this.update();
+	}
+
+	splitter(): CSplitter
+	{
+		return this.#m_splitter;
+	}
+
+	index(): number
+	{
+		return this.#m_index;
+	}
+
+	override sizeHint(): CSize
+	{
+		const size = this.#m_splitter.handleWidth();
+
+		if (this.#m_orientation === COrientation.Horizontal)
+			return new CSize(size, 0);
+
+		return new CSize(0, size);
+	}
+
+	protected override mousePressEvent(event: CMouseEvent): void
+	{
+		if (event.button() !== CMouseButton.LeftButton) {
+			event.ignore();
+			return;
+		}
+
+		this.#m_pressed = true;
+		event.accept();
+	}
+
+	protected override mouseMoveEvent(event: CMouseEvent): void
+	{
+		if (!this.#m_pressed) {
+			event.ignore();
+			return;
+		}
+
+		const pos = this.mapToCanvas(event.x(), event.y());
+		const splitterPos = this.#m_splitter.mapFromCanvas(
+			pos.x(), pos.y()
+		);
+
+		const value =
+			this.#m_orientation === COrientation.Horizontal
+				? splitterPos.x()
+				: splitterPos.y();
+
+		this.#m_splitter.moveSplitter(value, this.#m_index);
+		event.accept();
+	}
+
+	protected override mouseReleaseEvent(event: CMouseEvent): void
+	{
+		if (!this.#m_pressed) {
+			event.ignore();
+			return;
+		}
+
+		this.#m_pressed = false;
+		event.accept();
+	}
+}
