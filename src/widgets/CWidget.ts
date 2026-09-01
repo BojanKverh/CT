@@ -13,6 +13,7 @@ import { CSize } from "../geometry/CSize.js";
 import { CPalette } from "../gui/CPalette.js";
 import type { CStyle } from "../gui/CStyle.js";
 import { CFontMetrics } from "../gui/CFontMetrics.js";
+import { CCursorShape } from "../gui/CCursorShape.js";
 
 export class CWidget extends CObject {
     #m_geometry = new CRect();
@@ -26,6 +27,7 @@ export class CWidget extends CObject {
     #m_palette: CPalette;
     #m_toolTip = "";
     #m_fontMetrics: CFontMetrics;
+    #m_cursor: CCursorShape = CCursorShape.Arrow;
 
 	constructor(parent: CWidget | null = null) {
         super(null);
@@ -179,6 +181,16 @@ export class CWidget extends CObject {
     style(): CStyle {
 	    return CApplication.instance().style();
     }
+
+	setCursor(cursor: CCursorShape): void
+	{
+		this.#m_cursor = cursor;
+	}
+
+	cursor(): CCursorShape
+	{
+		return this.#m_cursor;
+	}
 
     show(): void {
         this.setVisible(true);

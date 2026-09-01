@@ -15,6 +15,7 @@ import { CDefaultStyle } from "../gui/CDefaultStyle.js";
 import type { CStyle } from "../gui/CStyle.js";
 import type { CPopupWidget } from "../widgets/CPopupWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
+import { CCursorShape } from "../gui/CCursorShape.js";
 
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
@@ -516,6 +517,10 @@ export class CApplication extends CObject {
 
 		const oldWidget = this.#m_hoverWidget;
 		this.#m_hoverWidget = widget;
+		if (this.#m_hoverWidget === null)
+			this.#setCursor(CCursorShape.Arrow);
+		else
+			this.#setCursor(this.#m_hoverWidget.cursor());
 
 		if (oldWidget !== null)
 			this.#sendMouseEvent(
@@ -680,5 +685,35 @@ export class CApplication extends CObject {
 		this.#cancelToolTipTimer();
 		this.#hideToolTip();
 		this.#m_toolTipTarget = null;
+	}
+
+	#setCursor(crsr: CCursorShape): void {
+		let shape = "";
+		switch (crsr) {
+			case CCursorShape.Arrow:
+				shape = "default";
+				break;
+			case CCursorShape.SplitH:
+				shape = "col-resize";
+				break;
+			case CCursorShape.SplitV:
+				shape = "row-resize";
+				break;
+			case CCursorShape.PointingHand:
+				shape = "pointer";
+				break;
+			case CCursorShape.IBeam:
+				shape = "text";
+				break;
+			case CCursorShape.Cross:
+				shape = "crosshair";
+				break;
+			case CCursorShape.Disabled:
+				shape = "not-allowed";
+				break;
+		}
+
+		if (shape.length > 0)
+			this.#m_paintDevice.canvas().style.cursor = shape;
 	}
 }

@@ -14,6 +14,7 @@ import type { CFrame } from "../widgets/CFrame.js";
 import type { CComboBox } from "../widgets/CComboBox.js";
 import type { CToolButton } from "../widgets/CToolButton.js";
 import type { CToolBar } from "../widgets/CToolBar.js";
+import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
 
 export abstract class CStyle {
 	
@@ -21,7 +22,8 @@ export abstract class CStyle {
     abstract toolTipHorizontalPadding(): number;
     abstract toolTipVerticalPadding(): number;
     abstract comboBoxArrowWidth(): number;
-    
+    abstract splitterHandleWidth(): number;
+
     abstract drawLabel(painter: CPainter, label: CLabel): void;
 	abstract drawPushButton(painter: CPainter, button: CPushButton): void;
 	abstract drawToolButton(painter: CPainter, button: CToolButton): void;
@@ -37,4 +39,5 @@ export abstract class CStyle {
     abstract drawFrame(painter: CPainter, frame: CFrame): void;
     abstract drawComboBox(painter: CPainter, comboBox: CComboBox): void;
     abstract drawToolBar(painter: CPainter, toolBar: CToolBar): void;
+    abstract drawSplitterHandle(painter: CPainter, handle: CSplitterHandle): void;
 }

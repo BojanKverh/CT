@@ -17,7 +17,6 @@ export class CSplitter extends CWidget
 	#m_orientation: COrientation;
 	#m_items: CSplitterItem[] = [];
 	#m_handles: Array<CSplitterHandle | null> = [];
-	#m_handleWidth = 5;
 	#m_childrenCollapsible = true;
 
 	readonly splitterMoved = new CSignal<[number, number]>();
@@ -123,18 +122,7 @@ export class CSplitter extends CWidget
 
 	handleWidth(): number
 	{
-		return this.#m_handleWidth;
-	}
-
-	setHandleWidth(width: number): void
-	{
-		width = Math.max(0, width);
-
-		if (this.#m_handleWidth === width)
-			return;
-
-		this.#m_handleWidth = width;
-		this.#relayout(true);
+		return this.style().splitterHandleWidth()
 	}
 
 	childrenCollapsible(): boolean
@@ -254,7 +242,7 @@ export class CSplitter extends CWidget
 		if (count === 0)
 			return new CSize(0, 0);
 
-		const handles = Math.max(0, count - 1) * this.#m_handleWidth;
+		const handles = Math.max(0, count - 1) * this.handleWidth();
 
 		if (this.#m_orientation === COrientation.Horizontal) {
 			let width = handles;
@@ -522,21 +510,12 @@ export class CSplitter extends CWidget
 
 				if (handle !== undefined && handle !== null) {
 					if (this.#m_orientation === COrientation.Horizontal)
-						handle.setGeometry(
-							pos,
-							0,
-							this.#m_handleWidth,
-							this.height()
-						);
+						handle.setGeometry(pos, 0, this.handleWidth(),
+							this.height());
 					else
-						handle.setGeometry(
-							0,
-							pos,
-							this.width(),
-							this.#m_handleWidth
-						);
+						handle.setGeometry(0, pos, this.width(), this.handleWidth());
 
-					pos += this.#m_handleWidth;
+					pos += this.handleWidth();
 				}
 			}
 
@@ -686,7 +665,7 @@ export class CSplitter extends CWidget
 		for (let i = 0; i < index; ++i)
 			pos += this.#m_items[i]!.size;
 
-		pos += Math.max(0, index - 1) * this.#m_handleWidth;
+		pos += Math.max(0, index - 1) * this.handleWidth();
 
 		return pos;
 	}
@@ -699,8 +678,7 @@ export class CSplitter extends CWidget
 				: this.height();
 
 		const handles =
-			Math.max(0, this.#m_items.length - 1) *
-			this.#m_handleWidth;
+			Math.max(0, this.#m_items.length - 1) * this.handleWidth();
 
 		return Math.max(0, length - handles);
 	}

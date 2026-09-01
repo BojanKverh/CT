@@ -272,23 +272,7 @@ describe("CSplitter", () => {
 	test("uses handle width 5 by default", () => {
 		const splitter = new CSplitter();
 
-		expect(splitter.handleWidth()).toBe(5);
-	});
-
-	test("sets handle width", () => {
-		const splitter = new CSplitter();
-
-		splitter.setHandleWidth(12);
-
-		expect(splitter.handleWidth()).toBe(12);
-	});
-
-	test("handle width cannot be negative", () => {
-		const splitter = new CSplitter();
-
-		splitter.setHandleWidth(-10);
-
-		expect(splitter.handleWidth()).toBe(0);
+		expect(splitter.handleWidth()).toBe(6);
 	});
 
 	test("horizontal handle geometry spans splitter height", () => {
@@ -296,7 +280,7 @@ describe("CSplitter", () => {
 		const widget1 = new CWidget();
 		const widget2 = new CWidget();
 
-		splitter.resize(405, 100);
+		splitter.resize(406, 100);
 		splitter.addWidget(widget1);
 		splitter.addWidget(widget2);
 		splitter.setSizes([100, 300]);
@@ -305,7 +289,7 @@ describe("CSplitter", () => {
 
 		expect(handle.x()).toBe(100);
 		expect(handle.y()).toBe(0);
-		expect(handle.width()).toBe(5);
+		expect(handle.width()).toBe(6);
 		expect(handle.height()).toBe(100);
 	});
 
@@ -314,7 +298,7 @@ describe("CSplitter", () => {
 		const widget1 = new CWidget();
 		const widget2 = new CWidget();
 
-		splitter.resize(100, 405);
+		splitter.resize(100, 406);
 		splitter.addWidget(widget1);
 		splitter.addWidget(widget2);
 		splitter.setSizes([100, 300]);
@@ -324,7 +308,7 @@ describe("CSplitter", () => {
 		expect(handle.x()).toBe(0);
 		expect(handle.y()).toBe(100);
 		expect(handle.width()).toBe(100);
-		expect(handle.height()).toBe(5);
+		expect(handle.height()).toBe(6);
 	});
 
 	test("setSizes lays out horizontal widgets", () => {
@@ -332,7 +316,7 @@ describe("CSplitter", () => {
 		const widget1 = new CWidget();
 		const widget2 = new CWidget();
 
-		splitter.resize(405, 100);
+		splitter.resize(406, 100);
 		splitter.addWidget(widget1);
 		splitter.addWidget(widget2);
 
@@ -345,7 +329,7 @@ describe("CSplitter", () => {
 		expect(widget1.width()).toBe(100);
 		expect(widget1.height()).toBe(100);
 
-		expect(widget2.x()).toBe(105);
+		expect(widget2.x()).toBe(106);
 		expect(widget2.y()).toBe(0);
 		expect(widget2.width()).toBe(300);
 		expect(widget2.height()).toBe(100);
@@ -356,7 +340,7 @@ describe("CSplitter", () => {
 		const widget1 = new CWidget();
 		const widget2 = new CWidget();
 
-		splitter.resize(100, 405);
+		splitter.resize(100, 406);
 		splitter.addWidget(widget1);
 		splitter.addWidget(widget2);
 
@@ -370,7 +354,7 @@ describe("CSplitter", () => {
 		expect(widget1.height()).toBe(100);
 
 		expect(widget2.x()).toBe(0);
-		expect(widget2.y()).toBe(105);
+		expect(widget2.y()).toBe(106);
 		expect(widget2.width()).toBe(100);
 		expect(widget2.height()).toBe(300);
 	});
@@ -378,7 +362,7 @@ describe("CSplitter", () => {
 	test("setSizes scales values to available space", () => {
 		const splitter = new CSplitter();
 
-		splitter.resize(805, 100);
+		splitter.resize(806, 100);
 		splitter.addWidget(new CWidget());
 		splitter.addWidget(new CWidget());
 
@@ -391,12 +375,12 @@ describe("CSplitter", () => {
 	test("resize preserves relative sizes", () => {
 		const splitter = new CSplitter();
 
-		splitter.resize(405, 100);
+		splitter.resize(406, 100);
 		splitter.addWidget(new CWidget());
 		splitter.addWidget(new CWidget());
 		splitter.setSizes([100, 300]);
 
-		splitter.resize(805, 100);
+		splitter.resize(806, 100);
 
 		expect(splitter.sizes()[0]).toBeCloseTo(200);
 		expect(splitter.sizes()[1]).toBeCloseTo(600);
@@ -410,7 +394,7 @@ describe("CSplitter", () => {
 		splitter.addWidget(widget1);
 		splitter.addWidget(widget2);
 
-		expect(splitter.sizeHint().width()).toBe(305);
+		expect(splitter.sizeHint().width()).toBe(306);
 		expect(splitter.sizeHint().height()).toBe(60);
 	});
 
@@ -423,7 +407,7 @@ describe("CSplitter", () => {
 		splitter.addWidget(widget2);
 
 		expect(splitter.sizeHint().width()).toBe(200);
-		expect(splitter.sizeHint().height()).toBe(105);
+		expect(splitter.sizeHint().height()).toBe(106);
 	});
 
 	test("empty splitter has empty sizeHint", () => {
@@ -471,7 +455,7 @@ describe("CSplitter", () => {
 
 		widget1.setMinimumSize(80, 0);
 
-		splitter.resize(205, 100);
+		splitter.resize(206, 100);
 		splitter.addWidget(widget1);
 		splitter.addWidget(widget2);
 		splitter.setCollapsible(0, false);
@@ -488,7 +472,7 @@ describe("CSplitter", () => {
 
 		widget1.setMaximumSize(120, Number.MAX_SAFE_INTEGER);
 
-		splitter.resize(405, 100);
+		splitter.resize(406, 100);
 		splitter.addWidget(widget1);
 		splitter.addWidget(widget2);
 
@@ -501,7 +485,7 @@ describe("CSplitter", () => {
 	test("moveSplitter moves horizontal handle", () => {
 		const splitter = new CSplitter();
 
-		splitter.resize(405, 100);
+		splitter.resize(406, 100);
 		splitter.addWidget(new CWidget());
 		splitter.addWidget(new CWidget());
 		splitter.setSizes([200, 200]);
@@ -515,7 +499,7 @@ describe("CSplitter", () => {
 	test("moveSplitter moves vertical handle", () => {
 		const splitter = new CSplitter(COrientation.Vertical);
 
-		splitter.resize(100, 405);
+		splitter.resize(100, 406);
 		splitter.addWidget(new CWidget());
 		splitter.addWidget(new CWidget());
 		splitter.setSizes([200, 200]);
@@ -529,7 +513,7 @@ describe("CSplitter", () => {
 	test("moving handle left resizes adjacent widgets", () => {
 		const splitter = new CSplitter();
 
-		splitter.resize(405, 100);
+		splitter.resize(406, 100);
 		splitter.addWidget(new CWidget());
 		splitter.addWidget(new CWidget());
 		splitter.setSizes([200, 200]);
@@ -626,7 +610,7 @@ describe("CSplitter", () => {
 		const splitter = new CSplitter();
 		let count = 0;
 
-		splitter.resize(405, 100);
+		splitter.resize(406, 100);
 		splitter.addWidget(new CWidget());
 		splitter.addWidget(new CWidget());
 		splitter.setSizes([200, 200]);
@@ -704,7 +688,7 @@ describe("CSplitter", () => {
 			CMouseButton.NoButton
 		));
 
-		expect(splitter.sizes()).toEqual([250, 150]);
+		expect(splitter.sizes()).toEqual([249.5, 149.5]);
 	});
 
 	test("handle does not move splitter without press", () => {
@@ -724,7 +708,7 @@ describe("CSplitter", () => {
 			CMouseButton.NoButton
 		));
 
-		expect(splitter.sizes()).toEqual([200, 200]);
+		expect(splitter.sizes()).toEqual([199.5, 199.5]);
 	});
 
 	test("handle stops dragging after mouse release", () => {
@@ -758,6 +742,6 @@ describe("CSplitter", () => {
 			CMouseButton.NoButton
 		));
 
-		expect(splitter.sizes()).toEqual([200, 200]);
+		expect(splitter.sizes()).toEqual([199.5, 199.5]);
 	});
 });

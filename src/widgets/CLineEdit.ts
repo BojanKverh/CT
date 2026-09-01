@@ -6,6 +6,8 @@ import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CFontMetrics } from "../gui/CFontMetrics.js";
 import { CFocusEvent } from "../events/CFocusEvent.js";
 import { CSize } from "../geometry/CSize.js";
+import { CCursorShape } from "../gui/CCursorShape.js";
+import { CColorDialog } from "../dialogs/CColorDialog.js";
 
 export class CLineEdit extends CWidget {
 	readonly textChanged = new CSignal<[string]>();
@@ -19,6 +21,10 @@ export class CLineEdit extends CWidget {
 	#m_validator: ((text: string) => boolean) | null = null;
 
 	readonly editingFinished = new CSignal();
+
+	constructor(parent: CWidget | null = null) {
+		super(parent);
+	}
 
 	text(): string {
 		return this.#m_text;
@@ -38,6 +44,10 @@ export class CLineEdit extends CWidget {
 
 	setValidator(validator: ((text: string) => boolean) | null): void {
 		this.#m_validator = validator;
+	}
+
+	override cursor(): CCursorShape {
+		return this.isEnabled()? CCursorShape.IBeam : CCursorShape.Disabled;
 	}
 
 	cursorPosition(): number {

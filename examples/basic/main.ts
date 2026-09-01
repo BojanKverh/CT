@@ -3,7 +3,8 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
 	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
 	CTabWidget, CFrame, CFrameShape, CFrameShadow, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
-	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, CColorDialog
+	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
+	CColorDialog, CSplitter
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -26,6 +27,28 @@ class RedWidget extends CWidget {
 		return this.#m_color;
 	}
 }
+
+class GreenWidget extends CWidget {
+	#m_color: string = "#00a000";
+    protected override paintEvent(painter: CPainter): void {
+        painter.setFillStyle(this.#m_color);
+        painter.fillRect(
+            new CRect(0, 0, this.width(), this.height())
+        );
+    }
+
+	setColor(color: string): void {
+		if (color !== this.#m_color) {
+			this.#m_color = color;
+			this.update();
+		}
+	}
+
+	color(): string {
+		return this.#m_color;
+	}
+}
+
 
 class BlueWidget extends CWidget {
 	#m_color = "blue";
@@ -275,6 +298,7 @@ but2.clicked.connect(() => {
 	const fl = new CFormLayout();
 	gb.setLayout(fl);
 	const leName = new CLineEdit();
+	leName.setEnabled(false);
 	fl.addRow("Name", leName);
 	const leSurname = new CLineEdit();
 	fl.addRow("Last Name", leSurname);
@@ -392,6 +416,15 @@ const scrollContent = new ScrollContentWidget();
 scrollContent.resize(1000, 700);
 
 scrollArea.setWidget(scrollContent);
+
+const splitter = new CSplitter(COrientation.Horizontal, parent);
+splitter.setGeometry(700, 200, 200, 200);
+const leftW = new GreenWidget(splitter);
+const rightW = new BlueWidget(splitter);
+splitter.addWidget(leftW);
+splitter.addWidget(rightW);
+splitter.setSizes([100, 94]);
+
 
 const menuBar = new CMenuBar();
 mainWindow.setMenuBar(menuBar);

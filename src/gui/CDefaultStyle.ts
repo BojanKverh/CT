@@ -22,6 +22,7 @@ import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
 import type { CToolButton } from "../widgets/CToolButton.js";
 import type { CToolBar } from "../widgets/CToolBar.js";
 import type { CSlider } from "../widgets/CSlider.js";
+import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -39,6 +40,11 @@ export class CDefaultStyle extends CStyle {
 
 	override comboBoxArrowWidth(): number {
 		return 24;
+	}
+
+	override splitterHandleWidth(): number
+	{
+		return 6;
 	}
 
 	override drawLabel(painter: CPainter, label: CLabel): void {
@@ -811,5 +817,28 @@ export class CDefaultStyle extends CStyle {
 		painter.drawLine(
 			right, rect.y(), right, rect.y() + rect.height()
 		);
+	}
+
+	override drawSplitterHandle(painter: CPainter, handle: CSplitterHandle): void
+	{
+		const palette = handle.palette();
+
+		painter.setFillStyle(
+			palette.color(CPaletteColorRole.Window).toCss()
+		);
+		painter.fillRect(handle.rect());
+
+		painter.setStrokeStyle(
+			palette.color(CPaletteColorRole.Mid).toCss()
+		);
+		painter.setLineWidth(1);
+
+		if (handle.orientation() === COrientation.Horizontal) {
+			const x = handle.width() / 2;
+			painter.drawLine(x, handle.height() / 2 - 8, x, handle.height() / 2 + 8);
+		} else {
+			const y = handle.height() / 2;
+			painter.drawLine(handle.width() / 2 - 8, y, handle.width() / 2 + 8, y);
+		}
 	}
 }

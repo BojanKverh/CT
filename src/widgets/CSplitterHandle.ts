@@ -3,6 +3,8 @@ import { CSize } from "../geometry/CSize.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import type { CSplitter } from "./CSplitter.js";
+import type { CPainter } from "../painting/CPainter.js";
+import { CCursorShape } from "../gui/CCursorShape.js";
 
 export class CSplitterHandle extends CWidget
 {
@@ -22,6 +24,9 @@ export class CSplitterHandle extends CWidget
 		this.#m_orientation = orientation;
 		this.#m_splitter = splitter;
 		this.#m_index = index;
+
+        this.setCursor(orientation === COrientation.Horizontal? CCursorShape.SplitH
+			: CCursorShape.SplitV);
 	}
 
 	orientation(): COrientation
@@ -35,6 +40,8 @@ export class CSplitterHandle extends CWidget
 			return;
 
 		this.#m_orientation = orientation;
+        this.setCursor(orientation === COrientation.Horizontal? CCursorShape.SplitH
+			: CCursorShape.SplitV);
 		this.update();
 	}
 
@@ -56,6 +63,11 @@ export class CSplitterHandle extends CWidget
 			return new CSize(size, 0);
 
 		return new CSize(0, size);
+	}
+
+	protected override paintEvent(painter: CPainter): void
+	{
+		this.style().drawSplitterHandle(painter, this);
 	}
 
 	protected override mousePressEvent(event: CMouseEvent): void
@@ -104,4 +116,12 @@ export class CSplitterHandle extends CWidget
 		this.#m_pressed = false;
 		event.accept();
 	}
+
+    protected override mouseEnterEvent(event: CMouseEvent): void {
+        
+    }
+
+    protected override mouseLeaveEvent(event: CMouseEvent): void {
+        
+    }
 }

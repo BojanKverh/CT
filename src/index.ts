@@ -56,3 +56,5 @@ export { CInputDialog } from "./dialogs/CInputDialog.js";
 export { CFileDialog } from "./dialogs/CFileDialog.js";
 export { CProgressDialog } from "./dialogs/CProgressDialog.js";
 export { CColorDialog } from "./dialogs/CColorDialog.js";
+export { CSplitter } from "./widgets/CSplitter.js";
+export { CCursorShape } from "./gui/CCursorShape.js";
