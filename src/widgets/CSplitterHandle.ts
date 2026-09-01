@@ -10,6 +10,7 @@ export class CSplitterHandle extends CWidget
 	#m_splitter: CSplitter;
 	#m_index: number;
 	#m_pressed = false;
+	#m_pressOffset = 0;
 
 	constructor(
 		orientation: COrientation,
@@ -64,6 +65,9 @@ export class CSplitterHandle extends CWidget
 			return;
 		}
 
+        this.#m_pressOffset = (this.#m_orientation === COrientation.Horizontal)? 
+            event.x() : event.y();
+
 		this.#m_pressed = true;
 		event.accept();
 	}
@@ -81,9 +85,10 @@ export class CSplitterHandle extends CWidget
 		);
 
 		const value =
-			this.#m_orientation === COrientation.Horizontal
+			(this.#m_orientation === COrientation.Horizontal
 				? splitterPos.x()
-				: splitterPos.y();
+				: splitterPos.y())
+			- this.#m_pressOffset;
 
 		this.#m_splitter.moveSplitter(value, this.#m_index);
 		event.accept();
