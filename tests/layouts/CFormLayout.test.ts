@@ -408,4 +408,111 @@ describe("CFormLayout", () => {
 		expect(layout.count()).toBe(0);
 		expect(layout.widgetAt(0)).toBeNull();
 	});
+
+	test("does not expand field beyond maximum width", () => {
+		const parent = new CWidget();
+		const field = new CWidget(parent);
+		const layout = new CFormLayout();
+
+		parent.resize(300, 100);
+		parent.setLayout(layout);
+
+		field.setMinimumSize(50, 20);
+		field.setMaximumSize(80, 40);
+
+		layout.addRow("Field:", field);
+		layout.update();
+
+		expect(field.width()).toBe(80);
+		expect(field.height()).toBe(20);
+	});
+
+	test("does not expand spanning widget beyond maximum width", () => {
+		const parent = new CWidget();
+		const widget = new CWidget(parent);
+		const layout = new CFormLayout();
+
+		parent.resize(300, 100);
+		parent.setLayout(layout);
+
+		widget.setMinimumSize(50, 20);
+		widget.setMaximumSize(100, 40);
+
+		layout.addRow(widget);
+		layout.update();
+
+		expect(widget.width()).toBe(100);
+		expect(widget.height()).toBe(20);
+	});
+
+	test("respects different maximum widths in field column", () => {
+		const parent = new CWidget();
+		const first = new CWidget(parent);
+		const second = new CWidget(parent);
+		const layout = new CFormLayout();
+
+		parent.resize(400, 150);
+		parent.setLayout(layout);
+
+		first.setMinimumSize(50, 20);
+		first.setMaximumSize(60, 40);
+
+		second.setMinimumSize(50, 20);
+		second.setMaximumSize(160, 40);
+
+		layout.addRow("First:", first);
+		layout.addRow("Second:", second);
+		layout.update();
+
+		expect(first.width()).toBe(60);
+		expect(second.width()).toBe(160);
+	});
+
+	test("respects maximum width smaller than field column", () => {
+		const parent = new CWidget();
+		const small = new CWidget(parent);
+		const large = new CWidget(parent);
+		const layout = new CFormLayout();
+
+		parent.resize(400, 150);
+		parent.setLayout(layout);
+
+		small.setMinimumSize(50, 20);
+		small.setMaximumSize(60, 40);
+
+		large.setMinimumSize(160, 20);
+		large.setMaximumSize(160, 40);
+
+		layout.addRow("Small:", small);
+		layout.addRow("Large:", large);
+		layout.update();
+
+		expect(small.width()).toBe(60);
+		expect(large.width()).toBe(160);
+	});
+
+	test("keeps narrow field below wider field column width", () => {
+		const parent = new CWidget();
+		const narrow = new CWidget(parent);
+		const wide = new CWidget(parent);
+		const layout = new CFormLayout();
+
+		parent.resize(400, 150);
+		parent.setLayout(layout);
+
+		narrow.setMinimumSize(60, 30);
+		narrow.setMaximumSize(60, 30);
+
+		wide.setMinimumSize(160, 30);
+		wide.setMaximumSize(160, 30);
+
+		layout.addRow("Red:", narrow);
+		layout.addRow("Hex:", wide);
+		layout.update();
+
+		expect(narrow.width()).toBe(60);
+		expect(narrow.height()).toBe(30);
+		expect(wide.width()).toBe(160);
+		expect(wide.height()).toBe(30);
+	});
 });

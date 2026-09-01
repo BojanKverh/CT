@@ -22,6 +22,7 @@ export class CWidget extends CObject {
 	#m_font: string;
     #m_layout: CLayout | null = null;
     #m_minimumSize = new CSize(0, 0);
+    #m_maximumSize = new CSize(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
     #m_palette: CPalette;
     #m_toolTip = "";
     #m_fontMetrics: CFontMetrics;
@@ -158,13 +159,13 @@ export class CWidget extends CObject {
 	}
 
     palette() : CPalette {
-        return this.#m_palette;
+        return new CPalette(this.#m_palette);
     }
 
     setPalette(palette: CPalette, propagate = false): void {
-        const changed = this.#m_palette !== palette;
+        const changed = !this.#m_palette.isEqual(palette);
         if (changed)
-	        this.#m_palette = palette;
+	        this.#m_palette = new CPalette(palette);
 
 	    if (propagate) {
 		    for (const child of this.children())
@@ -317,16 +318,21 @@ export class CWidget extends CObject {
     }
 
     minimumSize(): CSize {
-	    return new CSize(this.#m_minimumSize.width(),
-		    this.#m_minimumSize.height()
-    	);
+	    return new CSize(this.#m_minimumSize.width(), this.#m_minimumSize.height());
+    }
+
+    maximumSize(): CSize {
+	    return new CSize(this.#m_maximumSize.width(), this.#m_maximumSize.height());
     }
 
     setMinimumSize(width: number, height: number): void {
-    	if (this.#m_minimumSize.width() === width
-		        && this.#m_minimumSize.height() === height
-	    )
+        width = Math.max(0, width);
+	    height = Math.max(0, height);
+
+    	if (this.#m_minimumSize.width() === width && this.#m_minimumSize.height() === height)
 		    return;
+        if (width > this.#m_maximumSize.width() || height > this.#m_maximumSize.height())
+            return;
 
 	    this.#m_minimumSize.resize(width, height);
     	const parent = this.parent();
@@ -334,8 +340,26 @@ export class CWidget extends CObject {
 	    	parent.layout()?.update();
     }
 
+    setMaximumSize(width: number, height: number): void {
+        width = Math.max(0, width);
+	    height = Math.max(0, height);
+
+    	if (this.#m_maximumSize.width() === width && this.#m_maximumSize.height() === height)
+		    return;
+        if (width < this.#m_minimumSize.width() || height < this.#m_minimumSize.height())
+            return;
+
+	    this.#m_maximumSize.resize(width, height);
+    	const parent = this.parent();
+    	if (parent instanceof CWidget)
+	    	parent.layout()?.update();
+    }
+
     sizeHint(): CSize {
-	    return new CSize(0, 0);
+        if (this.#m_layout !== null)
+		    return this.#m_layout.sizeHint();
+        else
+	        return new CSize(0, 0);
     }
 
     setToolTip(toolTip: string): void

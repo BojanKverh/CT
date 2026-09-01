@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
 import { CLayout } from "../../src/layouts/CLayout.js";
 import { CWidget } from "../../src/widgets/CWidget.js";
+import { CSize } from "../../src/geometry/CSize.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { createTestWindow } from "../helpers/createTestWindow.js";
 
@@ -11,6 +12,10 @@ class TestLayout extends CLayout {
 
 	override update(): void {
 		++this.updateCalls;
+	}
+
+	override sizeHint(): CSize {
+		return new CSize(0, 0);
 	}
 }
 

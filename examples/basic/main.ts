@@ -3,16 +3,28 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
 	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
 	CTabWidget, CFrame, CFrameShape, CFrameShadow, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
-	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog
+	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, CColorDialog
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
+	#m_color: string = "#ffa0a0";
     protected override paintEvent(painter: CPainter): void {
-        painter.setFillStyle("#ffa0a0");
+        painter.setFillStyle(this.#m_color);
         painter.fillRect(
             new CRect(0, 0, this.width(), this.height())
         );
     }
+
+	setColor(color: string): void {
+		if (color !== this.#m_color) {
+			this.#m_color = color;
+			this.update();
+		}
+	}
+
+	color(): string {
+		return this.#m_color;
+	}
 }
 
 class BlueWidget extends CWidget {
@@ -351,14 +363,19 @@ pb1.clicked.connect(async () => {
 });
 const pb2 = new CPushButton(w);
 pb2.setText("Cancel");
-pb2.clicked.connect(() => {
-	const pd = new CProgressDialog("Copying", false, 0, 100);
+pb2.clicked.connect(async () => {
+	/*const pd = new CProgressDialog("Copying", false, 0, 100);
 	pd.setAutoClose(false);
 	pd.exec();
 	setInterval(() => {
 		if (pd.value() < 100)
 			pd.setValue(Math.min(100, pd.value() + 5));
-	}, 100);
+	}, 100);*/
+	const clr = new CColor();
+	clr.setColor(parent.color());
+	const newClr = await CColorDialog.getColor(clr);
+	if (newClr !== null)
+		parent.setColor(newClr?.toHex());
 });
 const layout = new CHBoxLayout();
 layout.setContentsMargins(3, 3, 3, 3);

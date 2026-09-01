@@ -2,6 +2,7 @@ import type { CWidget } from "../widgets/CWidget.js";
 import { CWidgetItem } from "./CWidgetItem.js";
 import type { CLayoutItem } from "./CLayoutItem.js";
 import { CBoxLayoutItem } from "./CBoxLayoutItem.js";
+import { CSize } from "../geometry/CSize.js";
 
 export interface CMargins {
 	left: number;
@@ -131,5 +132,6 @@ export abstract class CLayout {
 		);
 	}
 
+	abstract sizeHint(): CSize;
 	abstract update(): void;
 }

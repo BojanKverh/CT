@@ -79,7 +79,7 @@ describe("CPalette", () => {
 
 		expect(
 			palette.color(CPaletteColorRole.Button)
-		).toBe(color);
+		).toStrictEqual(color);
 	});
 
 	test("changing one role does not affect other roles", () => {

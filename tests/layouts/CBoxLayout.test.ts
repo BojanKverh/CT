@@ -9,6 +9,8 @@ import { CWidget } from "../../src/widgets/CWidget.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { createTestWindow } from "../helpers/createTestWindow.js";
 import { CSize } from "../../src/geometry/CSize.js"
+import { CVBoxLayout } from "../../src/layouts/CVBoxLayout.js";
+import { CHBoxLayout } from "../../src/layouts/CHBoxLayout.js";
 
 class HintWidget extends CWidget {
 	constructor(
@@ -502,5 +504,103 @@ describe("CBoxLayout", () => {
 		expect(widget2.width()).toBeCloseTo(expected2);
 		expect(widget1.width()).toBeGreaterThanOrEqual(50);
 		expect(widget2.width()).toBeGreaterThanOrEqual(80);
-});
+	});
+
+	test("does not expand widget beyond maximum width", () => {
+		const parent = new CWidget();
+		const child = new CWidget(parent);
+		const layout = new CHBoxLayout();
+
+		parent.resize(300, 100);
+		parent.setLayout(layout);
+
+		child.setMinimumSize(50, 20);
+		child.setMaximumSize(100, 50);
+
+		layout.addWidget(child);
+		layout.update();
+
+		expect(child.width()).toBe(100);
+		expect(child.height()).toBe(50);
+	});
+
+	test("gives remaining space to stretch after maximum width", () => {
+		const parent = new CWidget();
+		const child = new CWidget(parent);
+		const layout = new CHBoxLayout();
+
+		parent.resize(300, 100);
+		parent.setLayout(layout);
+
+		child.setMinimumSize(50, 20);
+		child.setMaximumSize(100, 50);
+
+		layout.addWidget(child);
+		layout.addStretch(1);
+		layout.update();
+
+		expect(child.width()).toBe(50);
+		expect(child.height()).toBe(50);
+	});
+
+	test("respects different maximum widths", () => {
+		const parent = new CWidget();
+		const first = new CWidget(parent);
+		const second = new CWidget(parent);
+		const layout = new CHBoxLayout();
+
+		parent.resize(500, 100);
+		parent.setLayout(layout);
+
+		first.setMinimumSize(50, 20);
+		first.setMaximumSize(100, 50);
+
+		second.setMinimumSize(50, 20);
+		second.setMaximumSize(150, 50);
+
+		layout.addWidget(first);
+		layout.addWidget(second);
+		layout.addStretch(1);
+		layout.update();
+
+		expect(first.width()).toBe(50);
+		expect(second.width()).toBe(50);
+	});
+
+	test("does not expand widget beyond maximum height", () => {
+		const parent = new CWidget();
+		const child = new CWidget(parent);
+		const layout = new CVBoxLayout();
+
+		parent.resize(100, 300);
+		parent.setLayout(layout);
+
+		child.setMinimumSize(20, 50);
+		child.setMaximumSize(50, 100);
+
+		layout.addWidget(child);
+		layout.update();
+
+		expect(child.width()).toBe(50);
+		expect(child.height()).toBe(100);
+	});
+
+	test("respects minimum and maximum size together", () => {
+		const parent = new CWidget();
+		const child = new CWidget(parent);
+		const layout = new CHBoxLayout();
+
+		parent.resize(80, 100);
+		parent.setLayout(layout);
+
+		child.setMinimumSize(60, 30);
+		child.setMaximumSize(100, 50);
+
+		layout.addWidget(child);
+		layout.update();
+
+		expect(child.width()).toBe(68);
+		expect(child.height()).toBe(50);
+	});
+
 });

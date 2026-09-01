@@ -190,7 +190,10 @@ export class CFormLayout extends CLayout {
 				spanning.setGeometry(
 					contentX,
 					y,
-					contentWidth,
+					Math.min(
+						contentWidth,
+						spanning.maximumSize().width()
+					),
 					height
 				);
 
@@ -227,7 +230,10 @@ export class CFormLayout extends CLayout {
 				field.setGeometry(
 					fieldX,
 					y + (rowHeight - fieldHeight) / 2,
-					fieldWidth,
+					Math.min(
+						fieldWidth,
+						field.maximumSize().width()
+					),
 					fieldHeight
 				);
 			}
@@ -327,21 +333,29 @@ export class CFormLayout extends CLayout {
 
 	#preferredWidth(widget: CWidget): number {
 		const minimum = widget.minimumSize().width();
+		const maximum = widget.maximumSize().width();
 		const hint = widget.sizeHint().width();
 
 		if (hint > 0)
-			return Math.max(minimum, hint);
+			return Math.min(maximum, Math.max(minimum, hint));
 
-		return Math.max(minimum, widget.width());
+		return Math.min(
+			maximum,
+			Math.max(minimum, widget.width())
+		);
 	}
 
 	#preferredHeight(widget: CWidget): number {
 		const minimum = widget.minimumSize().height();
+		const maximum = widget.maximumSize().height();
 		const hint = widget.sizeHint().height();
 
 		if (hint > 0)
-			return Math.max(minimum, hint);
+			return Math.min(maximum, Math.max(minimum, hint));
 
-		return Math.max(minimum, widget.height());
+		return Math.min(
+			maximum,
+			Math.max(minimum, widget.height())
+		);
 	}
 }

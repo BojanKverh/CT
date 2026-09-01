@@ -1,6 +1,7 @@
 import { CLayout } from "./CLayout.js";
-import type { CWidget } from "../widgets/CWidget.js";
+import { CWidget } from "../widgets/CWidget.js";
 import { CBoxLayoutItem } from "./CBoxLayoutItem.js";
+import { CSize } from "../geometry/CSize.js";
 
 export enum CBoxLayoutDirection {
 	LeftToRight,
@@ -21,6 +22,71 @@ export class CBoxLayout extends CLayout {
 
 	override addWidget(widget: CWidget, stretch = 0): void {
 		this.addItem(new CBoxLayoutItem(widget, stretch));
+	}
+
+	addLayout(layout: CLayout, stretch = 0): void {
+		const widget = new CWidget();
+		widget.setLayout(layout);
+		this.addWidget(widget, stretch);
+	}
+
+	override sizeHint(): CSize {
+		const count = this.count();
+		if (count === 0)
+			return new CSize();
+		const margins = this.contentsMargins();
+		const spacing = this.spacing();
+		let main = 0;
+		let cross = 0;
+		let widgetCount = 0;
+
+		for (let i = 0; i < count; ++i) {
+			const item = this.itemAt(i) as CBoxLayoutItem;
+			const widget = item.widget();
+			if (widget === null)
+				continue;
+
+			const minimum = widget.minimumSize();
+			const maximum = widget.maximumSize();
+			const hint = widget.sizeHint();
+
+			if (this.#m_direction === CBoxLayoutDirection.LeftToRight) {
+				main += Math.min(
+					maximum.width(),
+					Math.max(minimum.width(), hint.width())
+				);
+				cross = Math.max(
+					cross,
+					Math.min(
+						maximum.height(),
+						Math.max(minimum.height(), hint.height())
+					)
+				);
+			} else {
+				main += Math.min(
+					maximum.height(),
+					Math.max(minimum.height(), hint.height())
+				);
+				cross = Math.max(
+					cross,
+					Math.min(
+						maximum.width(),
+						Math.max(minimum.width(), hint.width())
+					)
+				);
+			}
+
+			++widgetCount;
+		}
+
+		if (widgetCount > 1)
+			main += (widgetCount - 1) * spacing;
+
+		if (this.#m_direction === CBoxLayoutDirection.LeftToRight) {
+			return new CSize(main + margins.left + margins.right, cross + margins.top + margins.bottom);
+		}	else {
+			return new CSize(cross + margins.left + margins.right, main + margins.top + margins.bottom);
+		}
 	}
 
 	override update(): void {
@@ -96,6 +162,11 @@ export class CBoxLayout extends CLayout {
 			? widget.minimumSize().width() : widget.minimumSize().height();
 	}
 
+	#mainMaximum(widget: CWidget): number {
+		return this.#m_direction === CBoxLayoutDirection.LeftToRight
+			? widget.maximumSize().width() : widget.maximumSize().height();
+	}
+
 	#mainSizeHint(widget: CWidget): number {
 		return this.#m_direction === CBoxLayoutDirection.LeftToRight
 			? widget.sizeHint().width() : widget.sizeHint().height();
@@ -103,11 +174,19 @@ export class CBoxLayout extends CLayout {
 
 	#crossSize(widget: CWidget, available: number): number {
 		const minimum = widget.minimumSize();
+		const maximum = widget.maximumSize();
 
-		if (this.#m_direction === CBoxLayoutDirection.LeftToRight)
-			return Math.max(available, minimum.height());
+		if (this.#m_direction === CBoxLayoutDirection.LeftToRight) {
+			return Math.min(
+				maximum.height(),
+				Math.max(available, minimum.height())
+			);
+		}
 
-		return Math.max(available, minimum.width());
+		return Math.min(
+			maximum.width(),
+			Math.max(available, minimum.width())
+		);
 	}
 
 	#calculateSizes(available: number): number[] {
@@ -115,11 +194,11 @@ export class CBoxLayout extends CLayout {
 
 		const minimums: number[] = [];
 		const preferred: number[] = [];
+		const maximums: number[] = [];
 		const stretches: number[] = [];
 
 		let totalMinimum = 0;
 		let totalPreferred = 0;
-		let totalStretch = 0;
 
 		const hasSpacer = this.#hasStretchSpacer();
 
@@ -127,9 +206,16 @@ export class CBoxLayout extends CLayout {
 			const item = this.itemAt(i) as CBoxLayoutItem;
 			const widget = item.widget();
 
-			const minimum = widget !== null ? this.#mainMinimum(widget) : 0;
-			const hint = widget !== null ? this.#mainSizeHint(widget) : 0;
-			const preferredSize = Math.max(minimum, hint);
+			const minimum = widget !== null
+				? this.#mainMinimum(widget) : 0;
+			const maximum = widget !== null
+				? this.#mainMaximum(widget) : Number.MAX_SAFE_INTEGER;
+			const hint = widget !== null
+				? this.#mainSizeHint(widget) : 0;
+			const preferredSize = Math.min(
+				maximum,
+				Math.max(minimum, hint)
+			);
 
 			let stretch = item.stretch();
 
@@ -138,36 +224,72 @@ export class CBoxLayout extends CLayout {
 
 			minimums.push(minimum);
 			preferred.push(preferredSize);
+			maximums.push(maximum);
 			stretches.push(stretch);
 
 			totalMinimum += minimum;
 			totalPreferred += preferredSize;
-			totalStretch += stretch;
 		}
 
 		if (available >= totalPreferred) {
-			const extra = available - totalPreferred;
+			const sizes = [...preferred];
+			let extra = available - totalPreferred;
 
-			if (totalStretch === 0)
-				return [...preferred];
+			while (extra > 0) {
+				let totalStretch = 0;
 
-			return preferred.map((size, index) =>
-				size + extra * stretches[index]! / totalStretch);
+				for (let i = 0; i < count; ++i) {
+					if (
+						stretches[i]! > 0
+						&& sizes[i]! < maximums[i]!
+					)
+						totalStretch += stretches[i]!;
+				}
+
+				if (totalStretch === 0)
+					break;
+
+				let distributed = 0;
+
+				for (let i = 0; i < count; ++i) {
+					const stretch = stretches[i]!;
+
+					if (
+						stretch === 0
+						|| sizes[i]! >= maximums[i]!
+					)
+						continue;
+
+					const share = extra * stretch / totalStretch;
+					const amount = Math.min(
+						share,
+						maximums[i]! - sizes[i]!
+					);
+
+					sizes[i]! += amount;
+					distributed += amount;
+				}
+
+				if (distributed <= 0)
+					break;
+
+				extra -= distributed;
+			}
+
+			return sizes;
 		}
 
 		if (available >= totalMinimum) {
 			const shrink = totalPreferred - available;
 			const capacities = preferred.map((size, index) =>
 				size - minimums[index]!);
-			const totalCapacity = capacities.reduce((sum, value) => sum + value, 0);
+			const totalCapacity = capacities.reduce(
+				(sum, value) => sum + value,
+				0
+			);
 
-			if (totalCapacity === 0) {
-				if (totalStretch === 0)
-					return [...minimums];
-
-				return stretches.map(stretch =>
-					available * stretch / totalStretch);
-			}
+			if (totalCapacity === 0)
+				return [...minimums];
 
 			return preferred.map((size, index) =>
 				size - shrink * capacities[index]! / totalCapacity);
