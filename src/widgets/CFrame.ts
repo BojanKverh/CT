@@ -107,8 +107,7 @@ export class CFrame extends CWidget {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
-		super.paintEvent(painter);
-
+        super.paintEvent(painter);
 		if (this.#m_frameShape === CFrameShape.NoFrame)
 			return;
 

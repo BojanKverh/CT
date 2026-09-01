@@ -355,6 +355,13 @@ export class CWidget extends CObject {
 	    	parent.layout()?.update();
     }
 
+    setFixedSize(width: number, height: number): void {
+        this.setMinimumSize(width, height);
+        this.setMaximumSize(width, height);
+        this.setMinimumSize(width, height);
+        this.resize(width, height);
+    }
+
     sizeHint(): CSize {
         if (this.#m_layout !== null)
 		    return this.#m_layout.sizeHint();

@@ -2,10 +2,13 @@ import { CSignal } from "../core/CSignal.js";
 import { CColor } from "../gui/CColor.js";
 import { CVBoxLayout } from "../layouts/CVBoxLayout.js";
 import { CHBoxLayout } from "../layouts/CHBoxLayout.js";
+import { CGridLayout } from "../layouts/CGridLayout.js";
+import { CPushButton } from "../widgets/CPushButton.js";
 import { CFormLayout } from "../layouts/CFormLayout.js";
 import { CLineEdit } from "../widgets/CLineEdit.js";
 import { CSpinBox } from "../widgets/CSpinBox.js";
 import { CWidget } from "../widgets/CWidget.js";
+import { CFrame, CFrameShadow, CFrameShape } from "../widgets/CFrame.js";
 import { CDialog } from "./CDialog.js";
 import { CLabel } from "../widgets/CLabel.js";
 import { CDialogButtonBox, CStandardButton } from "./CDialogButtonBox.js";
@@ -13,8 +16,8 @@ import { CPaletteColorRole } from "../gui/CPalette.js";
 
 export class CColorDialog extends CDialog
 {
-	static readonly DefaultWidth = 360;
-	static readonly DefaultHeight = 240;
+	static readonly DefaultWidth = 300;
+	static readonly DefaultHeight = 360;
 	static readonly Margin = 12;
 	static readonly Spacing = 6;
 
@@ -28,6 +31,7 @@ export class CColorDialog extends CDialog
 	#m_blueSpinBox: CSpinBox;
 	#m_hexEdit: CLineEdit;
     #m_display: CLabel;
+	#m_staticColors = new Array<CColor>;
 
 	#m_buttonBox: CDialogButtonBox;
 
@@ -38,6 +42,19 @@ export class CColorDialog extends CDialog
 		parent: CWidget | null = null
 	) {
 		super(parent);
+
+		this.#m_staticColors.push(new CColor(255, 255, 255));
+		this.#m_staticColors.push(new CColor(0, 0, 0));
+		this.#m_staticColors.push(new CColor(255, 0, 0));
+		this.#m_staticColors.push(new CColor(0, 255, 0));
+		this.#m_staticColors.push(new CColor(0, 0, 255));
+		this.#m_staticColors.push(new CColor(255, 255, 0));
+		this.#m_staticColors.push(new CColor(255, 0, 255));
+		this.#m_staticColors.push(new CColor(0, 255, 255));
+		this.#m_staticColors.push(new CColor(255, 128, 0));
+		this.#m_staticColors.push(new CColor(255, 0, 128));
+		this.#m_staticColors.push(new CColor(128, 0, 255));
+		this.#m_staticColors.push(new CColor(0, 128, 255));
 
         this.#m_color = new CColor(color.red(), color.green(), color.blue(), color.alpha());
 
@@ -57,6 +74,32 @@ export class CColorDialog extends CDialog
 
 		layout.setSpacing(CColorDialog.Spacing);
 
+		const grid = new CGridLayout();
+		for (let i = 0; i < 12; ++i) {
+			const r = Math.floor(i / 6);
+			const c = i - r * 6;
+			const frame = new CFrame(this);
+			frame.setFixedSize(40, 40);
+			frame.setFrameShadow(CFrameShadow.Sunken);
+			frame.setFrameShape(CFrameShape.Panel);
+			const button = new CPushButton(frame);
+			let pal = button.palette();
+			const clr = this.#m_staticColors[i];
+			if (clr !== undefined)
+				pal.setColor(CPaletteColorRole.Button, clr);
+			button.setPalette(pal);
+			const rect = frame.contentsRect();
+			button.setGeometry(rect.x(), rect.y(), rect.width(), rect.height());
+			button.clicked.connect(() => {
+				const clr = this.#m_staticColors[i];
+				if (clr !== undefined)
+					this.setCurrentColor(clr);
+			});
+			grid.addWidget(frame, r, c);
+		}
+
+		layout.addLayout(grid);
+
         const hbox = new CHBoxLayout();
 
         const form = new CFormLayout;
@@ -65,11 +108,14 @@ export class CColorDialog extends CDialog
         form.addRow("Blue:", this.#m_blueSpinBox);
         form.addRow("Hex:", this.#m_hexEdit);
         hbox.addLayout(form);
-        this.#m_display = new CLabel(this);
-        this.#m_display.setMinimumSize(80, 80);
-        this.#m_display.setMaximumSize(80, 80);
-        hbox.addWidget(this.#m_display);
-        hbox.addStretch(1);
+		const frame = new CFrame(this);
+		frame.setFrameShadow(CFrameShadow.Sunken);
+		frame.setFrameShape(CFrameShape.Box);
+		frame.setFixedSize(80, 80);
+		const rect = frame.contentsRect();
+        this.#m_display = new CLabel(frame);
+        this.#m_display.setGeometry(rect.x(), rect.y(), rect.width(), rect.height());
+        hbox.addWidget(frame);
         
         layout.addLayout(hbox);
 		layout.addStretch(1);
@@ -110,6 +156,7 @@ export class CColorDialog extends CDialog
 
 		this.resize(CColorDialog.DefaultWidth, CColorDialog.DefaultHeight);
         this.#setColor(this.#m_color);
+		this.setWindowTitle("Pick color");
 	}
 
 	currentColor(): CColor {
