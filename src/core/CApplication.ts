@@ -16,6 +16,7 @@ import type { CStyle } from "../gui/CStyle.js";
 import type { CPopupWidget } from "../widgets/CPopupWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
+import { CTimer } from "./CTimer.js";
 
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
@@ -34,7 +35,7 @@ export class CApplication extends CObject {
 	#m_modalWidgets: CWidget[] = [];
 	#m_toolTipWidget: CToolTipWidget | null = null;
 	#m_toolTipTarget: CWidget | null = null;
-	#m_toolTipTimer: ReturnType<typeof setTimeout> | null = null;
+	#m_toolTipTimer = new CTimer(this);
 	#m_mouseX = 0;
 	#m_mouseY = 0;
 
@@ -81,6 +82,10 @@ export class CApplication extends CObject {
 
 		this.#m_paintDevice = new CCanvasPaintDevice(canvas);
 		CApplication.#m_instance = this;
+		this.#m_toolTipTimer.setSingleShot(true);
+		this.#m_toolTipTimer.timeout.connect(() => {
+			void this.#showToolTip();
+		});
 
 		canvas.addEventListener("pointerdown", this.#onPointerDown);
 		canvas.addEventListener("pointerup", this.#onPointerUp);
@@ -124,6 +129,7 @@ export class CApplication extends CObject {
 		this.#m_hoverWidget = null;
         this.#m_focusWidget = null;
 		this.#m_modalWidgets.length = 0;
+		super.destroy();
 		CApplication.#m_instance = null;
 
 	}
@@ -608,11 +614,7 @@ export class CApplication extends CObject {
 		if (target === null)
 			return;
 
-		this.#m_toolTipTimer = setTimeout(() =>
-		{
-			this.#m_toolTipTimer = null;
-			void this.#showToolTip();
-		}, CApplication.#TOOL_TIP_DELAY);
+		this.#m_toolTipTimer.start(CApplication.#TOOL_TIP_DELAY);
 	}
 
 	async #ensureToolTipWidget(): Promise<CToolTipWidget>
@@ -673,11 +675,7 @@ export class CApplication extends CObject {
 
 	#cancelToolTipTimer(): void
 	{
-		if (this.#m_toolTipTimer === null)
-			return;
-
-		clearTimeout(this.#m_toolTipTimer);
-		this.#m_toolTipTimer = null;
+		this.#m_toolTipTimer.stop();
 	}
 
 	#dismissToolTip(): void
