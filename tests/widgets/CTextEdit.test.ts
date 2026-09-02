@@ -784,8 +784,9 @@ describe("CTextEdit", () => {
 
 		const metrics = new CFontMetrics(edit.font());
 		const x = 5 + metrics.textWidth("Wo") + 1;
+		const content = edit.widget()!;
 
-		edit.event(new CMouseEvent(
+		content.event(new CMouseEvent(
 			CEventType.MousePress,
 			x,
 			5 + 18 + 5,
@@ -824,15 +825,16 @@ describe("CTextEdit", () => {
 
 		const startX = 5 + metrics.textWidth("He");
 		const endX = 5 + metrics.textWidth("Wor");
+		const content = edit.widget()!;
 
-		edit.event(new CMouseEvent(
+		content.event(new CMouseEvent(
 			CEventType.MousePress,
 			startX,
 			8,
 			CMouseButton.LeftButton
 		));
 
-		edit.event(new CMouseEvent(
+		content.event(new CMouseEvent(
 			CEventType.MouseMove,
 			endX,
 			5 + 18 + 8,
@@ -867,5 +869,307 @@ describe("CTextEdit", () => {
 		edit.setSelection(1, 4);
 
 		expect(slot).not.toHaveBeenCalled();
+	});
+
+	test("vertical scrollbar is hidden for short text", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(240, 120);
+		edit.setPlainText("Hello\nWorld");
+
+		expect(edit.verticalScrollBar().isVisible()).toBe(false);
+	});
+
+	test("vertical scrollbar is shown for tall content", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(240, 80);
+		edit.setPlainText(
+			"1\n2\n3\n4\n5\n6\n7\n8\n9\n10"
+		);
+
+		expect(edit.verticalScrollBar().isVisible()).toBe(true);
+	});
+
+	test("horizontal scrollbar is hidden for short lines", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(240, 120);
+		edit.setPlainText("Hello\nWorld");
+
+		expect(edit.horizontalScrollBar().isVisible()).toBe(false);
+	});
+
+	test("horizontal scrollbar is shown for long line", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(120, 120);
+		edit.setPlainText(
+			"This is a very long line that does not fit."
+		);
+
+		expect(edit.horizontalScrollBar().isVisible()).toBe(true);
+	});
+
+	test("vertical scrollbar maximum matches content overflow", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(240, 80);
+		edit.setPlainText(
+			"1\n2\n3\n4\n5\n6\n7\n8\n9\n10"
+		);
+
+		expect(edit.verticalScrollBar().maximum()).toBeGreaterThan(0);
+		expect(edit.verticalScrollBar().maximum()).toBe(
+			edit.widget()!.height() - edit.viewport().height()
+		);
+	});
+
+	test("horizontal scrollbar maximum matches content overflow", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(120, 120);
+		edit.setPlainText(
+			"This is a very long line that does not fit."
+		);
+
+		expect(edit.horizontalScrollBar().maximum()).toBeGreaterThan(0);
+		expect(edit.horizontalScrollBar().maximum()).toBe(
+			edit.widget()!.width() - edit.viewport().width()
+		);
+	});
+
+	test("setting vertical scrollbar value scrolls content", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(240, 80);
+		edit.setPlainText(
+			"1\n2\n3\n4\n5\n6\n7\n8\n9\n10"
+		);
+
+		edit.verticalScrollBar().setValue(20);
+
+		expect(edit.scrollY()).toBe(20);
+		expect(edit.widget()!.y()).toBe(-20);
+	});
+
+	test("setting horizontal scrollbar value scrolls content", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(120, 120);
+		edit.setPlainText(
+			"This is a very long line that does not fit."
+		);
+
+		edit.horizontalScrollBar().setValue(20);
+
+		expect(edit.scrollX()).toBe(20);
+		expect(edit.widget()!.x()).toBe(-20);
+	});
+
+	test("moving cursor down scrolls vertically to keep it visible", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(240, 60);
+		edit.setPlainText(
+			"1\n2\n3\n4\n5\n6\n7\n8\n9\n10"
+		);
+		edit.setCursorPosition(0);
+
+		expect(edit.scrollY()).toBe(0);
+
+		for (let i = 0; i < 8; ++i) {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				"ArrowDown"
+			));
+		}
+
+		expect(edit.scrollY()).toBeGreaterThan(0);
+	});
+
+	test("moving cursor back up scrolls vertically toward top", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(240, 60);
+		edit.setPlainText(
+			"1\n2\n3\n4\n5\n6\n7\n8\n9\n10"
+		);
+
+		for (let i = 0; i < 9; ++i) {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				"ArrowUp"
+			));
+		}
+
+		expect(edit.scrollY()).toBe(0);
+	});
+
+	test("moving cursor right scrolls horizontally to keep it visible", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(100, 80);
+		edit.setPlainText(
+			"abcdefghijklmnopqrstuvwxyz"
+		);
+		edit.setCursorPosition(0);
+
+		expect(edit.scrollX()).toBe(0);
+
+		for (let i = 0; i < 20; ++i) {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				"ArrowRight"
+			));
+		}
+
+		expect(edit.scrollX()).toBeGreaterThan(0);
+	});
+
+	test("moving cursor back left scrolls horizontally toward start", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(100, 80);
+		edit.setPlainText(
+			"abcdefghijklmnopqrstuvwxyz"
+		);
+
+		for (let i = 0; i < 26; ++i) {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				"ArrowLeft"
+			));
+		}
+
+		expect(edit.scrollX()).toBe(0);
+	});
+
+	test("setting cursor position ensures it is vertically visible", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(240, 60);
+		edit.setPlainText(
+			"1\n2\n3\n4\n5\n6\n7\n8\n9\n10"
+		);
+
+		edit.setCursorPosition(edit.toPlainText().length);
+
+		expect(edit.scrollY()).toBeGreaterThan(0);
+	});
+
+	test("setting cursor position ensures it is horizontally visible", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(100, 80);
+		edit.setPlainText(
+			"abcdefghijklmnopqrstuvwxyz"
+		);
+
+		edit.setCursorPosition(edit.toPlainText().length);
+
+		expect(edit.scrollX()).toBeGreaterThan(0);
+	});
+
+	test("shrinking text hides vertical scrollbar", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(240, 80);
+		edit.setPlainText(
+			"1\n2\n3\n4\n5\n6\n7\n8\n9\n10"
+		);
+
+		expect(edit.verticalScrollBar().isVisible()).toBe(true);
+
+		edit.setPlainText("Hello");
+
+		expect(edit.verticalScrollBar().isVisible()).toBe(false);
+		expect(edit.scrollY()).toBe(0);
+	});
+
+	test("shrinking line hides horizontal scrollbar", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(100, 80);
+		edit.setPlainText(
+			"abcdefghijklmnopqrstuvwxyz"
+		);
+
+		expect(edit.horizontalScrollBar().isVisible()).toBe(true);
+
+		edit.setPlainText("Hello");
+
+		expect(edit.horizontalScrollBar().isVisible()).toBe(false);
+		expect(edit.scrollX()).toBe(0);
+	});
+
+	test("clear resets scroll position", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(100, 60);
+		edit.setPlainText(
+			"abcdefghijklmnopqrstuvwxyz\n"
+			+ "2\n3\n4\n5\n6\n7\n8\n9"
+		);
+
+		edit.scrollTo(20, 20);
+
+		expect(edit.scrollX()).toBeGreaterThan(0);
+		expect(edit.scrollY()).toBeGreaterThan(0);
+
+		edit.clear();
+
+		expect(edit.scrollX()).toBe(0);
+		expect(edit.scrollY()).toBe(0);
+	});
+
+	test("resizing larger hides no longer needed scrollbars", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(100, 60);
+		edit.setPlainText(
+			"abcdefghijklmnopqrstuvwxyz\n"
+			+ "2\n3\n4\n5\n6\n7\n8"
+		);
+
+		expect(
+			edit.horizontalScrollBar().isVisible()
+			|| edit.verticalScrollBar().isVisible()
+		).toBe(true);
+
+		edit.resize(800, 600);
+
+		expect(edit.horizontalScrollBar().isVisible()).toBe(false);
+		expect(edit.verticalScrollBar().isVisible()).toBe(false);
+		expect(edit.scrollX()).toBe(0);
+		expect(edit.scrollY()).toBe(0);
+	});
+
+	test("vertical scrollbar single step equals line height", () => {
+		const edit = new CTextEdit();
+
+		expect(edit.verticalScrollBar().singleStep()).toBe(18);
+	});
+
+	test("mouse position remains correct after vertical scrolling", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(200, 60);
+		edit.setPlainText(
+			"Line0\nLine1\nLine2\nLine3\nLine4\nLine5"
+		);
+
+		edit.setScrollY(36);
+
+		const content = edit.widget()!;
+
+		content.event(new CMouseEvent(
+			CEventType.MousePress,
+			6,
+			5 + edit.scrollY(),
+			CMouseButton.LeftButton
+		));
+
+		expect(edit.cursorPosition()).toBe(12);
 	});
 });
