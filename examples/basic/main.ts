@@ -420,6 +420,8 @@ scrollArea.setWidget(scrollContent);
 const splitter = new CSplitter(COrientation.Horizontal, parent);
 splitter.setGeometry(700, 200, 200, 200);
 const leftW = new GreenWidget(splitter);
+leftW.setMinimumSize(50, 200);
+leftW.setMaximumSize(150, 200);
 const rightW = new BlueWidget(splitter);
 splitter.addWidget(leftW);
 splitter.addWidget(rightW);

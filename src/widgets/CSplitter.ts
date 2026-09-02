@@ -707,15 +707,14 @@ export class CSplitter extends CWidget
 
 	#minimumSize(index: number): number
 	{
-		const item = this.#m_items[index]!;
+		const widget = this.#m_items[index]?.widget;
 
-		if (this.isCollapsible(index))
+		if (widget === undefined)
 			return 0;
 
-		if (this.#m_orientation === COrientation.Horizontal)
-			return item.widget.minimumSize().width();
-
-		return item.widget.minimumSize().height();
+		return this.#m_orientation === COrientation.Horizontal
+			? widget.minimumSize().width()
+			: widget.minimumSize().height();
 	}
 
 	#maximumSize(index: number): number
