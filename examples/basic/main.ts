@@ -4,7 +4,8 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
 	CTabWidget, CFrame, CFrameShadow, CFrameShape, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
 	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
-	CColorDialog, CSplitter, CSizeGrip, CToolBox
+	CColorDialog, CSplitter, CSizeGrip, CToolBox,
+	CCalendarWidget
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -282,10 +283,10 @@ but2.setGeometry(500, 50, 100, 30);
 but2.setText("Open dialog");
 but2.clicked.connect(() => {
 	const dlg = new CDialog(parent);
-	dlg.setGeometry(100, 100, 500, 300);
+	dlg.setGeometry(100, 100, 500, 400);
 
 	const bb = new CDialogButtonBox(CStandardButton.Ok | CStandardButton.Cancel, dlg);
-	bb.setGeometry(0, 260, 490, 30);
+	bb.setGeometry(0, 360, 490, 30);
 
 	bb.accepted.connect(() => {
 			dlg.accept();
@@ -296,7 +297,7 @@ but2.clicked.connect(() => {
 		});
 
 	const gb = new CGroupBox("Settings", dlg);
-	gb.setGeometry(6, 6, 488, 230);
+	gb.setGeometry(6, 6, 488, 330);
 	const fl = new CFormLayout();
 	gb.setLayout(fl);
 	const leName = new CLineEdit();
@@ -304,6 +305,9 @@ but2.clicked.connect(() => {
 	fl.addRow("Name", leName);
 	const leSurname = new CLineEdit();
 	fl.addRow("Last Name", leSurname);
+
+	const cw = new CCalendarWidget(gb);
+	cw.setGeometry(240, 120, 240, 200);
 	dlg.exec();
 });
 

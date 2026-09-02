@@ -174,6 +174,9 @@ export class CToolButton extends CAbstractButton {
 		this.#m_down = true;
 		event.accept();
 		this.update();
+
+		if (this.isAutoRepeat())
+			this.startAutoRepeat();
 	}
 
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
@@ -193,6 +196,9 @@ export class CToolButton extends CAbstractButton {
 
 		if (wasDown && inside)
 			this.#trigger();
+
+		if (this.isAutoRepeat())
+			this.stopAutoRepeat();
 	}
 
 	protected override mouseEnterEvent(event: CMouseEvent): void {

@@ -61,3 +61,4 @@ export { CSplitter } from "./widgets/CSplitter.js";
 export { CCursorShape } from "./gui/CCursorShape.js";
 export { CSizeGrip } from "./widgets/CSizeGrip.js";
 export { CToolBox } from "./widgets/CToolBox.js";
+export { CCalendarWidget } from "./widgets/CCalendarWidget.js";

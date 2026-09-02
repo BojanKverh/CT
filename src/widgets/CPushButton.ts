@@ -11,12 +11,6 @@ export class CPushButton extends CAbstractButton {
 	#m_down = false;
 	#m_hovered = false;
 
-	#m_autoRepeatDelay = -1;
-	#m_autoRepeatInterval = -1;
-
-	#m_repeatTimeout: ReturnType<typeof setTimeout> | null = null;
-	#m_repeatIntervalTimer: ReturnType<typeof setInterval> | null = null;
-
 	constructor(parent: CWidget | null = null) {
 		super(parent);
 		this.setCheckable(false);
@@ -28,29 +22,6 @@ export class CPushButton extends CAbstractButton {
 
 	isHovered(): boolean {
 		return this.#m_hovered;
-	}
-
-	setAutoRepeat(delay: number, interval: number): void {
-		this.resetAutoRepeat();
-		this.#m_autoRepeatDelay = Math.max(0, delay);
-		this.#m_autoRepeatInterval = Math.max(1, interval);
-	}
-
-	resetAutoRepeat(): void {
-		if (this.#m_repeatTimeout !== null) {
-			clearTimeout(this.#m_repeatTimeout);
-			this.#m_repeatTimeout = null;
-		}
-		if (this.#m_repeatIntervalTimer !== null) {
-			clearInterval(this.#m_repeatIntervalTimer);
-			this.#m_repeatIntervalTimer = null;
-		}
-		this.#m_autoRepeatDelay = -1;
-		this.#m_autoRepeatInterval = -1;
-	}
-
-	isAutoRepeat(): boolean {
-		return this.#m_autoRepeatDelay >= 0 && this.#m_autoRepeatInterval > 0;
 	}
 
 	override sizeHint(): CSize {
@@ -69,7 +40,7 @@ export class CPushButton extends CAbstractButton {
 		this.update();
 
 		if (this.isAutoRepeat())
-			this.#startAutoRepeat();
+			this.startAutoRepeat();
 	}
 
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
@@ -89,7 +60,7 @@ export class CPushButton extends CAbstractButton {
 			this.clicked.emit();
 
 		if (this.isAutoRepeat())
-			this.#stopAutoRepeat();
+			this.stopAutoRepeat();
 	}
 
 	protected override paintEvent(painter: CPainter): void {
@@ -139,28 +110,5 @@ export class CPushButton extends CAbstractButton {
 
 		if (wasDown)
 			this.clicked.emit();
-	}
-
-	#startAutoRepeat(): void {
-		if (!this.isAutoRepeat())
-			return;
-
-		this.#m_repeatTimeout = setTimeout(() => {
-			this.clicked.emit();
-			this.#m_repeatIntervalTimer = setInterval(() => {
-				this.clicked.emit();
-			}, this.#m_autoRepeatInterval);
-		}, this.#m_autoRepeatDelay);
-	}
-
-	#stopAutoRepeat(): void {
-		if (this.#m_repeatIntervalTimer !== null) {
-			clearInterval(this.#m_repeatIntervalTimer);
-			this.#m_repeatIntervalTimer = null;
-		}
-		if (this.#m_repeatTimeout !== null) {
-			clearTimeout(this.#m_repeatTimeout);
-			this.#m_repeatTimeout = null;
-		}
 	}
 }
