@@ -1005,4 +1005,151 @@ describe("CLineEdit", () => {
 		expect(edit.text()).toBe("");
 	});
 
+	test("is not read only by default", () => {
+		const lineEdit = new CLineEdit();
+
+		expect(lineEdit.isReadOnly()).toBe(false);
+	});
+
+	test("setReadOnly changes read only state", () => {
+		const lineEdit = new CLineEdit();
+
+		lineEdit.setReadOnly(true);
+
+		expect(lineEdit.isReadOnly()).toBe(true);
+
+		lineEdit.setReadOnly(false);
+
+		expect(lineEdit.isReadOnly()).toBe(false);
+	});
+
+	test("setText still works when read only", () => {
+		const lineEdit = new CLineEdit();
+
+		lineEdit.setReadOnly(true);
+		lineEdit.setText("Hello");
+
+		expect(lineEdit.text()).toBe("Hello");
+	});
+
+	test("setText emits textChanged when read only", () => {
+		const lineEdit = new CLineEdit();
+		let text = "";
+
+		lineEdit.setReadOnly(true);
+
+		lineEdit.textChanged.connect(value => {
+			text = value;
+		});
+
+		lineEdit.setText("Hello");
+
+		expect(text).toBe("Hello");
+	});
+
+	test("typing does not change text when read only", () => {
+		const lineEdit = new CLineEdit();
+
+		lineEdit.setText("Hello");
+		lineEdit.setReadOnly(true);
+
+		lineEdit.event(
+			new CKeyEvent(
+				CEventType.KeyPress,
+				"X",
+				false,
+				false,
+				false,
+				false
+			)
+		);
+
+		expect(lineEdit.text()).toBe("Hello");
+	});
+
+	test("Backspace does not change text when read only", () => {
+		const lineEdit = new CLineEdit();
+
+		lineEdit.setText("Hello");
+		lineEdit.setReadOnly(true);
+
+		lineEdit.event(
+			new CKeyEvent(
+				CEventType.KeyPress,
+				"Backspace",
+				false,
+				false,
+				false,
+				false
+			)
+		);
+
+		expect(lineEdit.text()).toBe("Hello");
+	});
+
+	test("Delete does not change text when read only", () => {
+		const lineEdit = new CLineEdit();
+
+		lineEdit.setText("Hello");
+		lineEdit.setReadOnly(true);
+
+		lineEdit.event(
+			new CKeyEvent(
+				CEventType.KeyPress,
+				"Delete",
+				false,
+				false,
+				false,
+				false
+			)
+		);
+
+		expect(lineEdit.text()).toBe("Hello");
+	});
+
+	test("typing does not emit textChanged when read only", () => {
+		const lineEdit = new CLineEdit();
+		let count = 0;
+
+		lineEdit.setText("Hello");
+		lineEdit.setReadOnly(true);
+
+		lineEdit.textChanged.connect(() => {
+			++count;
+		});
+
+		lineEdit.event(
+			new CKeyEvent(
+				CEventType.KeyPress,
+				"X",
+				false,
+				false,
+				false,
+				false
+			)
+		);
+
+		expect(count).toBe(0);
+	});
+
+	test("editing works again after read only is disabled", () => {
+		const lineEdit = new CLineEdit();
+
+		lineEdit.setText("Hello");
+		lineEdit.setReadOnly(true);
+		lineEdit.setReadOnly(false);
+
+		lineEdit.event(
+			new CKeyEvent(
+				CEventType.KeyPress,
+				"X",
+				false,
+				false,
+				false,
+				false
+			)
+		);
+
+		expect(lineEdit.text()).toBe("HelloX");
+	});
 });

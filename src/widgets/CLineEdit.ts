@@ -19,6 +19,7 @@ export class CLineEdit extends CWidget {
 	#m_cursorVisible = true;
 	#m_cursorTimer: ReturnType<typeof setInterval> | null = null;
 	#m_validator: ((text: string) => boolean) | null = null;
+	#m_readOnly = false;
 
 	readonly editingFinished = new CSignal();
 
@@ -42,6 +43,18 @@ export class CLineEdit extends CWidget {
 		this.update();
 	}
 
+	setReadOnly(readOnly: boolean = true): void {
+		if (readOnly !== this.#m_readOnly) {
+			this.#m_readOnly = readOnly;
+			this.update();
+		}
+	}
+
+	isReadOnly(): boolean
+	{
+		return this.#m_readOnly;
+	}
+
 	setValidator(validator: ((text: string) => boolean) | null): void {
 		this.#m_validator = validator;
 	}
@@ -63,7 +76,7 @@ export class CLineEdit extends CWidget {
 	}
 
 	insert(text: string): void {
-		if (text.length === 0)
+		if (text.length === 0 || this.isReadOnly())
 			return;
 		const start = this.hasSelection()? this.selectionStart() : this.#m_cursorPosition;
 		const end = this.hasSelection()? this.selectionEnd() : this.#m_cursorPosition;
@@ -116,7 +129,7 @@ export class CLineEdit extends CWidget {
 	}
 
 	async copy(): Promise<void> {
-		if (!this.hasSelection())
+		if (!this.hasSelection() || this.isReadOnly())
 			return;
 
 		await navigator.clipboard.writeText(
@@ -132,10 +145,16 @@ export class CLineEdit extends CWidget {
 			this.selectedText()
 		);
 
+		if (this.isReadOnly())
+			return;
+
 		this.#deleteSelection();
 	}
 
 	async paste(): Promise<void> {
+		if (this.isReadOnly())
+			return;
+
 		const text = await navigator.clipboard.readText();
 
 		if (text.length === 0)
@@ -180,6 +199,10 @@ export class CLineEdit extends CWidget {
 	        return;
 
         case "Backspace":
+			if (this.isReadOnly()) {
+				event.accept();
+				return;
+			}
 	        if (this.#deleteSelection()) {
 		        event.accept();
 		        return;
@@ -199,6 +222,10 @@ export class CLineEdit extends CWidget {
 	        return;
 
         case "Delete":
+			if (this.isReadOnly()) {
+				event.accept();
+				return;
+			}
 	        if (this.#deleteSelection()) {
 		        event.accept();
 		        return;
@@ -321,7 +348,7 @@ export class CLineEdit extends CWidget {
     }
 
     #deleteSelection(): boolean {
-	    if (!this.hasSelection())
+		if (!this.hasSelection() || this.isReadOnly())
 		    return false;
     	const start = this.selectionStart();
 	    const end = this.selectionEnd();
