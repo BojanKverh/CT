@@ -64,3 +64,4 @@ export { CToolBox } from "./widgets/CToolBox.js";
 export { CCalendarWidget } from "./widgets/CCalendarWidget.js";
 export { CDateEdit } from "./widgets/CDateEdit.js";
 export { CTimeEdit } from "./widgets/CTimeEdit.js";
+export { CDateTimeEdit } from "./widgets/CDateTimeEdit.js";

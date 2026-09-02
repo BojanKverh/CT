@@ -18,6 +18,8 @@ export class CSectionLineEdit extends CLineEdit
 {
 	readonly sectionChanged = new CSignal<[number]>();
 	readonly stepRequested = new CSignal<[number, number]>();
+    readonly previousSectionRequested = new CSignal<[number, number]>();
+    readonly nextSectionRequested = new CSignal<[number, number]>();
 
 	#m_sections: CLineEditSection[] = [];
 	#m_currentSection = -1;
@@ -155,21 +157,25 @@ export class CSectionLineEdit extends CLineEdit
 
 	#previousSection(): void
 	{
-		this.setCurrentSection(
+        const prev = this.#m_currentSection;
+        this.setCurrentSection(
 			(
 				this.#m_currentSection -
 				1 +
 				this.#m_sections.length
 			) % this.#m_sections.length
 		);
+        this.previousSectionRequested.emit(prev, this.#m_currentSection);
 	}
 
 	#nextSection(): void
 	{
-		this.setCurrentSection(
+		const prev = this.#m_currentSection;
+        this.setCurrentSection(
 			(this.#m_currentSection + 1) %
 				this.#m_sections.length
 		);
+        this.nextSectionRequested.emit(prev, this.#m_currentSection);
 	}
 
 	#sectionAt(x: number): number
