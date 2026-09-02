@@ -94,7 +94,7 @@ export class CApplication extends CObject {
         }
 	}
 
-    destroy(): void {
+    override destroy(): void {
 		if (CApplication.#m_instance !== this)
 			return;
 

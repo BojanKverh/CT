@@ -15,6 +15,14 @@ export class CObject {
         return this.#m_children;
     }
 
+	destroy(): void
+	{
+		for (const child of [...this.children()])
+			child.destroy();
+
+        this.detachFromParent();
+	}
+
     setParent(parent: CObject | null): void {
         if (parent === this)
             throw new Error("An object cannot be its own parent.");
@@ -34,6 +42,15 @@ export class CObject {
             this.#m_parent.#addChild(this);
     }
 
+    protected detachFromParent(): void
+	{
+		if (this.#m_parent === null)
+			return;
+
+		this.#m_parent.#removeChild(this);
+		this.#m_parent = null;
+	}
+    
     #addChild(child: CObject): void {
         this.#m_children.push(child);
     }

@@ -2,6 +2,7 @@ import { CSize } from "../geometry/CSize.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CWidget } from "./CWidget.js";
+import { CTimer } from "../core/CTimer.js";
 
 export class CStatusBar extends CWidget {
 	static readonly DefaultHeight = 24;
@@ -12,12 +13,18 @@ export class CStatusBar extends CWidget {
 	#m_permanentWidgets: CWidget[] = [];
 
 	#m_currentMessage = "";
-	#m_messageTimer: ReturnType<typeof setTimeout> | null = null;
+	#m_messageTimer = new CTimer(this);
 
 	#m_savedVisibility = new Map<CWidget, boolean>();
 
 	constructor(parent: CWidget | null = null) {
 		super(parent);
+
+		this.#m_messageTimer.setSingleShot(true);
+
+		this.#m_messageTimer.timeout.connect(() => {
+			this.clearMessage();
+		});
 	}
 
 	override sizeHint(): CSize {
@@ -85,9 +92,7 @@ export class CStatusBar extends CWidget {
 		}
 
 		if (timeout > 0) {
-			this.#m_messageTimer = setTimeout(() => {
-				this.clearMessage();
-			}, timeout);
+			this.#m_messageTimer.start(timeout);
 		}
 
 		this.update();
@@ -183,8 +188,7 @@ export class CStatusBar extends CWidget {
 		if (this.#m_messageTimer === null)
 			return;
 
-		clearTimeout(this.#m_messageTimer);
-		this.#m_messageTimer = null;
+		this.#m_messageTimer.stop();
 	}
 
 	#messageWidth(): number {

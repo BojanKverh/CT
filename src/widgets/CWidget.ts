@@ -200,12 +200,10 @@ export class CWidget extends CObject {
         this.setVisible(false);
     }
 
-	destroy(): void
+	override destroy(): void
 	{
+        super.destroy();
 		const app = CApplication.instance();
-
-		for (const child of [...this.children()])
-			child.destroy();
 
 		if (this.hasFocus())
 			this.clearFocus();

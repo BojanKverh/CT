@@ -460,4 +460,44 @@ describe("CPushButton", () => {
 
 		vi.useRealTimers();
 	});
+
+	test("auto repeat does not accumulate timeout connections", () => {
+		vi.useFakeTimers();
+
+		const button = new CPushButton();
+		button.resize(100, 30);
+		button.setAutoRepeat(400, 60);
+
+		const slot = vi.fn();
+		button.clicked.connect(slot);
+
+		button.event(new CMouseEvent(
+			CEventType.MousePress, 50, 15, CMouseButton.LeftButton
+		));
+
+		vi.advanceTimersByTime(400);
+		expect(slot).toHaveBeenCalledTimes(1);
+
+		button.event(new CMouseEvent(
+			CEventType.MouseRelease, 150, 15, CMouseButton.LeftButton
+		));
+
+		expect(slot).toHaveBeenCalledTimes(1);
+
+		button.event(new CMouseEvent(
+			CEventType.MousePress, 50, 15, CMouseButton.LeftButton
+		));
+
+		vi.advanceTimersByTime(400);
+		expect(slot).toHaveBeenCalledTimes(2);
+
+		vi.advanceTimersByTime(120);
+		expect(slot).toHaveBeenCalledTimes(4);
+
+		button.event(new CMouseEvent(
+			CEventType.MouseRelease, 150, 15, CMouseButton.LeftButton
+		));
+
+		vi.useRealTimers();
+	});
 });

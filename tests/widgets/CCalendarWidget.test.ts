@@ -420,13 +420,20 @@ describe("CCalendarWidget", () => {
 		const calendar = new CCalendarWidget();
 
 		calendar.setGeometry(0, 0, 240, 200);
+		calendar.setSelectedDate(new Date(2026, 8, 15));
 		calendar.setCurrentPage(2026, 9);
 
 		calendar.clicked.connect(date => {
 			date.setDate(20);
 		});
 
-		calendar.event(new CMouseEvent( CEventType.MouseRelease, 100, 72, CMouseButton.LeftButton));
+		calendar.event(new CMouseEvent(
+			CEventType.MouseRelease,
+			100,
+			72,
+			CMouseButton.LeftButton
+		));
+
 		expect(calendar.selectedDate().getDate()).toBe(2);
 	});
 

@@ -217,7 +217,7 @@ export class CCalendarWidget extends CWidget
 
 		const selectionChanged = !this.#sameDate(date, this.#m_selectedDate);
 
-        this.clicked.emit(date);
+        this.clicked.emit(new Date(date));
 		if (selectionChanged) {
 			this.#m_shownYear = date.getFullYear();
 		    this.#m_shownMonth = date.getMonth();

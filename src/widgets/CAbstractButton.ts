@@ -1,5 +1,6 @@
 import { CSignal } from "../core/CSignal.js";
 import { CWidget } from "./CWidget.js";
+import { CTimer } from "../core/CTimer.js";
 
 export abstract class CAbstractButton extends CWidget {
 	#m_text = "";
@@ -9,14 +10,21 @@ export abstract class CAbstractButton extends CWidget {
 	#m_autoRepeatDelay = -1;
 	#m_autoRepeatInterval = -1;
 
-	#m_repeatTimeout: ReturnType<typeof setTimeout> | null = null;
-	#m_repeatIntervalTimer: ReturnType<typeof setInterval> | null = null;
+	#m_repeatTimer = new CTimer(this);
 
 	readonly clicked = new CSignal<[]>();
 	readonly toggled = new CSignal<[boolean]>();
 
 	constructor(parent: CWidget | null = null) {
 		super(parent);
+
+		this.#m_repeatTimer.timeout.connect(() => {
+			this.clicked.emit();
+			if (this.#m_repeatTimer.isSingleShot()) {
+				this.#m_repeatTimer.setSingleShot(false);
+				this.#m_repeatTimer.start(this.#m_autoRepeatInterval);
+			}
+		});
 	}
 
 	text(): string {
@@ -76,14 +84,7 @@ export abstract class CAbstractButton extends CWidget {
 	}
 	
 	resetAutoRepeat(): void {
-		if (this.#m_repeatTimeout !== null) {
-			clearTimeout(this.#m_repeatTimeout);
-			this.#m_repeatTimeout = null;
-		}
-		if (this.#m_repeatIntervalTimer !== null) {
-			clearInterval(this.#m_repeatIntervalTimer);
-			this.#m_repeatIntervalTimer = null;
-		}
+		this.#m_repeatTimer.stop();
 		this.#m_autoRepeatDelay = -1;
 		this.#m_autoRepeatInterval = -1;
 	}
@@ -93,25 +94,16 @@ export abstract class CAbstractButton extends CWidget {
 	}
 
 	protected startAutoRepeat(): void {
-		if (!this.isAutoRepeat())
+		if (!this.isAutoRepeat()) {
+			this.stopAutoRepeat();
 			return;
+		}
 
-		this.#m_repeatTimeout = setTimeout(() => {
-			this.clicked.emit();
-			this.#m_repeatIntervalTimer = setInterval(() => {
-				this.clicked.emit();
-			}, this.#m_autoRepeatInterval);
-		}, this.#m_autoRepeatDelay);
+		this.#m_repeatTimer.setSingleShot(true);
+		this.#m_repeatTimer.start(this.#m_autoRepeatDelay);
 	}
 
 	protected stopAutoRepeat(): void {
-		if (this.#m_repeatIntervalTimer !== null) {
-			clearInterval(this.#m_repeatIntervalTimer);
-			this.#m_repeatIntervalTimer = null;
-		}
-		if (this.#m_repeatTimeout !== null) {
-			clearTimeout(this.#m_repeatTimeout);
-			this.#m_repeatTimeout = null;
-		}
+		this.#m_repeatTimer.stop();
 	}
 }

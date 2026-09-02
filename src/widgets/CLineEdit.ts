@@ -7,7 +7,7 @@ import { CFontMetrics } from "../gui/CFontMetrics.js";
 import { CFocusEvent } from "../events/CFocusEvent.js";
 import { CSize } from "../geometry/CSize.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
-import { CColorDialog } from "../dialogs/CColorDialog.js";
+import { CTimer } from "../core/CTimer.js";
 
 export class CLineEdit extends CWidget {
 	readonly textChanged = new CSignal<[string]>();
@@ -17,7 +17,7 @@ export class CLineEdit extends CWidget {
     #m_selectionAnchor = 0;
 	#m_selectingWithMouse = false;
 	#m_cursorVisible = true;
-	#m_cursorTimer: ReturnType<typeof setInterval> | null = null;
+	#m_cursorTimer = new CTimer(this);
 	#m_validator: ((text: string) => boolean) | null = null;
 	#m_readOnly = false;
 
@@ -25,6 +25,13 @@ export class CLineEdit extends CWidget {
 
 	constructor(parent: CWidget | null = null) {
 		super(parent);
+
+		this.#m_cursorTimer.setInterval(500);
+
+		this.#m_cursorTimer.timeout.connect(() => {
+			this.#m_cursorVisible = !this.#m_cursorVisible;
+			this.update();
+		});
 	}
 
 	text(): string {
@@ -364,18 +371,11 @@ export class CLineEdit extends CWidget {
 	#startCursorBlink(): void {
 		this.#stopCursorBlink();
 		this.#m_cursorVisible = true;
-		this.#m_cursorTimer = setInterval(() => {
-			this.#m_cursorVisible = !this.#m_cursorVisible;
-			this.update();
-		}, 500);
+		this.#m_cursorTimer.start();
 	}
 
 	#stopCursorBlink(): void {
-		if (this.#m_cursorTimer !== null) {
-			clearInterval(this.#m_cursorTimer);
-			this.#m_cursorTimer = null;
-		}
-
+		this.#m_cursorTimer.stop();
 		this.#m_cursorVisible = false;
 	}
 
