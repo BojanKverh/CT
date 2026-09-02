@@ -4,8 +4,8 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
 	CTabWidget, CFrame, CFrameShadow, CFrameShape, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
 	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
-	CColorDialog, CSplitter, CSizeGrip, CToolBox,
-	CCalendarWidget, CDateEdit, CTimeEdit, CDateTimeEdit
+	CColorDialog, CSplitter, CSizeGrip, CToolBox, CCalendarWidget, CDateEdit, CTimeEdit, CDateTimeEdit,
+	CTextEdit
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -424,11 +424,11 @@ scrollContent.resize(1000, 700);
 scrollArea.setWidget(scrollContent);
 
 const splitter = new CSplitter(COrientation.Horizontal, parent);
-splitter.setGeometry(700, 200, 200, 200);
+splitter.setGeometry(580, 100, 400, 300);
 
-const leftW = new GreenWidget;
-leftW.setMinimumSize(50, 200);
-leftW.setMaximumSize(150, 200);
+const leftW = new CTextEdit;
+leftW.setMinimumSize(150, 300);
+leftW.setMaximumSize(350, 300);
 const rightW = new BlueWidget(splitter);
 splitter.addWidget(leftW);
 splitter.addWidget(rightW);
