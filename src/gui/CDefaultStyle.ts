@@ -24,6 +24,7 @@ import type { CToolBar } from "../widgets/CToolBar.js";
 import type { CSlider } from "../widgets/CSlider.js";
 import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
 import type { CSizeGrip } from "../widgets/CSizeGrip.js";
+import type { CToolBoxButton } from "../widgets/CToolBoxButton.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -857,5 +858,35 @@ export class CDefaultStyle extends CStyle {
 
 			painter.drawLine(right - offset, bottom, right, bottom - offset);
 		}
+	}
+
+	override drawToolBoxButton(painter: CPainter, button: CToolBoxButton): void
+	{
+		const palette = button.palette();
+		let backgroundRole = CPaletteColorRole.Window;
+		let textRole = CPaletteColorRole.Text;
+
+		if (!button.isEnabled()) {
+			backgroundRole = CPaletteColorRole.Window;
+			textRole = CPaletteColorRole.DisabledText;
+		} else if (button.isCurrent() || button.isDown()) {
+			backgroundRole = CPaletteColorRole.Highlight;
+			textRole = CPaletteColorRole.HighlightedText;
+		} else if (button.isHovered()) {
+			backgroundRole = CPaletteColorRole.Hover;
+			textRole = CPaletteColorRole.Text;
+		}
+
+		painter.setFillStyle(palette.color(backgroundRole).toCss());
+		painter.fillRect(button.rect());
+
+		painter.setStrokeStyle(palette.color(CPaletteColorRole.Mid).toCss());
+		painter.drawLine(0, button.height() - 0.5, button.width(), button.height() - 0.5);
+
+		painter.setPen(palette.color(textRole).toCss());
+		painter.setFont(button.font());
+		painter.setTextAlign("left");
+		painter.setTextBaseline("middle");
+		painter.drawText(button.text(), 8, button.height() / 2);
 	}
 }

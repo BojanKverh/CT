@@ -2,9 +2,9 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
 	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
-	CTabWidget, CFrame, CFrameShape, CFrameShadow, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
+	CTabWidget, CFrame, CFrameShadow, CFrameShape, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
 	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
-	CColorDialog, CSplitter, CSizeGrip
+	CColorDialog, CSplitter, CSizeGrip, CToolBox
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -421,7 +421,8 @@ scrollArea.setWidget(scrollContent);
 
 const splitter = new CSplitter(COrientation.Horizontal, parent);
 splitter.setGeometry(700, 200, 200, 200);
-const leftW = new GreenWidget(splitter);
+
+const leftW = new GreenWidget;
 leftW.setMinimumSize(50, 200);
 leftW.setMaximumSize(150, 200);
 const rightW = new BlueWidget(splitter);
@@ -429,6 +430,50 @@ splitter.addWidget(leftW);
 splitter.addWidget(rightW);
 splitter.setSizes([100, 94]);
 
+const toolBox = new CToolBox(parent);
+toolBox.setGeometry(700, 420, 280, 300);
+
+const generalPage = new CWidget();
+
+const nameLabel = new CLabel(generalPage);
+nameLabel.setGeometry(10, 15, 80, 28);
+nameLabel.setText("Name:");
+
+const nameEdit = new CLineEdit(generalPage);
+nameEdit.setGeometry(90, 15, 160, 28);
+nameEdit.setText("Bojan");
+
+const networkPage = new CWidget();
+
+const hostLabel = new CLabel(networkPage);
+hostLabel.setGeometry(10, 15, 80, 28);
+hostLabel.setText("Host:");
+
+const hostEdit = new CLineEdit(networkPage);
+hostEdit.setGeometry(90, 15, 160, 28);
+hostEdit.setText("localhost");
+
+const portLabel = new CLabel(networkPage);
+portLabel.setGeometry(10, 55, 80, 28);
+portLabel.setText("Port:");
+
+const portEdit = new CLineEdit(networkPage);
+portEdit.setGeometry(90, 55, 160, 28);
+portEdit.setText("8080");
+
+const advancedPage = new CWidget();
+
+const checkBox = new CCheckBox(advancedPage);
+checkBox.setGeometry(10, 15, 200, 28);
+checkBox.setText("Enable advanced mode");
+
+toolBox.addItem(generalPage, "General");
+toolBox.addItem(networkPage, "Network");
+toolBox.addItem(advancedPage, "Advanced");
+
+toolBox.currentChanged.connect(index => {
+	console.log("ToolBox current:", index);
+});
 
 const menuBar = new CMenuBar();
 mainWindow.setMenuBar(menuBar);

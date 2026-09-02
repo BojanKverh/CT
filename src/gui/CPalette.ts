@@ -23,7 +23,7 @@ export class CPalette {
 
 	constructor(pal: CPalette | null = null) {
 		if (pal === null) {
-			this.#m_colors.set(CPaletteColorRole.Window, new CColor(240, 240, 240));
+			this.#m_colors.set(CPaletteColorRole.Window, new CColor(224, 224, 224));
 			this.#m_colors.set(CPaletteColorRole.WindowText, new CColor(0, 0, 0));
 			this.#m_colors.set(CPaletteColorRole.Base, new CColor(255, 255, 255));
 			this.#m_colors.set(CPaletteColorRole.Text, new CColor(0, 0, 0));

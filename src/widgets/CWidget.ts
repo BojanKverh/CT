@@ -248,7 +248,7 @@ export class CWidget extends CObject {
 		painter.save();
 
 		try {
-			painter.translate(this.x(), this.y());
+            painter.translate(this.x(), this.y());
 			painter.clipRect(this.rect());
 
 			this.paintEvent(painter);
