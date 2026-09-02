@@ -177,7 +177,7 @@ export class CDefaultStyle extends CStyle {
 	    if (!lineEdit.hasSelection()) {
 		    const textRole = lineEdit.isEnabled()? CPaletteColorRole.Text
 			    : CPaletteColorRole.DisabledText;
-    		painter.setFillStyle(palette.color(textRole).toCss());
+    		painter.setPen(palette.color(textRole).toCss());
     		painter.drawText(lineEdit.text(), textX, textY);
 	    } else {
 		    const start = lineEdit.selectionStart();
@@ -187,13 +187,13 @@ export class CDefaultStyle extends CStyle {
 		    const after = lineEdit.text().slice(end);
 		    const selectionStartX = textX + metrics.textWidth(before);
 		    const selectionEndX = selectionStartX + metrics.textWidth(selected);
-		    painter.setFillStyle(palette.color(CPaletteColorRole.Highlight).toCss());
+		    painter.setBrush(palette.color(CPaletteColorRole.Highlight).toCss());
 		    painter.fillRect(new CRect(selectionStartX, 2, selectionEndX - selectionStartX, lineEdit.height() - 4));
-    		painter.setFillStyle(palette.color(CPaletteColorRole.Text).toCss());
+    		painter.setPen(palette.color(CPaletteColorRole.Text).toCss());
 	    	painter.drawText(before, textX, textY);
-		    painter.setFillStyle(palette.color(CPaletteColorRole.HighlightedText).toCss());
+		    painter.setPen(palette.color(CPaletteColorRole.HighlightedText).toCss());
 		    painter.drawText(selected, selectionStartX, textY);
-		    painter.setFillStyle(palette.color(CPaletteColorRole.Text).toCss());
+		    painter.setPen(palette.color(CPaletteColorRole.Text).toCss());
 		    painter.drawText(after, selectionEndX, textY);
 	    }
 

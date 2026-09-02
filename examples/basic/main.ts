@@ -5,7 +5,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CTabWidget, CFrame, CFrameShadow, CFrameShape, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
 	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
 	CColorDialog, CSplitter, CSizeGrip, CToolBox,
-	CCalendarWidget, CDateEdit
+	CCalendarWidget, CDateEdit, CTimeEdit
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -452,6 +452,12 @@ dateLabel.setGeometry(10, 45, 80, 30);
 dateLabel.setText("Birthday:");
 const dateEdit = new CDateEdit(generalPage);
 dateEdit.setGeometry(90, 45, 120, 30);
+const timeLabel = new CLabel(generalPage);
+timeLabel.setGeometry(10, 75, 80, 30);
+timeLabel.setText("Time:");
+const timeEdit = new CTimeEdit(generalPage);
+timeEdit.setDisplayFormat("hh:mm ap");
+timeEdit.setGeometry(90, 75, 120, 30);
 
 const networkPage = new CWidget();
 
