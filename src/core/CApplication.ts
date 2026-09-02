@@ -708,6 +708,9 @@ export class CApplication extends CObject {
 			case CCursorShape.Cross:
 				shape = "crosshair";
 				break;
+			case CCursorShape.SizeFDiag:
+				shape = "nwse-resize";
+				break;
 			case CCursorShape.Disabled:
 				shape = "not-allowed";
 				break;

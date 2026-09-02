@@ -15,6 +15,7 @@ import type { CComboBox } from "../widgets/CComboBox.js";
 import type { CToolButton } from "../widgets/CToolButton.js";
 import type { CToolBar } from "../widgets/CToolBar.js";
 import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
+import type { CSizeGrip } from "../widgets/CSizeGrip.js";
 
 export abstract class CStyle {
 	
@@ -40,4 +41,5 @@ export abstract class CStyle {
     abstract drawComboBox(painter: CPainter, comboBox: CComboBox): void;
     abstract drawToolBar(painter: CPainter, toolBar: CToolBar): void;
     abstract drawSplitterHandle(painter: CPainter, handle: CSplitterHandle): void;
+    abstract drawSizeGrip(painter: CPainter, sizeGrip: CSizeGrip): void;
 }

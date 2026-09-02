@@ -15,7 +15,7 @@ import { COrientation } from "./COrientation.js";
 import type { CRadioButton } from "../widgets/CRadioButton.js";
 import type { CTabWidget } from "../widgets/CTabWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
-import { CFrameShadow, CFrameShape } from "../widgets/CFrame.js";
+import { CFrameShadow, CFrameShape } from "../gui/CFrameStyle.js";
 import type { CFrame } from "../widgets/CFrame.js";
 import type { CComboBox } from "../widgets/CComboBox.js";
 import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
@@ -23,6 +23,7 @@ import type { CToolButton } from "../widgets/CToolButton.js";
 import type { CToolBar } from "../widgets/CToolBar.js";
 import type { CSlider } from "../widgets/CSlider.js";
 import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
+import type { CSizeGrip } from "../widgets/CSizeGrip.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -839,6 +840,22 @@ export class CDefaultStyle extends CStyle {
 		} else {
 			const y = handle.height() / 2;
 			painter.drawLine(handle.width() / 2 - 8, y, handle.width() / 2 + 8, y);
+		}
+	}
+
+	override drawSizeGrip(painter: CPainter, sizeGrip: CSizeGrip): void
+	{
+		const rect = sizeGrip.rect();
+		const color = sizeGrip.palette().color(CPaletteColorRole.Mid);
+		painter.setPen(color.toHex());
+
+		const right = rect.width() - 3;
+		const bottom = rect.height() - 3;
+
+		for (let i = 0; i < 3; ++i) {
+			const offset = i * 4;
+
+			painter.drawLine(right - offset, bottom, right, bottom - offset);
 		}
 	}
 }

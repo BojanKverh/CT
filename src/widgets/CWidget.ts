@@ -333,6 +333,22 @@ export class CWidget extends CObject {
 	    return new CSize(this.#m_minimumSize.width(), this.#m_minimumSize.height());
     }
 
+    minimumWidth(): number {
+        return this.#m_minimumSize.width();
+    }
+
+    maximumWidth(): number {
+        return this.#m_maximumSize.width();
+    }
+
+    minimumHeight(): number {
+        return this.#m_minimumSize.height();
+    }
+
+    maximumHeight(): number {
+        return this.#m_maximumSize.height();
+    }
+
     maximumSize(): CSize {
 	    return new CSize(this.#m_maximumSize.width(), this.#m_maximumSize.height());
     }

@@ -38,6 +38,10 @@ export function createTestCanvas(width = 800, height = 600): HTMLCanvasElement {
         width,
         height,
 
+        style: {
+			cursor: ""
+		},
+
         getContext: (type: string) => {
             if (type === "2d")
                 return context;

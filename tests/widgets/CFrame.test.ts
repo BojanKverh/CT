@@ -1,11 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { CApplication } from "../../src/core/CApplication.js";
-import {
-	CFrame,
-	CFrameShadow,
-	CFrameShape
-} from "../../src/widgets/CFrame.js";
+import { CFrame } from "../../src/widgets/CFrame.js";
+import { CFrameShadow, CFrameShape } from "../../src/gui/CFrameStyle.js";
 import { CWidget } from "../../src/widgets/CWidget.js";
 import { CVBoxLayout } from "../../src/layouts/CVBoxLayout.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";

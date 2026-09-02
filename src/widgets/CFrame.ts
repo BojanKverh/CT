@@ -1,20 +1,7 @@
 import type { CPainter } from "../painting/CPainter.js";
 import { CRect } from "../geometry/CRect.js";
 import { CWidget } from "./CWidget.js";
-
-export enum CFrameShape {
-	NoFrame,
-	Box,
-	Panel,
-	HLine,
-	VLine
-}
-
-export enum CFrameShadow {
-	Plain,
-	Raised,
-	Sunken
-}
+import { CFrameShape, CFrameShadow } from "../gui/CFrameStyle.js"
 
 export class CFrame extends CWidget {
 	#m_frameShape = CFrameShape.NoFrame;

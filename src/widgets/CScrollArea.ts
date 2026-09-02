@@ -1,5 +1,6 @@
 import { CWidget } from "./CWidget.js";
-import { CFrame, CFrameShadow, CFrameShape } from "./CFrame.js";
+import { CFrame } from "./CFrame.js";
+import { CFrameShadow, CFrameShape } from "../gui/CFrameStyle.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CScrollBar } from "./CScrollBar.js";
 import { CWheelEvent } from "../events/CWheelEvent.js";

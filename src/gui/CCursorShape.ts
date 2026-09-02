@@ -5,5 +5,6 @@ export enum CCursorShape {
 	PointingHand,
 	IBeam,
 	Cross,
+	SizeFDiag,
     Disabled
 }

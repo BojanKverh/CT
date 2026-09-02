@@ -4,7 +4,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
 	CTabWidget, CFrame, CFrameShape, CFrameShadow, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
 	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
-	CColorDialog, CSplitter
+	CColorDialog, CSplitter, CSizeGrip
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -272,6 +272,8 @@ but.clicked.connect(async () => {
 		const tb = new CToolButton(dlg)
 		tb.setGeometry(350, 260, 60, 60);
 		tb.setText("TB");
+		const grip = new CSizeGrip(dlg);
+		grip.setGeometry(dlg.width() - 16, dlg.height() - 16, 16, 16);
 		dlg.exec();
 	});
 
