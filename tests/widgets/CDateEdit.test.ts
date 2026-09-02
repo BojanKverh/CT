@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
 import { CDateEdit } from "../../src/widgets/CDateEdit.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
@@ -477,5 +477,389 @@ describe("CDateEdit", () => {
 		expect(edit.calendarWidget()).toBe(
 			edit.calendarWidget()
 		);
+	});
+
+	test("line edit has no current section initially", () =>
+	{
+		const edit = new CDateEdit();
+
+		expect(edit.lineEdit().currentSection()).toBe(-1);
+		expect(edit.lineEdit().hasSelection()).toBe(false);
+	});
+
+	test("default format creates day month and year sections", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 8, 2));
+
+		expect(edit.lineEdit().sections()).toEqual([
+			{ start: 0, length: 2 },
+			{ start: 3, length: 2 },
+			{ start: 6, length: 4 }
+		]);
+	});
+
+	test("yyyy-MM-dd format creates sections in display order", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 8, 2));
+		edit.setDisplayFormat("yyyy-MM-dd");
+
+		expect(edit.lineEdit().sections()).toEqual([
+			{ start: 0, length: 4 },
+			{ start: 5, length: 2 },
+			{ start: 8, length: 2 }
+		]);
+	});
+
+	test("variable length format creates correct section positions", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 8, 2));
+		edit.setDisplayFormat("d.M.yyyy");
+
+		expect(edit.lineEdit().text()).toBe("2.9.2026");
+
+		expect(edit.lineEdit().sections()).toEqual([
+			{ start: 0, length: 1 },
+			{ start: 2, length: 1 },
+			{ start: 4, length: 4 }
+		]);
+	});
+
+	test("stepUp increments selected day", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 4, 14));
+		edit.lineEdit().setCurrentSection(0);
+
+		edit.stepUp();
+
+		expect(edit.date().getFullYear()).toBe(2026);
+		expect(edit.date().getMonth()).toBe(4);
+		expect(edit.date().getDate()).toBe(15);
+	});
+
+	test("stepDown decrements selected day", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 4, 14));
+		edit.lineEdit().setCurrentSection(0);
+
+		edit.stepDown();
+
+		expect(edit.date().getFullYear()).toBe(2026);
+		expect(edit.date().getMonth()).toBe(4);
+		expect(edit.date().getDate()).toBe(13);
+	});
+
+	test("day wraps from last day to first day of same month", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 3, 30));
+		edit.lineEdit().setCurrentSection(0);
+
+		edit.stepUp();
+
+		expect(edit.date().getFullYear()).toBe(2026);
+		expect(edit.date().getMonth()).toBe(3);
+		expect(edit.date().getDate()).toBe(1);
+	});
+
+	test("day wraps from first day to last day of same month", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 3, 1));
+		edit.lineEdit().setCurrentSection(0);
+
+		edit.stepDown();
+
+		expect(edit.date().getFullYear()).toBe(2026);
+		expect(edit.date().getMonth()).toBe(3);
+		expect(edit.date().getDate()).toBe(30);
+	});
+
+	test("February day wrapping respects leap year", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2024, 1, 29));
+		edit.lineEdit().setCurrentSection(0);
+
+		edit.stepUp();
+
+		expect(edit.date().getFullYear()).toBe(2024);
+		expect(edit.date().getMonth()).toBe(1);
+		expect(edit.date().getDate()).toBe(1);
+	});
+
+	test("month increment preserves ordinary day", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 0, 15));
+		edit.lineEdit().setCurrentSection(1);
+
+		edit.stepUp();
+
+		expect(edit.date().getFullYear()).toBe(2026);
+		expect(edit.date().getMonth()).toBe(1);
+		expect(edit.date().getDate()).toBe(15);
+	});
+
+	test("month decrement preserves ordinary day", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 2, 15));
+		edit.lineEdit().setCurrentSection(1);
+
+		edit.stepDown();
+
+		expect(edit.date().getFullYear()).toBe(2026);
+		expect(edit.date().getMonth()).toBe(1);
+		expect(edit.date().getDate()).toBe(15);
+	});
+
+	test("month increment keeps last-day semantics", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 0, 31));
+		edit.lineEdit().setCurrentSection(1);
+
+		edit.stepUp();
+
+		expect(edit.date().getFullYear()).toBe(2026);
+		expect(edit.date().getMonth()).toBe(1);
+		expect(edit.date().getDate()).toBe(28);
+
+		edit.stepUp();
+
+		expect(edit.date().getFullYear()).toBe(2026);
+		expect(edit.date().getMonth()).toBe(2);
+		expect(edit.date().getDate()).toBe(31);
+	});
+
+	test("month decrement keeps last-day semantics", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 2, 31));
+		edit.lineEdit().setCurrentSection(1);
+
+		edit.stepDown();
+
+		expect(edit.date().getFullYear()).toBe(2026);
+		expect(edit.date().getMonth()).toBe(1);
+		expect(edit.date().getDate()).toBe(28);
+
+		edit.stepDown();
+
+		expect(edit.date().getFullYear()).toBe(2026);
+		expect(edit.date().getMonth()).toBe(0);
+		expect(edit.date().getDate()).toBe(31);
+	});
+
+	test("month stepping clamps non-last day when necessary", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 0, 30));
+		edit.lineEdit().setCurrentSection(1);
+
+		edit.stepUp();
+
+		expect(edit.date().getFullYear()).toBe(2026);
+		expect(edit.date().getMonth()).toBe(1);
+		expect(edit.date().getDate()).toBe(28);
+	});
+
+	test("month stepping respects leap year", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2024, 0, 31));
+		edit.lineEdit().setCurrentSection(1);
+
+		edit.stepUp();
+
+		expect(edit.date().getFullYear()).toBe(2024);
+		expect(edit.date().getMonth()).toBe(1);
+		expect(edit.date().getDate()).toBe(29);
+
+		edit.stepUp();
+
+		expect(edit.date().getFullYear()).toBe(2024);
+		expect(edit.date().getMonth()).toBe(2);
+		expect(edit.date().getDate()).toBe(31);
+	});
+
+	test("month wraps December to January without changing year", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 11, 31));
+		edit.lineEdit().setCurrentSection(1);
+
+		edit.stepUp();
+
+		expect(edit.date().getFullYear()).toBe(2026);
+		expect(edit.date().getMonth()).toBe(0);
+		expect(edit.date().getDate()).toBe(31);
+	});
+
+	test("month wraps January to December without changing year", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 0, 15));
+		edit.lineEdit().setCurrentSection(1);
+
+		edit.stepDown();
+
+		expect(edit.date().getFullYear()).toBe(2026);
+		expect(edit.date().getMonth()).toBe(11);
+		expect(edit.date().getDate()).toBe(15);
+	});
+
+	test("year increment preserves ordinary date", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 4, 14));
+		edit.lineEdit().setCurrentSection(2);
+
+		edit.stepUp();
+
+		expect(edit.date().getFullYear()).toBe(2027);
+		expect(edit.date().getMonth()).toBe(4);
+		expect(edit.date().getDate()).toBe(14);
+	});
+
+	test("year decrement preserves ordinary date", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 4, 14));
+		edit.lineEdit().setCurrentSection(2);
+
+		edit.stepDown();
+
+		expect(edit.date().getFullYear()).toBe(2025);
+		expect(edit.date().getMonth()).toBe(4);
+		expect(edit.date().getDate()).toBe(14);
+	});
+
+	test("year stepping clamps leap day", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2024, 1, 29));
+		edit.lineEdit().setCurrentSection(2);
+
+		edit.stepUp();
+
+		expect(edit.date().getFullYear()).toBe(2025);
+		expect(edit.date().getMonth()).toBe(1);
+		expect(edit.date().getDate()).toBe(28);
+	});
+
+	test("stepping keeps current section selected", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 0, 31));
+		edit.lineEdit().setCurrentSection(1);
+
+		edit.stepUp();
+
+		expect(edit.lineEdit().currentSection()).toBe(1);
+		expect(edit.lineEdit().hasSelection()).toBe(true);
+	});
+
+	test("stepUp does nothing without selected section", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setDate(new Date(2026, 4, 14));
+
+		edit.stepUp();
+
+		expect(edit.date().getFullYear()).toBe(2026);
+		expect(edit.date().getMonth()).toBe(4);
+		expect(edit.date().getDate()).toBe(14);
+	});
+
+	test("step outside minimum date is rejected", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setMinimumDate(new Date(2026, 4, 14));
+		edit.setDate(new Date(2026, 4, 14));
+		edit.lineEdit().setCurrentSection(0);
+
+		edit.stepDown();
+
+		expect(edit.date().getFullYear()).toBe(2026);
+		expect(edit.date().getMonth()).toBe(4);
+		expect(edit.date().getDate()).toBe(14);
+	});
+
+	test("step outside maximum date is rejected", () =>
+	{
+		const edit = new CDateEdit();
+
+		edit.setMaximumDate(new Date(2026, 4, 14));
+		edit.setDate(new Date(2026, 4, 14));
+		edit.lineEdit().setCurrentSection(0);
+
+		edit.stepUp();
+
+		expect(edit.date().getFullYear()).toBe(2026);
+		expect(edit.date().getMonth()).toBe(4);
+		expect(edit.date().getDate()).toBe(14);
+	});
+
+	test("stepping emits dateChanged once", () =>
+	{
+		const edit = new CDateEdit();
+		const changed = vi.fn();
+
+		edit.setDate(new Date(2026, 4, 14));
+		edit.lineEdit().setCurrentSection(0);
+		edit.dateChanged.connect(changed);
+
+		edit.stepUp();
+
+		expect(changed).toHaveBeenCalledTimes(1);
+
+		const date = changed.mock.calls[0]?.[0];
+
+		expect(date.getFullYear()).toBe(2026);
+		expect(date.getMonth()).toBe(4);
+		expect(date.getDate()).toBe(15);
+	});
+
+	test("rejected step does not emit dateChanged", () =>
+	{
+		const edit = new CDateEdit();
+		const changed = vi.fn();
+
+		edit.setMaximumDate(new Date(2026, 4, 14));
+		edit.setDate(new Date(2026, 4, 14));
+		edit.lineEdit().setCurrentSection(0);
+		edit.dateChanged.connect(changed);
+
+		edit.stepUp();
+
+		expect(changed).not.toHaveBeenCalled();
 	});
 });

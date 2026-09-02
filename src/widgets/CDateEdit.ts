@@ -1,10 +1,21 @@
 import { CSignal } from "../core/CSignal.js";
 import { CSize } from "../geometry/CSize.js";
 import { CCalendarWidget } from "./CCalendarWidget.js";
-import { CLineEdit } from "./CLineEdit.js";
+import type { CLineEditSection } from "./CSectionLineEdit.js";
+import { CSectionLineEdit } from "./CSectionLineEdit.js";
 import { CPopupWidget } from "./CPopupWidget.js";
 import { CToolButton } from "./CToolButton.js";
 import { CWidget } from "./CWidget.js";
+
+
+type CDateSection = "day" | "month" | "year";
+
+interface CDateSectionInfo
+{
+	type: CDateSection;
+	start: number;
+	length: number;
+}
 
 
 export class CDateEdit extends CWidget
@@ -20,10 +31,12 @@ export class CDateEdit extends CWidget
 	#m_displayFormat = "dd.MM.yyyy";
 	#m_calendarPopup = true;
 
-	#m_lineEdit: CLineEdit;
+	#m_lineEdit: CSectionLineEdit;
 	#m_button: CToolButton;
 	#m_popup: CPopupWidget;
 	#m_calendar: CCalendarWidget;
+
+	#m_sections: CDateSectionInfo[] = [];
 
 	constructor(parent: CWidget | null = null)
 	{
@@ -35,8 +48,14 @@ export class CDateEdit extends CWidget
 		this.#m_minimumDate = new Date(1752, 8, 14);
 		this.#m_maximumDate = new Date(9999, 11, 31);
 
-		this.#m_lineEdit = new CLineEdit(this);
-		this.#m_lineEdit.setReadOnly(true);
+		this.#m_lineEdit = new CSectionLineEdit(this);
+
+		this.#m_lineEdit.stepRequested.connect(
+			(section, direction) =>
+			{
+				this.#stepSection(section, direction);
+			}
+		);
 
 		this.#m_button = new CToolButton(this);
 		this.#m_button.setText("▼");
@@ -192,7 +211,7 @@ export class CDateEdit extends CWidget
 		return this.#m_calendar;
 	}
 
-	lineEdit(): CLineEdit
+	lineEdit(): CSectionLineEdit
 	{
 		return this.#m_lineEdit;
 	}
@@ -211,6 +230,26 @@ export class CDateEdit extends CWidget
 	hidePopup(): void
 	{
 		this.#m_popup.close();
+	}
+
+	stepUp(): void
+	{
+		this.#stepSection(
+			this.#m_lineEdit.currentSection(),
+			1
+		);
+
+		this.#m_lineEdit.setFocus();
+	}
+
+	stepDown(): void
+	{
+		this.#stepSection(
+			this.#m_lineEdit.currentSection(),
+			-1
+		);
+
+		this.#m_lineEdit.setFocus();
 	}
 
 	override setGeometry(
@@ -289,46 +328,231 @@ export class CDateEdit extends CWidget
 
 	#updateText(): void
 	{
-		this.#m_lineEdit.setText(
-			this.#formatDate(this.#m_date)
-		);
+		const result = this.#formatDate(this.#m_date);
+
+		this.#m_sections = result.sections;
+
+		this.#m_lineEdit.setText(result.text);
+
+		const sections: CLineEditSection[] =
+			this.#m_sections.map(section => ({
+				start: section.start,
+				length: section.length
+			}));
+
+		this.#m_lineEdit.setSections(sections);
 	}
 
-	#formatDate(date: Date): string
+	#formatDate(date: Date): {
+		text: string;
+		sections: CDateSectionInfo[];
+	}
 	{
 		const day = date.getDate();
 		const month = date.getMonth() + 1;
 		const year = date.getFullYear();
 
-		return this.#m_displayFormat.replace(
-			/yyyy|yy|MM|M|dd|d/g,
-			token =>
-			{
-				switch (token) {
-					case "yyyy":
-						return year.toString().padStart(4, "0");
+		let text = "";
+		const sections: CDateSectionInfo[] = [];
 
-					case "yy":
-						return (year % 100)
-							.toString()
-							.padStart(2, "0");
+		const tokens = this.#m_displayFormat.match(
+			/yyyy|yy|MM|M|dd|d|./g
+		) ?? [];
 
-					case "MM":
-						return month.toString().padStart(2, "0");
+		for (const token of tokens) {
+			const start = text.length;
+			let value: string;
+			let type: CDateSection | null = null;
 
-					case "M":
-						return month.toString();
+			switch (token) {
+				case "yyyy":
+					value = year.toString().padStart(4, "0");
+					type = "year";
+					break;
 
-					case "dd":
-						return day.toString().padStart(2, "0");
+				case "yy":
+					value = (year % 100)
+						.toString()
+						.padStart(2, "0");
+					type = "year";
+					break;
 
-					case "d":
-						return day.toString();
-				}
+				case "MM":
+					value = month.toString().padStart(2, "0");
+					type = "month";
+					break;
 
-				return token;
+				case "M":
+					value = month.toString();
+					type = "month";
+					break;
+
+				case "dd":
+					value = day.toString().padStart(2, "0");
+					type = "day";
+					break;
+
+				case "d":
+					value = day.toString();
+					type = "day";
+					break;
+
+				default:
+					value = token;
+					break;
 			}
+
+			text += value;
+
+			if (type !== null) {
+				sections.push({
+					type,
+					start,
+					length: value.length
+				});
+			}
+		}
+
+		return {
+			text,
+			sections
+		};
+	}
+
+	#stepSection(index: number, direction: number): void
+	{
+		if (index < 0 || index >= this.#m_sections.length)
+			return;
+
+		const section = this.#m_sections[index];
+
+		if (section === undefined)
+			return;
+
+		const year = this.#m_date.getFullYear();
+		const month = this.#m_date.getMonth();
+		const day = this.#m_date.getDate();
+
+		let date: Date;
+
+		switch (section.type) {
+			case "day":
+				date = this.#stepDay(
+					year,
+					month,
+					day,
+					direction
+				);
+				break;
+
+			case "month":
+				date = this.#stepMonth(
+					year,
+					month,
+					day,
+					direction
+				);
+				break;
+
+			case "year":
+				date = this.#stepYear(
+					year,
+					month,
+					day,
+					direction
+				);
+				break;
+		}
+
+		if (
+			date < this.#m_minimumDate ||
+			date > this.#m_maximumDate
+		)
+			return;
+
+		this.setDate(date);
+		this.#m_lineEdit.setCurrentSection(index);
+	}
+
+	#stepDay(
+		year: number,
+		month: number,
+		day: number,
+		direction: number
+	): Date
+	{
+		const days = this.#daysInMonth(year, month);
+
+		let targetDay = day + direction;
+
+		if (targetDay > days)
+			targetDay = 1;
+		else if (targetDay < 1)
+			targetDay = days;
+
+		return new Date(
+			year,
+			month,
+			targetDay
 		);
+	}
+
+	#stepMonth(
+		year: number,
+		month: number,
+		day: number,
+		direction: number
+	): Date
+	{
+		const wasLastDay =
+			day === this.#daysInMonth(year, month);
+
+		let targetMonth = month + direction;
+
+		if (targetMonth > 11)
+			targetMonth = 0;
+		else if (targetMonth < 0)
+			targetMonth = 11;
+
+		const targetLastDay =
+			this.#daysInMonth(year, targetMonth);
+
+		const targetDay = wasLastDay
+			? targetLastDay
+			: Math.min(day, targetLastDay);
+
+		return new Date(
+			year,
+			targetMonth,
+			targetDay
+		);
+	}
+
+	#stepYear(
+		year: number,
+		month: number,
+		day: number,
+		direction: number
+	): Date
+	{
+		const targetYear = year + direction;
+		const targetLastDay =
+			this.#daysInMonth(targetYear, month);
+
+		return new Date(
+			targetYear,
+			month,
+			Math.min(day, targetLastDay)
+		);
+	}
+
+	#daysInMonth(year: number, month: number): number
+	{
+		return new Date(
+			year,
+			month + 1,
+			0
+		).getDate();
 	}
 
 	#normalizedDate(date: Date): Date
