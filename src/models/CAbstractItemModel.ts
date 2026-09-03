@@ -1,6 +1,7 @@
 import { CObject } from "../core/CObject.js";
 import { CSignal } from "../core/CSignal.js";
 import { CModelIndex } from "./CModelIndex.js";
+import { COrientation } from "../gui/COrientation.js";
 
 export abstract class CAbstractItemModel extends CObject {
 	readonly dataChanged =
@@ -32,6 +33,10 @@ export abstract class CAbstractItemModel extends CObject {
 
 	parentIndex(_index: CModelIndex): CModelIndex {
 		return new CModelIndex();
+	}
+
+	headerData(section: number, _orientation: COrientation): string | number | null {
+		return section + 1;
 	}
 
 	protected createIndex(row: number, column: number,

@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { CObject } from "../../src/core/CObject.js";
 import { CAbstractItemModel } from "../../src/models/CAbstractItemModel.js";
 import { CModelIndex } from "../../src/models/CModelIndex.js";
+import { COrientation } from "../../src/gui/COrientation.js";
 
 class TestModel extends CAbstractItemModel {
 	#m_data = [
@@ -216,5 +217,54 @@ describe("CAbstractItemModel", () => {
 		const index = model.index(100, 0);
 
 		expect(index.model()).toBeNull();
+	});
+
+	test("horizontal header data defaults to section number", () => {
+		const model = new TestModel();
+
+		expect(
+			model.headerData(0, COrientation.Horizontal)
+		).toBe(1);
+
+		expect(
+			model.headerData(3, COrientation.Horizontal)
+		).toBe(4);
+	});
+
+	test("vertical header data defaults to section number", () => {
+		const model = new TestModel();
+
+		expect(
+			model.headerData(0, COrientation.Vertical)
+		).toBe(1);
+
+		expect(
+			model.headerData(5, COrientation.Vertical)
+		).toBe(6);
+	});
+
+	test("headerData can be overridden", () => {
+		class HeaderModel extends TestModel {
+			override headerData(section: number, orientation: COrientation): string | number | null {
+				if (orientation === COrientation.Horizontal)
+					return ["Name", "Country"][section] ?? null;
+
+				return section + 1;
+			}
+		}
+
+		const model = new HeaderModel();
+
+		expect(
+			model.headerData(0, COrientation.Horizontal)
+		).toBe("Name");
+
+		expect(
+			model.headerData(1, COrientation.Horizontal)
+		).toBe("Country");
+
+		expect(
+			model.headerData(2, COrientation.Vertical)
+		).toBe(3);
 	});
 });
