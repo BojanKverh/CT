@@ -29,7 +29,7 @@ export class CWidget extends CObject {
     #m_toolTip = "";
     #m_fontMetrics: CFontMetrics;
     #m_cursor: CCursorShape = CCursorShape.Arrow;
-    #m_focusPolicy = CFocusPolicy.StrongFocus;
+    #m_focusPolicy = CFocusPolicy.NoFocus;
 
 	constructor(parent: CWidget | null = null) {
         super(null);

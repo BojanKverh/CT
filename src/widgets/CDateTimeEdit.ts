@@ -5,6 +5,7 @@ import { CDateEdit } from "./CDateEdit.js";
 import { CSectionLineEdit } from "./CSectionLineEdit.js";
 import { CTimeEdit } from "./CTimeEdit.js";
 import { CWidget } from "./CWidget.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 
 export class CDateTimeEdit extends CWidget

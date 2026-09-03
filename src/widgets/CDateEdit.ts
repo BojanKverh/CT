@@ -6,6 +6,8 @@ import { CSectionLineEdit } from "./CSectionLineEdit.js";
 import { CPopupWidget } from "./CPopupWidget.js";
 import { CToolButton } from "./CToolButton.js";
 import { CWidget } from "./CWidget.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import type { CFocusEvent } from "../events/CFocusEvent.js";
 
 
 type CDateSection = "day" | "month" | "year";
@@ -91,6 +93,8 @@ export class CDateEdit extends CWidget
 
 		this.#updateText();
 		this.#updateGeometry();
+        this.#m_lineEdit.setFocusPolicy(CFocusPolicy.StrongFocus);
+        this.#m_button.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
 	date(): Date
@@ -281,7 +285,7 @@ export class CDateEdit extends CWidget
 		super.destroy();
 	}
 
-	#updateGeometry(): void
+    #updateGeometry(): void
 	{
 		const buttonWidth = this.#m_calendarPopup
 			? Math.min(CDateEdit.ButtonWidth, this.width())

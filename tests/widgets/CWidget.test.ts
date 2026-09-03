@@ -1253,12 +1253,10 @@ describe("CWidget", () => {
 		expect(field.width()).toBe(80);
 	});
 
-	test("has StrongFocus policy by default", () => {
+	test("has NoFocus policy by default", () => {
 		const widget = new CWidget();
 
-		expect(widget.focusPolicy()).toBe(
-			CFocusPolicy.StrongFocus
-		);
+		expect(widget.focusPolicy()).toBe(CFocusPolicy.NoFocus);
 	});
 
 	test("sets focus policy", () => {
@@ -1283,11 +1281,11 @@ describe("CWidget", () => {
 	test("changing focused widget to NoFocus clears focus", () => {
 		const widget = new CWidget();
 
+		widget.setFocusPolicy(CFocusPolicy.StrongFocus);
 		widget.setFocus();
 		expect(widget.hasFocus()).toBe(true);
 
 		widget.setFocusPolicy(CFocusPolicy.NoFocus);
-
 		expect(widget.hasFocus()).toBe(false);
 	});
 

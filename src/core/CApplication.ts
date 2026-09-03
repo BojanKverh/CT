@@ -1,5 +1,5 @@
 import { CObject } from "./CObject.js";
-import type { CWidget } from "../widgets/CWidget.js";
+import { CWidget } from "../widgets/CWidget.js";
 import type { CPaintDevice } from "../painting/CPaintDevice.js";
 import { CCanvasPaintDevice } from "../painting/CCanvasPaintDevice.js";
 import { CPainter } from "../painting/CPainter.js";
@@ -351,6 +351,25 @@ export class CApplication extends CObject {
 		return this.#m_toolTipWidget?.isVisible() ?? false;
 	}
 
+	focusNextWidget(forward = true): boolean {
+		const widgets = this.#focusableWidgets();
+
+		if (widgets.length === 0)
+			return false;
+
+		const current = this.#m_focusWidget;
+		let index = widgets.indexOf(current!);
+
+		if (forward)
+			index = (index + 1 + widgets.length) % widgets.length;
+		else
+			index = (index - 1 + widgets.length) % widgets.length;
+
+		widgets[index]!.setFocus();
+
+		return true;
+	}
+
 	#mouseButton(button: number): CMouseButton {
 		switch (button) {
 		case 0:
@@ -502,16 +521,24 @@ export class CApplication extends CObject {
 			keyboardEvent.preventDefault();
 			return;
 		}
-		
+
 		let target = this.#m_focusWidget;
 		if (target === null)
 			return;
+
 		const event = new CKeyEvent(type, keyboardEvent.key, keyboardEvent.ctrlKey,
 			keyboardEvent.shiftKey, keyboardEvent.altKey, keyboardEvent.metaKey);
+
 		while (target !== null) {
 			if (target.event(event))
-				break;
+				return;
+
 			target = target.parent();
+		}
+
+		if (type === CEventType.KeyPress && keyboardEvent.key === "Tab") {
+			if (this.focusNextWidget(!keyboardEvent.shiftKey))
+				keyboardEvent.preventDefault();
 		}
 	}
 
@@ -717,5 +744,28 @@ export class CApplication extends CObject {
 
 		if (shape.length > 0)
 			this.#m_paintDevice.canvas().style.cursor = shape;
+	}
+
+	#focusableWidgets(): CWidget[] {
+		const result: CWidget[] = [];
+
+		const visit = (widget: CWidget): void => {
+			if (
+				widget.isVisible()
+				&& widget.isEnabled()
+				&& widget.acceptsTabFocus()
+			)
+				result.push(widget);
+
+			for (const child of widget.children()) {
+				if (child instanceof CWidget)
+					visit(child);
+			}
+		};
+
+		for (const widget of this.#m_topLevelWidgets)
+			visit(widget);
+
+		return result;
 	}
 }

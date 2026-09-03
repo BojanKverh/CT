@@ -4,7 +4,7 @@ import type { CLineEditSection } from "./CSectionLineEdit.js";
 import { CSectionLineEdit } from "./CSectionLineEdit.js";
 import { CToolButton } from "./CToolButton.js";
 import { CWidget } from "./CWidget.js";
-
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 type CTimeSection =
 	"hour" |
@@ -82,6 +82,9 @@ export class CTimeEdit extends CWidget
 
 		this.#updateText();
 		this.#updateGeometry();
+        this.#m_lineEdit.setFocusPolicy(CFocusPolicy.StrongFocus);
+        this.#m_upButton.setFocusPolicy(CFocusPolicy.ClickFocus);
+        this.#m_downButton.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
 	time(): Date

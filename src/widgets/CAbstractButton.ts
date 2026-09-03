@@ -1,6 +1,7 @@
 import { CSignal } from "../core/CSignal.js";
 import { CWidget } from "./CWidget.js";
 import { CTimer } from "../core/CTimer.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 export abstract class CAbstractButton extends CWidget {
 	#m_text = "";
@@ -25,6 +26,8 @@ export abstract class CAbstractButton extends CWidget {
 				this.#m_repeatTimer.start(this.#m_autoRepeatInterval);
 			}
 		});
+
+		this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
 	text(): string {

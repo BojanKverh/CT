@@ -9,6 +9,7 @@ import { CListWidget } from "./CListWidget.js";
 import { CListWidgetItem } from "./CListWidgetItem.js";
 import { CPopupWidget } from "./CPopupWidget.js";
 import { CWidget } from "./CWidget.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 class CComboLineEdit extends CLineEdit {
 	#m_comboBox: CComboBox;
@@ -17,6 +18,7 @@ class CComboLineEdit extends CLineEdit {
 		super(comboBox);
 
 		this.#m_comboBox = comboBox;
+        this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
 	protected override mousePressEvent(event: CMouseEvent): void {

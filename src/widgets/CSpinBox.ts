@@ -5,6 +5,7 @@ import { CPushButton } from "./CPushButton.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CWheelEvent } from "../../src/events/CWheelEvent.js";
 import { CSize } from "../geometry/CSize.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 export class CSpinBox extends CWidget {
     #m_editor = new CLineEdit(this);
@@ -42,6 +43,9 @@ export class CSpinBox extends CWidget {
         this.#m_downButton.setText("▼");
 		this.#m_upButton.setAutoRepeat(400, 60);
 		this.#m_downButton.setAutoRepeat(400, 60);
+		this.#m_editor.setFocusPolicy(CFocusPolicy.StrongFocus);
+		this.#m_upButton.setFocusPolicy(CFocusPolicy.ClickFocus);
+		this.#m_downButton.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
 	minimum(): number {

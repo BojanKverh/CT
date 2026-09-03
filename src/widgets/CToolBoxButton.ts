@@ -3,6 +3,7 @@ import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CSize } from "../geometry/CSize.js";
 import type { CPainter } from "../painting/CPainter.js";
 import type { CWidget } from "./CWidget.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 export class CToolBoxButton extends CAbstractButton
 {
@@ -16,6 +17,7 @@ export class CToolBoxButton extends CAbstractButton
 	constructor(parent: CWidget | null = null)
 	{
 		super(parent);
+        this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
 	isHovered(): boolean

@@ -6,6 +6,7 @@ import { CPaletteColorRole } from "../gui/CPalette.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CSignal } from "../core/CSignal.js";
 import type { CMenuBar } from "./CMenuBar.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 type CMenuItem =
 	| { type: "action"; action: CAction }
@@ -25,6 +26,11 @@ export class CMenu extends CPopupWidget {
 	#m_menuBar: CMenuBar | null = null;
 
     readonly closed = new CSignal<[]>();
+
+	constructor() {
+		super();
+		this.setFocusPolicy(CFocusPolicy.ClickFocus);
+	}
 
 	addAction(action: CAction): CAction {
 		this.#m_items.push({ type: "action", action });

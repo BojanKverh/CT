@@ -5,6 +5,7 @@ import { CMouseEvent, CMouseButton } from "../events/CMouseEvent.js";
 import type { CKeyEvent } from "../events/CKeyEvent.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CPushButton } from "../widgets/CPushButton.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 export class CScrollBar extends CWidget {
 	#m_minimum = 0;
@@ -35,6 +36,9 @@ export class CScrollBar extends CWidget {
         this.#m_forwardButton.clicked.connect(() => {
             this.stepForward();
         });
+		this.#m_backwardButton.setFocusPolicy(CFocusPolicy.ClickFocus);
+		this.#m_forwardButton.setFocusPolicy(CFocusPolicy.ClickFocus);
+		this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
     orientation() : COrientation {

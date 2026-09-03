@@ -102,6 +102,7 @@ export class CTextEdit extends CScrollArea {
 		);
 
 		this.#updateContentGeometry();
+        this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
 	toPlainText(): string {

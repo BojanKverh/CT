@@ -3,6 +3,7 @@ import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CStackedWidget } from "./CStackedWidget.js";
 import { CWidget } from "./CWidget.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 interface CTab {
 	text: string;
@@ -30,6 +31,7 @@ export class CTabWidget extends CWidget {
 			this.currentChanged.emit(index);
 			this.update();
 		});
+        this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
 	addTab(widget: CWidget, text: string): number {

@@ -8,6 +8,7 @@ import { CRect } from "../geometry/CRect.js";
 import { CScrollArea } from "./CScrollArea.js";
 import { CWidget } from "./CWidget.js";
 import { CListWidgetItem } from "./CListWidgetItem.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 export enum CSelectionMode {
 	SingleSelection,
@@ -23,6 +24,7 @@ class CListContentWidget extends CWidget
 		super();
 
 		this.#m_listWidget = listWidget;
+		this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
 	protected override paintEvent(painter: CPainter): void

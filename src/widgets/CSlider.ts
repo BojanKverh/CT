@@ -3,6 +3,7 @@ import { CWidget } from "./CWidget.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CKeyEvent } from "../events/CKeyEvent";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 export class CSlider extends CWidget {
 	#m_minimum = 0;
@@ -16,6 +17,7 @@ export class CSlider extends CWidget {
 
     constructor(parent: CWidget | null = null) {
 	    super(parent);
+		this.setFocusPolicy(CFocusPolicy.StrongFocus);
     }
 
 	minimum(): number {

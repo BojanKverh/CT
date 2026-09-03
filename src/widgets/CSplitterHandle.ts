@@ -5,6 +5,7 @@ import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import type { CSplitter } from "./CSplitter.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 export class CSplitterHandle extends CWidget
 {
@@ -14,11 +15,7 @@ export class CSplitterHandle extends CWidget
 	#m_pressed = false;
 	#m_pressOffset = 0;
 
-	constructor(
-		orientation: COrientation,
-		splitter: CSplitter,
-		index: number
-	) {
+	constructor(orientation: COrientation, splitter: CSplitter, index: number) {
 		super(splitter);
 
 		this.#m_orientation = orientation;
@@ -27,6 +24,7 @@ export class CSplitterHandle extends CWidget
 
         this.setCursor(orientation === COrientation.Horizontal? CCursorShape.SplitH
 			: CCursorShape.SplitV);
+		this.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
 	orientation(): COrientation

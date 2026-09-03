@@ -815,6 +815,10 @@ describe("CApplication", () => {
 		const app = new CApplication(canvas);
 
 		class FocusableWidget extends CWidget {
+			constructor() {
+				super();
+				this.setFocusPolicy(CFocusPolicy.StrongFocus);
+			}
 			protected override mousePressEvent(
 				event: CMouseEvent
 			): void {
@@ -1424,5 +1428,249 @@ describe("CApplication", () => {
 		} as PointerEvent);
 
 		expect(child.hasFocus()).toBe(false);
+	});
+
+	test("Tab moves focus to next widget", () => {
+		const app = new CApplication(createTestCanvas());
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+
+		widget1.setFocusPolicy(CFocusPolicy.StrongFocus);
+		widget2.setFocusPolicy(CFocusPolicy.StrongFocus);
+		widget1.setFocus();
+
+		window.dispatchEvent({
+			type: "keydown",
+			key: "Tab",
+			ctrlKey: false,
+			shiftKey: false,
+			altKey: false,
+			metaKey: false,
+			preventDefault: vi.fn()
+		} as unknown as KeyboardEvent);
+
+		expect(app.focusWidget()).toBe(widget2);
+	});
+
+	test("Shift+Tab moves focus to previous widget", () => {
+		const app = new CApplication(createTestCanvas());
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+
+		widget1.setFocusPolicy(CFocusPolicy.StrongFocus);
+		widget2.setFocusPolicy(CFocusPolicy.StrongFocus);
+		widget2.setFocus();
+
+		window.dispatchEvent({
+			type: "keydown",
+			key: "Tab",
+			ctrlKey: false,
+			shiftKey: true,
+			altKey: false,
+			metaKey: false,
+			preventDefault: vi.fn()
+		} as unknown as KeyboardEvent);
+
+		expect(app.focusWidget()).toBe(widget1);
+	});
+
+	test("Tab wraps focus from last widget to first widget", () => {
+		const app = new CApplication(createTestCanvas());
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+
+		widget1.setFocusPolicy(CFocusPolicy.StrongFocus);
+		widget2.setFocusPolicy(CFocusPolicy.StrongFocus);
+		widget2.setFocus();
+
+		window.dispatchEvent({
+			type: "keydown",
+			key: "Tab",
+			ctrlKey: false,
+			shiftKey: false,
+			altKey: false,
+			metaKey: false,
+			preventDefault: vi.fn()
+		} as unknown as KeyboardEvent);
+
+		expect(app.focusWidget()).toBe(widget1);
+	});
+
+	test("Shift+Tab wraps focus from first widget to last widget", () => {
+		const app = new CApplication(createTestCanvas());
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+
+		widget1.setFocusPolicy(CFocusPolicy.StrongFocus);
+		widget2.setFocusPolicy(CFocusPolicy.StrongFocus);
+		widget1.setFocus();
+
+		window.dispatchEvent({
+			type: "keydown",
+			key: "Tab",
+			ctrlKey: false,
+			shiftKey: true,
+			altKey: false,
+			metaKey: false,
+			preventDefault: vi.fn()
+		} as unknown as KeyboardEvent);
+
+		expect(app.focusWidget()).toBe(widget2);
+	});
+
+	test("Tab skips widgets without TabFocus", () => {
+		const app = new CApplication(createTestCanvas());
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+		const widget3 = new CWidget();
+		const widget4 = new CWidget();
+
+		widget1.setFocusPolicy(CFocusPolicy.StrongFocus);
+		widget2.setFocusPolicy(CFocusPolicy.ClickFocus);
+		widget3.setFocusPolicy(CFocusPolicy.NoFocus);
+		widget4.setFocusPolicy(CFocusPolicy.StrongFocus);
+		
+		widget1.setFocus();
+
+		window.dispatchEvent({
+			type: "keydown",
+			key: "Tab",
+			ctrlKey: false,
+			shiftKey: false,
+			altKey: false,
+			metaKey: false,
+			preventDefault: vi.fn()
+		} as unknown as KeyboardEvent);
+
+		expect(app.focusWidget()).toBe(widget4);
+	});
+
+	test("Tab skips hidden and disabled widgets", () => {
+		const app = new CApplication(createTestCanvas());
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+		const widget3 = new CWidget();
+		const widget4 = new CWidget();
+
+		widget1.setFocusPolicy(CFocusPolicy.StrongFocus);
+		widget2.setFocusPolicy(CFocusPolicy.StrongFocus);
+		widget3.setFocusPolicy(CFocusPolicy.StrongFocus);
+		widget4.setFocusPolicy(CFocusPolicy.StrongFocus);
+		
+		widget2.hide();
+		widget3.setEnabled(false);
+		widget1.setFocus();
+
+		window.dispatchEvent({
+			type: "keydown",
+			key: "Tab",
+			ctrlKey: false,
+			shiftKey: false,
+			altKey: false,
+			metaKey: false,
+			preventDefault: vi.fn()
+		} as unknown as KeyboardEvent);
+
+		expect(app.focusWidget()).toBe(widget4);
+	});
+
+	test("accepted Tab key does not move focus", () => {
+		const app = new CApplication(createTestCanvas());
+		const preventDefault = vi.fn();
+
+		class TabWidget extends CWidget {
+			constructor() {
+				super();
+				this.setFocusPolicy(CFocusPolicy.StrongFocus);
+			}
+			protected override keyPressEvent(
+				event: CKeyEvent
+			): void {
+				if (event.key() === "Tab")
+					event.accept();
+				else
+					event.ignore();
+			}
+		}
+
+		const widget1 = new TabWidget();
+		new CWidget();
+
+		widget1.setFocus();
+
+		window.dispatchEvent({
+			type: "keydown",
+			key: "Tab",
+			ctrlKey: false,
+			shiftKey: false,
+			altKey: false,
+			metaKey: false,
+			preventDefault
+		} as unknown as KeyboardEvent);
+
+		expect(app.focusWidget()).toBe(widget1);
+		expect(preventDefault).not.toHaveBeenCalled();
+	});
+
+	test("Tab focus follows widget tree order", () => {
+		const app = new CApplication(createTestCanvas());
+		const parent = new CWidget();
+		const child1 = new CWidget(parent);
+		const child2 = new CWidget(parent);
+		const other = new CWidget();
+
+		parent.setFocusPolicy(CFocusPolicy.NoFocus);
+		child1.setFocusPolicy(CFocusPolicy.StrongFocus);
+		child2.setFocusPolicy(CFocusPolicy.StrongFocus);
+		other.setFocusPolicy(CFocusPolicy.StrongFocus);
+		child1.setFocus();
+
+		window.dispatchEvent({
+			type: "keydown",
+			key: "Tab",
+			ctrlKey: false,
+			shiftKey: false,
+			altKey: false,
+			metaKey: false,
+			preventDefault: vi.fn()
+		} as unknown as KeyboardEvent);
+
+		expect(app.focusWidget()).toBe(child2);
+
+		window.dispatchEvent({
+			type: "keydown",
+			key: "Tab",
+			ctrlKey: false,
+			shiftKey: false,
+			altKey: false,
+			metaKey: false,
+			preventDefault: vi.fn()
+		} as unknown as KeyboardEvent);
+
+		expect(app.focusWidget()).toBe(other);
+	});
+
+	test("Tab prevents default browser focus navigation", () => {
+		const app = new CApplication(createTestCanvas());
+		const preventDefault = vi.fn();
+		const widget1 = new CWidget();
+		const widget2 = new CWidget();
+
+		widget1.setFocusPolicy(CFocusPolicy.StrongFocus);
+		widget2.setFocusPolicy(CFocusPolicy.StrongFocus);
+		widget1.setFocus();
+
+		window.dispatchEvent({
+			type: "keydown",
+			key: "Tab",
+			ctrlKey: false,
+			shiftKey: false,
+			altKey: false,
+			metaKey: false,
+			preventDefault
+		} as unknown as KeyboardEvent);
+
+		expect(app.focusWidget()).toBe(widget2);
+		expect(preventDefault).toHaveBeenCalledOnce();
 	});
 });

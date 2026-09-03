@@ -4,6 +4,7 @@ import { CEventType } from "../events/CEvent.js";
 import { CSize } from "../geometry/CSize.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
 import type { CPainter } from "../painting/CPainter.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 export class CSizeGrip extends CWidget
 {
@@ -20,6 +21,7 @@ export class CSizeGrip extends CWidget
 		this.setCursor(CCursorShape.SizeFDiag);
         const sz = this.sizeHint();
         this.setFixedSize(sz.width(), sz.height());
+        this.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
 	override sizeHint(): CSize
