@@ -70,3 +70,5 @@ export { CKeySequenceEdit } from "./widgets/CKeySequenceEdit.js";
 export { CListView } from "./widgets/CListView.js";
 export { CModelIndex } from "./models/CModelIndex.js";
 export { CAbstractListModel } from "./models/CAbstractListModel.js";
+export { CAbstractTableModel } from "./models/CAbstractTableModel.js";
+export { CTableView } from "./widgets/CTableView.js";

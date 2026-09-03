@@ -105,6 +105,7 @@ export class CHeaderView extends CWidget {
 
 		painter.setFont(this.font());
 		painter.setTextBaseline("middle");
+        painter.setTextAlign("left");
 
 		for (let section = 0; section < count; section++) {
 			const sectionSize = this.sectionSize(section);

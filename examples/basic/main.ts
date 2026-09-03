@@ -5,7 +5,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CTabWidget, CFrame, CFrameShadow, CFrameShape, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
 	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
 	CColorDialog, CSplitter, CSizeGrip, CToolBox, CCalendarWidget, CDateEdit, CTimeEdit, CDateTimeEdit,
-	CTextEdit, CKeySequenceEdit, CListView, CModelIndex, CAbstractListModel
+	CTextEdit, CKeySequenceEdit, CListView, CModelIndex, CAbstractListModel, CTableView, CAbstractTableModel
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -124,6 +124,64 @@ class CStringListModel extends CAbstractListModel {
 		return this.#m_items[index.row()] ?? null;
 	}
 }
+
+class DemoTableModel extends CAbstractTableModel {
+	#m_rows: string[][] = [
+		["Alice", "Slovenia", "30", "Ljubljana", "Developer"],
+		["Bob", "Austria", "42", "Vienna", "Designer"],
+		["Carol", "Italy", "35", "Milan", "Manager"],
+		["David", "Germany", "51", "Munich", "Engineer"],
+		["Emma", "France", "28", "Paris", "Developer"],
+		["Frank", "Croatia", "44", "Zagreb", "Architect"],
+		["Grace", "Hungary", "37", "Budapest", "Analyst"],
+		["Henry", "Czechia", "48", "Prague", "Manager"],
+		["Isabella", "Spain", "32", "Madrid", "Designer"],
+		["Jack", "Portugal", "39", "Lisbon", "Developer"],
+		["Klara", "Slovenia", "27", "Maribor", "Engineer"],
+		["Lukas", "Austria", "46", "Graz", "Manager"],
+		["Maria", "Italy", "41", "Rome", "Architect"],
+		["Nina", "Germany", "34", "Berlin", "Developer"],
+		["Oliver", "France", "53", "Lyon", "Analyst"],
+		["Peter", "Croatia", "38", "Split", "Engineer"],
+		["Sara", "Hungary", "29", "Szeged", "Designer"],
+		["Thomas", "Czechia", "45", "Brno", "Manager"],
+		["Eva", "Spain", "36", "Barcelona", "Developer"],
+		["William", "Portugal", "50", "Porto", "Architect"]
+	];
+
+	override rowCount(_parent = new CModelIndex()): number {
+		return this.#m_rows.length;
+	}
+
+	override columnCount(_parent = new CModelIndex()): number {
+		return this.#m_rows[0]?.length ?? 0;
+	}
+
+	override data(index: CModelIndex): unknown {
+		if (!index.isValid())
+			return null;
+
+		return this.#m_rows[index.row()]?.[index.column()] ?? null;
+	}
+
+	override headerData(
+		section: number,
+		orientation: COrientation
+	): string | number | null {
+		if (orientation === COrientation.Horizontal) {
+			return [
+				"Name",
+				"Country",
+				"Age",
+				"City",
+				"Occupation"
+			][section] ?? null;
+		}
+
+		return section + 1;
+	}
+}
+
 
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas");
 
@@ -330,6 +388,27 @@ but2.clicked.connect(() => {
 	cw.setGeometry(240, 120, 240, 200);
 	dlg.exec();
 });
+
+const but3 = new CPushButton(parent);
+but3.setGeometry(620, 50, 100, 30);
+but3.setText("CTableView");
+but3.clicked.connect(() => {
+	const dlg = new CDialog(parent);
+	dlg.setGeometry(100, 100, 800, 400);
+	dlg.setWindowTitle("Employees");
+
+	const tv = new CTableView(dlg);
+	tv.setGeometry(50, 20, 500, 330);
+	const model = new DemoTableModel();
+	tv.setModel(model);
+
+	const bb = new CDialogButtonBox(CStandardButton.Ok, dlg);
+	bb.setGeometry(0, 360, 780, 30);
+	bb.accepted.connect(() => {
+		dlg.accept();
+	});
+	dlg.exec();
+})
 
 const lab = new CLabel(parent);
 lab.setGeometry(250, 50, 130, 40);
