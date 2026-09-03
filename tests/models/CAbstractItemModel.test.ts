@@ -203,4 +203,18 @@ describe("CAbstractItemModel", () => {
 
 		expect(model.data(new CModelIndex())).toBeNull();
 	});
+
+	test("index stores its model", () => {
+		const model = new TestModel();
+		const index = model.index(1, 1);
+
+		expect(index.model()).toBe(model);
+	});
+
+	test("invalid index has no model", () => {
+		const model = new TestModel();
+		const index = model.index(100, 0);
+
+		expect(index.model()).toBeNull();
+	});
 });

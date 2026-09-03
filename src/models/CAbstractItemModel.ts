@@ -36,7 +36,7 @@ export abstract class CAbstractItemModel extends CObject {
 
 	protected createIndex(row: number, column: number,
 		data: unknown = null): CModelIndex {
-		return new CModelIndex(row, column, data);
+		return new CModelIndex(row, column, data, this);
 	}
 
 	protected emitDataChanged(

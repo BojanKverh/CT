@@ -28,6 +28,9 @@ export class CItemSelectionModel extends CObject {
 	}
 
 	setCurrentIndex(index: CModelIndex): void {
+		if (index.isValid() && index.model() !== this.#m_model)
+			return;
+
 		if (this.#m_currentIndex.equals(index))
 			return;
 
@@ -51,7 +54,8 @@ export class CItemSelectionModel extends CObject {
 	}
 
 	select(index: CModelIndex): void {
-		if (!index.isValid() || this.isSelected(index))
+		if (!index.isValid() || index.model() !== this.#m_model
+			|| this.isSelected(index))
 			return;
 
 		this.#m_selectedIndexes.push(index);

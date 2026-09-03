@@ -11,12 +11,12 @@ describe("CModelIndex", () => {
 		expect(index.data()).toBeNull();
 	});
 
-	test("stores row and column", () => {
+	test("stores row and column but no model", () => {
 		const index = new CModelIndex(2, 3);
 
 		expect(index.row()).toBe(2);
 		expect(index.column()).toBe(3);
-		expect(index.isValid()).toBe(true);
+		expect(index.isValid()).toBe(false);
 	});
 
 	test("stores data", () => {
@@ -44,10 +44,10 @@ describe("CModelIndex", () => {
 		expect(index.isValid()).toBe(false);
 	});
 
-	test("index with zero row and column is valid", () => {
+	test("index with zero row and column and no model is invalid", () => {
 		const index = new CModelIndex(0, 0);
 
-		expect(index.isValid()).toBe(true);
+		expect(index.isValid()).toBe(false);
 	});
 
 	test("indexes with equal values are equal", () => {
@@ -98,12 +98,5 @@ describe("CModelIndex", () => {
 		const index2 = new CModelIndex(1, 2, "two");
 
 		expect(index1.equals(index2)).toBe(false);
-	});
-
-	test("valid index may contain null data", () => {
-		const index = new CModelIndex(1, 2);
-
-		expect(index.isValid()).toBe(true);
-		expect(index.data()).toBeNull();
 	});
 });

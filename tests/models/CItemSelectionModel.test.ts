@@ -269,4 +269,37 @@ describe("CItemSelectionModel", () => {
 		expect(selection.hasSelection()).toBe(false);
 		expect(selection.currentIndex().isValid()).toBe(false);
 	});
+
+	test("does not select index from another model", () => {
+		const model1 = new TestListModel();
+		const model2 = new TestListModel();
+		const selection = new CItemSelectionModel(model1);
+		const index = model2.index(1, 0);
+
+		selection.select(index);
+
+		expect(selection.hasSelection()).toBe(false);
+		expect(selection.isSelected(index)).toBe(false);
+	});
+
+	test("does not set current index from another model", () => {
+		const model1 = new TestListModel();
+		const model2 = new TestListModel();
+		const selection = new CItemSelectionModel(model1);
+		const index = model2.index(1, 0);
+
+		selection.setCurrentIndex(index);
+
+		expect(selection.currentIndex().isValid()).toBe(false);
+	});
+
+	test("indexes from different models are not equal", () => {
+		const model1 = new TestListModel();
+		const model2 = new TestListModel();
+
+		const index1 = model1.index(1, 0);
+		const index2 = model2.index(1, 0);
+
+		expect(index1.equals(index2)).toBe(false);
+	});
 });
