@@ -2199,4 +2199,25 @@ describe("CTextEdit", () => {
 		expect(edit.hasSelection()).toBe(true);
 		expect(edit.selectedText()).toBe("ello");
 	});
+
+	test("content width follows viewport when vertical scrollbar appears", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(300, 100);
+		edit.setPlainText(
+			"Line 1\n" +
+			"Line 2\n" +
+			"Line 3\n" +
+			"Line 4\n" +
+			"Line 5\n" +
+			"Line 6"
+		);
+
+		const content = edit.widget()!;
+
+		expect(edit.verticalScrollBar().isVisible()).toBe(true);
+		expect(edit.horizontalScrollBar().isVisible()).toBe(false);
+		expect(content.width()).toBe(edit.viewport().width());
+		expect(content.width()).toBeLessThan(edit.width());
+	});
 });

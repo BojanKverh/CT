@@ -854,8 +854,8 @@ export class CTextEdit extends CScrollArea {
 		const contentHeight = this.#contentHeight();
 
 		this.#m_contentWidget.resize(
-			Math.max(this.width(), contentWidth),
-			Math.max(this.height(), contentHeight)
+			Math.max(this.viewport().width(), contentWidth),
+			Math.max(this.viewport().height(), contentHeight)
 		);
 
 		this.updateScrollBars();
