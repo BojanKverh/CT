@@ -14,6 +14,7 @@ import { CPaletteColorRole } from "../gui/CPalette.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
 import { CRect } from "../geometry/CRect.js";
 import { CSize } from "../geometry/CSize.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 type CTextEditState = {
 	text: string;
@@ -33,15 +34,12 @@ class CTextEditContentWidget extends CWidget {
 	constructor(textEdit: CTextEdit) {
 		super();
 
+		this.setFocusPolicy(CFocusPolicy.NoFocus);
 		this.#m_textEdit = textEdit;
 	}
 
 	override cursor(): CCursorShape {
 		return this.#m_textEdit.cursor();
-	}
-
-	override acceptsFocus(): boolean {
-		return false;
 	}
 
 	protected override paintEvent(painter: CPainter): void {

@@ -14,6 +14,7 @@ import { CLayout } from "../../src/layouts/CLayout";
 import { CFormLayout } from "../../src/layouts/CFormLayout";
 import { CSize } from "../../src/geometry/CSize";
 import { CPalette } from "../../src/gui/CPalette";
+import { CFocusPolicy } from "../../src/gui/CFocusPolicy";
 
 let animationFrameCallbacks = new Map<number, FrameRequestCallback>();
 let nextAnimationFrameId = 1;
@@ -1250,5 +1251,79 @@ describe("CWidget", () => {
 		field.setMaximumSize(80, 40);
 
 		expect(field.width()).toBe(80);
+	});
+
+	test("has StrongFocus policy by default", () => {
+		const widget = new CWidget();
+
+		expect(widget.focusPolicy()).toBe(
+			CFocusPolicy.StrongFocus
+		);
+	});
+
+	test("sets focus policy", () => {
+		const widget = new CWidget();
+
+		widget.setFocusPolicy(CFocusPolicy.ClickFocus);
+
+		expect(widget.focusPolicy()).toBe(
+			CFocusPolicy.ClickFocus
+		);
+	});
+
+	test("NoFocus widget cannot receive focus", () => {
+		const widget = new CWidget();
+
+		widget.setFocusPolicy(CFocusPolicy.NoFocus);
+		widget.setFocus();
+
+		expect(widget.hasFocus()).toBe(false);
+	});
+
+	test("changing focused widget to NoFocus clears focus", () => {
+		const widget = new CWidget();
+
+		widget.setFocus();
+		expect(widget.hasFocus()).toBe(true);
+
+		widget.setFocusPolicy(CFocusPolicy.NoFocus);
+
+		expect(widget.hasFocus()).toBe(false);
+	});
+
+	test("ClickFocus accepts click focus", () => {
+		const widget = new CWidget();
+
+		widget.setFocusPolicy(CFocusPolicy.ClickFocus);
+
+		expect(widget.acceptsClickFocus()).toBe(true);
+		expect(widget.acceptsTabFocus()).toBe(false);
+	});
+
+	test("TabFocus accepts tab focus", () => {
+		const widget = new CWidget();
+
+		widget.setFocusPolicy(CFocusPolicy.TabFocus);
+
+		expect(widget.acceptsClickFocus()).toBe(false);
+		expect(widget.acceptsTabFocus()).toBe(true);
+	});
+
+	test("StrongFocus accepts click and tab focus", () => {
+		const widget = new CWidget();
+
+		widget.setFocusPolicy(CFocusPolicy.StrongFocus);
+
+		expect(widget.acceptsClickFocus()).toBe(true);
+		expect(widget.acceptsTabFocus()).toBe(true);
+	});
+
+	test("NoFocus accepts neither click nor tab focus", () => {
+		const widget = new CWidget();
+
+		widget.setFocusPolicy(CFocusPolicy.NoFocus);
+
+		expect(widget.acceptsClickFocus()).toBe(false);
+		expect(widget.acceptsTabFocus()).toBe(false);
 	});
 });

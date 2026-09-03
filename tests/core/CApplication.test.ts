@@ -10,6 +10,7 @@ import { createTestWindow } from "../helpers/createTestWindow.js";
 import { CHBoxLayout } from "../../src/layouts/CHBoxLayout.js";
 import { CPopupWidget } from "../../src/widgets/CPopupWidget.js";
 import { CDialog } from "../../src/dialogs/CDialog.js";
+import { CFocusPolicy } from "../../src/gui/CFocusPolicy";
 
 class RenderTrackingWidget extends CWidget {
     renderCalls = 0;
@@ -1391,5 +1392,37 @@ describe("CApplication", () => {
 		} as PointerEvent);
 
 		expect(child.clicked).toBe(true);
+	});
+
+	test("mouse press does not focus NoFocus widget", () => {
+		const canvas = createTestCanvas();
+		new CApplication(canvas);
+
+		const widget = new CWidget();
+
+		widget.setGeometry(100, 100, 200, 100);
+		widget.setFocusPolicy(CFocusPolicy.NoFocus);
+
+		class MouseWidget extends CWidget {
+			protected override mousePressEvent(
+				event: CMouseEvent
+			): void {
+				event.accept();
+			}
+		}
+
+		const child = new MouseWidget(widget);
+		child.setGeometry(0, 0, 200, 100);
+		child.setFocusPolicy(CFocusPolicy.NoFocus);
+
+		canvas.dispatchEvent({
+			type: "pointerdown",
+			clientX: 150,
+			clientY: 130,
+			button: 0,
+			pointerId: 1
+		} as PointerEvent);
+
+		expect(child.hasFocus()).toBe(false);
 	});
 });

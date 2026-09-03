@@ -14,6 +14,7 @@ import { CPalette } from "../gui/CPalette.js";
 import type { CStyle } from "../gui/CStyle.js";
 import { CFontMetrics } from "../gui/CFontMetrics.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 export class CWidget extends CObject {
     #m_geometry = new CRect();
@@ -28,6 +29,7 @@ export class CWidget extends CObject {
     #m_toolTip = "";
     #m_fontMetrics: CFontMetrics;
     #m_cursor: CCursorShape = CCursorShape.Arrow;
+    #m_focusPolicy = CFocusPolicy.StrongFocus;
 
 	constructor(parent: CWidget | null = null) {
         super(null);
@@ -200,8 +202,29 @@ export class CWidget extends CObject {
         this.setVisible(false);
     }
 
-    acceptsFocus(): boolean {
-		return true;
+    acceptsClickFocus(): boolean {
+		return (this.#m_focusPolicy
+			& CFocusPolicy.ClickFocus) !== 0;
+	}
+
+	acceptsTabFocus(): boolean {
+		return (this.#m_focusPolicy
+			& CFocusPolicy.TabFocus) !== 0;
+	}
+
+    focusPolicy(): CFocusPolicy {
+		return this.#m_focusPolicy;
+	}
+
+	setFocusPolicy(policy: CFocusPolicy): void {
+		if (this.#m_focusPolicy === policy)
+			return;
+
+		this.#m_focusPolicy = policy;
+
+		if (policy === CFocusPolicy.NoFocus
+			&& this.hasFocus())
+			this.clearFocus();
 	}
 
 	override destroy(): void
@@ -232,7 +255,7 @@ export class CWidget extends CObject {
 	}
 
     setFocus(): void {
-		if (!this.isEnabled() || !this.acceptsFocus())
+		if (!this.isEnabled() || this.#m_focusPolicy === CFocusPolicy.NoFocus)
 			return;
 
 		CApplication.instance().setFocusWidget(this);

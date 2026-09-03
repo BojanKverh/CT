@@ -17,6 +17,7 @@ import type { CPopupWidget } from "../widgets/CPopupWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
 import { CTimer } from "./CTimer.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
@@ -454,11 +455,10 @@ export class CApplication extends CObject {
 
 			if (this.#sendMouseEvent(target, type, pointerEvent)) {
 				if (type === CEventType.MousePress) {
-					if (this.#m_focusWidget === oldFocus)
+					if (this.#m_focusWidget === oldFocus && target.acceptsClickFocus())
 						target.setFocus();
 
 					this.grabMouse(target);
-
 					this.#m_paintDevice.canvas().setPointerCapture(pointerEvent.pointerId);
 				}
 				break;
@@ -484,7 +484,8 @@ export class CApplication extends CObject {
 
 		while (target !== null) {
 			if (this.#sendWheelEvent(target, type, wheelEvent)) {
-				if (type === CEventType.Wheel)
+				if (type === CEventType.Wheel && (target.focusPolicy() & CFocusPolicy.WheelFocus)
+						=== CFocusPolicy.WheelFocus)
 					target.setFocus();
 				break;
 			}
