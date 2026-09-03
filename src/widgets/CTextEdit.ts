@@ -15,6 +15,12 @@ import { CCursorShape } from "../gui/CCursorShape.js";
 import { CRect } from "../geometry/CRect.js";
 import { CSize } from "../geometry/CSize.js";
 
+type CTextEditState = {
+	text: string;
+	cursorPosition: number;
+	selectionAnchor: number;
+};
+
 class CTextEditContentWidget extends CWidget {
 	#m_textEdit: CTextEdit;
 
@@ -54,6 +60,9 @@ export class CTextEdit extends CScrollArea {
 	#m_selectionAnchor = 0;
 	#m_selectingWithMouse = false;
 	#m_readOnly = false;
+    #m_undoStack: CTextEditState[] = [];
+	#m_redoStack: CTextEditState[] = [];
+	#m_restoringHistory = false;
 
 	#m_cursorVisible = true;
 	#m_cursorTimer = new CTimer(this);
@@ -96,6 +105,9 @@ export class CTextEdit extends CScrollArea {
 
 		const hadSelection = this.hasSelection();
 
+        this.#m_undoStack = [];
+		this.#m_redoStack = [];
+
 		this.#m_text = text;
 		this.#m_cursorPosition = text.length;
 		this.#m_selectionAnchor = this.#m_cursorPosition;
@@ -112,7 +124,26 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	clear(): void {
-		this.setPlainText("");
+		if (this.#m_text.length === 0)
+			return;
+
+		this.#pushUndoState();
+
+		const hadSelection = this.hasSelection();
+
+		this.#m_text = "";
+		this.#m_cursorPosition = 0;
+		this.#m_selectionAnchor = 0;
+
+		this.textChanged.emit();
+
+		if (hadSelection)
+			this.selectionChanged.emit();
+
+		this.#updateContentGeometry();
+		this.#ensureCursorVisible();
+		this.#resetCursorBlink();
+		this.#m_contentWidget.update();
 	}
 
 	isReadOnly(): boolean {
@@ -213,6 +244,7 @@ export class CTextEdit extends CScrollArea {
 	insert(text: string): void {
 		if (text.length === 0 || this.isReadOnly())
 			return;
+        this.#pushUndoState();
 
 		const hadSelection = this.hasSelection();
 
@@ -240,6 +272,34 @@ export class CTextEdit extends CScrollArea {
 		this.#ensureCursorVisible();
 		this.#resetCursorBlink();
 		this.#m_contentWidget.update();
+	}
+
+    canUndo(): boolean {
+		return this.#m_undoStack.length > 0;
+	}
+
+	canRedo(): boolean {
+		return this.#m_redoStack.length > 0;
+	}
+
+	undo(): void {
+		const state = this.#m_undoStack.pop();
+
+		if (state === undefined)
+			return;
+
+		this.#m_redoStack.push(this.#currentState());
+		this.#restoreState(state);
+	}
+
+	redo(): void {
+		const state = this.#m_redoStack.pop();
+
+		if (state === undefined)
+			return;
+
+		this.#m_undoStack.push(this.#currentState());
+		this.#restoreState(state);
 	}
 
 	async copy(): Promise<void> {
@@ -416,14 +476,28 @@ export class CTextEdit extends CScrollArea {
 				return;
 
 			case "x":
-				void this.cut();
+                void this.cut();
 				event.accept();
 				return;
 
 			case "v":
-				void this.paste();
+                void this.paste();
 				event.accept();
 				return;
+
+            case 'z':
+                if (event.shift())
+				    this.redo();
+			    else
+				    this.undo();
+
+			    event.accept();
+			    return;
+
+            case 'y':
+                this.redo();
+			    event.accept();
+			    return;
 			}
 		}
 
@@ -497,8 +571,8 @@ export class CTextEdit extends CScrollArea {
 				event.accept();
 				return;
 			}
-
 			if (this.#m_cursorPosition > 0) {
+                this.#pushUndoState();
 				this.#m_text =
 					this.#m_text.slice(
 						0,
@@ -534,8 +608,8 @@ export class CTextEdit extends CScrollArea {
 				return;
 			}
 
-			if (this.#m_cursorPosition
-				< this.#m_text.length) {
+			if (this.#m_cursorPosition < this.#m_text.length) {
+                this.#pushUndoState();
 				this.#m_text =
 					this.#m_text.slice(
 						0,
@@ -569,9 +643,7 @@ export class CTextEdit extends CScrollArea {
 		event.ignore();
 	}
 
-	protected override focusInEvent(
-		event: CFocusEvent
-	): void {
+	protected override focusInEvent(event: CFocusEvent): void {
 		this.#startCursorBlink();
 		event.accept();
 		this.#m_contentWidget.update();
@@ -802,6 +874,7 @@ export class CTextEdit extends CScrollArea {
 			|| this.isReadOnly())
 			return false;
 
+        this.#pushUndoState();
 		const start = this.selectionStart();
 		const end = this.selectionEnd();
 
@@ -947,5 +1020,45 @@ export class CTextEdit extends CScrollArea {
 			return;
 
 		this.#startCursorBlink();
+	}
+
+	#currentState(): CTextEditState {
+		return {
+			text: this.#m_text,
+			cursorPosition: this.#m_cursorPosition,
+			selectionAnchor: this.#m_selectionAnchor
+		};
+	}
+
+	#pushUndoState(): void {
+		if (this.#m_restoringHistory)
+			return;
+
+		this.#m_undoStack.push(this.#currentState());
+		this.#m_redoStack = [];
+	}
+
+	#restoreState(state: CTextEditState): void {
+		this.#m_restoringHistory = true;
+
+		const hadSelection = this.hasSelection();
+		const textChanged = this.#m_text !== state.text;
+
+		this.#m_text = state.text;
+		this.#m_cursorPosition = state.cursorPosition;
+		this.#m_selectionAnchor = state.selectionAnchor;
+
+		this.#updateContentGeometry();
+		this.#ensureCursorVisible();
+		this.viewport().update();
+
+		if (textChanged)
+			this.textChanged.emit();
+
+		if (hadSelection !== this.hasSelection()
+			|| this.hasSelection())
+			this.selectionChanged.emit();
+
+		this.#m_restoringHistory = false;
 	}
 }

@@ -541,12 +541,7 @@ describe("CTextEdit", () => {
 		const edit = new CTextEdit();
 
 		edit.setPlainText("Hello\nWorld");
-
-		edit.event(new CKeyEvent(
-			CEventType.KeyPress,
-			"a",
-			true
-		));
+		edit.event(new CKeyEvent(CEventType.KeyPress, "a", true));
 
 		expect(edit.selectedText()).toBe("Hello\nWorld");
 	});
@@ -1171,5 +1166,436 @@ describe("CTextEdit", () => {
 		));
 
 		expect(edit.cursorPosition()).toBe(12);
+	});
+
+    test("undo is unavailable initially", () => {
+		const edit = new CTextEdit();
+
+		expect(edit.canUndo()).toBe(false);
+	});
+
+	test("redo is unavailable initially", () => {
+		const edit = new CTextEdit();
+
+		expect(edit.canRedo()).toBe(false);
+	});
+
+	test("insert creates undo state", () => {
+		const edit = new CTextEdit();
+
+		edit.insert("Hello");
+
+		expect(edit.canUndo()).toBe(true);
+		expect(edit.canRedo()).toBe(false);
+	});
+
+	test("undo restores text before insert", () => {
+		const edit = new CTextEdit();
+
+		edit.insert("Hello");
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("");
+		expect(edit.cursorPosition()).toBe(0);
+		expect(edit.canUndo()).toBe(false);
+		expect(edit.canRedo()).toBe(true);
+	});
+
+	test("redo restores undone insert", () => {
+		const edit = new CTextEdit();
+
+		edit.insert("Hello");
+		edit.undo();
+		edit.redo();
+
+		expect(edit.toPlainText()).toBe("Hello");
+		expect(edit.cursorPosition()).toBe(5);
+		expect(edit.canUndo()).toBe(true);
+		expect(edit.canRedo()).toBe(false);
+	});
+
+	test("multiple edits can be undone in reverse order", () => {
+		const edit = new CTextEdit();
+
+		edit.insert("A");
+		edit.insert("B");
+		edit.insert("C");
+
+		expect(edit.toPlainText()).toBe("ABC");
+
+		edit.undo();
+		expect(edit.toPlainText()).toBe("AB");
+
+		edit.undo();
+		expect(edit.toPlainText()).toBe("A");
+
+		edit.undo();
+		expect(edit.toPlainText()).toBe("");
+	});
+
+	test("multiple undone edits can be redone", () => {
+		const edit = new CTextEdit();
+
+		edit.insert("A");
+		edit.insert("B");
+		edit.insert("C");
+
+		edit.undo();
+		edit.undo();
+		edit.undo();
+
+		edit.redo();
+		expect(edit.toPlainText()).toBe("A");
+
+		edit.redo();
+		expect(edit.toPlainText()).toBe("AB");
+
+		edit.redo();
+		expect(edit.toPlainText()).toBe("ABC");
+	});
+
+	test("new edit clears redo stack", () => {
+		const edit = new CTextEdit();
+
+		edit.insert("A");
+		edit.insert("B");
+
+		edit.undo();
+
+		expect(edit.canRedo()).toBe(true);
+
+		edit.insert("C");
+
+		expect(edit.toPlainText()).toBe("AC");
+		expect(edit.canRedo()).toBe(false);
+	});
+
+	test("undo does nothing when no undo state exists", () => {
+		const edit = new CTextEdit();
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("");
+		expect(edit.cursorPosition()).toBe(0);
+	});
+
+	test("redo does nothing when no redo state exists", () => {
+		const edit = new CTextEdit();
+
+		edit.redo();
+
+		expect(edit.toPlainText()).toBe("");
+		expect(edit.cursorPosition()).toBe(0);
+	});
+
+	test("undo restores cursor position", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("Hello");
+		edit.setCursorPosition(2);
+		edit.insert("X");
+
+		expect(edit.cursorPosition()).toBe(3);
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("Hello");
+		expect(edit.cursorPosition()).toBe(2);
+	});
+
+	test("redo restores cursor position", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("Hello");
+		edit.setCursorPosition(2);
+		edit.insert("X");
+
+		edit.undo();
+		edit.redo();
+
+		expect(edit.toPlainText()).toBe("HeXllo");
+		expect(edit.cursorPosition()).toBe(3);
+	});
+
+	test("undo restores selection replaced by insert", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("Hello World");
+		edit.setSelection(6, 11);
+
+		edit.insert("CT");
+
+		expect(edit.toPlainText()).toBe("Hello CT");
+		expect(edit.hasSelection()).toBe(false);
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("Hello World");
+		expect(edit.selectionStart()).toBe(6);
+		expect(edit.selectionEnd()).toBe(11);
+		expect(edit.selectedText()).toBe("World");
+	});
+
+	test("redo restores replacement of selection", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("Hello World");
+		edit.setSelection(6, 11);
+		edit.insert("CT");
+
+		edit.undo();
+		edit.redo();
+
+		expect(edit.toPlainText()).toBe("Hello CT");
+		expect(edit.cursorPosition()).toBe(8);
+		expect(edit.hasSelection()).toBe(false);
+	});
+
+	test("backspace can be undone", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("Hello");
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Backspace"
+		));
+
+		expect(edit.toPlainText()).toBe("Hell");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("Hello");
+		expect(edit.cursorPosition()).toBe(5);
+	});
+
+	test("delete can be undone", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("Hello");
+		edit.setCursorPosition(1);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Delete"
+		));
+
+		expect(edit.toPlainText()).toBe("Hllo");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("Hello");
+		expect(edit.cursorPosition()).toBe(1);
+	});
+
+	test("newline insertion can be undone", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("HelloWorld");
+		edit.setCursorPosition(5);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Enter"
+		));
+
+		expect(edit.toPlainText()).toBe("Hello\nWorld");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("HelloWorld");
+		expect(edit.cursorPosition()).toBe(5);
+	});
+
+	test("clear can be undone", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("Hello");
+		edit.clear();
+
+		expect(edit.toPlainText()).toBe("");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("Hello");
+		expect(edit.cursorPosition()).toBe(5);
+	});
+
+	test("setPlainText clears undo and redo history", () => {
+		const edit = new CTextEdit();
+
+		edit.insert("A");
+		edit.insert("B");
+		edit.undo();
+
+		expect(edit.canUndo()).toBe(true);
+		expect(edit.canRedo()).toBe(true);
+
+		edit.setPlainText("New text");
+
+		expect(edit.canUndo()).toBe(false);
+		expect(edit.canRedo()).toBe(false);
+		expect(edit.toPlainText()).toBe("New text");
+	});
+
+	test("undo emits textChanged", () => {
+		const edit = new CTextEdit();
+		const callback = vi.fn();
+
+		edit.insert("Hello");
+
+		edit.textChanged.connect(callback);
+
+		edit.undo();
+
+		expect(callback).toHaveBeenCalledTimes(1);
+	});
+
+	test("redo emits textChanged", () => {
+		const edit = new CTextEdit();
+		const callback = vi.fn();
+
+		edit.insert("Hello");
+		edit.undo();
+
+		edit.textChanged.connect(callback);
+
+		edit.redo();
+
+		expect(callback).toHaveBeenCalledTimes(1);
+	});
+
+	test("undo of replacement restores selection", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("abcdef");
+		edit.setSelection(2, 5);
+
+		edit.insert("X");
+		edit.undo();
+
+		expect(edit.selectionStart()).toBe(2);
+		expect(edit.selectionEnd()).toBe(5);
+		expect(edit.selectedText()).toBe("cde");
+	});
+
+	test("undo works after ordinary key input", () => {
+		const edit = new CTextEdit();
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"A"
+		));
+
+		expect(edit.toPlainText()).toBe("A");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("");
+	});
+
+	test("Ctrl+Z performs undo", () => {
+		const edit = new CTextEdit();
+
+		edit.insert("Hello");
+		edit.event(new CKeyEvent(CEventType.KeyPress, "z", true));
+
+		expect(edit.toPlainText()).toBe("");
+	});
+
+	test("Ctrl+Y performs redo", () => {
+		const edit = new CTextEdit();
+
+		edit.insert("Hello");
+		edit.undo();
+		edit.event(new CKeyEvent(CEventType.KeyPress, "y", true));
+
+		expect(edit.toPlainText()).toBe("Hello");
+	});
+
+	test("Ctrl+Shift+Z performs redo", () => {
+		const edit = new CTextEdit();
+
+		edit.insert("Hello");
+		edit.undo();
+		edit.event(new CKeyEvent(CEventType.KeyPress, "z", true, true));
+
+		expect(edit.toPlainText()).toBe("Hello");
+	});
+
+	test("undo is blocked in read-only mode only for new edits", () => {
+		const edit = new CTextEdit();
+
+		edit.insert("Hello");
+		edit.setReadOnly(true);
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("");
+	});
+
+	test("read-only editing does not create undo state", () => {
+		const edit = new CTextEdit();
+
+		edit.setReadOnly(true);
+		edit.insert("Hello");
+
+		expect(edit.toPlainText()).toBe("");
+		expect(edit.canUndo()).toBe(false);
+	});
+
+	test("undo updates content size after restoring longer text", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(100, 60);
+		edit.setPlainText(
+			"1\n2\n3\n4\n5\n6\n7\n8"
+		);
+
+		edit.clear();
+
+		expect(edit.verticalScrollBar().isVisible()).toBe(false);
+
+		edit.undo();
+
+		expect(edit.verticalScrollBar().isVisible()).toBe(true);
+	});
+
+	test("redo updates content size after restoring shorter text", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(100, 60);
+		edit.setPlainText(
+			"1\n2\n3\n4\n5\n6\n7\n8"
+		);
+
+		edit.clear();
+		edit.undo();
+		edit.redo();
+
+		expect(edit.toPlainText()).toBe("");
+		expect(edit.verticalScrollBar().isVisible()).toBe(false);
+	});
+
+	test("undo ensures restored cursor is visible", () => {
+		const edit = new CTextEdit();
+
+		edit.resize(100, 60);
+		edit.setPlainText(
+			"1\n2\n3\n4\n5\n6\n7\n8\n9\n10"
+		);
+
+		edit.setCursorPosition(edit.toPlainText().length);
+		edit.insert("X");
+
+		edit.setCursorPosition(0);
+		expect(edit.scrollY()).toBe(0);
+
+		edit.undo();
+
+		expect(edit.cursorPosition()).toBe(
+			"1\n2\n3\n4\n5\n6\n7\n8\n9\n10".length
+		);
+		expect(edit.scrollY()).toBeGreaterThan(0);
 	});
 });
