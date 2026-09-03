@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { CModelIndex } from "../../src/core/CModelIndex.js";
+import { CModelIndex } from "../../src/models/CModelIndex.js";
 
 describe("CModelIndex", () => {
 	test("default index is invalid", () => {
