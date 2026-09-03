@@ -2115,4 +2115,88 @@ describe("CTextEdit", () => {
 		expect(edit.toPlainText()).toBe("World");
 		expect(edit.canUndo()).toBe(false);
 	});
+
+	test("Escape clears selection", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("Hello World");
+		edit.setSelection(0, 5);
+
+		expect(edit.selectedText()).toBe("Hello");
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Escape"
+		));
+
+		expect(edit.hasSelection()).toBe(false);
+		expect(edit.toPlainText()).toBe("Hello World");
+	});
+
+	test("Escape does nothing when there is no selection", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("Hello");
+		edit.setCursorPosition(2);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Escape"
+		));
+
+		expect(edit.hasSelection()).toBe(false);
+		expect(edit.cursorPosition()).toBe(2);
+		expect(edit.toPlainText()).toBe("Hello");
+	});
+
+	test("mouse drag selects text on first attempt when edit already has focus", () => {
+		const app = CApplication.instance();
+		const canvas = app.canvas();
+
+		const edit = new CTextEdit();
+		edit.setGeometry(0, 0, 300, 120);
+		edit.setPlainText("Hello World");
+		edit.setFocus();
+
+		const content = edit.widget()!;
+		const metrics = new CFontMetrics(edit.font());
+
+		const start = content.mapToCanvas(
+			5 + metrics.textWidth("H"),
+			10
+		);
+
+		const end = content.mapToCanvas(
+			5 + metrics.textWidth("Hello"),
+			10
+		);
+
+		canvas.dispatchEvent({
+			type: "pointerdown",
+			clientX: start.x(),
+			clientY: start.y(),
+			button: 0,
+			pointerId: 1
+		} as PointerEvent);
+
+		canvas.dispatchEvent({
+			type: "pointermove",
+			clientX: end.x(),
+			clientY: end.y(),
+			button: -1,
+			pointerId: 1
+		} as PointerEvent);
+
+		canvas.dispatchEvent({
+			type: "pointerup",
+			clientX: end.x(),
+			clientY: end.y(),
+			button: 0,
+			pointerId: 1
+		} as PointerEvent);
+
+		expect(edit.hasFocus()).toBe(true);
+		expect(edit.hasSelection()).toBe(true);
+		expect(edit.selectedText()).toBe("ello");
+	});
 });

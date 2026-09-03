@@ -40,6 +40,10 @@ class CTextEditContentWidget extends CWidget {
 		return this.#m_textEdit.cursor();
 	}
 
+	override acceptsFocus(): boolean {
+		return false;
+	}
+
 	protected override paintEvent(painter: CPainter): void {
 		this.#m_textEdit.paintText(painter);
 	}
@@ -535,6 +539,11 @@ export class CTextEdit extends CScrollArea {
 				),
 				event.shift()
 			);
+			event.accept();
+			return;
+
+		case "Escape":
+			this.clearSelection();
 			event.accept();
 			return;
 

@@ -200,6 +200,10 @@ export class CWidget extends CObject {
         this.setVisible(false);
     }
 
+    acceptsFocus(): boolean {
+		return true;
+	}
+
 	override destroy(): void
 	{
         super.destroy();
@@ -227,8 +231,8 @@ export class CWidget extends CObject {
 		return CApplication.instance().focusWidget() === this;
 	}
 
-	setFocus(): void {
-		if (!this.isEnabled())
+    setFocus(): void {
+		if (!this.isEnabled() || !this.acceptsFocus())
 			return;
 
 		CApplication.instance().setFocusWidget(this);
