@@ -1598,4 +1598,521 @@ describe("CTextEdit", () => {
 		);
 		expect(edit.scrollY()).toBeGreaterThan(0);
 	});
+
+	test("consecutive typing is grouped into one undo", () => {
+		const edit = new CTextEdit();
+
+		for (const key of "Hello") {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				key
+			));
+		}
+
+		expect(edit.toPlainText()).toBe("Hello");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("");
+		expect(edit.canUndo()).toBe(false);
+		expect(edit.canRedo()).toBe(true);
+	});
+
+	test("redo restores grouped typing", () => {
+		const edit = new CTextEdit();
+
+		for (const key of "Hello") {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				key
+			));
+		}
+
+		edit.undo();
+		edit.redo();
+
+		expect(edit.toPlainText()).toBe("Hello");
+		expect(edit.cursorPosition()).toBe(5);
+	});
+
+	test("cursor movement breaks typing undo group", () => {
+		const edit = new CTextEdit();
+
+		for (const key of "Hello") {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				key
+			));
+		}
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowLeft"
+		));
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"X"
+		));
+
+		expect(edit.toPlainText()).toBe("HellXo");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("Hello");
+		expect(edit.cursorPosition()).toBe(4);
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("");
+	});
+
+	test("selection change breaks typing undo group", () => {
+		const edit = new CTextEdit();
+
+		for (const key of "Hello") {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				key
+			));
+		}
+
+		edit.setSelection(0, 2);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"X"
+		));
+
+		expect(edit.toPlainText()).toBe("Xllo");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("Hello");
+		expect(edit.selectedText()).toBe("He");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("");
+	});
+
+	test("consecutive backspaces are grouped into one undo", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("Hello");
+
+		for (let i = 0; i < 5; ++i) {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				"Backspace"
+			));
+		}
+
+		expect(edit.toPlainText()).toBe("");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("Hello");
+		expect(edit.cursorPosition()).toBe(5);
+	});
+
+	test("redo restores grouped backspaces", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("Hello");
+
+		for (let i = 0; i < 3; ++i) {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				"Backspace"
+			));
+		}
+
+		expect(edit.toPlainText()).toBe("He");
+
+		edit.undo();
+		expect(edit.toPlainText()).toBe("Hello");
+
+		edit.redo();
+		expect(edit.toPlainText()).toBe("He");
+	});
+
+	test("cursor movement breaks backspace undo group", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("abcdef");
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Backspace"
+		));
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Backspace"
+		));
+
+		expect(edit.toPlainText()).toBe("abcd");
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowLeft"
+		));
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Backspace"
+		));
+
+		expect(edit.toPlainText()).toBe("abd");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("abcd");
+		expect(edit.cursorPosition()).toBe(3);
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("abcdef");
+	});
+
+	test("consecutive deletes are grouped into one undo", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("Hello");
+		edit.setCursorPosition(0);
+
+		for (let i = 0; i < 3; ++i) {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				"Delete"
+			));
+		}
+
+		expect(edit.toPlainText()).toBe("lo");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("Hello");
+		expect(edit.cursorPosition()).toBe(0);
+	});
+
+	test("redo restores grouped deletes", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("Hello");
+		edit.setCursorPosition(0);
+
+		for (let i = 0; i < 3; ++i) {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				"Delete"
+			));
+		}
+
+		edit.undo();
+		edit.redo();
+
+		expect(edit.toPlainText()).toBe("lo");
+		expect(edit.cursorPosition()).toBe(0);
+	});
+
+	test("cursor movement breaks delete undo group", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("abcdef");
+		edit.setCursorPosition(0);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Delete"
+		));
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Delete"
+		));
+
+		expect(edit.toPlainText()).toBe("cdef");
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"ArrowRight"
+		));
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Delete"
+		));
+
+		expect(edit.toPlainText()).toBe("cef");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("cdef");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("abcdef");
+	});
+
+	test("typing followed by backspace creates separate groups", () => {
+		const edit = new CTextEdit();
+
+		for (const key of "Hello") {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				key
+			));
+		}
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Backspace"
+		));
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Backspace"
+		));
+
+		expect(edit.toPlainText()).toBe("Hel");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("Hello");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("");
+	});
+
+	test("backspace followed by typing creates separate groups", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("Hello");
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Backspace"
+		));
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Backspace"
+		));
+
+		for (const key of "p!") {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				key
+			));
+		}
+
+		expect(edit.toPlainText()).toBe("Help!");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("Hel");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("Hello");
+	});
+
+	test("Enter breaks typing undo group", () => {
+		const edit = new CTextEdit();
+
+		for (const key of "Hello") {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				key
+			));
+		}
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Enter"
+		));
+
+		for (const key of "World") {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				key
+			));
+		}
+
+		expect(edit.toPlainText()).toBe(
+			"Hello\nWorld"
+		);
+
+		edit.undo();
+		expect(edit.toPlainText()).toBe("Hello\n");
+
+		edit.undo();
+		expect(edit.toPlainText()).toBe("Hello");
+
+		edit.undo();
+		expect(edit.toPlainText()).toBe("");
+	});
+
+	test("undo breaks current typing group", () => {
+		const edit = new CTextEdit();
+
+		for (const key of "Hello") {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				key
+			));
+		}
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("");
+
+		for (const key of "World") {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				key
+			));
+		}
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("");
+	});
+
+	test("redo breaks current undo group", () => {
+		const edit = new CTextEdit();
+
+		for (const key of "Hello") {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				key
+			));
+		}
+
+		edit.undo();
+		edit.redo();
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"!"
+		));
+
+		expect(edit.toPlainText()).toBe("Hello!");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("Hello");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("");
+	});
+
+	test("public insert is not grouped", () => {
+		const edit = new CTextEdit();
+
+		edit.insert("Hello");
+		edit.insert(" ");
+		edit.insert("World");
+
+		expect(edit.toPlainText()).toBe(
+			"Hello World"
+		);
+
+		edit.undo();
+		expect(edit.toPlainText()).toBe("Hello ");
+
+		edit.undo();
+		expect(edit.toPlainText()).toBe("Hello");
+
+		edit.undo();
+		expect(edit.toPlainText()).toBe("");
+	});
+
+	test("deleting a selection is a separate undo operation", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("Hello World");
+		edit.setSelection(6, 11);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Backspace"
+		));
+
+		expect(edit.toPlainText()).toBe("Hello ");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe(
+			"Hello World"
+		);
+		expect(edit.selectedText()).toBe("World");
+	});
+
+	test("selection deletion does not join backspace group", () => {
+		const edit = new CTextEdit();
+
+		edit.setPlainText("abcdef");
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Backspace"
+		));
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Backspace"
+		));
+
+		expect(edit.toPlainText()).toBe("abcd");
+
+		edit.setSelection(1, 3);
+
+		edit.event(new CKeyEvent(
+			CEventType.KeyPress,
+			"Backspace"
+		));
+
+		expect(edit.toPlainText()).toBe("ad");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("abcd");
+		expect(edit.selectedText()).toBe("bc");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("abcdef");
+	});
+
+	test("setPlainText resets current undo group", () => {
+		const edit = new CTextEdit();
+
+		for (const key of "Hello") {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				key
+			));
+		}
+
+		edit.setPlainText("World");
+
+		for (const key of "!!!") {
+			edit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				key
+			));
+		}
+
+		expect(edit.toPlainText()).toBe("World!!!");
+
+		edit.undo();
+
+		expect(edit.toPlainText()).toBe("World");
+		expect(edit.canUndo()).toBe(false);
+	});
 });

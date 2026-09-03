@@ -21,6 +21,12 @@ type CTextEditState = {
 	selectionAnchor: number;
 };
 
+type CTextEditUndoGroup =
+	| "insert"
+	| "backspace"
+	| "delete"
+	| null;
+
 class CTextEditContentWidget extends CWidget {
 	#m_textEdit: CTextEdit;
 
@@ -63,6 +69,7 @@ export class CTextEdit extends CScrollArea {
     #m_undoStack: CTextEditState[] = [];
 	#m_redoStack: CTextEditState[] = [];
 	#m_restoringHistory = false;
+	#m_undoGroup: CTextEditUndoGroup = null;
 
 	#m_cursorVisible = true;
 	#m_cursorTimer = new CTimer(this);
@@ -107,6 +114,7 @@ export class CTextEdit extends CScrollArea {
 
         this.#m_undoStack = [];
 		this.#m_redoStack = [];
+		this.#m_undoGroup = null;
 
 		this.#m_text = text;
 		this.#m_cursorPosition = text.length;
@@ -205,6 +213,7 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	setSelection(anchor: number, position: number): void {
+		this.#breakUndoGroup();
 		const length = this.#m_text.length;
 		const oldAnchor = this.#m_selectionAnchor;
 		const oldPosition = this.#m_cursorPosition;
@@ -231,6 +240,7 @@ export class CTextEdit extends CScrollArea {
 		if (!this.hasSelection())
 			return;
 
+		this.#breakUndoGroup();
 		this.#m_selectionAnchor = this.#m_cursorPosition;
 
 		this.selectionChanged.emit();
@@ -242,39 +252,10 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	insert(text: string): void {
-		if (text.length === 0 || this.isReadOnly())
-			return;
-        this.#pushUndoState();
-
-		const hadSelection = this.hasSelection();
-
-		const start = hadSelection
-			? this.selectionStart()
-			: this.#m_cursorPosition;
-
-		const end = hadSelection
-			? this.selectionEnd()
-			: this.#m_cursorPosition;
-
-		this.#m_text = this.#m_text.slice(0, start)
-			+ text
-			+ this.#m_text.slice(end);
-
-		this.#m_cursorPosition = start + text.length;
-		this.#m_selectionAnchor = this.#m_cursorPosition;
-
-		this.textChanged.emit();
-
-		if (hadSelection)
-			this.selectionChanged.emit();
-
-		this.#updateContentGeometry();
-		this.#ensureCursorVisible();
-		this.#resetCursorBlink();
-		this.#m_contentWidget.update();
+		this.#insert(text, null);
 	}
-
-    canUndo(): boolean {
+	
+	canUndo(): boolean {
 		return this.#m_undoStack.length > 0;
 	}
 
@@ -283,6 +264,7 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	undo(): void {
+		this.#breakUndoGroup();
 		const state = this.#m_undoStack.pop();
 
 		if (state === undefined)
@@ -293,6 +275,7 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	redo(): void {
+		this.#breakUndoGroup();
 		const state = this.#m_redoStack.pop();
 
 		if (state === undefined)
@@ -408,8 +391,9 @@ export class CTextEdit extends CScrollArea {
 			return;
 		}
 
+		this.#breakUndoGroup();
 		this.setFocus();
-
+		
 		const position = this.#cursorPositionAt(
 			event.x(),
 			event.y()
@@ -555,8 +539,10 @@ export class CTextEdit extends CScrollArea {
 			return;
 
 		case "Enter":
-			if (!this.isReadOnly())
+			if (!this.isReadOnly()) {
+				this.#breakUndoGroup();
 				this.insert("\n");
+			}
 
 			event.accept();
 			return;
@@ -572,20 +558,12 @@ export class CTextEdit extends CScrollArea {
 				return;
 			}
 			if (this.#m_cursorPosition > 0) {
-                this.#pushUndoState();
-				this.#m_text =
-					this.#m_text.slice(
-						0,
-						this.#m_cursorPosition - 1
-					)
-					+ this.#m_text.slice(
-						this.#m_cursorPosition
-					);
+                this.#pushUndoState("backspace");
+				this.#m_text = this.#m_text.slice(0, this.#m_cursorPosition - 1)
+					+ this.#m_text.slice(this.#m_cursorPosition);
 
 				--this.#m_cursorPosition;
-				this.#m_selectionAnchor =
-					this.#m_cursorPosition;
-
+				this.#m_selectionAnchor = this.#m_cursorPosition;
 				this.textChanged.emit();
 
 				this.#updateContentGeometry();
@@ -609,19 +587,11 @@ export class CTextEdit extends CScrollArea {
 			}
 
 			if (this.#m_cursorPosition < this.#m_text.length) {
-                this.#pushUndoState();
-				this.#m_text =
-					this.#m_text.slice(
-						0,
-						this.#m_cursorPosition
-					)
-					+ this.#m_text.slice(
-						this.#m_cursorPosition + 1
-					);
+                this.#pushUndoState("delete");
+				this.#m_text = this.#m_text.slice(0, this.#m_cursorPosition)
+					+ this.#m_text.slice(this.#m_cursorPosition + 1);
 
-				this.#m_selectionAnchor =
-					this.#m_cursorPosition;
-
+				this.#m_selectionAnchor = this.#m_cursorPosition;
 				this.textChanged.emit();
 
 				this.#updateContentGeometry();
@@ -635,7 +605,7 @@ export class CTextEdit extends CScrollArea {
 		}
 
 		if (event.key().length === 1 && !event.ctrl()) {
-			this.insert(event.key());
+			this.#insert(event.key(), "insert");
 			event.accept();
 			return;
 		}
@@ -757,38 +727,22 @@ export class CTextEdit extends CScrollArea {
 		return line.start + line.text.length;
 	}
 
-	#moveCursorVertical(
-		direction: number,
-		keepAnchor: boolean
-	): void {
+	#moveCursorVertical(direction: number, keepAnchor: boolean): void {
 		const lines = this.#lines();
 
 		const current = this.#lineColumnAt(
 			this.#m_cursorPosition
 		);
 
-		const targetLine = Math.max(
-			0,
-			Math.min(
-				current.line + direction,
-				lines.length - 1
-			)
-		);
-
+		const targetLine = Math.max(0, Math.min(current.line + direction, lines.length - 1));
 		if (targetLine === current.line)
 			return;
 
 		const line = lines[targetLine]!;
 
-		const column = Math.min(
-			current.column,
-			line.text.length
-		);
+		const column = Math.min(current.column, line.text.length);
 
-		this.#moveCursor(
-			line.start + column,
-			keepAnchor
-		);
+		this.#moveCursor(line.start + column, keepAnchor);
 	}
 
 	#cursorPositionAt(x: number, y: number): number {
@@ -796,16 +750,8 @@ export class CTextEdit extends CScrollArea {
 		const lines = this.#lines();
 		const margin = CTextEdit.#TEXT_MARGIN;
 
-		const lineIndex = Math.max(
-			0,
-			Math.min(
-				Math.floor(
-					(y - margin)
-					/ CTextEdit.#LINE_HEIGHT
-				),
-				lines.length - 1
-			)
-		);
+		const lineIndex = Math.max(0, Math.min(Math.floor((y - margin) / CTextEdit.#LINE_HEIGHT),
+				lines.length - 1));
 
 		const line = lines[lineIndex]!;
 		const textX = x - margin;
@@ -816,17 +762,11 @@ export class CTextEdit extends CScrollArea {
 		for (let i = 1;
 			i <= line.text.length;
 			++i) {
-			const previousWidth =
-				metrics.textWidth(
-					line.text.slice(0, i - 1)
-				);
+			const previousWidth = metrics.textWidth(line.text.slice(0, i - 1));
 
-			const width = metrics.textWidth(
-				line.text.slice(0, i)
-			);
+			const width = metrics.textWidth(line.text.slice(0, i));
 
-			const middle =
-				(previousWidth + width) / 2;
+			const middle = (previousWidth + width) / 2;
 
 			if (textX < middle)
 				return line.start + i - 1;
@@ -839,17 +779,10 @@ export class CTextEdit extends CScrollArea {
 		position: number,
 		keepAnchor: boolean
 	): void {
-		const clamped = Math.max(
-			0,
-			Math.min(
-				position,
-				this.#m_text.length
-			)
-		);
+		this.#breakUndoGroup();
+		const clamped = Math.max(0, Math.min(position, this.#m_text.length));
 
-		if (this.#m_cursorPosition === clamped
-			&& (keepAnchor
-				|| this.#m_selectionAnchor === clamped))
+		if (this.#m_cursorPosition === clamped && (keepAnchor || this.#m_selectionAnchor === clamped))
 			return;
 
 		const oldAnchor = this.#m_selectionAnchor;
@@ -860,8 +793,7 @@ export class CTextEdit extends CScrollArea {
 		if (!keepAnchor)
 			this.#m_selectionAnchor = clamped;
 
-		if (oldAnchor !== this.#m_selectionAnchor
-			|| oldPosition !== this.#m_cursorPosition)
+		if (oldAnchor !== this.#m_selectionAnchor || oldPosition !== this.#m_cursorPosition)
 			this.selectionChanged.emit();
 
 		this.#ensureCursorVisible();
@@ -870,17 +802,14 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	#deleteSelection(): boolean {
-		if (!this.hasSelection()
-			|| this.isReadOnly())
+		if (!this.hasSelection() || this.isReadOnly())
 			return false;
 
-        this.#pushUndoState();
+        this.#pushUndoState(null);
 		const start = this.selectionStart();
 		const end = this.selectionEnd();
 
-		this.#m_text =
-			this.#m_text.slice(0, start)
-			+ this.#m_text.slice(end);
+		this.#m_text = this.#m_text.slice(0, start) + this.#m_text.slice(end);
 
 		this.#m_cursorPosition = start;
 		this.#m_selectionAnchor = start;
@@ -901,18 +830,13 @@ export class CTextEdit extends CScrollArea {
 		let width = 0;
 
 		for (const line of this.#lines())
-			width = Math.max(
-				width,
-				metrics.textWidth(line.text)
-			);
+			width = Math.max(width, metrics.textWidth(line.text));
 
 		return width + 2 * CTextEdit.#TEXT_MARGIN;
 	}
 
 	#contentHeight(): number {
-		return 2 * CTextEdit.#TEXT_MARGIN
-			+ this.#lines().length
-			* CTextEdit.#LINE_HEIGHT;
+		return 2 * CTextEdit.#TEXT_MARGIN + this.#lines().length * CTextEdit.#LINE_HEIGHT;
 	}
 
 	#updateContentGeometry(): void {
@@ -930,14 +854,8 @@ export class CTextEdit extends CScrollArea {
 		this.updateScrollBars();
 
 		this.#m_contentWidget.resize(
-			Math.max(
-				this.viewport().width(),
-				contentWidth
-			),
-			Math.max(
-				this.viewport().height(),
-				contentHeight
-			)
+			Math.max(this.viewport().width(), contentWidth),
+			Math.max(this.viewport().height(), contentHeight)
 		);
 
 		this.updateScrollBars();
@@ -953,50 +871,24 @@ export class CTextEdit extends CScrollArea {
 
 		const line = this.#lines()[position.line]!;
 
-		const cursorX =
-			CTextEdit.#TEXT_MARGIN
-			+ metrics.textWidth(
-				line.text.slice(
-					0,
-					position.column
-				)
-			);
+		const cursorX = CTextEdit.#TEXT_MARGIN + metrics.textWidth(line.text.slice(0, position.column));
 
-		const cursorY =
-			CTextEdit.#TEXT_MARGIN
-			+ position.line
-			* CTextEdit.#LINE_HEIGHT;
+		const cursorY = CTextEdit.#TEXT_MARGIN + position.line * CTextEdit.#LINE_HEIGHT;
 
 		let scrollX = this.scrollX();
 		let scrollY = this.scrollY();
 
 		if (cursorX < scrollX + CTextEdit.#TEXT_MARGIN)
-			scrollX = Math.max(
-				0,
-				cursorX - CTextEdit.#TEXT_MARGIN
-			);
-		else if (cursorX
-			> scrollX + this.viewport().width()
-			- CTextEdit.#TEXT_MARGIN) {
-			scrollX =
-				cursorX
-				- this.viewport().width()
-				+ CTextEdit.#TEXT_MARGIN;
+			scrollX = Math.max(0, cursorX - CTextEdit.#TEXT_MARGIN);
+		else if (cursorX > scrollX + this.viewport().width() - CTextEdit.#TEXT_MARGIN) {
+			scrollX = cursorX - this.viewport().width() + CTextEdit.#TEXT_MARGIN;
 		}
 
 		if (cursorY < scrollY + CTextEdit.#TEXT_MARGIN)
-			scrollY = Math.max(
-				0,
-				cursorY - CTextEdit.#TEXT_MARGIN
-			);
-		else if (cursorY
-			+ CTextEdit.#LINE_HEIGHT
-			> scrollY + this.viewport().height()
-			- CTextEdit.#TEXT_MARGIN) {
-			scrollY =
-				cursorY
-				+ CTextEdit.#LINE_HEIGHT
-				- this.viewport().height()
+			scrollY = Math.max(0, cursorY - CTextEdit.#TEXT_MARGIN);
+		else if (cursorY + CTextEdit.#LINE_HEIGHT > scrollY + this.viewport().height() 
+					- CTextEdit.#TEXT_MARGIN) {
+			scrollY = cursorY + CTextEdit.#LINE_HEIGHT - this.viewport().height()
 				+ CTextEdit.#TEXT_MARGIN;
 		}
 
@@ -1030,12 +922,19 @@ export class CTextEdit extends CScrollArea {
 		};
 	}
 
-	#pushUndoState(): void {
+	#pushUndoState(group: CTextEditUndoGroup = null): void {
 		if (this.#m_restoringHistory)
 			return;
 
-		this.#m_undoStack.push(this.#currentState());
+		if (group === null || group !== this.#m_undoGroup)
+			this.#m_undoStack.push(this.#currentState());
+
+		this.#m_undoGroup = group;
 		this.#m_redoStack = [];
+	}
+
+	#breakUndoGroup(): void {
+		this.#m_undoGroup = null;
 	}
 
 	#restoreState(state: CTextEditState): void {
@@ -1055,10 +954,33 @@ export class CTextEdit extends CScrollArea {
 		if (textChanged)
 			this.textChanged.emit();
 
-		if (hadSelection !== this.hasSelection()
-			|| this.hasSelection())
+		if (hadSelection !== this.hasSelection() || this.hasSelection())
 			this.selectionChanged.emit();
 
 		this.#m_restoringHistory = false;
+	}
+
+	#insert(text: string, group: CTextEditUndoGroup): void {
+		if (text.length === 0 || this.isReadOnly())
+			return;
+
+		this.#pushUndoState(group);
+		const hadSelection = this.hasSelection();
+
+		const start = hadSelection? this.selectionStart() : this.#m_cursorPosition;
+		const end = hadSelection? this.selectionEnd() : this.#m_cursorPosition;
+
+		this.#m_text = this.#m_text.slice(0, start) + text + this.#m_text.slice(end);
+		this.#m_cursorPosition = start + text.length;
+		this.#m_selectionAnchor = this.#m_cursorPosition;
+		this.textChanged.emit();
+
+		if (hadSelection)
+			this.selectionChanged.emit();
+
+		this.#updateContentGeometry();
+		this.#ensureCursorVisible();
+		this.#resetCursorBlink();
+		this.#m_contentWidget.update();
 	}
 }
