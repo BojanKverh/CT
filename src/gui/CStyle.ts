@@ -17,6 +17,7 @@ import type { CToolBar } from "../widgets/CToolBar.js";
 import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
 import type { CSizeGrip } from "../widgets/CSizeGrip.js";
 import type { CToolBoxButton } from "../widgets/CToolBoxButton.js";
+import type { CKeySequenceEdit } from "../widgets/CKeySequenceEdit.js";
 
 export abstract class CStyle {
 	
@@ -44,4 +45,5 @@ export abstract class CStyle {
     abstract drawSplitterHandle(painter: CPainter, handle: CSplitterHandle): void;
     abstract drawSizeGrip(painter: CPainter, sizeGrip: CSizeGrip): void;
     abstract drawToolBoxButton(painter: CPainter, button: CToolBoxButton): void;
+    abstract drawKeySequenceEdit(painter: CPainter, edit: CKeySequenceEdit): void;
 }

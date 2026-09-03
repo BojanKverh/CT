@@ -1609,7 +1609,7 @@ describe("CApplication", () => {
 		} as unknown as KeyboardEvent);
 
 		expect(app.focusWidget()).toBe(widget1);
-		expect(preventDefault).not.toHaveBeenCalled();
+		expect(preventDefault).toHaveBeenCalledOnce();
 	});
 
 	test("Tab focus follows widget tree order", () => {

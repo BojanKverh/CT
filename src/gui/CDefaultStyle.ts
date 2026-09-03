@@ -25,6 +25,7 @@ import type { CSlider } from "../widgets/CSlider.js";
 import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
 import type { CSizeGrip } from "../widgets/CSizeGrip.js";
 import type { CToolBoxButton } from "../widgets/CToolBoxButton.js";
+import type { CKeySequenceEdit } from "../widgets/CKeySequenceEdit.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -888,5 +889,30 @@ export class CDefaultStyle extends CStyle {
 		painter.setTextAlign("left");
 		painter.setTextBaseline("middle");
 		painter.drawText(button.text(), 8, button.height() / 2);
+	}
+
+	override drawKeySequenceEdit(painter: CPainter, edit: CKeySequenceEdit): void
+	{
+		const palette = edit.palette();
+		const textRole = edit.isEnabled()
+			? CPaletteColorRole.Text
+			: CPaletteColorRole.DisabledText;
+
+		painter.setFillStyle(
+			palette.color(CPaletteColorRole.Base).toCss()
+		);
+		painter.fillRect(edit.rect());
+
+		painter.setStrokeStyle(
+			palette.color(CPaletteColorRole.WindowText).toCss()
+		);
+		painter.strokeRect(edit.rect());
+
+		painter.setPen(palette.color(textRole).toCss());
+		painter.setFont(edit.font());
+		painter.setTextAlign("left");
+		painter.setTextBaseline("middle");
+
+		painter.drawText(edit.keySequence(), 5, edit.height() / 2);
 	}
 }

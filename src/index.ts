@@ -66,3 +66,4 @@ export { CDateEdit } from "./widgets/CDateEdit.js";
 export { CTimeEdit } from "./widgets/CTimeEdit.js";
 export { CDateTimeEdit } from "./widgets/CDateTimeEdit.js";
 export { CTextEdit } from "./widgets/CTextEdit.js";
+export { CKeySequenceEdit } from "./widgets/CKeySequenceEdit.js";

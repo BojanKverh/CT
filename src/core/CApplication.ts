@@ -516,7 +516,6 @@ export class CApplication extends CObject {
 		if (type === CEventType.KeyPress && keyboardEvent.key === "Escape" &&
 			this.#m_popupWidgets.length > 0) {
 			const popup = this.#m_popupWidgets[this.#m_popupWidgets.length - 1]!;
-
 			popup.close();
 			keyboardEvent.preventDefault();
 			return;
@@ -526,14 +525,24 @@ export class CApplication extends CObject {
 		if (target === null)
 			return;
 
-		const event = new CKeyEvent(type, keyboardEvent.key, keyboardEvent.ctrlKey,
-			keyboardEvent.shiftKey, keyboardEvent.altKey, keyboardEvent.metaKey);
+		const altGraph = typeof keyboardEvent.getModifierState === "function"? 
+			keyboardEvent.getModifierState("AltGraph") : false;
+		const event = new CKeyEvent(type, keyboardEvent.key,
+			keyboardEvent.ctrlKey, keyboardEvent.shiftKey,
+			keyboardEvent.altKey, keyboardEvent.metaKey, keyboardEvent.code, 
+			altGraph);
 
 		while (target !== null) {
 			if (target.event(event))
-				return;
+				break;
 
 			target = target.parent();
+		}
+
+		if (event.isAccepted()) {
+			if (typeof keyboardEvent.preventDefault === "function")
+				keyboardEvent.preventDefault();
+			return;
 		}
 
 		if (type === CEventType.KeyPress && keyboardEvent.key === "Tab") {

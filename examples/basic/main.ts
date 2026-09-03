@@ -5,7 +5,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CTabWidget, CFrame, CFrameShadow, CFrameShape, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
 	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
 	CColorDialog, CSplitter, CSizeGrip, CToolBox, CCalendarWidget, CDateEdit, CTimeEdit, CDateTimeEdit,
-	CTextEdit
+	CTextEdit, CKeySequenceEdit
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -323,6 +323,9 @@ const lab2 = new CLabel(parent);
 lab2.setGeometry(250, 100, 60, 60);
 //lab2.setPixmap(await CPixmap.fromUrl("https://lh3.googleusercontent.com/a/ACg8ocLmgw58KyM8NCkoYwv98Z1rhTAHr5doS1DcOM8s60xFXhZIN3Qb=s96-c"));
 lab2.setText("Bojan");
+
+const kse = new CKeySequenceEdit(parent);
+kse.setGeometry(800, 20, 100, 30);
 
 const child = new BlueWidget(parent);
 child.setToolTip("Blue widget");
