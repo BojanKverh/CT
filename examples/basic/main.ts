@@ -5,7 +5,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CTabWidget, CFrame, CFrameShadow, CFrameShape, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
 	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
 	CColorDialog, CSplitter, CSizeGrip, CToolBox, CCalendarWidget, CDateEdit, CTimeEdit, CDateTimeEdit,
-	CTextEdit, CKeySequenceEdit
+	CTextEdit, CKeySequenceEdit, CListView, CModelIndex, CAbstractListModel
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -102,6 +102,26 @@ class ScrollContentWidget extends CWidget {
 
 		painter.setFillStyle("#202020");
 		painter.drawText("Bottom-right area", 720, 540);
+	}
+}
+
+class CStringListModel extends CAbstractListModel {
+	#m_items: string[];
+
+	constructor(items: string[]) {
+		super();
+		this.#m_items = items;
+	}
+
+	override rowCount(_parent = new CModelIndex()): number {
+		return this.#m_items.length;
+	}
+
+	override data(index: CModelIndex): unknown {
+		if (!index.isValid())
+			return null;
+
+		return this.#m_items[index.row()] ?? null;
 	}
 }
 
@@ -433,6 +453,16 @@ const leftW = new CTextEdit;
 leftW.setMinimumSize(150, 300);
 leftW.setMaximumSize(350, 300);
 const rightW = new BlueWidget(splitter);
+
+const model = new CStringListModel(["Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus",
+	"Neptune", "Pluto", "Ceres", "Haumea", "Makemake", "Eris", "Ganymede", "Titan", "Callisto", "Io",
+	"Moon", "Europa", "Triton" ]);
+
+const listView = new CListView(rightW);
+
+listView.setGeometry(10, 10, 200, 250);
+listView.setModel(model);
+
 splitter.addWidget(leftW);
 splitter.addWidget(rightW);
 splitter.setSizes([100, 94]);
