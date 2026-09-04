@@ -494,6 +494,13 @@ export class CApplication extends CObject {
 				);
 			}
 		}
+
+		if (type === CEventType.MouseMove) {
+			if (this.#m_hoverWidget === null)
+				this.#setCursor(CCursorShape.Arrow);
+			else
+				this.#setCursor(this.#m_hoverWidget.cursor());
+		}
 	}
 
 	#dispatchWheelEvent(type: CEventType, wheelEvent: WheelEvent): void {
