@@ -12,6 +12,7 @@ import { CHeaderView } from "./CHeaderView.js";
 import { CScrollArea } from "./CScrollArea.js";
 import { CScrollBar } from "./CScrollBar.js";
 import { CWidget } from "./CWidget.js";
+import { CKeyEvent } from "../events/CKeyEvent.js";
 
 class CTableScrollArea extends CScrollArea {
 	updateTableScrollBars(): void {
@@ -25,6 +26,7 @@ class CTableViewContentWidget extends CWidget {
 	constructor(view: CTableView, parent: CWidget | null = null) {
 		super(parent);
 		this.#m_view = view;
+		this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
 	protected override paintEvent(painter: CPainter): void {
@@ -33,6 +35,10 @@ class CTableViewContentWidget extends CWidget {
 
 	protected override mousePressEvent(event: CMouseEvent): void {
 		this.#m_view.contentMousePressEvent(event);
+	}
+
+	protected override keyPressEvent(event: CKeyEvent): void {
+		this.#m_view.contentKeyPressEvent(event);
 	}
 }
 
@@ -146,6 +152,10 @@ export class CTableView extends CWidget {
 			return;
 
 		this.#m_selectionModel.setCurrentIndex(index);
+
+		if (index.isValid())
+			this.#ensureIndexVisible(index);
+
 		this.#m_contentWidget.update();
 	}
 
@@ -326,6 +336,86 @@ export class CTableView extends CWidget {
 		event.accept();
 	}
 
+	contentKeyPressEvent(event: CKeyEvent): void {
+		if (this.#m_model === null
+			|| this.#m_selectionModel === null) {
+			event.ignore();
+			return;
+		}
+
+		const rows = this.#m_model.rowCount();
+		const columns = this.#m_model.columnCount();
+
+		if (rows === 0 || columns === 0) {
+			event.ignore();
+			return;
+		}
+
+		let row = this.currentIndex().row();
+		let column = this.currentIndex().column();
+
+		if (!this.currentIndex().isValid()) {
+			row = 0;
+			column = 0;
+		} else {
+			switch (event.key()) {
+				case "ArrowLeft":
+					column = Math.max(0, column - 1);
+					break;
+
+				case "ArrowRight":
+					column = Math.min(columns - 1, column + 1);
+					break;
+
+				case "ArrowUp":
+					row = Math.max(0, row - 1);
+					break;
+
+				case "ArrowDown":
+					row = Math.min(rows - 1, row + 1);
+					break;
+
+				case "Home":
+					if (event.ctrl())
+						row = 0;
+
+					column = 0;
+					break;
+
+				case "End":
+					if (event.ctrl())
+						row = rows - 1;
+
+					column = columns - 1;
+					break;
+
+				case "PageUp":
+					row = Math.max(0, row - this.#pageRowCount()
+					);
+					break;
+
+				case "PageDown":
+					row = Math.min(rows - 1, row + this.#pageRowCount());
+				break;
+
+				default:
+					event.ignore();
+					return;
+			}
+		}
+
+		const index = this.#m_model.index(row, column);
+
+		this.#m_selectionModel.clearSelection();
+		this.#m_selectionModel.select(index);
+		this.#m_selectionModel.setCurrentIndex(index);
+
+		this.#ensureIndexVisible(index);
+
+		this.#m_contentWidget.update();
+		event.accept();
+	}
+
 	#updateGeometry(): void {
 		const headerWidth =
 			CHeaderView.DefaultVerticalWidth;
@@ -421,5 +511,53 @@ export class CTableView extends CWidget {
 			this.#m_disconnectModelReset();
 			this.#m_disconnectModelReset = null;
 		}
+	}
+
+	#ensureIndexVisible(index: CModelIndex): void {
+		if (!index.isValid())
+			return;
+
+		const x =
+			index.column() * CTableView.ColumnWidth;
+
+		const y =
+			index.row() * CTableView.RowHeight;
+
+		const right =
+			x + CTableView.ColumnWidth;
+
+		const bottom =
+			y + CTableView.RowHeight;
+
+		const viewportWidth =
+			this.#m_scrollArea.viewport().width();
+
+		const viewportHeight =
+			this.#m_scrollArea.viewport().height();
+
+		let scrollX = this.#m_scrollArea.scrollX();
+		let scrollY = this.#m_scrollArea.scrollY();
+
+		if (x < scrollX)
+			scrollX = x;
+		else if (right > scrollX + viewportWidth)
+			scrollX = right - viewportWidth;
+
+		if (y < scrollY)
+			scrollY = y;
+		else if (bottom > scrollY + viewportHeight)
+			scrollY = bottom - viewportHeight;
+
+		this.#m_scrollArea.scrollTo(scrollX, scrollY);
+	}
+
+	#pageRowCount(): number {
+		return Math.max(
+			1,
+			Math.floor(
+				this.#m_scrollArea.viewport().height()
+					/ CTableView.RowHeight
+			)
+		);
 	}
 }

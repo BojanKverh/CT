@@ -5,6 +5,8 @@ import { CAbstractTableModel } from "../../src/models/CAbstractTableModel.js";
 import { CModelIndex } from "../../src/models/CModelIndex.js";
 import { CTableView } from "../../src/widgets/CTableView.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
+import { CEventType } from "../../src/events/CEvent.js";
+import { CKeyEvent } from "../../src/events/CKeyEvent.js";
 
 class TestTableModel extends CAbstractTableModel {
 	#m_data: string[][];
@@ -499,5 +501,481 @@ describe("CTableView", () => {
 		);
 
 		expect(view.verticalScrollBar().isVisible()).toBe(true);
+	});
+
+	test("first arrow key selects first cell", () => {
+		const view = new CTableView();
+		const model = new TestTableModel();
+
+		view.setModel(model);
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "ArrowRight")
+		);
+
+		const current = view.currentIndex();
+
+		expect(current.row()).toBe(0);
+		expect(current.column()).toBe(0);
+		expect(view.selectionModel()?.isSelected(current)).toBe(true);
+	});
+
+	test("arrow right moves current cell right", () => {
+		const view = new CTableView();
+		const model = new TestTableModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(1, 1));
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "ArrowRight")
+		);
+
+		expect(view.currentIndex().row()).toBe(1);
+		expect(view.currentIndex().column()).toBe(2);
+	});
+
+	test("arrow left moves current cell left", () => {
+		const view = new CTableView();
+		const model = new TestTableModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(1, 1));
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "ArrowLeft")
+		);
+
+		expect(view.currentIndex().row()).toBe(1);
+		expect(view.currentIndex().column()).toBe(0);
+	});
+
+	test("arrow down moves current cell down", () => {
+		const view = new CTableView();
+		const model = new TestTableModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(1, 1));
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "ArrowDown")
+		);
+
+		expect(view.currentIndex().row()).toBe(2);
+		expect(view.currentIndex().column()).toBe(1);
+	});
+
+	test("arrow up moves current cell up", () => {
+		const view = new CTableView();
+		const model = new TestTableModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(1, 1));
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "ArrowUp")
+		);
+
+		expect(view.currentIndex().row()).toBe(0);
+		expect(view.currentIndex().column()).toBe(1);
+	});
+
+	test("arrow left stops at first column", () => {
+		const view = new CTableView();
+		const model = new TestTableModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(1, 0));
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "ArrowLeft")
+		);
+
+		expect(view.currentIndex().row()).toBe(1);
+		expect(view.currentIndex().column()).toBe(0);
+	});
+
+	test("arrow right stops at last column", () => {
+		const view = new CTableView();
+		const model = new TestTableModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(1, 2));
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "ArrowRight")
+		);
+
+		expect(view.currentIndex().row()).toBe(1);
+		expect(view.currentIndex().column()).toBe(2);
+	});
+
+	test("arrow up stops at first row", () => {
+		const view = new CTableView();
+		const model = new TestTableModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(0, 1));
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "ArrowUp")
+		);
+
+		expect(view.currentIndex().row()).toBe(0);
+		expect(view.currentIndex().column()).toBe(1);
+	});
+
+	test("arrow down stops at last row", () => {
+		const view = new CTableView();
+		const model = new TestTableModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(2, 1));
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "ArrowDown")
+		);
+
+		expect(view.currentIndex().row()).toBe(2);
+		expect(view.currentIndex().column()).toBe(1);
+	});
+
+	test("keyboard navigation selects new current cell", () => {
+		const view = new CTableView();
+		const model = new TestTableModel();
+
+		view.setModel(model);
+
+		const oldIndex = model.index(1, 1);
+
+		view.selectionModel()?.select(oldIndex);
+		view.setCurrentIndex(oldIndex);
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "ArrowRight")
+		);
+
+		const newIndex = model.index(1, 2);
+
+		expect(view.currentIndex().equals(newIndex)).toBe(true);
+		expect(view.selectionModel()?.isSelected(newIndex)).toBe(true);
+		expect(view.selectionModel()?.isSelected(oldIndex)).toBe(false);
+	});
+
+	test("non-arrow key does not change current cell", () => {
+		const view = new CTableView();
+		const model = new TestTableModel();
+
+		view.setModel(model);
+
+		const index = model.index(1, 1);
+
+		view.selectionModel()?.select(index);
+		view.setCurrentIndex(index);
+
+		const event =
+			new CKeyEvent(CEventType.KeyPress, "A");
+
+		view.contentKeyPressEvent(event);
+
+		expect(view.currentIndex().equals(index)).toBe(true);
+		expect(view.selectionModel()?.isSelected(index)).toBe(true);
+		expect(event.isAccepted()).toBe(false);
+	});
+
+	test("arrow key is accepted", () => {
+		const view = new CTableView();
+		const model = new TestTableModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(1, 1));
+
+		const event =
+			new CKeyEvent(CEventType.KeyPress, "ArrowRight");
+
+		view.contentKeyPressEvent(event);
+
+		expect(event.isAccepted()).toBe(true);
+	});
+
+	test("keyboard navigation scrolls horizontally to current cell", () => {
+		const view = new CTableView();
+
+		const model = new TestTableModel([
+			Array.from(
+				{ length: 10 },
+				(_, column) => `Column ${column}`
+			)
+		]);
+
+		view.resize(400, 240);
+		view.setModel(model);
+		view.setCurrentIndex(model.index(0, 0));
+
+		for (let i = 0; i < 9; i++) {
+			view.contentKeyPressEvent(
+				new CKeyEvent(
+					CEventType.KeyPress,
+					"ArrowRight"
+				)
+			);
+		}
+
+		expect(view.currentIndex().column()).toBe(9);
+		expect(view.scrollX()).toBeGreaterThan(0);
+		expect(view.horizontalHeader().offset())
+			.toBe(view.scrollX());
+	});
+
+	test("keyboard navigation scrolls vertically to current cell", () => {
+		const view = new CTableView();
+
+		const model = new TestTableModel(
+			Array.from(
+				{ length: 20 },
+				(_, row) => [`Row ${row}`]
+			)
+		);
+
+		view.resize(400, 120);
+		view.setModel(model);
+		view.setCurrentIndex(model.index(0, 0));
+
+		for (let i = 0; i < 19; i++) {
+			view.contentKeyPressEvent(
+				new CKeyEvent(
+					CEventType.KeyPress,
+					"ArrowDown"
+				)
+			);
+		}
+
+		expect(view.currentIndex().row()).toBe(19);
+		expect(view.scrollY()).toBeGreaterThan(0);
+		expect(view.verticalHeader().offset())
+			.toBe(view.scrollY());
+	});
+
+	test("keyboard navigation scrolls back to first column", () => {
+		const view = new CTableView();
+
+		const model = new TestTableModel([
+			Array.from(
+				{ length: 10 },
+				(_, column) => `Column ${column}`
+			)
+		]);
+
+		view.resize(400, 240);
+		view.setModel(model);
+		view.setCurrentIndex(model.index(0, 9));
+
+		for (let i = 0; i < 9; i++) {
+			view.contentKeyPressEvent(
+				new CKeyEvent(
+					CEventType.KeyPress,
+					"ArrowLeft"
+				)
+			);
+		}
+
+		expect(view.currentIndex().column()).toBe(0);
+		expect(view.scrollX()).toBe(0);
+		expect(view.horizontalHeader().offset()).toBe(0);
+	});
+
+	test("keyboard navigation scrolls back to first row", () => {
+		const view = new CTableView();
+
+		const model = new TestTableModel(
+			Array.from(
+				{ length: 20 },
+				(_, row) => [`Row ${row}`]
+			)
+		);
+
+		view.resize(400, 120);
+		view.setModel(model);
+		view.setCurrentIndex(model.index(19, 0));
+
+		for (let i = 0; i < 19; i++) {
+			view.contentKeyPressEvent(
+				new CKeyEvent(
+					CEventType.KeyPress,
+					"ArrowUp"
+				)
+			);
+		}
+
+		expect(view.currentIndex().row()).toBe(0);
+		expect(view.scrollY()).toBe(0);
+		expect(view.verticalHeader().offset()).toBe(0);
+	});
+
+	test("home moves to first column", () => {
+		const view = new CTableView();
+		const model = new TestTableModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(1, 2));
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "Home")
+		);
+
+		expect(view.currentIndex().row()).toBe(1);
+		expect(view.currentIndex().column()).toBe(0);
+	});
+
+	test("end moves to last column", () => {
+		const view = new CTableView();
+		const model = new TestTableModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(1, 0));
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "End")
+		);
+
+		expect(view.currentIndex().row()).toBe(1);
+		expect(view.currentIndex().column()).toBe(2);
+	});
+
+	test("ctrl home moves to first cell", () => {
+		const view = new CTableView();
+		const model = new TestTableModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(2, 2));
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(
+				CEventType.KeyPress,
+				"Home",
+				true
+			)
+		);
+
+		expect(view.currentIndex().row()).toBe(0);
+		expect(view.currentIndex().column()).toBe(0);
+	});
+
+	test("ctrl end moves to last cell", () => {
+		const view = new CTableView();
+		const model = new TestTableModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(0, 0));
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(
+				CEventType.KeyPress,
+				"End",
+				true
+			)
+		);
+
+		expect(view.currentIndex().row()).toBe(2);
+		expect(view.currentIndex().column()).toBe(2);
+	});
+
+	test("page down moves by visible page", () => {
+		const view = new CTableView();
+
+		const model = new TestTableModel(
+			Array.from(
+				{ length: 20 },
+				(_, row) => [`Row ${row}`]
+			)
+		);
+
+		view.resize(400, 120);
+		view.setModel(model);
+		view.setCurrentIndex(model.index(0, 0));
+
+		const pageRows = Math.floor(
+			view.viewport().height()
+				/ CTableView.RowHeight
+		);
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "PageDown")
+		);
+
+		expect(view.currentIndex().row()).toBe(pageRows);
+		expect(view.currentIndex().column()).toBe(0);
+	});
+
+	test("page up moves by visible page", () => {
+		const view = new CTableView();
+
+		const model = new TestTableModel(
+			Array.from(
+				{ length: 20 },
+				(_, row) => [`Row ${row}`]
+			)
+		);
+
+		view.resize(400, 120);
+		view.setModel(model);
+
+		const pageRows = Math.floor(
+			view.viewport().height()
+				/ CTableView.RowHeight
+		);
+
+		view.setCurrentIndex(
+			model.index(pageRows + 2, 0)
+		);
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "PageUp")
+		);
+
+		expect(view.currentIndex().row()).toBe(2);
+		expect(view.currentIndex().column()).toBe(0);
+	});
+
+	test("page down stops at last row", () => {
+		const view = new CTableView();
+
+		const model = new TestTableModel(
+			Array.from(
+				{ length: 20 },
+				(_, row) => [`Row ${row}`]
+			)
+		);
+
+		view.resize(400, 120);
+		view.setModel(model);
+		view.setCurrentIndex(model.index(18, 0));
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "PageDown")
+		);
+
+		expect(view.currentIndex().row()).toBe(19);
+	});
+
+	test("page up stops at first row", () => {
+		const view = new CTableView();
+
+		const model = new TestTableModel(
+			Array.from(
+				{ length: 20 },
+				(_, row) => [`Row ${row}`]
+			)
+		);
+
+		view.resize(400, 120);
+		view.setModel(model);
+		view.setCurrentIndex(model.index(1, 0));
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "PageUp")
+		);
+
+		expect(view.currentIndex().row()).toBe(0);
 	});
 });
