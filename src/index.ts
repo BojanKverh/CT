@@ -69,6 +69,8 @@ export { CTextEdit } from "./widgets/CTextEdit.js";
 export { CKeySequenceEdit } from "./widgets/CKeySequenceEdit.js";
 export { CListView } from "./widgets/CListView.js";
 export { CModelIndex } from "./models/CModelIndex.js";
+export { CAbstractItemModel } from "./models/CAbstractItemModel.js";
 export { CAbstractListModel } from "./models/CAbstractListModel.js";
 export { CAbstractTableModel } from "./models/CAbstractTableModel.js";
 export { CTableView } from "./widgets/CTableView.js";
+export { CTreeView } from "./widgets/CTreeView.js";

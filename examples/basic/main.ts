@@ -5,7 +5,8 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CTabWidget, CFrame, CFrameShadow, CFrameShape, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
 	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
 	CColorDialog, CSplitter, CSizeGrip, CToolBox, CCalendarWidget, CDateEdit, CTimeEdit, CDateTimeEdit,
-	CTextEdit, CKeySequenceEdit, CListView, CModelIndex, CAbstractListModel, CTableView, CAbstractTableModel
+	CTextEdit, CKeySequenceEdit, CListView, CModelIndex, CAbstractListModel, CTableView, CAbstractTableModel,
+	CTreeView, CAbstractItemModel
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -181,6 +182,113 @@ class DemoTableModel extends CAbstractTableModel {
 		return section + 1;
 	}
 }
+
+type TreeNode = {
+	values: string[];
+	parent: TreeNode | null;
+	children: TreeNode[];
+};
+
+function node(values: string[], children: TreeNode[] = []): TreeNode {
+	const result: TreeNode = {
+		values,
+		parent: null,
+		children
+	};
+
+	for (const child of children)
+		child.parent = result;
+
+	return result;
+}
+
+class DemoTreeModel extends CAbstractItemModel {
+	#m_root: TreeNode;
+
+	constructor(root: TreeNode) {
+		super();
+
+		this.#m_root = root;
+		this.#setParents(this.#m_root, null);
+	}
+
+	override rowCount(parent = new CModelIndex()): number {
+		return this.#nodeForParent(parent).children.length;
+	}
+
+	override columnCount(_parent = new CModelIndex()): number {
+		return 3;
+	}
+
+	override data(index: CModelIndex): unknown {
+		if (!index.isValid())
+			return null;
+
+		const treeNode = index.data() as TreeNode;
+
+		return treeNode.values[index.column()] ?? null;
+	}
+
+	override index(row: number, column: number,
+		parent = new CModelIndex()): CModelIndex {
+		if (row < 0 || column < 0 || column >= this.columnCount(parent))
+			return new CModelIndex();
+
+		const parentNode = this.#nodeForParent(parent);
+		const child = parentNode.children[row];
+
+		if (child === undefined)
+			return new CModelIndex();
+
+		return this.createIndex(row, column, child);
+	}
+
+	override parentIndex(index: CModelIndex): CModelIndex {
+		if (!index.isValid())
+			return new CModelIndex();
+
+		const treeNode = index.data() as TreeNode;
+		const parent = treeNode.parent;
+
+		if (parent === null || parent === this.#m_root)
+			return new CModelIndex();
+
+		const grandParent = parent.parent;
+
+		if (grandParent === null)
+			return new CModelIndex();
+
+		const row = grandParent.children.indexOf(parent);
+
+		if (row < 0)
+			return new CModelIndex();
+
+		return this.createIndex(row, 0, parent);
+	}
+
+	override headerData(section: number,
+		orientation: COrientation): string | number | null {
+		if (orientation === COrientation.Horizontal)
+			return ["Name", "Type", "Size"][section] ?? null;
+
+		return section + 1;
+	}
+
+	#nodeForParent(index: CModelIndex): TreeNode {
+		if (!index.isValid())
+			return this.#m_root;
+
+		return index.data() as TreeNode;
+	}
+
+	#setParents(treeNode: TreeNode, parent: TreeNode | null): void {
+		treeNode.parent = parent;
+
+		for (const child of treeNode.children)
+			this.#setParents(child, treeNode);
+	}
+}
+
 
 
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas");
@@ -408,7 +516,95 @@ but3.clicked.connect(() => {
 		dlg.accept();
 	});
 	dlg.exec();
-})
+});
+
+const but4 = new CPushButton(parent);
+but4.setGeometry(740, 50, 100, 30);
+but4.setText("CTreeView");
+but4.clicked.connect(() => {
+	const dlg = new CDialog(parent);
+	dlg.setGeometry(100, 100, 800, 400);
+	dlg.setWindowTitle("Something");
+
+	const root = node(["Root", "", ""], [
+	node(["src", "Folder", ""], [
+		node(["core", "Folder", ""], [
+			node(["CApplication.ts", "TypeScript", "18 KB"]),
+			node(["CObject.ts", "TypeScript", "7 KB"]),
+			node(["CSignal.ts", "TypeScript", "3 KB"])
+		]),
+		node(["events", "Folder", ""], [
+			node(["CEvent.ts", "TypeScript", "4 KB"]),
+			node(["CKeyEvent.ts", "TypeScript", "3 KB"]),
+			node(["CMouseEvent.ts", "TypeScript", "5 KB"])
+		]),
+		node(["geometry", "Folder", ""], [
+			node(["CPoint.ts", "TypeScript", "2 KB"]),
+			node(["CRect.ts", "TypeScript", "5 KB"]),
+			node(["CSize.ts", "TypeScript", "2 KB"])
+		]),
+		node(["models", "Folder", ""], [
+			node(["CAbstractItemModel.ts", "TypeScript", "5 KB"]),
+			node(["CItemSelectionModel.ts", "TypeScript", "6 KB"]),
+			node(["CModelIndex.ts", "TypeScript", "3 KB"])
+		]),
+		node(["widgets", "Folder", ""], [
+			node(["CButton.ts", "TypeScript", "6 KB"]),
+			node(["CLineEdit.ts", "TypeScript", "15 KB"]),
+			node(["CListView.ts", "TypeScript", "11 KB"]),
+			node(["CTableView.ts", "TypeScript", "16 KB"]),
+			node(["CTreeView.ts", "TypeScript", "18 KB"]),
+			node(["CWidget.ts", "TypeScript", "25 KB"])
+		])
+	]),
+	node(["tests", "Folder", ""], [
+		node(["core", "Folder", ""], [
+			node(["CApplication.test.ts", "Test", "32 KB"]),
+			node(["CObject.test.ts", "Test", "14 KB"])
+		]),
+		node(["models", "Folder", ""], [
+			node(["CModelIndex.test.ts", "Test", "9 KB"]),
+			node(["CItemSelectionModel.test.ts", "Test", "18 KB"])
+		]),
+		node(["widgets", "Folder", ""], [
+			node(["CListView.test.ts", "Test", "17 KB"]),
+			node(["CTableView.test.ts", "Test", "24 KB"]),
+			node(["CTreeView.test.ts", "Test", "28 KB"])
+		])
+	]),
+	node(["examples", "Folder", ""], [
+		node(["main.ts", "TypeScript", "8 KB"]),
+		node(["index.html", "HTML", "2 KB"])
+	]),
+	node(["package.json", "JSON", "1 KB"]),
+	node(["tsconfig.json", "JSON", "1 KB"]),
+	node(["README.md", "Markdown", "6 KB"])
+	]);
+
+	const model = new DemoTreeModel(root);
+	const tree = new CTreeView(dlg);
+	tree.setModel(model);
+
+	tree.expanded.connect(index => {
+		console.log("expanded:", model.data(index));
+	});
+
+	tree.collapsed.connect(index => {
+		console.log("collapsed:", model.data(index));
+	});
+
+	tree.selectionModel()?.currentChanged.connect((current, previous) => {
+		console.log("current:", model.data(current), "previous:", model.data(previous));
+	});
+	tree.setGeometry(50, 20, 500, 330);
+	const bb = new CDialogButtonBox(CStandardButton.Ok, dlg);
+	bb.setGeometry(0, 360, 780, 30);
+	bb.accepted.connect(() => {
+		dlg.accept();
+	});
+	dlg.exec();
+	
+});
 
 const lab = new CLabel(parent);
 lab.setGeometry(250, 50, 130, 40);
