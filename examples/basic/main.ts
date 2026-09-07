@@ -6,7 +6,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
 	CColorDialog, CSplitter, CSizeGrip, CToolBox, CCalendarWidget, CDateEdit, CTimeEdit, CDateTimeEdit,
 	CTextEdit, CKeySequenceEdit, CListView, CModelIndex, CAbstractListModel, CTableView, CAbstractTableModel,
-	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget
+	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget, CTableWidgetItem, CTableWidget
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -660,6 +660,61 @@ but5.clicked.connect(() => {
 	dlg.exec();
 });
 
+const but6 = new CPushButton(parent);
+but6.setText("CTableWidget");
+but6.setGeometry(150, 700, 100, 30);
+but6.clicked.connect(() => {
+	const dlg = new CDialog(parent);
+	dlg.setGeometry(100, 100, 800, 400);
+	dlg.setWindowTitle("CTableWidget");
+
+	const table = new CTableWidget(dlg);
+
+	table.setGeometry(20, 20, 650, 350);
+	table.setRowCount(15);
+	table.setColumnCount(4);
+
+	table.setHorizontalHeaderLabels(["Name", "Occupation", "Age", "City"]);
+
+	//table.setVerticalHeaderLabels(["1", "2", "3", "4", "5", "6", "7", "8"]);
+
+	const data = [
+		["Bojan", "Programmer", "52", "Maribor"],
+		["Peter", "Engineer", "48", "Ljubljana"],
+		["Ana", "Designer", "35", "Celje"],
+		["Marko", "Architect", "41", "Koper"],
+		["Maja", "Accountant", "39", "Ptuj"],
+		["Luka", "Developer", "29", "Kranj"],
+		["Nina", "Project Manager", "44", "Nova Gorica"],
+		["Tomaž", "System Administrator", "37", "Velenje"],
+		["Žana", "Designer", "35", "Celje"],
+		["Darko", "Architect", "41", "Koper"],
+		["Kaja", "Accountant", "39", "Ptuj"],
+		["Ines", "Developer", "29", "Kranj"],
+		["Nika", "Project Manager", "44", "Nova Gorica"],
+		["Frančeškin", "System Administrator", "37", "Velenje"],
+		["Domagoj", "System Administrator", "37", "Velenje"]
+	];
+
+	for (let row = 0; row < data.length; row++) {
+		for (let column = 0; column < data[row]!.length; column++) {
+			table.setItem(row, column,
+				new CTableWidgetItem(data[row]![column]!));
+		}
+	}
+
+	table.currentItemChanged.connect((current, previous) => {
+		console.log("current:", current?.text() ?? null, "previous:",
+			previous?.text() ?? null);
+	});
+	
+	const bb = new CDialogButtonBox(CStandardButton.Ok, dlg);
+	bb.setGeometry(0, 360, 780, 30);
+	bb.accepted.connect(() => {
+		dlg.accept();
+	});
+	dlg.exec();
+});
 
 const lab = new CLabel(parent);
 lab.setGeometry(250, 50, 130, 40);

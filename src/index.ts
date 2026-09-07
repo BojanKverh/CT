@@ -76,3 +76,5 @@ export { CTableView } from "./widgets/CTableView.js";
 export { CTreeView } from "./widgets/CTreeView.js";
 export { CTreeWidgetItem } from "./widgets/CTreeWidgetItem.js";
 export { CTreeWidget } from "./widgets/CTreeWidget.js";
+export { CTableWidgetItem } from "./widgets/CTableWidgetItem.js";
+export { CTableWidget } from "./widgets/CTableWidget.js";
