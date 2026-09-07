@@ -12,6 +12,7 @@ import { CPopupWidget } from "../../src/widgets/CPopupWidget.js";
 import { CDialog } from "../../src/dialogs/CDialog.js";
 import { CFocusPolicy } from "../../src/gui/CFocusPolicy";
 import { CContextMenuEvent, CContextMenuReason } from "../../src/events/CContextMenuEvent.js";
+import { CMenu } from "../../src/widgets/CMenu.js";
 
 class RenderTrackingWidget extends CWidget {
     renderCalls = 0;
@@ -1824,5 +1825,36 @@ describe("CApplication", () => {
 
 		expect(childCalls).toBe(1);
 		expect(parentCalls).toBe(0);
+	});
+
+	test("opens context menu at context menu event position", () => {
+		const app = new CApplication(createTestCanvas());
+		const menu = new CMenu();
+
+		class ContextMenuWidget extends CWidget {
+			protected override contextMenuEvent(
+				event: CContextMenuEvent): void {
+				menu.exec(event.globalPos());
+				event.accept();
+			}
+		}
+
+		const widget = new ContextMenuWidget();
+		widget.setGeometry(100, 100, 200, 100);
+
+		const preventDefault = vi.fn();
+
+		app.canvas().dispatchEvent({
+			type: "contextmenu",
+			clientX: 150,
+			clientY: 130,
+			preventDefault
+		} as unknown as PointerEvent);
+
+		expect(menu.isOpen()).toBe(true);
+		expect(menu.x()).toBe(150);
+		expect(menu.y()).toBe(130);
+		expect(app.focusWidget()).toBe(menu);
+		expect(preventDefault).toHaveBeenCalledOnce();
 	});
 });

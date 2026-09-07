@@ -6,7 +6,8 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
 	CColorDialog, CSplitter, CSizeGrip, CToolBox, CCalendarWidget, CDateEdit, CTimeEdit, CDateTimeEdit,
 	CTextEdit, CKeySequenceEdit, CListView, CModelIndex, CAbstractListModel, CTableView, CAbstractTableModel,
-	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget, CTableWidgetItem, CTableWidget
+	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget, CTableWidgetItem, CTableWidget, 
+	CContextMenuEvent
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -180,6 +181,45 @@ class DemoTableModel extends CAbstractTableModel {
 		}
 
 		return section + 1;
+	}
+}
+
+class ContextMenuWidget extends CWidget {
+	#m_menu = new CMenu();
+
+	constructor() {
+		super();
+
+		const action1 = new CAction("Copy");
+		const action2 = new CAction("Paste");
+		const action3 = new CAction("Delete");
+
+		action1.triggered.connect(() => {
+			console.log("Copy");
+		});
+
+		action2.triggered.connect(() => {
+			console.log("Paste");
+		});
+
+		action3.triggered.connect(() => {
+			console.log("Delete");
+		});
+
+		this.#m_menu.addAction(action1);
+		this.#m_menu.addAction(action2);
+		this.#m_menu.addSeparator();
+		this.#m_menu.addAction(action3);
+	}
+
+	protected override contextMenuEvent(
+		event: CContextMenuEvent): void {
+		this.#m_menu.exec(event.globalPos());
+		event.accept();
+	}
+
+	protected override paintEvent(painter: CPainter): void {
+		painter.drawText("Right click me", 10, 25);
 	}
 }
 
@@ -911,6 +951,11 @@ toolBox.addItem(advancedPage, "Advanced");
 toolBox.currentChanged.connect(index => {
 	console.log("ToolBox current:", index);
 });
+
+const ccw = new ContextMenuWidget();
+ccw.setParent(parent);
+ccw.setGeometry(30, 650, 100, 30);
+
 
 const menuBar = new CMenuBar();
 mainWindow.setMenuBar(menuBar);

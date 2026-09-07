@@ -8,6 +8,7 @@ import { CMenu } from "../../src/widgets/CMenu.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { createTestWindow } from "../helpers/createTestWindow.js";
 import { CKeyEvent } from "../../src/events/CKeyEvent.js";
+import { CPoint } from "../../src/geometry/CPoint.js";
 
 describe("CMenu", () => {
 	beforeEach(() => {
@@ -336,5 +337,33 @@ describe("CMenu", () => {
 		expect(slot).toHaveBeenCalledOnce();
 		expect(submenu.isOpen()).toBe(false);
 		expect(menu.isOpen()).toBe(false);
+	});
+
+	test("exec moves menu to requested position", () => {
+		const menu = new CMenu();
+
+		menu.exec(new CPoint(120, 80));
+
+		expect(menu.x()).toBe(120);
+		expect(menu.y()).toBe(80);
+	});
+
+	test("exec opens menu", () => {
+		const menu = new CMenu();
+
+		expect(menu.isOpen()).toBe(false);
+
+		menu.exec(new CPoint(120, 80));
+
+		expect(menu.isOpen()).toBe(true);
+	});
+
+	test("exec gives focus to menu", () => {
+		const app = CApplication.instance();
+		const menu = new CMenu();
+
+		menu.exec(new CPoint(120, 80));
+
+		expect(app.focusWidget()).toBe(menu);
 	});
 });

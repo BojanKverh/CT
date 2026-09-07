@@ -7,6 +7,8 @@ import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CSignal } from "../core/CSignal.js";
 import type { CMenuBar } from "./CMenuBar.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import { CPoint } from "../geometry/CPoint.js";
+import { CContextMenuEvent } from "../events/CContextMenuEvent.js";
 
 type CMenuItem =
 	| { type: "action"; action: CAction }
@@ -128,6 +130,12 @@ export class CMenu extends CPopupWidget {
 
 		this.#m_openSubMenu.setFocus();
 		return true;
+	}
+
+	exec(pos: CPoint): void {
+		this.move(pos.x(), pos.y());
+		this.open();
+		this.setFocus();
 	}
 
 	protected override mouseMoveEvent(event: CMouseEvent): void {

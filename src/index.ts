@@ -78,3 +78,4 @@ export { CTreeWidgetItem } from "./widgets/CTreeWidgetItem.js";
 export { CTreeWidget } from "./widgets/CTreeWidget.js";
 export { CTableWidgetItem } from "./widgets/CTableWidgetItem.js";
 export { CTableWidget } from "./widgets/CTableWidget.js";
+export { CContextMenuEvent } from "./events/CContextMenuEvent.js";
