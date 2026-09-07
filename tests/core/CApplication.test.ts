@@ -11,6 +11,7 @@ import { CHBoxLayout } from "../../src/layouts/CHBoxLayout.js";
 import { CPopupWidget } from "../../src/widgets/CPopupWidget.js";
 import { CDialog } from "../../src/dialogs/CDialog.js";
 import { CFocusPolicy } from "../../src/gui/CFocusPolicy";
+import { CContextMenuEvent, CContextMenuReason } from "../../src/events/CContextMenuEvent.js";
 
 class RenderTrackingWidget extends CWidget {
     renderCalls = 0;
@@ -1672,5 +1673,156 @@ describe("CApplication", () => {
 
 		expect(app.focusWidget()).toBe(widget2);
 		expect(preventDefault).toHaveBeenCalledOnce();
+	});
+
+	test("dispatches context menu event to widget", () => {
+		const app = new CApplication(createTestCanvas());
+		
+		let called = false;
+		let reason: CContextMenuReason | null = null;
+		const preventDefault = vi.fn();
+
+		class ContextMenuWidget extends CWidget {
+			protected override contextMenuEvent(
+				event: CContextMenuEvent): void {
+				called = true;
+				reason = event.reason();
+				event.accept();
+			}
+		}
+
+		const widget = new ContextMenuWidget();
+		widget.setGeometry(100, 100, 200, 100);
+
+		app.canvas().dispatchEvent({
+			type: "contextmenu",
+			clientX: 150,
+			clientY: 130,
+			preventDefault
+		} as unknown as PointerEvent);
+
+		expect(called).toBe(true);
+		expect(reason).toBe(CContextMenuReason.Mouse);
+	});
+
+	test("context menu event has local and canvas positions", () => {
+		const app = new CApplication(createTestCanvas());
+		
+		let localX = -1;
+		let localY = -1;
+		let globalX = -1;
+		let globalY = -1;
+		const preventDefault = vi.fn();
+
+		class ContextMenuWidget extends CWidget {
+			protected override contextMenuEvent(
+				event: CContextMenuEvent): void {
+				localX = event.pos().x();
+				localY = event.pos().y();
+				globalX = event.globalPos().x();
+				globalY = event.globalPos().y();
+				event.accept();
+			}
+		}
+
+		const widget = new ContextMenuWidget();
+		widget.setGeometry(100, 80, 200, 100);
+
+		app.canvas().dispatchEvent({
+			type: "contextmenu", 
+			clientX: 150, 
+			clientY: 120,
+			preventDefault
+		 } as unknown as PointerEvent);
+
+		expect(localX).toBe(50);
+		expect(localY).toBe(40);
+		expect(globalX).toBe(150);
+		expect(globalY).toBe(120);
+	});
+
+	test("bubbles ignored context menu event to parent", () => {
+		const app = new CApplication(createTestCanvas());
+		const preventDefault = vi.fn();
+
+		const calls: string[] = [];
+
+		class ParentWidget extends CWidget {
+			protected override contextMenuEvent(
+				event: CContextMenuEvent): void {
+				calls.push(
+					`parent:${event.pos().x()},${event.pos().y()}`
+				);
+				event.accept();
+			}
+		}
+
+		class ChildWidget extends CWidget {
+			protected override contextMenuEvent(
+				event: CContextMenuEvent): void {
+				calls.push(
+					`child:${event.pos().x()},${event.pos().y()}`
+				);
+				event.ignore();
+			}
+		}
+
+		const parent = new ParentWidget();
+		parent.setGeometry(100, 100, 300, 200);
+
+		const child = new ChildWidget(parent);
+		child.setGeometry(50, 40, 100, 80);
+
+		app.canvas().dispatchEvent({
+			type: "contextmenu", 
+			clientX: 180, 
+			clientY: 160,
+			preventDefault 
+		} as unknown as PointerEvent);
+
+		expect(calls).toEqual([
+			"child:30,20",
+			"parent:80,60"
+		]);
+	});
+
+	test("stops context menu bubbling when child accepts event", () => {
+		const app = new CApplication(createTestCanvas());
+		const preventDefault = vi.fn();
+
+		let parentCalls = 0;
+		let childCalls = 0;
+
+		class ParentWidget extends CWidget {
+			protected override contextMenuEvent(
+				event: CContextMenuEvent): void {
+				++parentCalls;
+				event.accept();
+			}
+		}
+
+		class ChildWidget extends CWidget {
+			protected override contextMenuEvent(
+				event: CContextMenuEvent): void {
+				++childCalls;
+				event.accept();
+			}
+		}
+
+		const parent = new ParentWidget();
+		parent.setGeometry(100, 100, 300, 200);
+
+		const child = new ChildWidget(parent);
+		child.setGeometry(50, 40, 100, 80);
+
+		app.canvas().dispatchEvent({
+			type: "contextmenu", 
+			clientX: 180, 
+			clientY: 160,
+			preventDefault
+		} as unknown as PointerEvent);
+
+		expect(childCalls).toBe(1);
+		expect(parentCalls).toBe(0);
 	});
 });

@@ -18,6 +18,7 @@ import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
 import { CTimer } from "./CTimer.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import { CContextMenuEvent, CContextMenuReason } from "../events/CContextMenuEvent.js";
 
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
@@ -75,6 +76,10 @@ export class CApplication extends CObject {
 			this.#m_paintDevice.canvas().releasePointerCapture(event.pointerId);
 	};
 
+	#onContextMenu = (event: PointerEvent): void => {
+		this.#dispatchContextMenuEvent(event);
+	}
+
 	constructor(canvas: HTMLCanvasElement) {
 		super();
 
@@ -93,6 +98,7 @@ export class CApplication extends CObject {
 		canvas.addEventListener("pointermove", this.#onPointerMove);
 		canvas.addEventListener("wheel", this.#onWheel);
 		canvas.addEventListener("pointercancel", this.#onPointerCancel);
+		canvas.addEventListener("contextmenu", this.#onContextMenu);
 
         if (typeof window !== "undefined") {
 	        window.addEventListener("keydown", this.#onKeyDown);
@@ -112,7 +118,7 @@ export class CApplication extends CObject {
 		canvas.removeEventListener("pointermove", this.#onPointerMove);
 		canvas.removeEventListener("wheel", this.#onWheel);
 		canvas.removeEventListener("pointercancel", this.#onPointerCancel);
-
+		canvas.removeEventListener("contextmenu", this.#onContextMenu);
 
 		if (typeof window !== "undefined") {
 			window.removeEventListener("keydown", this.#onKeyDown);
@@ -783,5 +789,28 @@ export class CApplication extends CObject {
 			visit(widget);
 
 		return result;
+	}
+
+	#dispatchContextMenuEvent(domEvent: PointerEvent): void {
+		const position = this.#canvasPosition(domEvent);
+		let target = this.#widgetAt(position.x(), position.y());
+
+		while (target !== null) {
+			const localPosition = target.mapFromCanvas(
+				position.x(), position.y());
+
+			const event = new CContextMenuEvent(
+				CContextMenuReason.Mouse,
+				localPosition,
+				position
+			);
+
+			if (target.event(event)) {
+				domEvent.preventDefault();
+				return;
+			}
+
+			target = target.parent();
+		}
 	}
 }

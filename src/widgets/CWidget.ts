@@ -15,6 +15,7 @@ import type { CStyle } from "../gui/CStyle.js";
 import { CFontMetrics } from "../gui/CFontMetrics.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import { CContextMenuEvent } from "../events/CContextMenuEvent.js";
 
 export class CWidget extends CObject {
     #m_geometry = new CRect();
@@ -482,6 +483,10 @@ export class CWidget extends CObject {
         case CEventType.Wheel:
 	        this.wheelEvent(event as CWheelEvent);
 	        return event.isAccepted();
+
+        case CEventType.ContextMenu:
+			this.contextMenuEvent(event as CContextMenuEvent);
+			return event.isAccepted();
 		}
 
 		return false;
@@ -573,6 +578,10 @@ export class CWidget extends CObject {
 
     protected wheelEvent(event: CWheelEvent): void {
 	    event.ignore();
+    }
+
+    protected contextMenuEvent(event: CContextMenuEvent): void {
+        event.ignore();
     }
 
     protected childVisibilityChanged(_child: CWidget): void {

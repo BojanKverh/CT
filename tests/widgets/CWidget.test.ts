@@ -13,8 +13,10 @@ import { TestPaintEngine } from "../helpers/createTestPaintEngine";
 import { CLayout } from "../../src/layouts/CLayout";
 import { CFormLayout } from "../../src/layouts/CFormLayout";
 import { CSize } from "../../src/geometry/CSize";
+import { CPoint } from "../../src/geometry/CPoint";
 import { CPalette } from "../../src/gui/CPalette";
 import { CFocusPolicy } from "../../src/gui/CFocusPolicy";
+import { CContextMenuEvent, CContextMenuReason } from "../../src/events/CContextMenuEvent";
 
 let animationFrameCallbacks = new Map<number, FrameRequestCallback>();
 let nextAnimationFrameId = 1;
@@ -109,6 +111,23 @@ class TestWidget extends CWidget {
 
 	protected override paintEvent(_painter: CPainter): void {
 		this.paintEventCalled = true;
+	}
+}
+
+class ContextMenuWidget extends CWidget {
+	contextMenuEventCalled = false;
+	lastContextMenuEvent: CContextMenuEvent | null = null;
+	acceptContextMenu = false;
+
+	protected override contextMenuEvent(
+		event: CContextMenuEvent): void {
+		this.contextMenuEventCalled = true;
+		this.lastContextMenuEvent = event;
+
+		if (this.acceptContextMenu)
+			event.accept();
+		else
+			event.ignore();
 	}
 }
 
@@ -1323,5 +1342,60 @@ describe("CWidget", () => {
 
 		expect(widget.acceptsClickFocus()).toBe(false);
 		expect(widget.acceptsTabFocus()).toBe(false);
+	});
+
+	test("dispatches context menu event", () => {
+		const widget = new ContextMenuWidget();
+
+		const event = new CContextMenuEvent(
+			CContextMenuReason.Mouse,
+			new CPoint(10, 20),
+			new CPoint(100, 200)
+		);
+
+		widget.event(event);
+
+		expect(widget.contextMenuEventCalled).toBe(true);
+		expect(widget.lastContextMenuEvent).toBe(event);
+	});
+
+	test("context menu event is ignored by default", () => {
+		const widget = new CWidget();
+
+		const event = new CContextMenuEvent(
+			CContextMenuReason.Mouse,
+			new CPoint(10, 20),
+			new CPoint(100, 200)
+		);
+
+		expect(widget.event(event)).toBe(false);
+		expect(event.isAccepted()).toBe(false);
+	});
+
+	test("returns true when context menu event is accepted", () => {
+		const widget = new ContextMenuWidget();
+		widget.acceptContextMenu = true;
+
+		const event = new CContextMenuEvent(
+			CContextMenuReason.Mouse,
+			new CPoint(10, 20),
+			new CPoint(100, 200)
+		);
+
+		expect(widget.event(event)).toBe(true);
+		expect(event.isAccepted()).toBe(true);
+	});
+
+	test("returns false when context menu event is ignored", () => {
+		const widget = new ContextMenuWidget();
+
+		const event = new CContextMenuEvent(
+			CContextMenuReason.Mouse,
+			new CPoint(10, 20),
+			new CPoint(100, 200)
+		);
+
+		expect(widget.event(event)).toBe(false);
+		expect(event.isAccepted()).toBe(false);
 	});
 });

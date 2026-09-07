@@ -8,7 +8,8 @@ export enum CEventType {
     FocusOut,
     KeyPress,
     KeyRelease,
-    Wheel
+    Wheel,
+    ContextMenu
 }
 
 export class CEvent {
