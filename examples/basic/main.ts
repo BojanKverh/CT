@@ -615,7 +615,7 @@ but5.clicked.connect(() => {
 	dlg.setWindowTitle("CTreeWidget");
 
 	const tree = new CTreeWidget(dlg);
-	tree.setGeometry(20, 20, 600, 400);
+	tree.setGeometry(20, 20, 600, 350);
 	tree.setHeaderLabels(["Name", "Type", "Size"]);
 
 	const documents = new CTreeWidgetItem(["Documents", "Folder", ""]);

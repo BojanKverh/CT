@@ -827,18 +827,10 @@ export class CTreeView extends CWidget {
 	}
 
 	#updateContentGeometry(): void {
-		const width =
-			this.#m_header.length();
+		const width = this.#m_header.length();
+		const height = this.#m_rows.length * CTreeView.RowHeight;
 
-		const height =
-			this.#m_rows.length *
-			CTreeView.RowHeight;
-
-		this.#m_contentWidget.resize(
-			Math.max(width, this.viewport().width()),
-			Math.max(height, this.viewport().height())
-		);
-
+		this.#m_contentWidget.resize(width, height);
 		this.#m_scrollArea.updateTreeScrollBars();
 
 		this.#m_contentWidget.resize(
@@ -849,7 +841,7 @@ export class CTreeView extends CWidget {
 		this.#m_scrollArea.updateTreeScrollBars();
 
 		this.#m_header.setGeometry(0, 0, this.viewport().width(),
-            this.#m_header.sizeHint().height());
+			this.#m_header.sizeHint().height());
 	}
 
 	#disconnectModel(): void {
