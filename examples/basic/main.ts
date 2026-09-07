@@ -6,7 +6,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
 	CColorDialog, CSplitter, CSizeGrip, CToolBox, CCalendarWidget, CDateEdit, CTimeEdit, CDateTimeEdit,
 	CTextEdit, CKeySequenceEdit, CListView, CModelIndex, CAbstractListModel, CTableView, CAbstractTableModel,
-	CTreeView, CAbstractItemModel
+	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -605,6 +605,61 @@ but4.clicked.connect(() => {
 	dlg.exec();
 	
 });
+
+const but5 = new CPushButton(parent);
+but5.setText("CTreeWidget");
+but5.setGeometry(30, 700, 100, 30);
+but5.clicked.connect(() => {
+	const dlg = new CDialog(parent);
+	dlg.setGeometry(100, 100, 800, 400);
+	dlg.setWindowTitle("CTreeWidget");
+
+	const tree = new CTreeWidget(dlg);
+	tree.setGeometry(20, 20, 600, 400);
+	tree.setHeaderLabels(["Name", "Type", "Size"]);
+
+	const documents = new CTreeWidgetItem(["Documents", "Folder", ""]);
+	const projects = new CTreeWidgetItem(["Projects", "Folder", ""]);
+	const canvasToolkit = new CTreeWidgetItem(["Canvas Toolkit", "Project", ""]);
+	const src = new CTreeWidgetItem(["src", "Folder", ""]);
+	const widgets = new CTreeWidgetItem(["widgets", "Folder", ""]);
+	widgets.addChild(new CTreeWidgetItem(["CTreeWidget.ts", "TypeScript", "8 KB"]));
+	widgets.addChild(new CTreeWidgetItem(["CTreeWidgetItem.ts", "TypeScript", "3 KB"]));
+	widgets.addChild(new CTreeWidgetItem(["CTableView.ts", "TypeScript", "14 KB"]));
+	src.addChild(widgets);
+	src.addChild(new CTreeWidgetItem(["main.ts", "TypeScript", "2 KB"]));
+	canvasToolkit.addChild(src);
+
+	canvasToolkit.addChild(new CTreeWidgetItem(["package.json", "JSON", "1 KB"]));
+	canvasToolkit.addChild(new CTreeWidgetItem(["tsconfig.json", "JSON", "1 KB"]));
+	projects.addChild(canvasToolkit);
+	projects.addChild(new CTreeWidgetItem(["ChessCoach", "Project", ""]));
+
+	documents.addChild(projects);
+	documents.addChild(new CTreeWidgetItem(["notes.txt", "Text file", "12 KB"]));
+	const downloads = new CTreeWidgetItem(["Downloads", "Folder", ""]);
+	downloads.addChild(new CTreeWidgetItem(["canvas-toolkit.zip", "ZIP archive", "184 KB" ]));
+	downloads.addChild(new CTreeWidgetItem(["typescript.pdf", "PDF document", "3.2 MB"]));
+	const pictures = new CTreeWidgetItem(["Pictures", "Folder", ""]);
+	pictures.addChild(new CTreeWidgetItem(["holiday.jpg", "JPEG image", "4.8 MB"]));
+
+	pictures.addChild(new CTreeWidgetItem(["screenshot.png", "PNG image", "820 KB"]));
+
+	tree.addTopLevelItem(documents);
+	tree.addTopLevelItem(downloads);
+	tree.addTopLevelItem(pictures);
+
+	tree.currentItemChanged.connect((current, previous) => {
+		console.log("current:", current?.text(0) ?? null, "previous:", previous?.text(0) ?? null);
+	});
+	const bb = new CDialogButtonBox(CStandardButton.Ok, dlg);
+	bb.setGeometry(0, 360, 780, 30);
+	bb.accepted.connect(() => {
+		dlg.accept();
+	});
+	dlg.exec();
+});
+
 
 const lab = new CLabel(parent);
 lab.setGeometry(250, 50, 130, 40);
