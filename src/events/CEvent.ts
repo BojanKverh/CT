@@ -9,7 +9,8 @@ export enum CEventType {
     KeyPress,
     KeyRelease,
     Wheel,
-    ContextMenu
+    ContextMenu,
+    Drop
 }
 
 export class CEvent {
