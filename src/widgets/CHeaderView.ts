@@ -23,6 +23,7 @@ export class CHeaderView extends CWidget {
 	#m_resizeSection = -1;
 	#m_resizeStartPosition = 0;
 	#m_resizeStartSize = 0;
+	#m_resizeNextSectionSize = 0;
 
 	readonly sectionResized =
 		new CSignal<[number, number, number]>();
@@ -227,7 +228,7 @@ export class CHeaderView extends CWidget {
 		this.#m_resizeSection = section;
 		this.#m_resizeStartPosition = position;
 		this.#m_resizeStartSize = this.sectionSize(section);
-
+		this.#m_resizeNextSectionSize = this.sectionSize(section + 1);
 		event.accept();
 	}
 
@@ -235,11 +236,28 @@ export class CHeaderView extends CWidget {
 		const position = this.#eventPosition(event);
 
 		if (this.#m_resizeSection >= 0) {
-			const delta = position - this.#m_resizeStartPosition;
+			let delta = position - this.#m_resizeStartPosition;
+
+			const minDelta =
+				CHeaderView.MinimumSectionSize -
+				this.#m_resizeStartSize;
+
+			const maxDelta =
+				this.#m_resizeNextSectionSize -
+				CHeaderView.MinimumSectionSize;
+
+			delta = Math.max(minDelta, Math.min(maxDelta, delta));
+
+			const section = this.#m_resizeSection;
 
 			this.resizeSection(
-				this.#m_resizeSection,
+				section,
 				this.#m_resizeStartSize + delta
+			);
+
+			this.resizeSection(
+				section + 1,
+				this.#m_resizeNextSectionSize - delta
 			);
 
 			event.accept();
@@ -248,15 +266,11 @@ export class CHeaderView extends CWidget {
 
 		const section = this.#sectionHandleAt(position);
 
-		if (section >= 0) {
-			this.setCursor(
-				this.#m_orientation === COrientation.Horizontal
-					? CCursorShape.SplitH
-					: CCursorShape.SplitV
-			);
-		} else {
-			this.setCursor(CCursorShape.Arrow);
-		}
+		this.setCursor(
+			section >= 0
+				? this.#resizeCursor()
+				: CCursorShape.Arrow
+		);
 
 		event.accept();
 	}
@@ -332,8 +346,9 @@ export class CHeaderView extends CWidget {
 		position += this.#m_offset;
 
 		let end = 0;
+		const count = this.#sectionCount();
 
-		for (let section = 0; section < this.#sectionCount(); section++) {
+		for (let section = 0; section < count - 1; section++) {
 			end += this.sectionSize(section);
 
 			if (Math.abs(position - end) <=
@@ -342,5 +357,11 @@ export class CHeaderView extends CWidget {
 		}
 
 		return -1;
+	}
+
+	#resizeCursor(): CCursorShape {
+		return this.#m_orientation === COrientation.Horizontal
+			? CCursorShape.SplitH
+			: CCursorShape.SplitV;
 	}
 }

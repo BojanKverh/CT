@@ -13,6 +13,7 @@ import { CScrollArea } from "./CScrollArea.js";
 import { CScrollBar } from "./CScrollBar.js";
 import { CWidget } from "./CWidget.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
+import { CRect } from "../geometry/CRect.js";
 
 class CTableScrollArea extends CScrollArea {
 	updateTableScrollBars(): void {
@@ -90,6 +91,11 @@ export class CTableView extends CWidget {
 			});
 
 		this.#updateGeometry();
+
+		this.#m_horizontalHeader.sectionResized.connect(() => {
+			this.#updateContentGeometry();
+			this.#m_contentWidget.update();
+		});
 	}
 
 	model(): CAbstractItemModel | null {
@@ -262,41 +268,22 @@ export class CTableView extends CWidget {
 				column++
 			) {
 				const index = model.index(row, column);
+				const x = this.#m_horizontalHeader.sectionPosition(column);
+				const width = this.#m_horizontalHeader.sectionSize(column);
+				const y = row * CTableView.RowHeight;
+				const selected = this.#m_selectionModel?.isSelected(index) ?? false;
 
-				const x =
-					column * CTableView.ColumnWidth;
-
-				const y =
-					row * CTableView.RowHeight;
-
-				const selected =
-					this.#m_selectionModel?.isSelected(index)
-						?? false;
-
-				painter.setBrush(
-					selected ? highlight : base
-				);
-
-				painter.setPen(
-					selected ? highlightedText : text
-				);
-
-				painter.drawRect(
-					x,
-					y,
-					CTableView.ColumnWidth,
-					CTableView.RowHeight
-				);
+				painter.setBrush(selected ? highlight : base);
+				painter.setPen(selected ? highlightedText : text);
+				painter.drawRect(x, y, width, CTableView.RowHeight);
 
 				const value = model.data(index);
 
-				painter.drawText(
-					value === null || value === undefined
-						? ""
-						: String(value),
-					x + 5,
-					y + CTableView.RowHeight / 2
-				);
+				painter.save();
+				painter.clipRect(new CRect(x, y, width, CTableView.RowHeight));
+				painter.drawText(value === null || value === undefined? "" : String(value),
+					x + 5, y + CTableView.RowHeight / 2);
+				painter.restore();
 			}
 		}
 	}
@@ -310,10 +297,7 @@ export class CTableView extends CWidget {
 			return;
 		}
 
-		const column = Math.floor(
-			event.pos().x()
-				/ CTableView.ColumnWidth
-		);
+		const column = this.#m_horizontalHeader.sectionAt(event.pos().x());
 
 		const row = Math.floor(
 			event.pos().y()
@@ -454,44 +438,24 @@ export class CTableView extends CWidget {
 	}
 
 	#updateContentGeometry(): void {
-		const rows =
-			this.#m_model?.rowCount() ?? 0;
+		const rows = this.#m_model?.rowCount() ?? 0;
+		const width = this.#m_horizontalHeader.length();
 
-		const columns =
-			this.#m_model?.columnCount() ?? 0;
-
-		const width =
-			columns * CTableView.ColumnWidth;
-
-		const height =
-			rows * CTableView.RowHeight;
+		const height = rows * CTableView.RowHeight;
 
 		this.#m_contentWidget.resize(
-			Math.max(
-				width,
-				this.#m_scrollArea.viewport().width()
-			),
-			Math.max(
-				height,
-				this.#m_scrollArea.viewport().height()
-			)
+			Math.max(width, this.viewport().width()),
+			Math.max(height, this.viewport().height())
 		);
 
 		this.#m_scrollArea.updateTableScrollBars();
-
 		this.#m_contentWidget.resize(
-			Math.max(
-				width,
-				this.#m_scrollArea.viewport().width()
-			),
-			Math.max(
-				height,
-				this.#m_scrollArea.viewport().height()
-			)
+			Math.max(width, this.viewport().width()),
+			Math.max(height, this.viewport().height())
 		);
 
 		this.#m_scrollArea.updateTableScrollBars();
-
+		
 		this.#m_horizontalHeader.setOffset(
 			this.#m_scrollArea.scrollX()
 		);
@@ -499,6 +463,7 @@ export class CTableView extends CWidget {
 		this.#m_verticalHeader.setOffset(
 			this.#m_scrollArea.scrollY()
 		);
+
 	}
 
 	#disconnectModel(): void {
@@ -517,23 +482,13 @@ export class CTableView extends CWidget {
 		if (!index.isValid())
 			return;
 
-		const x =
-			index.column() * CTableView.ColumnWidth;
+		const y = index.row() * CTableView.RowHeight;
+		const x = this.#m_horizontalHeader.sectionPosition(index.column());
+		const right = x + this.#m_horizontalHeader.sectionSize(index.column());
+		const bottom = y + CTableView.RowHeight;
 
-		const y =
-			index.row() * CTableView.RowHeight;
-
-		const right =
-			x + CTableView.ColumnWidth;
-
-		const bottom =
-			y + CTableView.RowHeight;
-
-		const viewportWidth =
-			this.#m_scrollArea.viewport().width();
-
-		const viewportHeight =
-			this.#m_scrollArea.viewport().height();
+		const viewportWidth = this.#m_scrollArea.viewport().width();
+		const viewportHeight = this.#m_scrollArea.viewport().height();
 
 		let scrollX = this.#m_scrollArea.scrollX();
 		let scrollY = this.#m_scrollArea.scrollY();

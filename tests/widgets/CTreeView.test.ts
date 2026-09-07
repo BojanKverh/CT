@@ -414,8 +414,9 @@ describe("CTreeView", () => {
 		const model = new TestTreeModel();
 
 		view.setModel(model);
-		view.contentMousePressEvent(mousePress(
-			CTreeView.ColumnWidth + 20, CTreeView.RowHeight / 2));
+        view.contentMousePressEvent(mousePress(
+	        view.header().sectionPosition(1) + 20,
+	        CTreeView.RowHeight / 2));
 
 		const index = model.index(0, 1);
 

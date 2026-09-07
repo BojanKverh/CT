@@ -54,7 +54,6 @@ class CTreeViewContentWidget extends CWidget {
 
 export class CTreeView extends CWidget {
 	static readonly RowHeight = 24;
-	static readonly ColumnWidth = 120;
 	static readonly IndentWidth = 20;
 
 	#m_model: CAbstractItemModel | null = null;
@@ -91,6 +90,11 @@ export class CTreeView extends CWidget {
 		);
 
 		this.#updateGeometry();
+
+    	this.#m_header.sectionResized.connect(() => {
+			this.#updateContentGeometry();
+			this.#m_contentWidget.update();
+		});
 	}
 
 	model(): CAbstractItemModel | null {
@@ -305,14 +309,15 @@ export class CTreeView extends CWidget {
 				if (!index.isValid())
 					continue;
 
-				const x = column * CTreeView.ColumnWidth;
+				const x = this.#m_header.sectionPosition(column);
+				const width = this.#m_header.sectionSize(column);
 
 				painter.save();
 				painter.clipRect(
 					new CRect(
 						x,
 						y,
-						CTreeView.ColumnWidth,
+						width,
 						CTreeView.RowHeight
 					)
 				);
@@ -331,7 +336,7 @@ export class CTreeView extends CWidget {
 					painter.drawRect(
 						x,
 						y,
-						CTreeView.ColumnWidth,
+						width,
 						CTreeView.RowHeight
 					);
 				}
@@ -407,9 +412,8 @@ export class CTreeView extends CWidget {
 			return;
 		}
 
-		const column = Math.floor(
-			event.pos().x() / CTreeView.ColumnWidth
-		);
+		const column =
+			this.#m_header.sectionAt(event.pos().x());
 
 		if (column < 0 ||
 			column >= this.#m_model.columnCount()) {
@@ -758,13 +762,13 @@ export class CTreeView extends CWidget {
 			return;
 
 		const x =
-			index.column() * CTreeView.ColumnWidth;
+			this.#m_header.sectionPosition(index.column());
 
 		const y =
 			row * CTreeView.RowHeight;
 
 		const right =
-			x + CTreeView.ColumnWidth;
+			x + this.#m_header.sectionSize(index.column());
 
 		const bottom =
 			y + CTreeView.RowHeight;
@@ -823,11 +827,8 @@ export class CTreeView extends CWidget {
 	}
 
 	#updateContentGeometry(): void {
-		const columns =
-			this.#m_model?.columnCount() ?? 0;
-
 		const width =
-			columns * CTreeView.ColumnWidth;
+			this.#m_header.length();
 
 		const height =
 			this.#m_rows.length *
