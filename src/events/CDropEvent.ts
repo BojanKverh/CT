@@ -11,8 +11,8 @@ export class CDropEvent extends CEvent {
 	#m_dropAction: CDropAction;
 
 	constructor(pos: CPoint, mimeData: CMimeData,
-		possibleActions: CDropAction, proposedAction: CDropAction) {
-		super(CEventType.Drop);
+		possibleActions: CDropAction, proposedAction: CDropAction, type: CEventType = CEventType.Drop) {
+		super(type);
 
 		this.#m_pos = pos;
 		this.#m_mimeData = mimeData;
