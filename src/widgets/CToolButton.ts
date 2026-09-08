@@ -248,20 +248,21 @@ export class CToolButton extends CAbstractButton {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
+		
 		const option = new CStyleOptionToolButton();
-
-		option.initFrom(this);
+		option.initFromButton(this);
 		option.text = this.text();
 		option.icon = this.icon();
 		option.iconSize = this.iconSize();
 		option.toolButtonStyle = this.toolButtonStyle();
+		option.autoRaise = this.autoRaise();
 
 		if (this.isHovered())
 			option.state |= CStyleState.MouseOver;
 
 		if (this.isDown())
 			option.state |= CStyleState.Sunken;
-
+		
 		if (this.isChecked())
 			option.state |= CStyleState.On;
 

@@ -89,3 +89,4 @@ export { CMimeData } from "./core/CMimeData.js";
 export { CClipboard } from "./core/CClipboard.js";
 export { CStyleState, CStyleOption } from "./gui/CStyleOption.js";
 export { CStyleOptionToolButton } from "./gui/CStyleOptionToolButton.js";
+export { CIcon } from "./gui/CIcon.js";

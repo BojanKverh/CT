@@ -8,7 +8,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CTextEdit, CKeySequenceEdit, CListView, CModelIndex, CAbstractListModel, CTableView, CAbstractTableModel,
 	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget, CTableWidgetItem, CTableWidget, 
 	CContextMenuEvent, CDragEnterEvent, CDragMoveEvent, CDragLeaveEvent, CDropEvent,
-	CDrag, CMimeData, CDropAction
+	CDrag, CMimeData, CDropAction, CIcon
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -475,9 +475,10 @@ but.clicked.connect(async () => {
 		const newAction = new CAction("New");
 		const openAction = new CAction("Open");
 		const saveAction = new CAction();
-		const icon = await CPixmap.fromUrl("/icons/save.png");
-		saveAction.setIcon(icon);
-		toolBar.addAction(newAction);
+		const pixmap = await CPixmap.fromUrl("/icons/save.png");
+		const icon = new CIcon(pixmap);
+		saveAction.setIcon(icon);toolBar.addAction(newAction);
+
 		toolBar.addAction(openAction);
 		toolBar.addSeparator();
 		toolBar.addAction(saveAction);

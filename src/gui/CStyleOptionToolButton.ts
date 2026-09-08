@@ -2,6 +2,8 @@ import { CSize } from "../geometry/CSize.js";
 import { CIcon } from "./CIcon.js";
 import { CStyleOptionButton } from "./CStyleOptionButton.js";
 import { CToolButtonStyle } from "./CToolButtonStyle.js";
+import { CStyleState } from "./CStyleOption.js";
+import type { CToolButton } from "../widgets/CToolButton.js";
 
 export class CStyleOptionToolButton extends CStyleOptionButton {
 	text = "";
@@ -23,5 +25,21 @@ export class CStyleOptionToolButton extends CStyleOptionButton {
 		);
 		this.toolButtonStyle = other.toolButtonStyle;
         this.autoRaise = other.autoRaise;
+	}
+
+	initFromToolButton(button: CToolButton): void {
+		this.initFromButton(button);
+
+		this.text = button.text();
+		this.icon = button.icon();
+		this.iconSize = button.iconSize();
+		this.toolButtonStyle = button.toolButtonStyle();
+		this.autoRaise = button.autoRaise();
+
+		if (button.isHovered())
+			this.state |= CStyleState.MouseOver;
+
+		if (button.isDown())
+			this.state |= CStyleState.Sunken;
 	}
 }
