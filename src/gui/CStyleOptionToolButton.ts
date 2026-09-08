@@ -1,9 +1,9 @@
 import { CSize } from "../geometry/CSize.js";
 import { CIcon } from "./CIcon.js";
-import { CStyleOption } from "./CStyleOption.js";
+import { CStyleOptionButton } from "./CStyleOptionButton.js";
 import { CToolButtonStyle } from "./CToolButtonStyle.js";
 
-export class CStyleOptionToolButton extends CStyleOption {
+export class CStyleOptionToolButton extends CStyleOptionButton {
 	text = "";
 	icon: CIcon | null = null;
 	iconSize = new CSize(16, 16);
