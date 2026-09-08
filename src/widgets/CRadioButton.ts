@@ -4,6 +4,7 @@ import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CWidget } from "./CWidget.js";
 import { CAbstractButton } from "./CAbstractButton.js";
+import { CStyleOptionRadioButton} from "../gui/CStyleOptionRadioButton.js";
 
 export class CRadioButton extends CAbstractButton {
 	constructor(text = "", parent: CWidget | null = null) {
@@ -53,6 +54,9 @@ export class CRadioButton extends CAbstractButton {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
-		this.style().drawRadioButton(painter, this);
+		const option = new CStyleOptionRadioButton();
+		option.initFromRadioButton(this);
+
+		this.style().drawRadioButton(painter, option);
 	}
 }

@@ -2,22 +2,18 @@ import { CAlignment } from "../core/CAlignment.js";
 import { CPaletteColorRole } from "./CPalette.js";
 import type { CPainter } from "../painting/CPainter.js";
 import type { CLabel } from "../widgets/CLabel.js";
-import type { CPushButton } from "../widgets/CPushButton.js";
 import { CStyle } from "./CStyle.js";
 import { CRect } from "../geometry/CRect.js";
-import type { CCheckBox } from "../widgets/CCheckBox.js";
 import type { CLineEdit } from "../widgets/CLineEdit.js";
 import { CFontMetrics } from "./CFontMetrics.js";
 import type { CProgressBar } from "../widgets/CProgressBar.js";
 import type { CGroupBox } from "../widgets/CGroupBox.js";
 import type { CScrollBar } from "../widgets/CScrollBar.js";
 import { COrientation } from "./COrientation.js";
-import type { CRadioButton } from "../widgets/CRadioButton.js";
 import type { CTabWidget } from "../widgets/CTabWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import { CFrameShadow, CFrameShape } from "../gui/CFrameStyle.js";
 import type { CFrame } from "../widgets/CFrame.js";
-import type { CComboBox } from "../widgets/CComboBox.js";
 import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
 import type { CStyleOptionToolButton } from "../gui/CStyleOptionToolButton.js";
 import type { CToolBar } from "../widgets/CToolBar.js";
@@ -30,6 +26,8 @@ import { CIconMode, CIconState } from "./CIcon.js";
 import { CStyleState } from "./CStyleOption.js";
 import { CStyleOptionPushButton } from "./CStyleOptionPushButton.js";
 import { CStyleOptionCheckBox } from "./CStyleOptionCheckBox.js";
+import { CStyleOptionRadioButton } from "./CStyleOptionRadioButton.js";
+import { CStyleOptionComboBox } from "./CStyleOptionComboBox.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -354,34 +352,34 @@ export class CDefaultStyle extends CStyle {
 		painter.strokeRect(scrollBar.rect());
 	}
 
-	override drawRadioButton(painter: CPainter, radioButton: CRadioButton): void {
-		const palette = radioButton.palette();
+	override drawRadioButton(painter: CPainter, option: CStyleOptionRadioButton): void {
+		const enabled = (option.state & CStyleState.Enabled) !== 0;
+		const checked = (option.state & CStyleState.On) !== 0;
+
 		const indicatorSize = 14;
 		const indicatorX = 2;
-		const indicatorY = (radioButton.height() - indicatorSize) / 2;
+		const indicatorY = (option.rect.height() - indicatorSize) / 2;
 		const centerX = indicatorX + indicatorSize / 2;
 		const centerY = indicatorY + indicatorSize / 2;
 
-		painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
-		painter.fillRect(radioButton.rect());
+		painter.setFillStyle(option.palette.color(CPaletteColorRole.Base).toCss());
+		painter.fillRect(option.rect);
 
-		painter.setStrokeStyle(palette.color(CPaletteColorRole.WindowText).toCss());
+		painter.setStrokeStyle(option.palette.color(CPaletteColorRole.WindowText).toCss());
 		painter.drawEllipse(centerX, centerY, indicatorSize / 2, indicatorSize / 2);
 
-		if (radioButton.isChecked()) {
-			painter.setFillStyle(palette.color(CPaletteColorRole.Highlight).toCss());
+		if (checked) {
+			painter.setFillStyle(option.palette.color(CPaletteColorRole.Highlight).toCss());
 			painter.fillEllipse(centerX, centerY, 4, 4);
 		}
 
-		painter.setFillStyle(radioButton.isEnabled()
-			? palette.color(CPaletteColorRole.Text).toCss()
-			: palette.color(CPaletteColorRole.DisabledText).toCss());
+		painter.setFillStyle(option.palette.color(enabled ? CPaletteColorRole.Text
+					: CPaletteColorRole.DisabledText).toCss());
 
-		painter.setFont(radioButton.font());
+		painter.setFont(option.font);
 		painter.setTextAlign("left");
 		painter.setTextBaseline("middle");
-		painter.drawText(radioButton.text(), indicatorX + indicatorSize + 6,
-			radioButton.height() / 2);
+		painter.drawText(option.text, indicatorX + indicatorSize + 6, option.rect.height() / 2);
 	}
 
 	override drawTabWidget(painter: CPainter, tabWidget: CTabWidget): void {
@@ -732,35 +730,36 @@ export class CDefaultStyle extends CStyle {
 		painter.fillRect(toolBar.rect());
 	}
 
-	override drawComboBox(painter: CPainter, comboBox: CComboBox): void {
-		const palette = comboBox.palette();
+	override drawComboBox(painter: CPainter,
+		option: CStyleOptionComboBox): void {
 		const arrowWidth = this.comboBoxArrowWidth();
-		const arrowX = comboBox.width() - arrowWidth;
+		const arrowX = option.rect.width() - arrowWidth;
+		const down = (option.state & CStyleState.Sunken) !== 0;
 
 		let buttonRole = CPaletteColorRole.Button;
-		if (comboBox.isDown())
+		if (down)
 			buttonRole = CPaletteColorRole.Highlight;
-		else if (comboBox.isArrowHovered())
+		else if (option.arrowHovered)
 			buttonRole = CPaletteColorRole.Highlight;
 
-		painter.setBrush(palette.color(buttonRole).toCss());
-		painter.fillRect(new CRect(arrowX, 0, arrowWidth, comboBox.height()));
+		painter.setBrush(option.palette.color(buttonRole).toCss());
+		painter.fillRect(new CRect(arrowX, 0, arrowWidth, option.rect.height()));
 
-		painter.setPen(palette.color(CPaletteColorRole.WindowText).toCss());
+		painter.setPen(option.palette.color(CPaletteColorRole.WindowText).toCss());
 		painter.setLineWidth(1);
 
-		painter.drawLine(arrowX + 0.5, 0, arrowX + 0.5, comboBox.height());
+		painter.drawLine(arrowX + 0.5, 0, arrowX + 0.5, option.rect.height());
 
 		const centerX = arrowX + arrowWidth / 2;
-		const centerY = comboBox.height() / 2;
+		const centerY = option.rect.height() / 2;
 
 		const arrowHalfWidth = 4;
 		const arrowHeight = 4;
 
-		painter.drawLine(centerX - arrowHalfWidth, centerY - arrowHeight / 2, centerX,
-			centerY + arrowHeight / 2);
+		painter.drawLine(centerX - arrowHalfWidth, centerY - arrowHeight / 2,
+			centerX, centerY + arrowHeight / 2);
 
-		painter.drawLine(centerX, centerY + arrowHeight / 2, centerX + arrowHalfWidth, 
+		painter.drawLine(centerX, centerY + arrowHeight / 2, centerX + arrowHalfWidth,
 			centerY - arrowHeight / 2);
 	}
 

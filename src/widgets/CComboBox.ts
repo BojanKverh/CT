@@ -10,6 +10,7 @@ import { CListWidgetItem } from "./CListWidgetItem.js";
 import { CPopupWidget } from "./CPopupWidget.js";
 import { CWidget } from "./CWidget.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import { CStyleOptionComboBox } from "../gui/CStyleOptionComboBox.js";
 
 class CComboLineEdit extends CLineEdit {
 	#m_comboBox: CComboBox;
@@ -456,7 +457,10 @@ export class CComboBox extends CWidget {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
-		this.style().drawComboBox(painter, this);
+		const option = new CStyleOptionComboBox();
+		option.initFromComboBox(this);
+
+		this.style().drawComboBox(painter, option);
 	}
 
 	#setCurrentIndex(index: number): void {
