@@ -25,6 +25,7 @@ import { CDragMoveEvent } from "../events/CDragMoveEvent.js";
 import { CDragLeaveEvent } from "../events/CDragLeaveEvent.js";
 import { CDropEvent } from "../events/CDropEvent.js";
 import { CDropAction } from "../events/CDropAction.js";
+import { CClipboard } from "./CClipboard.js";
 
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
@@ -48,6 +49,7 @@ export class CApplication extends CObject {
 	#m_mouseY = 0;
 	#m_activeDrag: CDrag | null = null;
 	#m_dragTarget: CWidget | null = null;
+	#m_clipboard = new CClipboard(this);
 
 	static readonly #TOOL_TIP_DELAY = 700;
 	static readonly #TOOL_TIP_OFFSET_X = 12;
@@ -436,6 +438,10 @@ export class CApplication extends CObject {
 		this.#m_activeDrag.cancel();
 		this.#m_activeDrag = null;
 		this.#m_dragTarget = null;
+	}
+
+	clipboard(): CClipboard {
+		return this.#m_clipboard;
 	}
 
 	#mouseButton(button: number): CMouseButton {

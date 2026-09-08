@@ -86,3 +86,4 @@ export { CDropEvent } from "./events/CDropEvent.js";
 export { CDrag } from "./core/CDrag.js";
 export { CDropAction } from "./events/CDropAction.js";
 export { CMimeData } from "./core/CMimeData.js";
+export { CClipboard } from "./core/CClipboard.js";

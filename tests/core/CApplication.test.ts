@@ -20,6 +20,7 @@ import { CDropEvent } from "../../src/events/CDropEvent.js";
 import { CDropAction } from "../../src/events/CDropAction";
 import { CDrag } from "../../src/core/CDrag";
 import { CMimeData } from "../../src/core/CMimeData";
+import { CClipboard } from "../../src/core/CClipboard";
 
 class RenderTrackingWidget extends CWidget {
     renderCalls = 0;
@@ -2175,6 +2176,18 @@ describe("CApplication", () => {
 
 		expect(parent.dropCount).toBe(1);
 		expect(drag.dropAction()).toBe(CDropAction.CopyAction);
+
+		app.destroy();
+	});
+
+	test("provides application clipboard", () => {
+		const app = new CApplication(createTestCanvas());
+
+		expect(app.clipboard()).toBeDefined();
+		expect(app.clipboard()).toBe(app.clipboard());
+
+		app.clipboard().setText("Hello");
+		expect(app.clipboard().text()).toBe("Hello");
 
 		app.destroy();
 	});
