@@ -18,6 +18,7 @@ import type { CToolBoxButton } from "../widgets/CToolBoxButton.js";
 import type { CKeySequenceEdit } from "../widgets/CKeySequenceEdit.js";
 import type { CStyleOptionToolButton } from "./CStyleOptionToolButton.js";
 import type { CStyleOptionPushButton } from "./CStyleOptionPushButton.js";
+import type { CStyleOptionCheckBox } from "./CStyleOptionCheckBox.js";
 
 export abstract class CStyle {
 	
@@ -30,7 +31,7 @@ export abstract class CStyle {
     abstract drawLabel(painter: CPainter, label: CLabel): void;
     abstract drawPushButton(painter: CPainter, option: CStyleOptionPushButton): void;
 	abstract drawToolButton(painter: CPainter, option: CStyleOptionToolButton): void;
-    abstract drawCheckBox(painter: CPainter, checkBox: CCheckBox): void;
+    abstract drawCheckBox(painter: CPainter, option: CStyleOptionCheckBox): void;
     abstract drawLineEdit(painter: CPainter, lineEdit: CLineEdit): void;
     abstract drawSlider(painter: CPainter, slider: CSlider): void;
     abstract drawProgressBar(painter: CPainter, progressBar : CProgressBar): void;

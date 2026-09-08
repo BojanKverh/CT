@@ -29,6 +29,7 @@ import type { CKeySequenceEdit } from "../widgets/CKeySequenceEdit.js";
 import { CIconMode, CIconState } from "./CIcon.js";
 import { CStyleState } from "./CStyleOption.js";
 import { CStyleOptionPushButton } from "./CStyleOptionPushButton.js";
+import { CStyleOptionCheckBox } from "./CStyleOptionCheckBox.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -134,34 +135,34 @@ export class CDefaultStyle extends CStyle {
 		painter.drawText(option.text, option.rect.width() / 2, option.rect.height() / 2);
 	}
 
-	override drawCheckBox(painter: CPainter, checkBox: CCheckBox): void {
-	    const palette = checkBox.palette();
-	    const boxSize = 16;
-	    const boxY = (checkBox.height() - boxSize) / 2;
+	override drawCheckBox(painter: CPainter, option: CStyleOptionCheckBox): void {
+		const enabled = (option.state & CStyleState.Enabled) !== 0;
+		const checked = (option.state & CStyleState.On) !== 0;
+		const boxSize = 16;
+		const boxY = (option.rect.height() - boxSize) / 2;
 
-    	painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
-	    painter.fillRect(new CRect(0, boxY, boxSize, boxSize));
+		painter.setFillStyle(option.palette.color(CPaletteColorRole.Base).toCss());
+		painter.fillRect(new CRect(0, boxY, boxSize, boxSize));
 
-	    painter.setStrokeStyle(palette.color(CPaletteColorRole.WindowText).toCss());
-	    painter.strokeRect(new CRect(0, boxY, boxSize, boxSize));
+		painter.setStrokeStyle(option.palette.color(CPaletteColorRole.WindowText).toCss());
+		painter.strokeRect(new CRect(0, boxY, boxSize, boxSize));
 
-	    if (checkBox.isChecked()) {
-		    painter.setFillStyle(palette.color(CPaletteColorRole.Highlight).toCss());
-		    painter.fillRect(new CRect(3, boxY + 3, boxSize - 6, boxSize - 6));
-	    }
+		if (checked) {
+			painter.setFillStyle(option.palette.color(CPaletteColorRole.Highlight).toCss());
+			painter.fillRect(new CRect(3, boxY + 3, boxSize - 6, boxSize - 6));
+		}
 
-	    const textRole = checkBox.isEnabled()? CPaletteColorRole.Text
-            : CPaletteColorRole.DisabledText;
+		const textRole = enabled? CPaletteColorRole.Text : CPaletteColorRole.DisabledText;
 
-    	painter.setFillStyle(palette.color(textRole).toCss());
-	    painter.setFont(checkBox.font());
-	    painter.setTextAlign("left");
-	    painter.setTextBaseline("middle");
+		painter.setFillStyle(option.palette.color(textRole).toCss());
+		painter.setFont(option.font);
+		painter.setTextAlign("left");
+		painter.setTextBaseline("middle");
 
-	    painter.drawText(checkBox.text(), boxSize + 6, checkBox.height() / 2);
-    }
-
-    override drawLineEdit(painter: CPainter, lineEdit: CLineEdit): void {
+		painter.drawText(option.text, boxSize + 6, option.rect.height() / 2);
+	}
+	
+	override drawLineEdit(painter: CPainter, lineEdit: CLineEdit): void {
 	    const palette = lineEdit.palette();
 	    const metrics = new CFontMetrics(lineEdit.font());
 	    painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());

@@ -3,6 +3,7 @@ import { CKeyEvent } from "../events/CKeyEvent.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CAbstractButton } from "./CAbstractButton.js";
 import { CWidget } from "./CWidget.js";
+import { CStyleOptionCheckBox } from "../gui/CStyleOptionCheckBox.js";
 
 export class CCheckBox extends CAbstractButton {
 	constructor(parent: CWidget | null = null) {
@@ -11,7 +12,10 @@ export class CCheckBox extends CAbstractButton {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
-		this.style().drawCheckBox(painter, this);
+		const option = new CStyleOptionCheckBox();
+		option.initFromCheckBox(this);
+
+		this.style().drawCheckBox(painter, option);
 	}
 
 	protected override mousePressEvent(event: CMouseEvent): void {
