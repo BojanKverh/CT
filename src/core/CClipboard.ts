@@ -8,6 +8,25 @@ export class CClipboard extends CObject {
 
 	#m_mimeData: CMimeData | null = null;
 
+	static #m_instance: CClipboard | null = null;
+
+	constructor(parent: CObject | null = null) {
+		super(parent);
+
+		CClipboard.#m_instance = this;
+	}
+
+	static instance(): CClipboard {
+		if (CClipboard.#m_instance === null)
+			throw new Error("CClipboard instance does not exist.");
+
+		return CClipboard.#m_instance;
+	}
+
+	static destroy(): void {
+		CClipboard.#m_instance = null;
+	}
+
 	mimeData(): CMimeData | null {
 		return this.#m_mimeData;
 	}

@@ -8,6 +8,7 @@ import { CMouseEvent, CMouseButton } from "../../src/index.js";
 import { CEventType } from "../../src/events/CEvent.js";
 import { CKeyEvent } from "../../src/index.js";
 import { CFontMetrics } from "../../src/gui/CFontMetrics.js";
+import { CClipboard } from "../../src/core/CClipboard.js";
 
 describe("CLineEdit", () => {
 	beforeEach(() => {
@@ -747,8 +748,7 @@ describe("CLineEdit", () => {
 
 		await Promise.resolve();
 
-		expect(navigator.clipboard.writeText)
-			.toHaveBeenCalledWith("Hello");
+		expect(CClipboard.instance().text()).toBe("Hello");
 		expect(edit.text()).toBe("HelloWorld");
 		expect(edit.selectedText()).toBe("Hello");
 	});
@@ -782,9 +782,8 @@ describe("CLineEdit", () => {
 
 		await Promise.resolve();
 
-		expect(navigator.clipboard.writeText)
-			.toHaveBeenCalledWith("Hello");
-
+		expect(CClipboard.instance().text()).toBe("Hello");
+		
 		expect(edit.text()).toBe("World");
 		expect(edit.cursorPosition()).toBe(0);
 		expect(edit.hasSelection()).toBe(false);
@@ -809,46 +808,37 @@ describe("CLineEdit", () => {
 	});
 
 	test("pastes clipboard text with Ctrl+V", async () => {
-		vi.mocked(navigator.clipboard.readText)
-			.mockResolvedValue("XY");
-
+		
 		const edit = new CLineEdit();
 		edit.setText("Hello");
 		edit.setCursorPosition(2);
 
+		CClipboard.instance().setText("XY");
+		expect(CClipboard.instance().text()).toBe("XY");
 		edit.event(new CKeyEvent(
 			CEventType.KeyPress,
 			"v",
 			true
 		));
-
-		await Promise.resolve();
-		await Promise.resolve();
-
-		expect(navigator.clipboard.readText)
-			.toHaveBeenCalledOnce();
 
 		expect(edit.text()).toBe("HeXYllo");
 		expect(edit.cursorPosition()).toBe(4);
 	});
 
 	test("paste replaces selected text", async () => {
-		vi.mocked(navigator.clipboard.readText)
-			.mockResolvedValue("XY");
-
+		
 		const edit = new CLineEdit();
 		edit.setText("HelloWorld");
 		edit.setSelection(3, 5);
 
+		CClipboard.instance().setText("XY");
 		edit.event(new CKeyEvent(
 			CEventType.KeyPress,
 			"v",
 			true
 		));
-
-		await Promise.resolve();
-		await Promise.resolve();
-
+		expect(CClipboard.instance().text()).toBe("XY");
+		
 		expect(edit.text()).toBe("HelXYWorld");
 		expect(edit.cursorPosition()).toBe(5);
 		expect(edit.hasSelection()).toBe(false);

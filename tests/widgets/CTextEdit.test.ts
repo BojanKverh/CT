@@ -18,6 +18,7 @@ import {
 import { CFontMetrics } from "../../src/gui/CFontMetrics.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { createTestWindow } from "../helpers/createTestWindow.js";
+import { CClipboard } from "../../src/index.js";
 
 describe("CTextEdit", () => {
 	beforeEach(() => {
@@ -639,10 +640,9 @@ describe("CTextEdit", () => {
 		edit.setPlainText("Hello\nWorld");
 		edit.setSelection(0, 5);
 
-		await edit.copy();
+		edit.copy();
 
-		expect(navigator.clipboard.writeText)
-			.toHaveBeenCalledWith("Hello");
+		expect(CClipboard.instance().text()).toBe("Hello");
 	});
 
 	test("copies from read only editor", async () => {
@@ -651,11 +651,9 @@ describe("CTextEdit", () => {
 		edit.setPlainText("Hello");
 		edit.setSelection(0, 5);
 		edit.setReadOnly();
+		edit.copy();
 
-		await edit.copy();
-
-		expect(navigator.clipboard.writeText)
-			.toHaveBeenCalledWith("Hello");
+		expect(CClipboard.instance().text()).toBe("Hello");
 	});
 
 	test("cuts selected text", async () => {
@@ -666,8 +664,7 @@ describe("CTextEdit", () => {
 
 		await edit.cut();
 
-		expect(navigator.clipboard.writeText)
-			.toHaveBeenCalledWith("Hello ");
+		expect(CClipboard.instance().text()).toBe("Hello ");
 		expect(edit.toPlainText()).toBe("World");
 	});
 
@@ -678,38 +675,30 @@ describe("CTextEdit", () => {
 		edit.setSelection(0, 5);
 		edit.setReadOnly();
 
-		await edit.cut();
-
-		expect(navigator.clipboard.writeText)
-			.toHaveBeenCalledWith("Hello");
+		edit.cut();
+		expect(CClipboard.instance().text()).toBe("Hello");
 		expect(edit.toPlainText()).toBe("Hello");
 	});
 
 	test("pastes text at cursor position", async () => {
-		vi.mocked(navigator.clipboard.readText)
-			.mockResolvedValue("XY");
-
 		const edit = new CTextEdit();
-
 		edit.setPlainText("Hello");
 		edit.setCursorPosition(2);
 
-		await edit.paste();
-
+		CClipboard.instance().setText("XY");
+		edit.paste();
+		expect(CClipboard.instance().text()).toBe("XY");
 		expect(edit.toPlainText()).toBe("HeXYllo");
 		expect(edit.cursorPosition()).toBe(4);
 	});
 
 	test("paste supports multiline clipboard text", async () => {
-		vi.mocked(navigator.clipboard.readText)
-			.mockResolvedValue("A\nB");
-
+		
 		const edit = new CTextEdit();
-
 		edit.setPlainText("Hello");
 		edit.setCursorPosition(2);
-
-		await edit.paste();
+		CClipboard.instance().setText("A\nB");
+		edit.paste();
 
 		expect(edit.toPlainText()).toBe("HeA\nBllo");
 	});

@@ -9,6 +9,7 @@ import { CSize } from "../geometry/CSize.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
 import { CTimer } from "../core/CTimer.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import { CClipboard } from "../core/CClipboard.js";
 
 export class CLineEdit extends CWidget {
 	readonly textChanged = new CSignal<[string]>();
@@ -137,22 +138,18 @@ export class CLineEdit extends CWidget {
 		return new CSize(160, 28);
 	}
 
-	async copy(): Promise<void> {
-		if (!this.hasSelection() || this.isReadOnly())
-			return;
-
-		await navigator.clipboard.writeText(
-			this.selectedText()
-		);
-	}
-
-	async cut(): Promise<void> {
+	copy(): void {
 		if (!this.hasSelection())
 			return;
 
-		await navigator.clipboard.writeText(
-			this.selectedText()
-		);
+		CClipboard.instance().setText(this.selectedText());
+	}
+
+	cut(): void {
+		if (!this.hasSelection())
+			return;
+
+		CClipboard.instance().setText(this.selectedText());
 
 		if (this.isReadOnly())
 			return;
@@ -160,19 +157,19 @@ export class CLineEdit extends CWidget {
 		this.#deleteSelection();
 	}
 
-	async paste(): Promise<void> {
+	paste(): void {
 		if (this.isReadOnly())
 			return;
 
-		const text = await navigator.clipboard.readText();
+		const text = CClipboard.instance().text();
 
 		if (text.length === 0)
 			return;
 
 		this.insert(text);
 	}
-
-    protected override paintEvent(painter: CPainter): void {
+	
+	protected override paintEvent(painter: CPainter): void {
 	    this.style().drawLineEdit(painter, this);
     }
 

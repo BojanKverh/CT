@@ -15,6 +15,7 @@ import { CCursorShape } from "../gui/CCursorShape.js";
 import { CRect } from "../geometry/CRect.js";
 import { CSize } from "../geometry/CSize.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import { CClipboard } from "../core/CClipboard.js";
 
 type CTextEditState = {
 	text: string;
@@ -288,22 +289,18 @@ export class CTextEdit extends CScrollArea {
 		this.#restoreState(state);
 	}
 
-	async copy(): Promise<void> {
+	copy(): void {
 		if (!this.hasSelection())
 			return;
 
-		await navigator.clipboard.writeText(
-			this.selectedText()
-		);
+		CClipboard.instance().setText(this.selectedText());
 	}
 
-	async cut(): Promise<void> {
+	cut(): void {
 		if (!this.hasSelection())
 			return;
 
-		await navigator.clipboard.writeText(
-			this.selectedText()
-		);
+		CClipboard.instance().setText(this.selectedText());
 
 		if (this.isReadOnly())
 			return;
@@ -311,11 +308,11 @@ export class CTextEdit extends CScrollArea {
 		this.#deleteSelection();
 	}
 
-	async paste(): Promise<void> {
+	paste(): void {
 		if (this.isReadOnly())
 			return;
 
-		const text = await navigator.clipboard.readText();
+		const text = CClipboard.instance().text();
 
 		if (text.length === 0)
 			return;

@@ -165,6 +165,7 @@ export class CApplication extends CObject {
 		this.#m_modalWidgets.length = 0;
 		if (this.#m_activeDrag !== null)
 			this.cancelDrag();
+		CClipboard.destroy();
 		super.destroy();
 		CApplication.#m_instance = null;
 
