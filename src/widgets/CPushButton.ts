@@ -6,6 +6,7 @@ import { CAbstractButton } from "./CAbstractButton.js";
 import { CWidget } from "./CWidget.js";
 import { CFontMetrics } from "../gui/CFontMetrics.js";
 import { CSize } from "../geometry/CSize.js";
+import { CStyleOptionPushButton } from "../gui/CStyleOptionPushButton.js";
 
 export class CPushButton extends CAbstractButton {
 	#m_down = false;
@@ -64,7 +65,10 @@ export class CPushButton extends CAbstractButton {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
-		this.style().drawPushButton(painter, this);
+		const option = new CStyleOptionPushButton();
+		option.initFromPushButton(this);
+
+		this.style().drawPushButton(painter, option);
 	}
 
 	protected override mouseEnterEvent(event: CMouseEvent): void {

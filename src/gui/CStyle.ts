@@ -1,6 +1,5 @@
 import type { CPainter } from "../painting/CPainter.js";
 import type { CLabel } from "../widgets/CLabel.js";
-import type { CPushButton } from "../widgets/CPushButton.js";
 import type { CCheckBox } from "../widgets/CCheckBox.js";
 import type { CLineEdit } from "../widgets/CLineEdit.js";
 import type { CSlider } from "../widgets/CSlider.js";
@@ -18,6 +17,7 @@ import type { CSizeGrip } from "../widgets/CSizeGrip.js";
 import type { CToolBoxButton } from "../widgets/CToolBoxButton.js";
 import type { CKeySequenceEdit } from "../widgets/CKeySequenceEdit.js";
 import type { CStyleOptionToolButton } from "./CStyleOptionToolButton.js";
+import type { CStyleOptionPushButton } from "./CStyleOptionPushButton.js";
 
 export abstract class CStyle {
 	
@@ -28,7 +28,7 @@ export abstract class CStyle {
     abstract splitterHandleWidth(): number;
 
     abstract drawLabel(painter: CPainter, label: CLabel): void;
-	abstract drawPushButton(painter: CPainter, button: CPushButton): void;
+    abstract drawPushButton(painter: CPainter, option: CStyleOptionPushButton): void;
 	abstract drawToolButton(painter: CPainter, option: CStyleOptionToolButton): void;
     abstract drawCheckBox(painter: CPainter, checkBox: CCheckBox): void;
     abstract drawLineEdit(painter: CPainter, lineEdit: CLineEdit): void;

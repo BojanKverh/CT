@@ -26,9 +26,9 @@ import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
 import type { CSizeGrip } from "../widgets/CSizeGrip.js";
 import type { CToolBoxButton } from "../widgets/CToolBoxButton.js";
 import type { CKeySequenceEdit } from "../widgets/CKeySequenceEdit.js";
-import { CIcon } from "./CIcon.js";
 import { CIconMode, CIconState } from "./CIcon.js";
 import { CStyleState } from "./CStyleOption.js";
+import { CStyleOptionPushButton } from "./CStyleOptionPushButton.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -108,35 +108,30 @@ export class CDefaultStyle extends CStyle {
 		}
 	}
 
-	override drawPushButton(painter: CPainter, button: CPushButton): void {
-		const palette = button.palette();
+	override drawPushButton(painter: CPainter, option: CStyleOptionPushButton): void {
+		const enabled = (option.state & CStyleState.Enabled) !== 0;
+		const down = (option.state & CStyleState.Sunken) !== 0;
+		const hovered = (option.state & CStyleState.MouseOver) !== 0;
 
-		if (!button.isEnabled()) {
-			painter.setBrush(palette.color(CPaletteColorRole.Window).toCss());
-		} else if (button.isDown()) {
-			painter.setBrush(palette.color(CPaletteColorRole.Highlight).toCss());
-		} else if (button.isHovered()) {
-			painter.setBrush(palette.color(CPaletteColorRole.Highlight).toCss());
+		if (!enabled) {
+			painter.setBrush(option.palette.color(CPaletteColorRole.Window).toCss());
+		} else if (down || hovered) {
+			painter.setBrush(option.palette.color(CPaletteColorRole.Highlight).toCss());
 		} else {
-			painter.setBrush(palette.color(CPaletteColorRole.Button).toCss());
+			painter.setBrush(option.palette.color(CPaletteColorRole.Button).toCss());
 		}
 
-		painter.fillRect(button.rect());
+		painter.fillRect(option.rect);
 
-		const textRole = button.isEnabled()
-			? (button.isHovered()? CPaletteColorRole.HighlightedText : CPaletteColorRole.ButtonText)
-			: CPaletteColorRole.DisabledText;
+		const textRole = !enabled? CPaletteColorRole.DisabledText
+			: hovered? CPaletteColorRole.HighlightedText : CPaletteColorRole.ButtonText;
 
-		painter.setPen(palette.color(textRole).toCss());
-		painter.setFont(button.font());
+		painter.setPen(option.palette.color(textRole).toCss());
+		painter.setFont(option.font);
 		painter.setTextAlign("center");
 		painter.setTextBaseline("middle");
 
-		painter.drawText(
-			button.text(),
-			button.width() / 2,
-			button.height() / 2
-		);
+		painter.drawText(option.text, option.rect.width() / 2, option.rect.height() / 2);
 	}
 
 	override drawCheckBox(painter: CPainter, checkBox: CCheckBox): void {
