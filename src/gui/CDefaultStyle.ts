@@ -28,6 +28,7 @@ import { CStyleOptionPushButton } from "./CStyleOptionPushButton.js";
 import { CStyleOptionCheckBox } from "./CStyleOptionCheckBox.js";
 import { CStyleOptionRadioButton } from "./CStyleOptionRadioButton.js";
 import { CStyleOptionComboBox } from "./CStyleOptionComboBox.js";
+import { CStyleOptionLineEdit } from "../gui/CStyleOptionLineEdit.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -160,48 +161,60 @@ export class CDefaultStyle extends CStyle {
 		painter.drawText(option.text, boxSize + 6, option.rect.height() / 2);
 	}
 	
-	override drawLineEdit(painter: CPainter, lineEdit: CLineEdit): void {
-	    const palette = lineEdit.palette();
-	    const metrics = new CFontMetrics(lineEdit.font());
-	    painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
-	    painter.fillRect(lineEdit.rect());
-	    painter.setStrokeStyle(palette.color(CPaletteColorRole.WindowText).toCss());
-	    painter.strokeRect(lineEdit.rect());
-    	painter.setFont(lineEdit.font());
-	    painter.setTextAlign("left");
-	    painter.setTextBaseline("middle");
-    	const textY = lineEdit.height() / 2;
-	    const textX = 5;
-	    if (!lineEdit.hasSelection()) {
-		    const textRole = lineEdit.isEnabled()? CPaletteColorRole.Text
-			    : CPaletteColorRole.DisabledText;
-    		painter.setPen(palette.color(textRole).toCss());
-    		painter.drawText(lineEdit.text(), textX, textY);
-	    } else {
-		    const start = lineEdit.selectionStart();
-		    const end = lineEdit.selectionEnd();
-    		const before = lineEdit.text().slice(0, start);
-	    	const selected = lineEdit.text().slice(start, end);
-		    const after = lineEdit.text().slice(end);
-		    const selectionStartX = textX + metrics.textWidth(before);
-		    const selectionEndX = selectionStartX + metrics.textWidth(selected);
-		    painter.setBrush(palette.color(CPaletteColorRole.Highlight).toCss());
-		    painter.fillRect(new CRect(selectionStartX, 2, selectionEndX - selectionStartX, lineEdit.height() - 4));
-    		painter.setPen(palette.color(CPaletteColorRole.Text).toCss());
-	    	painter.drawText(before, textX, textY);
-		    painter.setPen(palette.color(CPaletteColorRole.HighlightedText).toCss());
-		    painter.drawText(selected, selectionStartX, textY);
-		    painter.setPen(palette.color(CPaletteColorRole.Text).toCss());
-		    painter.drawText(after, selectionEndX, textY);
-	    }
+	override drawLineEdit(painter: CPainter, option: CStyleOptionLineEdit): void {
+		const metrics = new CFontMetrics(option.font);
+		const enabled = (option.state & CStyleState.Enabled) !== 0;
+		const focused = (option.state & CStyleState.HasFocus) !== 0;
+		const hasSelection = option.selectionStart !== option.selectionEnd;
 
-		if (lineEdit.hasFocus() && lineEdit.cursorVisible()) {
-    		const beforeCursor = lineEdit.text().slice(0, lineEdit.cursorPosition());
-    		const cursorX = textX + metrics.textWidth(beforeCursor);
-    		painter.setStrokeStyle(palette.color(CPaletteColorRole.Text).toCss());
-    		painter.drawLine(cursorX, 4, cursorX, lineEdit.height() - 4);
-	    }
-    }
+		painter.setFillStyle(option.palette.color(CPaletteColorRole.Base).toCss());
+		painter.fillRect(option.rect);
+
+		painter.setStrokeStyle(option.palette.color(CPaletteColorRole.WindowText).toCss());
+		painter.strokeRect(option.rect);
+
+		painter.setFont(option.font);
+		painter.setTextAlign("left");
+		painter.setTextBaseline("middle");
+
+		const textY = option.rect.height() / 2;
+		const textX = 5;
+
+		if (!hasSelection) {
+			const textRole = enabled? CPaletteColorRole.Text : CPaletteColorRole.DisabledText;
+
+			painter.setPen(option.palette.color(textRole).toCss());
+			painter.drawText(option.text, textX, textY);
+		} else {
+			const before = option.text.slice(0, option.selectionStart);
+			const selected = option.text.slice(option.selectionStart, option.selectionEnd);
+			const after = option.text.slice(option.selectionEnd);
+
+			const selectionStartX = textX + metrics.textWidth(before);
+			const selectionEndX = selectionStartX + metrics.textWidth(selected);
+
+			painter.setBrush(option.palette.color(CPaletteColorRole.Highlight).toCss());
+			painter.fillRect(new CRect(selectionStartX, 2, selectionEndX - selectionStartX,
+				option.rect.height() - 4));
+
+			painter.setPen(option.palette.color(CPaletteColorRole.Text).toCss());
+			painter.drawText(before, textX, textY);
+
+			painter.setPen(option.palette.color(CPaletteColorRole.HighlightedText).toCss());
+			painter.drawText(selected, selectionStartX, textY);
+
+			painter.setPen(option.palette.color(CPaletteColorRole.Text).toCss());
+			painter.drawText(after, selectionEndX, textY);
+		}
+
+		if (focused && option.cursorVisible) {
+			const beforeCursor = option.text.slice(0, option.cursorPosition);
+			const cursorX = textX + metrics.textWidth(beforeCursor);
+
+			painter.setStrokeStyle(option.palette.color(CPaletteColorRole.Text).toCss());
+			painter.drawLine(cursorX, 4, cursorX, option.rect.height() - 4);
+		}
+	}
 
 	override drawSlider(painter: CPainter, slider: CSlider): void {
 		const palette = slider.palette();

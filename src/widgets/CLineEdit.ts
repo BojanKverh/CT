@@ -10,6 +10,7 @@ import { CCursorShape } from "../gui/CCursorShape.js";
 import { CTimer } from "../core/CTimer.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CClipboard } from "../core/CClipboard.js";
+import { CStyleOptionLineEdit } from "../gui/CStyleOptionLineEdit.js";
 
 export class CLineEdit extends CWidget {
 	readonly textChanged = new CSignal<[string]>();
@@ -170,8 +171,11 @@ export class CLineEdit extends CWidget {
 	}
 	
 	protected override paintEvent(painter: CPainter): void {
-	    this.style().drawLineEdit(painter, this);
-    }
+		const option = new CStyleOptionLineEdit();
+		option.initFromLineEdit(this);
+
+		this.style().drawLineEdit(painter, option);
+	}
 
     protected override keyPressEvent(event: CKeyEvent): void {
 		if (event.ctrl()) {
