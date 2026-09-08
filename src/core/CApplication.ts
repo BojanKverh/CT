@@ -20,6 +20,11 @@ import { CTimer } from "./CTimer.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CContextMenuEvent, CContextMenuReason } from "../events/CContextMenuEvent.js";
 import { CDrag } from "./CDrag.js";
+import { CDragEnterEvent } from "../events/CDragEnterEvent.js";
+import { CDragMoveEvent } from "../events/CDragMoveEvent.js";
+import { CDragLeaveEvent } from "../events/CDragLeaveEvent.js";
+import { CDropEvent } from "../events/CDropEvent.js";
+import { CDropAction } from "../events/CDropAction.js";
 
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
@@ -51,14 +56,29 @@ export class CApplication extends CObject {
 	#onPointerDown = (event: PointerEvent): void => {
 		this.#dispatchMouseEvent(CEventType.MousePress, event);
 	};
+	
 	#onPointerUp = (event: PointerEvent): void => {
 		this.#dismissToolTip();
+
+		if (this.#m_activeDrag !== null) {
+			this.#dispatchDrop(event);
+			this.#releasePointer(event);
+			return;
+		}
+
 		this.#dispatchMouseEvent(CEventType.MouseRelease, event);
 	};
+
 	#onPointerMove = (event: PointerEvent): void => {
 		const position = this.#canvasPosition(event);
 		this.#m_mouseX = position.x();
 		this.#m_mouseY = position.y();
+
+		if (this.#m_activeDrag !== null) {
+			this.#dispatchDragMove(event);
+			return;
+		}
+
 		this.#updateHoverWidget(event);
 		this.#updateToolTipTarget();
 		this.#dispatchMouseEvent(CEventType.MouseMove, event);
@@ -73,10 +93,12 @@ export class CApplication extends CObject {
 	#onKeyUp = (event: KeyboardEvent): void => {
 		this.#dispatchKeyEvent(CEventType.KeyRelease, event);
 	};
+	
 	#onPointerCancel = (event: PointerEvent): void => {
-		this.releaseMouse();
-		if (this.#m_paintDevice.canvas().hasPointerCapture(event.pointerId))
-			this.#m_paintDevice.canvas().releasePointerCapture(event.pointerId);
+		if (this.#m_activeDrag !== null)
+			this.cancelDrag();
+
+		this.#releasePointer(event);
 	};
 
 	#onContextMenu = (event: PointerEvent): void => {
@@ -139,6 +161,8 @@ export class CApplication extends CObject {
 		this.#m_hoverWidget = null;
         this.#m_focusWidget = null;
 		this.#m_modalWidgets.length = 0;
+		if (this.#m_activeDrag !== null)
+			this.cancelDrag();
 		super.destroy();
 		CApplication.#m_instance = null;
 
@@ -379,6 +403,41 @@ export class CApplication extends CObject {
 		return true;
 	}
 
+	activeDrag(): CDrag | null {
+		return this.#m_activeDrag;
+	}
+
+	dragTarget(): CWidget | null {
+		return this.#m_dragTarget;
+	}
+
+	startDrag(drag: CDrag): void {
+		if (!drag.isActive())
+			return;
+
+		if (this.#m_activeDrag !== null)
+			this.cancelDrag();
+
+		this.#m_activeDrag = drag;
+		this.#m_dragTarget = null;
+		this.#dismissToolTip();
+	}
+
+	cancelDrag(): void {
+		if (this.#m_activeDrag === null)
+			return;
+
+		if (this.#m_dragTarget !== null) {
+			const event = new CDragLeaveEvent();
+			event.ignore();
+			this.#m_dragTarget.event(event);
+		}
+
+		this.#m_activeDrag.cancel();
+		this.#m_activeDrag = null;
+		this.#m_dragTarget = null;
+	}
+
 	#mouseButton(button: number): CMouseButton {
 		switch (button) {
 		case 0:
@@ -442,6 +501,19 @@ export class CApplication extends CObject {
 		return null;
 	}
 
+	#dropTargetAt(x: number, y: number): CWidget | null {
+		let target = this.#widgetAt(x, y);
+
+		while (target !== null) {
+			if (target.isEnabled() && target.acceptDrops())
+				return target;
+
+			target = target.parent();
+		}
+
+		return null;
+	}
+
 	#repaint(): void {
 		const painter = new CPainter(this.#m_paintDevice);
 
@@ -495,14 +567,8 @@ export class CApplication extends CObject {
 			target = target.parent();
 		}
 
-		if (type === CEventType.MouseRelease) {
-			this.releaseMouse();
-			if (this.#m_paintDevice.canvas().hasPointerCapture(pointerEvent.pointerId)) {
-				this.#m_paintDevice.canvas().releasePointerCapture(
-					pointerEvent.pointerId
-				);
-			}
-		}
+		if (type === CEventType.MouseRelease)
+			this.#releasePointer(pointerEvent);
 
 		if (type === CEventType.MouseMove) {
 			if (this.#m_hoverWidget === null)
@@ -815,5 +881,126 @@ export class CApplication extends CObject {
 
 			target = target.parent();
 		}
+	}
+
+	#releasePointer(event: PointerEvent): void {
+		this.releaseMouse();
+
+		if (this.#m_paintDevice.canvas().hasPointerCapture(event.pointerId))
+			this.#m_paintDevice.canvas().releasePointerCapture(event.pointerId);
+	}
+
+	#proposedDragAction(): CDropAction {
+		const drag = this.#m_activeDrag;
+
+		if (drag === null)
+			return CDropAction.IgnoreAction;
+
+		if (drag.defaultAction() !== CDropAction.IgnoreAction)
+			return drag.defaultAction();
+
+		const actions = drag.supportedActions();
+
+		if ((actions & CDropAction.CopyAction) !== 0)
+			return CDropAction.CopyAction;
+
+		if ((actions & CDropAction.MoveAction) !== 0)
+			return CDropAction.MoveAction;
+
+		if ((actions & CDropAction.LinkAction) !== 0)
+			return CDropAction.LinkAction;
+
+		return CDropAction.IgnoreAction;
+	}
+
+	#sendDragEnterEvent(widget: CWidget, position: CPoint): boolean {
+		const drag = this.#m_activeDrag;
+
+		if (drag === null || drag.mimeData() === null)
+			return false;
+
+		const localPosition = widget.mapFromCanvas(
+			position.x(), position.y());
+
+		const event = new CDragEnterEvent(localPosition,
+			drag.mimeData()!, drag.supportedActions(),
+			this.#proposedDragAction());
+
+		event.ignore();
+		widget.event(event);
+
+		return event.isAccepted();
+	}
+
+	#sendDragMoveEvent(widget: CWidget, position: CPoint): boolean {
+		const drag = this.#m_activeDrag;
+
+		if (drag === null || drag.mimeData() === null)
+			return false;
+
+		const localPosition = widget.mapFromCanvas(
+			position.x(), position.y());
+
+		const event = new CDragMoveEvent(localPosition,
+			drag.mimeData()!, drag.supportedActions(),
+			this.#proposedDragAction());
+
+		event.ignore();
+		widget.event(event);
+
+		return event.isAccepted();
+	}
+
+	#dispatchDragMove(pointerEvent: PointerEvent): void {
+		const position = this.#canvasPosition(pointerEvent);
+		let target = this.#dropTargetAt(position.x(), position.y());
+
+		if (target !== this.#m_dragTarget) {
+			if (this.#m_dragTarget !== null) {
+				const leaveEvent = new CDragLeaveEvent();
+				leaveEvent.ignore();
+				this.#m_dragTarget.event(leaveEvent);
+			}
+
+			this.#m_dragTarget = null;
+
+			if (target !== null &&
+				this.#sendDragEnterEvent(target, position))
+				this.#m_dragTarget = target;
+
+			return;
+		}
+
+		if (target !== null)
+			this.#sendDragMoveEvent(target, position);
+	}
+
+	#dispatchDrop(pointerEvent: PointerEvent): void {
+		const drag = this.#m_activeDrag;
+
+		if (drag === null)
+			return;
+
+		let action = CDropAction.IgnoreAction;
+
+		if (this.#m_dragTarget !== null && drag.mimeData() !== null) {
+			const position = this.#canvasPosition(pointerEvent);
+			const localPosition = this.#m_dragTarget.mapFromCanvas(
+				position.x(), position.y());
+
+			const event = new CDropEvent(localPosition,
+				drag.mimeData()!, drag.supportedActions(),
+				this.#proposedDragAction());
+
+			event.ignore();
+			this.#m_dragTarget.event(event);
+
+			if (event.isAccepted())
+				action = event.dropAction();
+		}
+
+		drag.finish(action);
+		this.#m_activeDrag = null;
+		this.#m_dragTarget = null;
 	}
 }

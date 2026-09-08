@@ -7,7 +7,8 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CColorDialog, CSplitter, CSizeGrip, CToolBox, CCalendarWidget, CDateEdit, CTimeEdit, CDateTimeEdit,
 	CTextEdit, CKeySequenceEdit, CListView, CModelIndex, CAbstractListModel, CTableView, CAbstractTableModel,
 	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget, CTableWidgetItem, CTableWidget, 
-	CContextMenuEvent
+	CContextMenuEvent, CDragEnterEvent, CDragMoveEvent, CDragLeaveEvent, CDropEvent,
+	CDrag, CMimeData, CDropAction
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -329,7 +330,99 @@ class DemoTreeModel extends CAbstractItemModel {
 	}
 }
 
+class DragSourceWidget extends CWidget {
+	#m_dragging = false;
 
+	protected override paintEvent(painter: CPainter): void {
+		painter.setFillStyle("#4080e0");
+		painter.fillRect(new CRect(0, 0, this.width(), this.height()));
+
+		painter.setFillStyle("#ffffff");
+		painter.drawText("Drag me", 20, 35);
+	}
+
+	protected override mousePressEvent(event: CMouseEvent): void {
+		if (event.button() !== CMouseButton.LeftButton) {
+			event.ignore();
+			return;
+		}
+
+		this.#m_dragging = true;
+		event.accept();
+	}
+
+	protected override mouseMoveEvent(event: CMouseEvent): void {
+		if (!this.#m_dragging) {
+			event.ignore();
+			return;
+		}
+
+		this.#m_dragging = false;
+
+		const mimeData = new CMimeData();
+		mimeData.setText("Hello from CDrag!");
+
+		const drag = new CDrag(this);
+		drag.setMimeData(mimeData);
+		drag.exec(CDropAction.CopyAction);
+
+		CApplication.instance().startDrag(drag);
+
+		event.accept();
+	}
+
+	protected override mouseReleaseEvent(event: CMouseEvent): void {
+		this.#m_dragging = false;
+		event.accept();
+	}
+}
+
+class DropTargetWidget extends CWidget {
+	#m_dragOver = false;
+	#m_text = "Drop here";
+
+	constructor(parent: CWidget) {
+		super(parent);
+		this.setAcceptDrops(true);
+	}
+
+	protected override paintEvent(painter: CPainter): void {
+		painter.setFillStyle(this.#m_dragOver ? "#80d080" : "#50a050");
+		painter.fillRect(new CRect(0, 0, this.width(), this.height()));
+
+		painter.setFillStyle("#ffffff");
+		painter.drawText(this.#m_text, 15, 35);
+	}
+
+	protected override dragEnterEvent(event: CDragEnterEvent): void {
+		if (!event.mimeData().hasText()) {
+			event.ignore();
+			return;
+		}
+
+		this.#m_dragOver = true;
+		this.update();
+		event.acceptProposedAction();
+	}
+
+	protected override dragMoveEvent(event: CDragMoveEvent): void {
+		event.acceptProposedAction();
+	}
+
+	protected override dragLeaveEvent(event: CDragLeaveEvent): void {
+		this.#m_dragOver = false;
+		this.update();
+		event.accept();
+	}
+
+	protected override dropEvent(event: CDropEvent): void {
+		this.#m_dragOver = false;
+		this.#m_text = event.mimeData().text();
+		this.update();
+
+		event.acceptProposedAction();
+	}
+}
 
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas");
 
@@ -1023,6 +1116,11 @@ statusBar.addPermanentWidget(permanent);
 statusBar.showMessage("File saved", 3000);
 statusBar.setGeometry(700, 776, 300, 24);
 
+const dragSource = new DragSourceWidget(parent);
+dragSource.setGeometry(360, 650, 120, 60);
+
+const dropTarget = new DropTargetWidget(parent);
+dropTarget.setGeometry(500, 650, 180, 60);
 app.startUpdates();
 
 setInterval(() => {

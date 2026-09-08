@@ -13,6 +13,13 @@ import { CDialog } from "../../src/dialogs/CDialog.js";
 import { CFocusPolicy } from "../../src/gui/CFocusPolicy";
 import { CContextMenuEvent, CContextMenuReason } from "../../src/events/CContextMenuEvent.js";
 import { CMenu } from "../../src/widgets/CMenu.js";
+import { CDragEnterEvent } from "../../src//events/CDragEnterEvent.js";
+import { CDragMoveEvent } from "../../src//events/CDragMoveEvent.js";
+import { CDragLeaveEvent } from "../../src//events/CDragLeaveEvent.js";
+import { CDropEvent } from "../../src/events/CDropEvent.js";
+import { CDropAction } from "../../src/events/CDropAction";
+import { CDrag } from "../../src/core/CDrag";
+import { CMimeData } from "../../src/core/CMimeData";
 
 class RenderTrackingWidget extends CWidget {
     renderCalls = 0;
@@ -22,6 +29,44 @@ class RenderTrackingWidget extends CWidget {
 
         super.render(painter);
     }
+}
+
+class DropWidget extends CWidget {
+	dragEnterCount = 0;
+	dragMoveCount = 0;
+	dragLeaveCount = 0;
+	dropCount = 0;
+
+	protected override dragEnterEvent(event: CDragEnterEvent): void {
+		++this.dragEnterCount;
+		event.acceptProposedAction();
+	}
+
+	protected override dragMoveEvent(event: CDragMoveEvent): void {
+		++this.dragMoveCount;
+		event.acceptProposedAction();
+	}
+
+	protected override dragLeaveEvent(event: CDragLeaveEvent): void {
+		++this.dragLeaveCount;
+		event.accept();
+	}
+
+	protected override dropEvent(event: CDropEvent): void {
+		++this.dropCount;
+		event.acceptProposedAction();
+	}
+}
+
+function createDrag(source: CWidget): CDrag {
+	const drag = new CDrag(source);
+	const mimeData = new CMimeData();
+
+	mimeData.setText("dragged text");
+	drag.setMimeData(mimeData);
+	drag.exec(CDropAction.CopyAction);
+
+	return drag;
 }
 
 let animationFrameCallbacks = new Map<number, FrameRequestCallback>();
@@ -1856,5 +1901,281 @@ describe("CApplication", () => {
 		expect(menu.y()).toBe(130);
 		expect(app.focusWidget()).toBe(menu);
 		expect(preventDefault).toHaveBeenCalledOnce();
+	});
+
+	test("starts active drag", () => {
+		const app = new CApplication(createTestCanvas());
+		const source = new CWidget();
+		const drag = new CDrag(source);
+		const mimeData = new CMimeData();
+
+		drag.setMimeData(mimeData);
+		drag.exec(CDropAction.CopyAction);
+		app.startDrag(drag);
+
+		expect(app.activeDrag()).toBe(drag);
+		expect(app.dragTarget()).toBeNull();
+
+		app.destroy();
+	});
+
+	test("cancels active drag", () => {
+		const app = new CApplication(createTestCanvas());
+		const source = new CWidget();
+		const drag = new CDrag(source);
+
+		drag.setMimeData(new CMimeData());
+		drag.exec(CDropAction.CopyAction);
+		app.startDrag(drag);
+		app.cancelDrag();
+
+		expect(app.activeDrag()).toBeNull();
+		expect(drag.isActive()).toBe(false);
+		expect(drag.dropAction()).toBe(CDropAction.IgnoreAction);
+
+		app.destroy();
+	});
+
+	test("sends drag enter when pointer enters a drop target", () => {
+		const app = new CApplication(createTestCanvas());
+		const source = new CWidget();
+		const target = new DropWidget();
+
+		source.setGeometry(0, 0, 100, 100);
+		target.setGeometry(100, 0, 100, 100);
+		target.setAcceptDrops(true);
+
+		const drag = createDrag(source);
+		app.startDrag(drag);
+
+		app.canvas().dispatchEvent({
+			type: "pointermove",
+			clientX: 150,
+			clientY: 50
+		} as PointerEvent);
+
+		expect(target.dragEnterCount).toBe(1);
+		expect(target.dragMoveCount).toBe(0);
+		expect(app.dragTarget()).toBe(target);
+
+		app.destroy();
+	});
+
+	test("sends drag move while pointer remains over target", () => {
+		const app = new CApplication(createTestCanvas());
+		const source = new CWidget();
+		const target = new DropWidget();
+
+		source.setGeometry(0, 0, 100, 100);
+		target.setGeometry(100, 0, 100, 100);
+		target.setAcceptDrops(true);
+
+		const drag = createDrag(source);
+		app.startDrag(drag);
+
+		app.canvas().dispatchEvent({
+			type: "pointermove",
+			clientX: 150,
+			clientY: 50
+		} as PointerEvent);
+
+		app.canvas().dispatchEvent({
+			type: "pointermove",
+			clientX: 160,
+			clientY: 60
+		} as PointerEvent);
+
+		expect(target.dragEnterCount).toBe(1);
+		expect(target.dragMoveCount).toBe(1);
+		expect(target.dragLeaveCount).toBe(0);
+
+		app.destroy();
+	});
+
+	test("sends drag leave when pointer leaves target", () => {
+		const app = new CApplication(createTestCanvas());
+		const source = new CWidget();
+		const target = new DropWidget();
+
+		source.setGeometry(0, 0, 100, 100);
+		target.setGeometry(100, 0, 100, 100);
+		target.setAcceptDrops(true);
+
+		const drag = createDrag(source);
+		app.startDrag(drag);
+
+		app.canvas().dispatchEvent({
+			type: "pointermove",
+			clientX: 150,
+			clientY: 50
+		} as PointerEvent);
+
+		app.canvas().dispatchEvent({
+			type: "pointermove",
+			clientX: 250,
+			clientY: 50
+		} as PointerEvent);
+
+		expect(target.dragEnterCount).toBe(1);
+		expect(target.dragLeaveCount).toBe(1);
+		expect(app.dragTarget()).toBeNull();
+
+		app.destroy();
+	});
+
+	test("switches drag target when pointer moves between targets", () => {
+		const app = new CApplication(createTestCanvas());
+		const source = new CWidget();
+		const target1 = new DropWidget();
+		const target2 = new DropWidget();
+
+		source.setGeometry(0, 0, 100, 100);
+		target1.setGeometry(100, 0, 100, 100);
+		target2.setGeometry(200, 0, 100, 100);
+
+		target1.setAcceptDrops(true);
+		target2.setAcceptDrops(true);
+
+		const drag = createDrag(source);
+		app.startDrag(drag);
+
+		app.canvas().dispatchEvent({
+			type: "pointermove",
+			clientX: 150,
+			clientY: 50
+		} as PointerEvent);
+
+		app.canvas().dispatchEvent({
+			type: "pointermove",
+			clientX: 250,
+			clientY: 50
+		} as PointerEvent);
+
+		expect(target1.dragEnterCount).toBe(1);
+		expect(target1.dragLeaveCount).toBe(1);
+
+		expect(target2.dragEnterCount).toBe(1);
+		expect(target2.dragLeaveCount).toBe(0);
+
+		expect(app.dragTarget()).toBe(target2);
+
+		app.destroy();
+	});
+
+	test("drops on current drag target", () => {
+		const app = new CApplication(createTestCanvas());
+		const source = new CWidget();
+		const target = new DropWidget();
+
+		source.setGeometry(0, 0, 100, 100);
+		target.setGeometry(100, 0, 100, 100);
+		target.setAcceptDrops(true);
+
+		const drag = createDrag(source);
+		app.startDrag(drag);
+
+		app.canvas().dispatchEvent({
+			type: "pointermove",
+			clientX: 150,
+			clientY: 50
+		} as PointerEvent);
+
+		app.canvas().dispatchEvent({
+			type: "pointerup",
+			clientX: 150,
+			clientY: 50,
+			pointerId: 1
+		} as PointerEvent);
+
+		expect(target.dropCount).toBe(1);
+
+		expect(drag.isActive()).toBe(false);
+		expect(drag.dropAction()).toBe(CDropAction.CopyAction);
+
+		expect(app.activeDrag()).toBeNull();
+		expect(app.dragTarget()).toBeNull();
+
+		app.destroy();
+	});
+
+	test("finishes drag with ignore action when dropped outside target", () => {
+		const app = new CApplication(createTestCanvas());
+		const source = new CWidget();
+		const target = new DropWidget();
+
+		source.setGeometry(0, 0, 100, 100);
+		target.setGeometry(100, 0, 100, 100);
+		target.setAcceptDrops(true);
+
+		const drag = createDrag(source);
+		app.startDrag(drag);
+
+		app.canvas().dispatchEvent({
+			type: "pointermove",
+			clientX: 150,
+			clientY: 50
+		} as PointerEvent);
+
+		app.canvas().dispatchEvent({
+			type: "pointermove",
+			clientX: 250,
+			clientY: 50
+		} as PointerEvent);
+
+		app.canvas().dispatchEvent({
+			type: "pointerup",
+			clientX: 250,
+			clientY: 50,
+			pointerId: 1
+		} as PointerEvent);
+
+		expect(target.dragLeaveCount).toBe(1);
+		expect(target.dropCount).toBe(0);
+
+		expect(drag.isActive()).toBe(false);
+		expect(drag.dropAction()).toBe(CDropAction.IgnoreAction);
+
+		expect(app.activeDrag()).toBeNull();
+		expect(app.dragTarget()).toBeNull();
+
+		app.destroy();
+	});
+
+	test("uses accepting parent as drop target", () => {
+		const app = new CApplication(createTestCanvas());
+		const source = new CWidget();
+		const parent = new DropWidget();
+		const child = new CWidget(parent);
+
+		source.setGeometry(0, 0, 100, 100);
+		parent.setGeometry(100, 0, 200, 100);
+		child.setGeometry(20, 20, 100, 60);
+
+		parent.setAcceptDrops(true);
+		child.setAcceptDrops(false);
+
+		const drag = createDrag(source);
+		app.startDrag(drag);
+
+		app.canvas().dispatchEvent({
+			type: "pointermove",
+			clientX: 150,
+			clientY: 50
+		} as PointerEvent);
+
+		expect(parent.dragEnterCount).toBe(1);
+		expect(app.dragTarget()).toBe(parent);
+
+		app.canvas().dispatchEvent({
+			type: "pointerup",
+			clientX: 150,
+			clientY: 50,
+			pointerId: 1
+		} as PointerEvent);
+
+		expect(parent.dropCount).toBe(1);
+		expect(drag.dropAction()).toBe(CDropAction.CopyAction);
+
+		app.destroy();
 	});
 });
