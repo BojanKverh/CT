@@ -6,6 +6,7 @@ import { CPainter } from "../painting/CPainter.js";
 import { CToolButton } from "./CToolButton.js";
 import { CWidget } from "./CWidget.js";
 import { CRect } from "../geometry/CRect.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 export class CCalendarWidget extends CWidget
 {
@@ -44,6 +45,7 @@ export class CCalendarWidget extends CWidget
 		this.#m_nextButton.clicked.connect(() => {
 			this.showNextMonth();
 		});
+        this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
 	selectedDate(): Date
