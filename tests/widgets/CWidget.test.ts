@@ -1398,4 +1398,27 @@ describe("CWidget", () => {
 		expect(widget.event(event)).toBe(false);
 		expect(event.isAccepted()).toBe(false);
 	});
+
+	test("does not accept drops by default", () => {
+		const widget = new CWidget();
+
+		expect(widget.acceptDrops()).toBe(false);
+	});
+
+	test("can enable accepting drops", () => {
+		const widget = new CWidget();
+
+		widget.setAcceptDrops(true);
+
+		expect(widget.acceptDrops()).toBe(true);
+	});
+
+	test("can disable accepting drops", () => {
+		const widget = new CWidget();
+
+		widget.setAcceptDrops(true);
+		widget.setAcceptDrops(false);
+
+		expect(widget.acceptDrops()).toBe(false);
+	});
 });

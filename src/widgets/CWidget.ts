@@ -16,6 +16,10 @@ import { CFontMetrics } from "../gui/CFontMetrics.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CContextMenuEvent } from "../events/CContextMenuEvent.js";
+import { CDragEnterEvent } from "../events/CDragEnterEvent.js";
+import { CDragMoveEvent } from "../events/CDragMoveEvent.js";
+import { CDragLeaveEvent } from "../events/CDragLeaveEvent.js";
+import { CDropEvent } from "../events/CDropEvent.js";
 
 export class CWidget extends CObject {
     #m_geometry = new CRect();
@@ -31,6 +35,7 @@ export class CWidget extends CObject {
     #m_fontMetrics: CFontMetrics;
     #m_cursor: CCursorShape = CCursorShape.Arrow;
     #m_focusPolicy = CFocusPolicy.NoFocus;
+    #m_acceptDrops = false;
 
 	constructor(parent: CWidget | null = null) {
         super(null);
@@ -433,6 +438,14 @@ export class CWidget extends CObject {
 		return this.#m_toolTip;
 	}
 
+    acceptDrops(): boolean {
+		return this.#m_acceptDrops;
+	}
+
+	setAcceptDrops(accept: boolean): void {
+		this.#m_acceptDrops = accept;
+	}
+
     update(): void {
         CApplication.instance().requestRepaint();
     }
@@ -486,6 +499,22 @@ export class CWidget extends CObject {
 
         case CEventType.ContextMenu:
 			this.contextMenuEvent(event as CContextMenuEvent);
+			return event.isAccepted();
+
+		case CEventType.DragEnter:
+			this.dragEnterEvent(event as CDragEnterEvent);
+			return event.isAccepted();
+
+		case CEventType.DragMove:
+			this.dragMoveEvent(event as CDragMoveEvent);
+			return event.isAccepted();
+
+		case CEventType.DragLeave:
+			this.dragLeaveEvent(event as CDragLeaveEvent);
+			return event.isAccepted();
+
+		case CEventType.Drop:
+			this.dropEvent(event as CDropEvent);
 			return event.isAccepted();
 		}
 
@@ -588,4 +617,20 @@ export class CWidget extends CObject {
 	    this.#m_layout?.update();
 	    this.update();
     }
+
+	protected dragEnterEvent(event: CDragEnterEvent): void {
+		event.ignore();
+	}
+
+	protected dragMoveEvent(event: CDragMoveEvent): void {
+		event.ignore();
+	}
+
+	protected dragLeaveEvent(event: CDragLeaveEvent): void {
+		event.ignore();
+	}
+
+	protected dropEvent(event: CDropEvent): void {
+		event.ignore();
+	}
 }

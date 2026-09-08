@@ -19,6 +19,7 @@ import { CCursorShape } from "../gui/CCursorShape.js";
 import { CTimer } from "./CTimer.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CContextMenuEvent, CContextMenuReason } from "../events/CContextMenuEvent.js";
+import { CDrag } from "./CDrag.js";
 
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
@@ -40,6 +41,8 @@ export class CApplication extends CObject {
 	#m_toolTipTimer = new CTimer(this);
 	#m_mouseX = 0;
 	#m_mouseY = 0;
+	#m_activeDrag: CDrag | null = null;
+	#m_dragTarget: CWidget | null = null;
 
 	static readonly #TOOL_TIP_DELAY = 700;
 	static readonly #TOOL_TIP_OFFSET_X = 12;
