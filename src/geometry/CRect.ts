@@ -37,12 +37,12 @@ export class CRect {
         return this.#m_y + this.#m_height;
     }
 
-    setGeometry(
-        x: number,
-        y: number,
-        width: number,
-        height: number
-    ): void {
+    equals(rect: CRect): boolean {
+        return (this.x() === rect.x()) && (this.y() === rect.y()) &&
+            (this.width() === rect.width()) && (this.height() === rect.height());
+    }
+
+    setGeometry(x: number, y: number, width: number, height: number): void {
         this.#m_x = x;
         this.#m_y = y;
         this.#m_width = width;

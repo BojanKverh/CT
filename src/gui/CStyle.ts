@@ -12,12 +12,12 @@ import type { CTabWidget } from "../widgets/CTabWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import type { CFrame } from "../widgets/CFrame.js";
 import type { CComboBox } from "../widgets/CComboBox.js";
-import type { CToolButton } from "../widgets/CToolButton.js";
 import type { CToolBar } from "../widgets/CToolBar.js";
 import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
 import type { CSizeGrip } from "../widgets/CSizeGrip.js";
 import type { CToolBoxButton } from "../widgets/CToolBoxButton.js";
 import type { CKeySequenceEdit } from "../widgets/CKeySequenceEdit.js";
+import type { CStyleOptionToolButton } from "./CStyleOptionToolButton.js";
 
 export abstract class CStyle {
 	
@@ -29,7 +29,7 @@ export abstract class CStyle {
 
     abstract drawLabel(painter: CPainter, label: CLabel): void;
 	abstract drawPushButton(painter: CPainter, button: CPushButton): void;
-	abstract drawToolButton(painter: CPainter, button: CToolButton): void;
+	abstract drawToolButton(painter: CPainter, option: CStyleOptionToolButton): void;
     abstract drawCheckBox(painter: CPainter, checkBox: CCheckBox): void;
     abstract drawLineEdit(painter: CPainter, lineEdit: CLineEdit): void;
     abstract drawSlider(painter: CPainter, slider: CSlider): void;

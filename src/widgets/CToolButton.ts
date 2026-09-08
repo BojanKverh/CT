@@ -4,11 +4,13 @@ import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CPoint } from "../geometry/CPoint.js";
 import { CSize } from "../geometry/CSize.js";
 import { CFontMetrics } from "../gui/CFontMetrics.js";
-import type { CPainter } from "../painting/CPainter.js";
+import { CPainter } from "../painting/CPainter.js";
 import { CAbstractButton } from "./CAbstractButton.js";
 import { CWidget } from "./CWidget.js";
 import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
 import { CIcon } from "../gui/CIcon.js";
+import { CStyleOptionToolButton } from "../gui/CStyleOptionToolButton.js";
+import { CStyleState } from "../gui/CStyleOption.js";
 
 export class CToolButton extends CAbstractButton {
 	#m_down = false;
@@ -246,7 +248,24 @@ export class CToolButton extends CAbstractButton {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
-		this.style().drawToolButton(painter, this);
+		const option = new CStyleOptionToolButton();
+
+		option.initFrom(this);
+		option.text = this.text();
+		option.icon = this.icon();
+		option.iconSize = this.iconSize();
+		option.toolButtonStyle = this.toolButtonStyle();
+
+		if (this.isHovered())
+			option.state |= CStyleState.MouseOver;
+
+		if (this.isDown())
+			option.state |= CStyleState.Sunken;
+
+		if (this.isChecked())
+			option.state |= CStyleState.On;
+
+		this.style().drawToolButton(painter, option);
 	}
 
 	#trigger(): void {

@@ -19,7 +19,7 @@ import { CFrameShadow, CFrameShape } from "../gui/CFrameStyle.js";
 import type { CFrame } from "../widgets/CFrame.js";
 import type { CComboBox } from "../widgets/CComboBox.js";
 import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
-import type { CToolButton } from "../widgets/CToolButton.js";
+import type { CStyleOptionToolButton } from "../gui/CStyleOptionToolButton.js";
 import type { CToolBar } from "../widgets/CToolBar.js";
 import type { CSlider } from "../widgets/CSlider.js";
 import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
@@ -28,6 +28,7 @@ import type { CToolBoxButton } from "../widgets/CToolBoxButton.js";
 import type { CKeySequenceEdit } from "../widgets/CKeySequenceEdit.js";
 import type { CIcon } from "./CIcon.js";
 import { CIconMode, CIconState } from "./CIcon.js";
+import { CStyleState } from "./CStyleOption.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -579,60 +580,65 @@ export class CDefaultStyle extends CStyle {
 		);
 	}
 
-	override drawToolButton(painter: CPainter, button: CToolButton): void {
-		const palette = button.palette();
-		const active = button.isDown() || button.isHovered();
-		if (!button.autoRaise() || active) {
+	override drawToolButton(painter: CPainter, option: CStyleOptionToolButton): void {
+		const enabled = (option.state & CStyleState.Enabled) !== 0;
+		const hovered = (option.state & CStyleState.MouseOver) !== 0;
+		const down = (option.state & CStyleState.Sunken) !== 0;
+		const checked = (option.state & CStyleState.On) !== 0;
+		const text = option.text;
+		const icon = option.icon;
+		const iconSize = option.iconSize;
+		const toolButtonStyle = option.toolButtonStyle;
+		const rect = option.rect;
+		const palette = option.palette;
+
+		const active = down || hovered;
+		if (!option.autoRaise || active) {
 			const backgroundRole = active? CPaletteColorRole.Highlight
 				: CPaletteColorRole.Button;
 
 			painter.setFillStyle(palette.color(backgroundRole).toCss());
-			painter.fillRect(button.rect());
+			painter.fillRect(rect);
 		}
 
-		const textRole = !button.isEnabled()? CPaletteColorRole.DisabledText
+		const textRole = !enabled? CPaletteColorRole.DisabledText
 			: active ? CPaletteColorRole.HighlightedText
 				: CPaletteColorRole.WindowText;
 
 		painter.setPen(palette.color(textRole).toCss());
-		painter.setFont(button.font());
+		painter.setFont(option.font);
 
-		const icon = button.icon();
-		const style = button.toolButtonStyle();
 		const margin = 4;
 
-		const iconMode = !button.isEnabled()
+		const iconMode = !enabled
 			? CIconMode.Disabled
-			: button.isDown() || button.isHovered()
+			: down || hovered
 				? CIconMode.Active
 				: CIconMode.Normal;
 
-		const iconState = button.isChecked()
-			? CIconState.On
-			: CIconState.Off;
+		const iconState = checked? CIconState.On : CIconState.Off;
 
-		const pixmap = icon?.pixmap(
-			button.iconSize(), iconMode, iconState) ?? null;
+		const pixmap = icon?.pixmap(iconSize, iconMode, iconState) ?? null;
 
-		if (style === CToolButtonStyle.TextOnly) {
+		if (toolButtonStyle === CToolButtonStyle.TextOnly) {
 			painter.setTextAlign("center");
 			painter.setTextBaseline("middle");
 
-			painter.drawText(button.text(), button.width() / 2, button.height() / 2);
+			painter.drawText(text, rect.width() / 2, rect.height() / 2);
 			return;
 		}
 
-		if (style === CToolButtonStyle.IconOnly) {
+		if (toolButtonStyle === CToolButtonStyle.IconOnly) {
 			if (pixmap === null)
 				return;
 
 			const maxWidth = Math.min(
-				button.iconSize().width(),
-				Math.max(0, button.width() - 2 * margin)
+				iconSize.width(),
+				Math.max(0, rect.width() - 2 * margin)
 			);
 			const maxHeight = Math.min(
-				button.iconSize().height(),
-				Math.max(0, button.height() - 2 * margin)
+				iconSize.height(),
+				Math.max(0, rect.height() - 2 * margin)
 			);
 
 			let width = pixmap.width();
@@ -648,26 +654,26 @@ export class CDefaultStyle extends CStyle {
 				height *= scale;
 			}
 
-			const x = (button.width() - width) / 2;
-			const y = (button.height() - height) / 2;
+			const x = (rect.width() - width) / 2;
+			const y = (rect.height() - height) / 2;
 
 			painter.drawPixmap(pixmap, x, y, width, height);
 			return;
 		}
 
-		if (style === CToolButtonStyle.TextUnderIcon) {
-			const fm = new CFontMetrics(button.font());
+		if (toolButtonStyle === CToolButtonStyle.TextUnderIcon) {
+			const fm = new CFontMetrics(option.font);
 			const textHeight = fm.height();
 			const iconAreaHeight = Math.max(
-				0, button.height() - textHeight - 3 * margin);
+				0, rect.height() - textHeight - 3 * margin);
 
 			if (pixmap !== null && iconAreaHeight > 0) {
 				const maxWidth = Math.min(
-					button.iconSize().width(),
-					Math.max(0, button.width() - 2 * margin)
+					iconSize.width(),
+					Math.max(0, rect.width() - 2 * margin)
 				);
 				const maxHeight = Math.min(
-					button.iconSize().height(),
+					iconSize.height(),
 					iconAreaHeight
 				);
 
@@ -684,7 +690,7 @@ export class CDefaultStyle extends CStyle {
 					height *= scale;
 				}
 
-				const x = (button.width() - width) / 2;
+				const x = (rect.width() - width) / 2;
 				const y = margin +
 					(iconAreaHeight - height) / 2;
 
@@ -693,23 +699,20 @@ export class CDefaultStyle extends CStyle {
 
 			painter.setTextAlign("center");
 			painter.setTextBaseline("bottom");
-			painter.drawText(
-				button.text(),
-				button.width() / 2,
-				button.height() - margin
+			painter.drawText(text, rect.width() / 2, rect.height() - margin
 			);
 
 			return;
 		}
 
-		if (style === CToolButtonStyle.TextBesideIcon) {
-			const fm = new CFontMetrics(button.font());
-			const textWidth = fm.textWidth(button.text());
-			const iconSize = Math.max(0, Math.min(button.height() - 2 * margin,
-					button.width() - textWidth - 3 * margin));
+		if (toolButtonStyle === CToolButtonStyle.TextBesideIcon) {
+			const fm = new CFontMetrics(option.font);
+			const textWidth = fm.textWidth(text);
+			const iconSize = Math.max(0, Math.min(rect.height() - 2 * margin,
+					rect.width() - textWidth - 3 * margin));
 
 			const totalWidth = iconSize + margin + textWidth;
-			const startX = (button.width() - totalWidth) / 2;
+			const startX = (rect.width() - totalWidth) / 2;
 
 			if (pixmap !== null && iconSize > 0) {
 				const scale = Math.min(iconSize / pixmap.width(), iconSize / pixmap.height());
@@ -717,13 +720,13 @@ export class CDefaultStyle extends CStyle {
 				const width = pixmap.width() * scale;
 				const height = pixmap.height() * scale;
 				const x = startX + (iconSize - width) / 2;
-				const y = (button.height() - height) / 2;
+				const y = (rect.height() - height) / 2;
 				painter.drawPixmap(pixmap, x, y, width, height);
 			}
 
 			painter.setTextAlign("left");
 			painter.setTextBaseline("middle");
-			painter.drawText(button.text(), startX + iconSize + margin, button.height() / 2);
+			painter.drawText(text, startX + iconSize + margin, rect.height() / 2);
 		}
 	}
 
