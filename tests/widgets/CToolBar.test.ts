@@ -10,6 +10,7 @@ import { CToolButton } from "../../src/widgets/CToolButton.js";
 import { CToolButtonStyle } from "../../src/gui/CToolButtonStyle.js";
 import { CWidget } from "../../src/widgets/CWidget.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
+import { CIcon } from "../../src/gui/CIcon.js";
 
 describe("CToolBar", () => {
 	beforeEach(() => {
@@ -53,8 +54,8 @@ describe("CToolBar", () => {
 		const toolBar = new CToolBar();
 		const action = new CAction("Save");
 		const image = {} as CanvasImageSource;
-		const icon = new CPixmap(image, 128, 128);
-
+		const pixmap = new CPixmap(image, 16, 16);
+		const icon = new CIcon(pixmap);
 		action.setIcon(icon);
 
 		const button = toolBar.addAction(action);

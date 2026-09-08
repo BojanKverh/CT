@@ -7,14 +7,14 @@ import { CFontMetrics } from "../gui/CFontMetrics.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CAbstractButton } from "./CAbstractButton.js";
 import { CWidget } from "./CWidget.js";
-import { CPixmap } from "../painting/CPixmap.js";
 import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
+import { CIcon } from "../gui/CIcon.js";
 
 export class CToolButton extends CAbstractButton {
 	#m_down = false;
 	#m_hovered = false;
 	#m_autoRaise = false;
-	#m_icon: CPixmap | null = null;
+	#m_icon: CIcon | null = null;
 	#m_toolButtonStyle = CToolButtonStyle.IconOnly;
 	#m_defaultAction: CAction | null = null;
 	#m_actionChangedHandler: (() => void) | null = null;
@@ -31,20 +31,20 @@ export class CToolButton extends CAbstractButton {
 		this.update();
 	}
 
-	setIcon(icon: CPixmap | null): void {
+	setIcon(icon: CIcon | null): void {
 		this.#m_icon = icon;
 		this.#m_toolButtonStyle = CToolButtonStyle.IconOnly;
 		this.update();
 	}
 
-	setTextAndIcon(text: string, icon: CPixmap | null): void {
+	setTextAndIcon(text: string, icon: CIcon | null): void {
 		super.setText(text);
 		this.#m_icon = icon;
 		this.#m_toolButtonStyle = CToolButtonStyle.TextUnderIcon;
 		this.update();
 	}
 
-	icon(): CPixmap | null {
+	icon(): CIcon | null {
 		return this.#m_icon;
 	}
 

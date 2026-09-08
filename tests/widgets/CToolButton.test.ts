@@ -8,8 +8,17 @@ import { CPixmap } from "../../src/painting/CPixmap.js";
 import {CToolButton} from "../../src/widgets/CToolButton.js";
 import { CToolButtonStyle } from "../../src/gui/CToolButtonStyle.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
-import { CEvent, CEventType } from "../../src/index.js";
+import { CEventType } from "../../src/index.js";
 import { CSize } from "../../src/index.js";
+import { CIcon, CIconMode, CIconState } from "../../src/gui/CIcon.js";
+import { CPainter } from "../../src/painting/CPainter.js";
+import { TestPaintDevice } from "../helpers/createTestPaintEngine.js";
+
+class TestToolButton extends CToolButton {
+	paint(painter: CPainter): void {
+		this.paintEvent(painter);
+	}
+}
 
 describe("CToolButton", () => {
 	beforeEach(() => {
@@ -56,8 +65,9 @@ describe("CToolButton", () => {
 	test("setIcon switches to IconOnly style", () => {
 		const button = new CToolButton();
 		const image = {} as CanvasImageSource;
-		const icon = new CPixmap(image, 24, 24);
-
+		const pixmap = new CPixmap(image, 24, 24);
+		const icon = new CIcon(pixmap);
+		
 		button.setText("Save");
 		button.setIcon(icon);
 
@@ -70,7 +80,8 @@ describe("CToolButton", () => {
 	test("setTextAndIcon switches to TextUnderIcon style", () => {
 		const button = new CToolButton();
 		const image = {} as CanvasImageSource;
-		const icon = new CPixmap(image, 24, 24);
+		const pixmap = new CPixmap(image, 16, 16);
+		const icon = new CIcon(pixmap);
 
 		button.setTextAndIcon("Save", icon);
 
@@ -109,7 +120,8 @@ describe("CToolButton", () => {
 	test("IconOnly size hint includes icon", () => {
 		const button = new CToolButton();
 		const image = {} as CanvasImageSource;
-		const icon = new CPixmap(image, 40, 30);
+		const pixmap = new CPixmap(image, 16, 16);
+		const icon = new CIcon(pixmap);
 
 		button.setIcon(icon);
 
@@ -122,7 +134,8 @@ describe("CToolButton", () => {
 	test("custom icon size affects size hint", () => {
 		const button = new CToolButton();
 		const image = {} as CanvasImageSource;
-		const icon = new CPixmap(image, 128, 128);
+		const pixmap = new CPixmap(image, 16, 16);
+		const icon = new CIcon(pixmap);
 		button.setIcon(icon);
 		button.setIconSize(new CSize(32, 24));
 
@@ -134,7 +147,9 @@ describe("CToolButton", () => {
 	test("TextUnderIcon size hint includes text and icon", () => {
 		const button = new CToolButton();
 		const image = {} as CanvasImageSource;
-		const icon = new CPixmap(image, 24, 24);
+		
+		const pixmap = new CPixmap(image, 16, 16);
+		const icon = new CIcon(pixmap);
 
 		button.setTextAndIcon("Save", icon);
 
@@ -338,5 +353,119 @@ describe("CToolButton", () => {
 		oldAction.setText("Changed old");
 
 		expect(button.text()).toBe("New");
+	});
+
+	test("uses normal icon pixmap when enabled", () => {
+		const normalPixmap = new CPixmap({} as CanvasImageSource, 16, 16);
+		const disabledPixmap = new CPixmap({} as CanvasImageSource, 16, 16);
+		const icon = new CIcon();
+
+		icon.addPixmap(normalPixmap, CIconMode.Normal, CIconState.Off);
+		icon.addPixmap(disabledPixmap, CIconMode.Disabled, CIconState.Off);
+
+		const button = new TestToolButton();
+		button.setIcon(icon);
+		button.resize(28, 28);
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		button.paint(painter);
+
+		expect(device.engine.drawPixmap).toHaveBeenCalledWith(
+			normalPixmap, 6, 6, 16, 16);
+	});
+
+	test("uses disabled icon pixmap when disabled", () => {
+		const normalPixmap = new CPixmap({} as CanvasImageSource, 16, 16);
+		const disabledPixmap = new CPixmap({} as CanvasImageSource, 16, 16);
+		const icon = new CIcon();
+
+		icon.addPixmap(normalPixmap, CIconMode.Normal, CIconState.Off);
+		icon.addPixmap(disabledPixmap, CIconMode.Disabled, CIconState.Off);
+
+		const button = new TestToolButton();
+		button.setIcon(icon);
+		button.setEnabled(false);
+		button.resize(28, 28);
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		button.paint(painter);
+
+		expect(device.engine.drawPixmap).toHaveBeenCalledWith(
+			disabledPixmap, 6, 6, 16, 16);
+	});
+
+	test("uses active icon pixmap when hovered", () => {
+		const normalPixmap = new CPixmap({} as CanvasImageSource, 16, 16);
+		const activePixmap = new CPixmap({} as CanvasImageSource, 16, 16);
+		const icon = new CIcon();
+
+		icon.addPixmap(normalPixmap, CIconMode.Normal, CIconState.Off);
+		icon.addPixmap(activePixmap, CIconMode.Active, CIconState.Off);
+
+		const button = new TestToolButton();
+		button.setIcon(icon);
+		button.resize(28, 28);
+
+		button.event(new CMouseEvent(CEventType.MouseMove, 10, 10,
+			CMouseButton.NoButton));
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		button.paint(painter);
+
+		expect(device.engine.drawPixmap).toHaveBeenCalledWith(
+			activePixmap, 6, 6, 16, 16);
+	});
+
+	test("uses on icon pixmap when checked", () => {
+		const offPixmap = new CPixmap({} as CanvasImageSource, 16, 16);
+		const onPixmap = new CPixmap({} as CanvasImageSource, 16, 16);
+		const icon = new CIcon();
+
+		icon.addPixmap(offPixmap, CIconMode.Normal, CIconState.Off);
+		icon.addPixmap(onPixmap, CIconMode.Normal, CIconState.On);
+
+		const button = new TestToolButton();
+		button.setIcon(icon);
+		button.setCheckable(true);
+		button.setChecked(true);
+		button.resize(28, 28);
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		button.paint(painter);
+
+		expect(device.engine.drawPixmap).toHaveBeenCalledWith(
+			onPixmap, 6, 6, 16, 16);
+	});
+
+	test("uses disabled on icon pixmap when disabled and checked", () => {
+		const normalOff = new CPixmap({} as CanvasImageSource, 16, 16);
+		const disabledOn = new CPixmap({} as CanvasImageSource, 16, 16);
+		const icon = new CIcon();
+
+		icon.addPixmap(normalOff, CIconMode.Normal, CIconState.Off);
+		icon.addPixmap(disabledOn, CIconMode.Disabled, CIconState.On);
+
+		const button = new TestToolButton();
+		button.setIcon(icon);
+		button.setCheckable(true);
+		button.setChecked(true);
+		button.setEnabled(false);
+		button.resize(28, 28);
+
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+
+		button.paint(painter);
+
+		expect(device.engine.drawPixmap).toHaveBeenCalledWith(
+			disabledOn, 6, 6, 16, 16);
 	});
 });

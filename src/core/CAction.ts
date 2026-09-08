@@ -1,9 +1,9 @@
 import { CSignal } from "./CSignal.js";
-import { CPixmap } from "../painting/CPixmap.js";
+import { CIcon } from "../gui/CIcon.js";
 
 export class CAction {
 	#m_text: string;
-	#m_icon: CPixmap | null = null;
+	#m_icon: CIcon | null = null;
 	#m_enabled = true;
 	#m_checkable = false;
 	#m_checked = false;
@@ -28,11 +28,11 @@ export class CAction {
 		this.changed.emit();
 	}
 
-	icon(): CPixmap | null {
+	icon(): CIcon | null {
 		return this.#m_icon;
 	}
 
-	setIcon(icon: CPixmap | null): void {
+	setIcon(icon: CIcon | null): void {
 		if (this.#m_icon === icon)
 			return;
 
