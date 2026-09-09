@@ -4,6 +4,7 @@ import { CSize } from "../geometry/CSize.js";
 import type { CPainter } from "../painting/CPainter.js";
 import type { CWidget } from "./CWidget.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import { CStyleOptionToolBoxButton } from "../gui/CStyleOptionToolBoxButton.js";
 
 export class CToolBoxButton extends CAbstractButton
 {
@@ -111,8 +112,10 @@ export class CToolBoxButton extends CAbstractButton
 	    this.update();
     }
 
-	protected override paintEvent(painter: CPainter): void
-	{
-        this.style().drawToolBoxButton(painter, this);
+	protected override paintEvent(painter: CPainter): void {
+		const option = new CStyleOptionToolBoxButton();
+		option.initFromToolBoxButton(this);
+
+		this.style().drawToolBoxButton(painter, option);
 	}
 }

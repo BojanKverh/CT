@@ -9,6 +9,7 @@ import { CColor } from "../../src/gui/CColor.js";
 import { CPainter } from "../../src/painting/CPainter.js";
 import { CDefaultStyle } from "../../src/gui/CDefaultStyle.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
+import { CStyleOptionToolBoxButton } from "../../src/gui/CStyleOptionToolBoxButton.js";
 
 describe("CToolBoxButton", () => {
 	beforeEach(() => {
@@ -205,7 +206,9 @@ describe("CToolBoxButton", () => {
             setPen: vi.fn()
 		} as unknown as CPainter;
 
-		new CDefaultStyle().drawToolBoxButton(painter, button);
+		const option = new CStyleOptionToolBoxButton;
+		option.initFromToolBoxButton(button);
+		new CDefaultStyle().drawToolBoxButton(painter, option);
 
 		expect(painter.setPen).toHaveBeenLastCalledWith(
 			palette.color(CPaletteColorRole.Text).toCss()

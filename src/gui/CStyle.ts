@@ -19,6 +19,7 @@ import type { CStyleOptionToolBar } from "./CStyleOptionToolBar.js";
 import type { CStyleOptionSizeGrip } from "./CStyleOptionSizeGrip.js";
 import type { CStyleOptionFrame } from "./CStyleOptionFrame.js";
 import type { CStyleOptionGroupBox } from "./CStyleOptionGroupBox.js";
+import type { CStyleOptionToolBoxButton } from "./CStyleOptionToolBoxButton.js";
 
 export abstract class CStyle {
 	
@@ -45,6 +46,6 @@ export abstract class CStyle {
     abstract drawToolBar(painter: CPainter, option: CStyleOptionToolBar): void;
     abstract drawSplitterHandle(painter: CPainter, handle: CSplitterHandle): void;
     abstract drawSizeGrip(painter: CPainter, option: CStyleOptionSizeGrip): void;
-    abstract drawToolBoxButton(painter: CPainter, button: CToolBoxButton): void;
+    abstract drawToolBoxButton(painter: CPainter, option: CStyleOptionToolBoxButton): void;
     abstract drawKeySequenceEdit(painter: CPainter, edit: CKeySequenceEdit): void;
 }

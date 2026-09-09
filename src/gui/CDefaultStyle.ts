@@ -5,7 +5,6 @@ import type { CLabel } from "../widgets/CLabel.js";
 import { CStyle } from "./CStyle.js";
 import { CRect } from "../geometry/CRect.js";
 import { CFontMetrics } from "./CFontMetrics.js";
-import type { CGroupBox } from "../widgets/CGroupBox.js";
 import { COrientation } from "./COrientation.js";
 import type { CTabWidget } from "../widgets/CTabWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
@@ -13,7 +12,6 @@ import { CFrameShadow, CFrameShape } from "../gui/CFrameStyle.js";
 import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
 import type { CStyleOptionToolButton } from "../gui/CStyleOptionToolButton.js";
 import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
-import type { CToolBoxButton } from "../widgets/CToolBoxButton.js";
 import type { CKeySequenceEdit } from "../widgets/CKeySequenceEdit.js";
 import { CIconMode, CIconState } from "./CIcon.js";
 import { CStyleState } from "./CStyleOption.js";
@@ -29,6 +27,7 @@ import { CStyleOptionToolBar } from "./CStyleOptionToolBar.js";
 import { CStyleOptionSizeGrip } from "./CStyleOptionSizeGrip.js";
 import { CStyleOptionFrame } from "../gui/CStyleOptionFrame.js";
 import { CStyleOptionGroupBox } from "./CStyleOptionGroupBox.js";
+import { CStyleOptionToolBoxButton } from "./CStyleOptionToolBoxButton.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -950,34 +949,36 @@ export class CDefaultStyle extends CStyle {
 		}
 	}
 
-	override drawToolBoxButton(painter: CPainter, button: CToolBoxButton): void
-	{
-		const palette = button.palette();
+	override drawToolBoxButton(painter: CPainter, option: CStyleOptionToolBoxButton): void {
+		const palette = option.palette;
 		let backgroundRole = CPaletteColorRole.Window;
 		let textRole = CPaletteColorRole.Text;
 
-		if (!button.isEnabled()) {
+		if (!(option.state & CStyleState.Enabled)) {
 			backgroundRole = CPaletteColorRole.Window;
 			textRole = CPaletteColorRole.DisabledText;
-		} else if (button.isCurrent() || button.isDown()) {
+		} else if (option.current ||
+			option.state & CStyleState.Sunken) {
 			backgroundRole = CPaletteColorRole.Highlight;
 			textRole = CPaletteColorRole.HighlightedText;
-		} else if (button.isHovered()) {
+		} else if (option.state & CStyleState.MouseOver) {
 			backgroundRole = CPaletteColorRole.Hover;
 			textRole = CPaletteColorRole.Text;
 		}
 
 		painter.setFillStyle(palette.color(backgroundRole).toCss());
-		painter.fillRect(button.rect());
+		painter.fillRect(option.rect);
 
 		painter.setStrokeStyle(palette.color(CPaletteColorRole.Mid).toCss());
-		painter.drawLine(0, button.height() - 0.5, button.width(), button.height() - 0.5);
+		painter.drawLine(0, option.rect.height() - 0.5,
+			option.rect.width(), option.rect.height() - 0.5
+		);
 
 		painter.setPen(palette.color(textRole).toCss());
-		painter.setFont(button.font());
+		painter.setFont(option.font);
 		painter.setTextAlign("left");
 		painter.setTextBaseline("middle");
-		painter.drawText(button.text(), 8, button.height() / 2);
+		painter.drawText(option.text, 8, option.rect.height() / 2);
 	}
 
 	override drawKeySequenceEdit(painter: CPainter, edit: CKeySequenceEdit): void
