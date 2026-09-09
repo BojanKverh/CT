@@ -1,20 +1,38 @@
 import { CSize } from "../geometry/CSize.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 import type { CMouseEvent } from "../events/CMouseEvent.js";
+import { CMouseButton } from "../events/CMouseEvent.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CWidget } from "./CWidget.js";
 import { CRect } from "../geometry/CRect.js";
+import { CSignal } from "../core/CSignal.js";
+import { CDockWidgetArea } from "./CDockArea.js";
+import type { CMainWindow } from "./CMainWindow.js";
 
 export class CDockWidget extends CWidget {
 	static readonly TitleBarHeight = 24;
 	static readonly CloseButtonWidth = 24;
-	static readonly DefaultWidth = 200;
-	static readonly DefaultHeight = 200;
+	static readonly DefaultWidth = 100;
+	static readonly DefaultHeight = 80;
+	readonly topLevelChanged = new CSignal<[boolean]>();
+	readonly dockLocationChanged = new CSignal<[CDockWidgetArea]>();
 
 	#m_title = "";
 	#m_widget: CWidget | null = null;
 	#m_closable = true;
 	#m_closeHovered = false;
+	#m_dockWidth = CDockWidget.DefaultWidth;
+	#m_dockHeight = CDockWidget.DefaultHeight;
+	
+	#m_floating = false;
+	#m_movable = true;
+	#m_lastDockArea = CDockWidgetArea.Left;
+	#m_dragging = false;
+	#m_dragOffsetX = 0;
+	#m_dragOffsetY = 0;
+	#m_mainWindow: CMainWindow | null = null;
+	#m_dragWasFloating = false;
+	#m_dragDockArea = CDockWidgetArea.Left;
 
 	constructor(
 		title = "",
@@ -53,6 +71,10 @@ export class CDockWidget extends CWidget {
 		if (widget !== null)
 			widget.setParent(this);
 
+		const hint = this.sizeHint();
+		this.#m_dockWidth = hint.width();
+		this.#m_dockHeight = hint.height();
+
 		this.#updateWidgetGeometry();
 		this.update();
 	}
@@ -69,6 +91,62 @@ export class CDockWidget extends CWidget {
 		this.#m_closeHovered = false;
 
 		this.update();
+	}
+
+	isFloating(): boolean {
+		return this.#m_floating;
+	}
+
+	isMovable(): boolean {
+		return this.#m_movable;
+	}
+
+	setMovable(movable: boolean): void {
+		this.#m_movable = movable;
+	}
+
+	lastDockArea(): CDockWidgetArea {
+		return this.#m_lastDockArea;
+	}
+
+	setFloatingState(floating: boolean): void {
+		if (this.#m_floating === floating)
+			return;
+
+		this.#m_floating = floating;
+		this.topLevelChanged.emit(floating);
+	}
+
+	setDockWidgetArea(area: CDockWidgetArea): void {
+		if (this.#m_lastDockArea === area)
+			return;
+
+		this.#m_lastDockArea = area;
+		this.dockLocationChanged.emit(area);
+	}
+
+	dockWidth(): number {
+		return this.#m_dockWidth;
+	}
+
+	setDockWidth(width: number): void {
+		this.#m_dockWidth = Math.max(0, width);
+	}
+
+	dockHeight(): number {
+		return this.#m_dockHeight;
+	}
+
+	setDockHeight(height: number): void {
+		this.#m_dockHeight = Math.max(0, height);
+	}
+
+	mainWindow(): CMainWindow | null {
+		return this.#m_mainWindow;
+	}
+
+	setMainWindow(mainWindow: CMainWindow | null): void {
+		this.#m_mainWindow = mainWindow;
 	}
 
 	override sizeHint(): CSize {
@@ -125,14 +203,115 @@ export class CDockWidget extends CWidget {
 			this.#drawCloseButton(painter);
 	}
 
+	protected override mousePressEvent(event: CMouseEvent): void {
+		if (event.button() !== CMouseButton.LeftButton) {
+			event.ignore();
+			return;
+		}
+
+		if (this.#m_closable &&
+			this.#closeButtonContains(event.x(), event.y())) {
+			this.hide();
+			event.accept();
+			return;
+		}
+
+		if (!this.#m_movable ||
+			event.y() < 0 ||
+			event.y() >= CDockWidget.TitleBarHeight) {
+			event.ignore();
+			return;
+		}
+
+		this.#m_dragWasFloating = this.#m_floating;
+		this.#m_dragDockArea = this.#m_lastDockArea;
+
+		this.#m_dragging = true;
+		this.#m_dragOffsetX = event.x();
+		this.#m_dragOffsetY = event.y();
+
+		event.accept();
+	}
+
 	protected override mouseMoveEvent(event: CMouseEvent): void {
-		const hovered = this.#closeButtonContains(event.x(), event.y());
+		if (this.#m_dragging) {
+			const canvasPos = this.mapToCanvas(
+				event.x(), event.y()
+			);
+
+			const mainWindow = this.#m_mainWindow;
+
+			if (mainWindow === null) {
+				this.#m_dragging = false;
+				event.ignore();
+				return;
+			}
+
+			if (!this.#m_floating)
+				mainWindow.setDockWidgetFloating(this, true);
+
+			const parent = this.parent();
+
+			if (parent !== null) {
+				const pos = parent.mapFromCanvas(
+					canvasPos.x(), canvasPos.y()
+				);
+
+				this.move(
+					pos.x() - this.#m_dragOffsetX,
+					pos.y() - this.#m_dragOffsetY
+				);
+			}
+
+			mainWindow.updateDockPreview(
+				this,
+				canvasPos.x(),
+				canvasPos.y()
+			);
+			event.accept();
+			return;
+		}
+
+		const hovered = this.#closeButtonContains(
+			event.x(), event.y()
+		);
 
 		if (this.#m_closeHovered !== hovered) {
 			this.#m_closeHovered = hovered;
 			this.update();
 		}
 
+		event.accept();
+	}
+
+	protected override mouseReleaseEvent(event: CMouseEvent): void {
+		if (event.button() !== CMouseButton.LeftButton ||
+			!this.#m_dragging) {
+			event.ignore();
+			return;
+		}
+
+		this.#m_dragging = false;
+
+		const mainWindow = this.#m_mainWindow;
+
+		if (mainWindow !== null) {
+			mainWindow.clearDockPreview();
+		}
+
+		if (mainWindow !== null && this.#m_floating) {
+			const canvasPos = this.mapToCanvas(event.x(), event.y());
+			const area = mainWindow.dockAreaAt(canvasPos.x(), canvasPos.y());
+
+			if (area !== null) {
+				mainWindow.dockWidget(this, area);
+			} else if (!this.#m_dragWasFloating) {
+				mainWindow.dockWidget(
+					this,
+					this.#m_dragDockArea
+				);
+			}
+		}
 		event.accept();
 	}
 
@@ -145,19 +324,6 @@ export class CDockWidget extends CWidget {
 		}
 
 		event.accept();
-	}
-
-	protected override mousePressEvent(
-		event: CMouseEvent
-	): void {
-		if (this.#m_closable && this.#closeButtonContains(event.x(), event.y())
-		) {
-			this.hide();
-			event.accept();
-			return;
-		}
-
-		event.ignore();
 	}
 
 	#updateWidgetGeometry(): void {

@@ -28,6 +28,18 @@ class TestWidget extends CWidget {
 	}
 }
 
+class TestDockWidget extends CDockWidget {
+	constructor(
+		width: number,
+		height: number
+	) {
+		super();
+
+		this.setDockWidth(width);
+		this.setDockHeight(height);
+	}
+}
+
 describe("CDockArea", () => {
 	beforeEach(() => {
 		new CApplication(createTestCanvas());
@@ -93,7 +105,7 @@ describe("CDockArea", () => {
 
 	test("adds left dock widget", () => {
 		const area = new CDockArea();
-		const dock = new TestWidget(80, 20);
+		const dock = new TestDockWidget(80, 20);
 
 		area.setGeometry(0, 0, 400, 300);
 		area.addDockWidget(
@@ -110,7 +122,7 @@ describe("CDockArea", () => {
 
 	test("adds right dock widget", () => {
 		const area = new CDockArea();
-		const dock = new TestWidget(80, 20);
+		const dock = new TestDockWidget(80, 20);
 
 		area.setGeometry(0, 0, 400, 300);
 		area.addDockWidget(
@@ -126,7 +138,7 @@ describe("CDockArea", () => {
 
 	test("adds top dock widget", () => {
 		const area = new CDockArea();
-		const dock = new TestWidget(80, 40);
+		const dock = new TestDockWidget(80, 40);
 
 		area.setGeometry(0, 0, 400, 300);
 		area.addDockWidget(
@@ -142,7 +154,7 @@ describe("CDockArea", () => {
 
 	test("adds bottom dock widget", () => {
 		const area = new CDockArea();
-		const dock = new TestWidget(80, 40);
+		const dock = new TestDockWidget(80, 40);
 
 		area.setGeometry(0, 0, 400, 300);
 		area.addDockWidget(
@@ -160,10 +172,10 @@ describe("CDockArea", () => {
 		const area = new CDockArea();
 
 		const central = new CWidget();
-		const left = new TestWidget(80, 20);
-		const right = new TestWidget(60, 20);
-		const top = new TestWidget(20, 40);
-		const bottom = new TestWidget(20, 30);
+		const left = new TestDockWidget(80, 20);
+		const right = new TestDockWidget(60, 20);
+		const top = new TestDockWidget(20, 40);
+		const bottom = new TestDockWidget(20, 30);
 
 		area.setGeometry(0, 0, 400, 300);
 
@@ -215,8 +227,8 @@ describe("CDockArea", () => {
 	test("multiple left dock widgets are laid out from left", () => {
 		const area = new CDockArea();
 
-		const first = new TestWidget(50, 20);
-		const second = new TestWidget(70, 20);
+		const first = new TestDockWidget(50, 20);
+		const second = new TestDockWidget(70, 20);
 
 		area.setGeometry(0, 0, 400, 300);
 
@@ -240,8 +252,8 @@ describe("CDockArea", () => {
 	test("multiple right dock widgets are laid out from right", () => {
 		const area = new CDockArea();
 
-		const first = new TestWidget(50, 20);
-		const second = new TestWidget(70, 20);
+		const first = new TestDockWidget(50, 20);
+		const second = new TestDockWidget(70, 20);
 
 		area.setGeometry(0, 0, 400, 300);
 
@@ -267,8 +279,8 @@ describe("CDockArea", () => {
 	test("multiple top dock widgets are laid out downward", () => {
 		const area = new CDockArea();
 
-		const first = new TestWidget(20, 30);
-		const second = new TestWidget(20, 40);
+		const first = new TestDockWidget(20, 30);
+		const second = new TestDockWidget(20, 40);
 
 		area.setGeometry(0, 0, 400, 300);
 
@@ -292,8 +304,8 @@ describe("CDockArea", () => {
 	test("multiple bottom dock widgets are laid out upward", () => {
 		const area = new CDockArea();
 
-		const first = new TestWidget(20, 30);
-		const second = new TestWidget(20, 40);
+		const first = new TestDockWidget(20, 30);
+		const second = new TestDockWidget(20, 40);
 
 		area.setGeometry(0, 0, 400, 300);
 
@@ -319,9 +331,9 @@ describe("CDockArea", () => {
 	test("returns dock widgets for position", () => {
 		const area = new CDockArea();
 
-		const left1 = new CWidget();
-		const left2 = new CWidget();
-		const right = new CWidget();
+		const left1 = new CDockWidget();
+		const left2 = new CDockWidget();
+		const right = new CDockWidget();
 
 		area.addDockWidget(
 			CDockWidgetArea.Left,
@@ -358,7 +370,7 @@ describe("CDockArea", () => {
 
 	test("moves dock widget to another position", () => {
 		const area = new CDockArea();
-		const dock = new TestWidget(60, 30);
+		const dock = new TestDockWidget(60, 30);
 
 		area.setGeometry(0, 0, 400, 300);
 
@@ -392,7 +404,7 @@ describe("CDockArea", () => {
 
 	test("removes dock widget", () => {
 		const area = new CDockArea();
-		const dock = new CWidget();
+		const dock = new CDockWidget();
 
 		area.addDockWidget(
 			CDockWidgetArea.Left,
@@ -412,7 +424,7 @@ describe("CDockArea", () => {
 
 	test("removing unknown widget does nothing", () => {
 		const area = new CDockArea();
-		const dock = new CWidget();
+		const dock = new CDockWidget();
 
 		expect(() => {
 			area.removeDockWidget(dock);
@@ -423,7 +435,7 @@ describe("CDockArea", () => {
 		const area = new CDockArea();
 
 		const central = new CWidget();
-		const left = new TestWidget(80, 20);
+		const left = new TestDockWidget(80, 20);
 
 		area.setGeometry(0, 0, 400, 300);
 
@@ -451,8 +463,8 @@ describe("CDockArea", () => {
 		const area = new CDockArea();
 
 		const central = new CWidget();
-		const left = new TestWidget(100, 20);
-		const right = new TestWidget(100, 20);
+		const left = new TestDockWidget(100, 20);
+		const right = new TestDockWidget(100, 20);
 
 		area.setGeometry(0, 0, 50, 50);
 
@@ -496,7 +508,7 @@ describe("CDockArea", () => {
     test("hidden dock widget does not occupy space", () => {
 	    const area = new CDockArea();
 	    const central = new CWidget();
-	    const dock = new TestWidget(80, 20);
+	    const dock = new TestDockWidget(80, 20);
 	    area.setGeometry(0, 0, 400, 300);
 	    area.setCentralWidget(central);
 	    area.addDockWidget(CDockWidgetArea.Left, dock);
@@ -513,7 +525,7 @@ describe("CDockArea", () => {
     test("showing dock widget restores its space", () => {
 	    const area = new CDockArea();
 	    const central = new CWidget();
-	    const dock = new TestWidget(80, 20);
+	    const dock = new TestDockWidget(80, 20);
 	    area.setGeometry(0, 0, 400, 300);
 	    area.setCentralWidget(central);
 	    area.addDockWidget(CDockWidgetArea.Left, dock);
@@ -531,7 +543,7 @@ describe("CDockArea", () => {
 
     test("hidden dock remains registered", () => {
 	    const area = new CDockArea();
-	    const dock = new TestWidget(80, 20);
+	    const dock = new TestDockWidget(80, 20);
     	area.addDockWidget(CDockWidgetArea.Left, dock);
 	    dock.hide();
 
@@ -541,8 +553,8 @@ describe("CDockArea", () => {
     test("hidden dock does not leave spacing behind", () => {
 	    const area = new CDockArea();
 	    const central = new CWidget();
-	    const first = new TestWidget(50, 20);
-	    const second = new TestWidget(70, 20);
+	    const first = new TestDockWidget(50, 20);
+	    const second = new TestDockWidget(70, 20);
     	area.setGeometry(0, 0, 400, 300);
 	    area.setCentralWidget(central);
 	    area.addDockWidget(CDockWidgetArea.Left, first);

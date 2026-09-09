@@ -1,5 +1,9 @@
 import { CSize } from "../geometry/CSize.js";
 import { CWidget } from "./CWidget.js";
+import type { CDockWidget } from "./CDockWidget.js";
+import type { CPainter } from "../painting/CPainter.js";
+import { CRect } from "../geometry/CRect.js";
+import { CPaletteColorRole } from "../gui/CPalette.js";
 
 export enum CDockWidgetArea {
 	Left,
@@ -10,7 +14,12 @@ export enum CDockWidgetArea {
 
 type CDockAreaItem = {
 	position: CDockWidgetArea;
-	widget: CWidget;
+	widget: CDockWidget;
+};
+
+type CDockPreview = {
+	widget: CDockWidget;
+	area: CDockWidgetArea;
 };
 
 export class CDockArea extends CWidget {
@@ -18,6 +27,7 @@ export class CDockArea extends CWidget {
 
 	#m_centralWidget: CWidget | null = null;
 	#m_dockWidgets: CDockAreaItem[] = [];
+	#m_dockPreview: CDockPreview | null = null;
 
 	constructor(parent: CWidget | null = null) {
 		super(parent);
@@ -43,10 +53,7 @@ export class CDockArea extends CWidget {
 		this.update();
 	}
 
-	addDockWidget(
-		position: CDockWidgetArea,
-		widget: CWidget
-	): void {
+	addDockWidget(position: CDockWidgetArea, widget: CDockWidget): void {
 		const existing = this.#indexOf(widget);
 
 		if (existing !== -1)
@@ -63,7 +70,7 @@ export class CDockArea extends CWidget {
 		this.update();
 	}
 
-	removeDockWidget(widget: CWidget): void {
+	removeDockWidget(widget: CDockWidget): void {
 		const index = this.#indexOf(widget);
 
 		if (index === -1)
@@ -76,12 +83,71 @@ export class CDockArea extends CWidget {
 		this.update();
 	}
 
-	dockWidgets(
-		position: CDockWidgetArea
-	): readonly CWidget[] {
-		return this.#m_dockWidgets
-			.filter(item => item.position === position)
-			.map(item => item.widget);
+	dockWidgets(position: CDockWidgetArea): readonly CDockWidget[] {
+		return this.#m_dockWidgets.filter(item => item.position === position).map(item => item.widget);
+	}
+
+	dockWidgetArea(widget: CDockWidget): CDockWidgetArea | null {
+		const item = this.#m_dockWidgets.find(
+			item => item.widget === widget
+		);
+
+		return item?.position ?? null;
+	}
+
+	setDockPreview(
+		widget: CDockWidget,
+		area: CDockWidgetArea | null
+	): void {
+		if (area === null) {
+			this.clearDockPreview();
+			return;
+		}
+
+		if (this.#m_dockPreview?.widget === widget &&
+			this.#m_dockPreview.area === area)
+			return;
+
+		this.#m_dockPreview = { widget, area };
+		this.update();
+	}
+
+	clearDockPreview(): void {
+		if (this.#m_dockPreview === null)
+			return;
+
+		this.#m_dockPreview = null;
+		this.update();
+	}
+
+	override render(painter: CPainter): void {
+		super.render(painter);
+
+		if (this.#m_dockPreview === null ||
+			!this.isVisible()) {
+			return;
+		}
+
+		const rect = this.#dockPreviewRect(
+			this.#m_dockPreview.widget,
+			this.#m_dockPreview.area
+		);
+		painter.save();
+
+		try {
+			painter.translate(this.x(), this.y());
+			painter.clipRect(this.rect());
+			const color = this.palette().color(CPaletteColorRole.Highlight);
+			color.setAlpha(64);
+			painter.setBrush(color.toCss());
+			painter.fillRect(rect);
+			color.setAlpha(230);
+			painter.setPen(color.toCss());
+			painter.drawRect(rect.x(), rect.y(), rect.width(), rect.height()
+			);
+		} finally {
+			painter.restore();
+		}
 	}
 
 	override setGeometry(x: number, y: number, width: number, height: number): void {
@@ -110,10 +176,12 @@ export class CDockArea extends CWidget {
 		);
 	}
 
-    #widgets(position: CDockWidgetArea): CWidget[] {
-	    return this.#m_dockWidgets.filter(item => item.position === position &&
-				item.widget.isVisible()).map(item => item.widget);
-    }
+    #widgets(position: CDockWidgetArea): CDockWidget[] {
+		return this.#m_dockWidgets.filter(item =>
+			item.position === position &&
+			item.widget.isVisible()
+		).map(item => item.widget);
+	}
 
 	#updateGeometry(): void {
 		let left = 0;
@@ -121,70 +189,32 @@ export class CDockArea extends CWidget {
 		let right = this.width();
 		let bottom = this.height();
 
-		top = this.#layoutTop(
-			top,
-			left,
-			right
-		);
-
-		bottom = this.#layoutBottom(
-			bottom,
-			left,
-			right
-		);
-
-		left = this.#layoutLeft(
-			left,
-			top,
-			bottom
-		);
-
-		right = this.#layoutRight(
-			right,
-			top,
-			bottom
-		);
+		top = this.#layoutTop(top, left, right);
+		bottom = this.#layoutBottom(bottom, left, right);
+		left = this.#layoutLeft(left, top, bottom);
+		right = this.#layoutRight(right, top, bottom);
 
 		if (this.#m_centralWidget !== null) {
-			this.#m_centralWidget.setGeometry(
-				left,
-				top,
-				Math.max(0, right - left),
-				Math.max(0, bottom - top)
-			);
+			this.#m_centralWidget.setGeometry(left, top, Math.max(0, right - left),
+				Math.max(0, bottom - top));
 		}
 	}
 
-	#layoutTop(
-		top: number,
-		left: number,
-		right: number
+	#layoutTop(top: number, left: number, right: number
 	): number {
 		const widgets =
 			this.#widgets(CDockWidgetArea.Top);
 
 		for (const widget of widgets) {
-			const height =
-				widget.sizeHint().height();
-
-			widget.setGeometry(
-				left,
-				top,
-				Math.max(0, right - left),
-				height
-			);
-
+			const height = widget.dockHeight();
+			widget.setGeometry(left, top, Math.max(0, right - left), height);
 			top += height + CDockArea.Spacing;
 		}
 
 		return top;
 	}
 
-	#layoutBottom(
-		bottom: number,
-		left: number,
-		right: number
-	): number {
+	#layoutBottom(bottom: number, left: number, right: number): number {
 		const widgets =
 			this.#widgets(CDockWidgetArea.Bottom);
 
@@ -193,23 +223,10 @@ export class CDockArea extends CWidget {
 			i >= 0;
 			--i
 		) {
-			const widget = widgets[i];
-
-			if (widget === undefined)
-				continue;
-
-			const height =
-				widget.sizeHint().height();
-
+			const widget = widgets[i]!;
+			const height = widget.dockHeight();
 			bottom -= height;
-
-			widget.setGeometry(
-				left,
-				bottom,
-				Math.max(0, right - left),
-				height
-			);
-
+			widget.setGeometry(left, bottom, Math.max(0, right - left), height);
 			bottom -= CDockArea.Spacing;
 		}
 
@@ -225,27 +242,15 @@ export class CDockArea extends CWidget {
 			this.#widgets(CDockWidgetArea.Left);
 
 		for (const widget of widgets) {
-			const width =
-				widget.sizeHint().width();
-
-			widget.setGeometry(
-				left,
-				top,
-				width,
-				Math.max(0, bottom - top)
-			);
-
+			const width = widget.dockWidth();
+			widget.setGeometry(left, top, width, Math.max(0, bottom - top));
 			left += width + CDockArea.Spacing;
 		}
 
 		return left;
 	}
 
-	#layoutRight(
-		right: number,
-		top: number,
-		bottom: number
-	): number {
+	#layoutRight(right: number, top: number, bottom: number): number {
 		const widgets =
 			this.#widgets(CDockWidgetArea.Right);
 
@@ -254,26 +259,43 @@ export class CDockArea extends CWidget {
 			i >= 0;
 			--i
 		) {
-			const widget = widgets[i];
-
-			if (widget === undefined)
-				continue;
-
-			const width =
-				widget.sizeHint().width();
-
+			const widget = widgets[i]!;
+			const width = widget.dockWidth();
 			right -= width;
-
-			widget.setGeometry(
-				right,
-				top,
-				width,
-				Math.max(0, bottom - top)
-			);
-
+			widget.setGeometry(right, top, width, Math.max(0, bottom - top));
 			right -= CDockArea.Spacing;
 		}
 
 		return right;
+	}
+
+	#dockPreviewRect(
+		widget: CDockWidget,
+		area: CDockWidgetArea
+	): CRect {
+		const width = this.width();
+		const height = this.height();
+
+		switch (area) {
+		case CDockWidgetArea.Left: {
+			const previewWidth = Math.min(width, widget.dockWidth());
+			return new CRect(0, 0, previewWidth, height);
+		}
+
+		case CDockWidgetArea.Right: {
+			const previewWidth = Math.min(width, widget.dockWidth());
+			return new CRect(width - previewWidth, 0, previewWidth, height);
+		}
+
+		case CDockWidgetArea.Top: {
+			const previewHeight = Math.min(height, widget.dockHeight());
+			return new CRect(0, 0, width, previewHeight);
+		}
+
+		case CDockWidgetArea.Bottom: {
+			const previewHeight = Math.min(height, widget.dockHeight());
+			return new CRect(0, height - previewHeight, width, previewHeight);
+		}
+		}
 	}
 }

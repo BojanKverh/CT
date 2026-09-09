@@ -481,4 +481,92 @@ describe("CMainWindow", () => {
 		expect(hint.width()).toBe(400);
 		expect(hint.height()).toBe(300);
 	});
+
+	test("dock widget is not floating by default", () => {
+		const dock = new CDockWidget();
+
+		expect(dock.isFloating()).toBe(false);
+	});
+
+	test("dock widget is movable by default", () => {
+		const dock = new CDockWidget();
+
+		expect(dock.isMovable()).toBe(true);
+
+		dock.setMovable(false);
+
+		expect(dock.isMovable()).toBe(false);
+	});
+
+	test("returns dock widget area", () => {
+		const window = new CMainWindow();
+		const dock = new CDockWidget();
+
+		window.addDockWidget(CDockWidgetArea.Right, dock);
+
+		expect(window.dockWidgetArea(dock))
+			.toBe(CDockWidgetArea.Right);
+	});
+
+	test("makes dock widget floating", () => {
+		const window = new CMainWindow();
+		const dock = new CDockWidget();
+
+		window.setGeometry(0, 0, 800, 600);
+		window.addDockWidget(CDockWidgetArea.Left, dock);
+
+		window.setDockWidgetFloating(dock, true);
+
+		expect(dock.isFloating()).toBe(true);
+		expect(dock.parent()).toBe(window);
+		expect(window.dockWidgetArea(dock)).toBeNull();
+	});
+
+	test("restores floating dock widget to previous area", () => {
+		const window = new CMainWindow();
+		const dock = new CDockWidget();
+
+		window.setGeometry(0, 0, 800, 600);
+		window.addDockWidget(CDockWidgetArea.Right, dock);
+
+		window.setDockWidgetFloating(dock, true);
+		window.setDockWidgetFloating(dock, false);
+
+		expect(dock.isFloating()).toBe(false);
+		expect(window.dockWidgetArea(dock))
+			.toBe(CDockWidgetArea.Right);
+	});
+
+	test("floating emits topLevelChanged", () => {
+		const window = new CMainWindow();
+		const dock = new CDockWidget();
+		const values: boolean[] = [];
+
+		dock.topLevelChanged.connect(
+			floating => values.push(floating)
+		);
+
+		window.addDockWidget(CDockWidgetArea.Left, dock);
+		window.setDockWidgetFloating(dock, true);
+		window.setDockWidgetFloating(dock, false);
+
+		expect(values).toEqual([true, false]);
+	});
+
+	test("changing dock area emits dockLocationChanged", () => {
+		const window = new CMainWindow();
+		const dock = new CDockWidget();
+		const areas: CDockWidgetArea[] = [];
+
+		dock.dockLocationChanged.connect(
+			area => areas.push(area)
+		);
+
+		window.addDockWidget(CDockWidgetArea.Left, dock);
+		window.addDockWidget(CDockWidgetArea.Bottom, dock);
+
+		expect(areas).toEqual([
+			CDockWidgetArea.Bottom
+		]);
+	});
 });

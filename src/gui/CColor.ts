@@ -22,6 +22,11 @@ export class CColor {
 			this.#m_alpha = parseInt(color.slice(7, 9), 16);
 	}
 
+	setAlpha(alpha: number)
+	{
+		this.#m_alpha = alpha;
+	}
+
 	red(): number {
 		return this.#m_red;
 	}

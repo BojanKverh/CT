@@ -215,7 +215,7 @@ describe("CDockWidget", () => {
 	    expect(event.isAccepted()).toBe(true);
     });
 
-    test("click outside close button does not hide dock widget", () => {
+    test("click outside close button starts dock drag", () => {
 	    const dock = new CDockWidget();
 	    dock.resize(200, 100);
 	    const event = new CMouseEvent(CEventType.MousePress, 20, CDockWidget.TitleBarHeight / 2,
@@ -223,10 +223,10 @@ describe("CDockWidget", () => {
 
 	    dock.event(event);
 	    expect(dock.isVisible()).toBe(true);
-	    expect(event.isAccepted()).toBe(false);
+	    expect(event.isAccepted()).toBe(true);
     });
 
-    test("close button does nothing when dock is not closable", () => {
+    test("former close button area starts drag when not closable", () => {
 	    const dock = new CDockWidget();
 	    dock.resize(200, 100);
 	    dock.setClosable(false);
@@ -236,6 +236,6 @@ describe("CDockWidget", () => {
 
 	    dock.event(event);
 	    expect(dock.isVisible()).toBe(true);
-	    expect(event.isAccepted()).toBe(false);
+	    expect(event.isAccepted()).toBe(true);
     });
 });

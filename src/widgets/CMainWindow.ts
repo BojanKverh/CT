@@ -3,10 +3,7 @@ import { CWidget } from "./CWidget.js";
 import { CMenuBar } from "./CMenuBar.js";
 import { CToolBar } from "./CToolBar.js";
 import { CStatusBar } from "./CStatusBar.js";
-import {
-	CDockArea,
-	CDockWidgetArea
-} from "./CDockArea.js";
+import { CDockArea, CDockWidgetArea } from "./CDockArea.js";
 import { CDockWidget } from "./CDockWidget.js";
 
 export class CMainWindow extends CWidget {
@@ -14,6 +11,7 @@ export class CMainWindow extends CWidget {
 	#m_toolBars: CToolBar[] = [];
 	#m_statusBar: CStatusBar | null = null;
 	#m_dockArea: CDockArea;
+
 
 	constructor(parent: CWidget | null = null) {
 		super(parent);
@@ -98,15 +96,121 @@ export class CMainWindow extends CWidget {
 		this.#m_dockArea.setCentralWidget(widget);
 	}
 
-	addDockWidget(
-		area: CDockWidgetArea,
-		dockWidget: CDockWidget
-	): void {
+	addDockWidget(area: CDockWidgetArea, dockWidget: CDockWidget): void {
+		if (dockWidget.isFloating())
+			dockWidget.setFloatingState(false);
+
+		dockWidget.setMainWindow(this);
+		dockWidget.setDockWidgetArea(area);
 		this.#m_dockArea.addDockWidget(area, dockWidget);
 	}
 
 	removeDockWidget(dockWidget: CDockWidget): void {
+		if (dockWidget.isFloating()) {
+			if (dockWidget.parent() === this)
+				dockWidget.setParent(null);
+
+			dockWidget.setFloatingState(false);
+			this.update();
+			return;
+		}
+
 		this.#m_dockArea.removeDockWidget(dockWidget);
+	}
+
+	dockWidgetArea(dockWidget: CDockWidget): CDockWidgetArea | null {
+		return this.#m_dockArea.dockWidgetArea(dockWidget);
+	}
+
+	setDockWidgetFloating(dockWidget: CDockWidget,
+		floating: boolean): void {
+		if (dockWidget.isFloating() === floating)
+			return;
+
+		if (floating) {
+			const area = this.#m_dockArea.dockWidgetArea(dockWidget);
+
+			if (area === null)
+				return;
+
+			dockWidget.setDockWidgetArea(area);
+
+			const width = dockWidget.width();
+			const height = dockWidget.height();
+
+			this.#m_dockArea.removeDockWidget(dockWidget);
+
+			dockWidget.setParent(this);
+			dockWidget.resize(width, height);
+			dockWidget.setFloatingState(true);
+
+			this.update();
+			return;
+		}
+
+		this.#m_dockArea.addDockWidget(
+			dockWidget.lastDockArea(), dockWidget
+		);
+
+		dockWidget.setFloatingState(false);
+		this.update();
+	}
+
+	dockWidget(dockWidget: CDockWidget, area: CDockWidgetArea): void {
+		dockWidget.setDockWidgetArea(area);
+		this.#m_dockArea.addDockWidget(area, dockWidget);
+		dockWidget.setFloatingState(false);
+		this.update();
+	}
+
+	dockAreaAt(canvasX: number, canvasY: number
+	): CDockWidgetArea | null {
+		const pos = this.mapFromCanvas(canvasX, canvasY);
+
+		if (pos.x() < 0 || pos.y() < 0 ||
+			pos.x() >= this.width() ||
+			pos.y() >= this.height()) {
+			return null;
+		}
+
+		const marginX = Math.min(
+			80,
+			this.width() / 4
+		);
+
+		const marginY = Math.min(
+			80,
+			this.height() / 4
+		);
+
+		if (pos.x() < marginX)
+			return CDockWidgetArea.Left;
+
+		if (pos.x() >= this.width() - marginX)
+			return CDockWidgetArea.Right;
+
+		if (pos.y() < marginY)
+			return CDockWidgetArea.Top;
+
+		if (pos.y() >= this.height() - marginY)
+			return CDockWidgetArea.Bottom;
+
+		return null;
+	}
+
+	updateDockPreview(
+		dockWidget: CDockWidget,
+		canvasX: number,
+		canvasY: number
+	): void {
+		this.#m_dockArea.setDockPreview(
+			dockWidget,
+			this.dockAreaAt(canvasX, canvasY)
+		);
+	}
+
+	clearDockPreview(): void {
+		this.#m_dockArea.clearDockPreview();
 	}
 
 	override setGeometry(x: number, y: number, width: number, height: number

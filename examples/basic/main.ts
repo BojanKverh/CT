@@ -8,7 +8,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CTextEdit, CKeySequenceEdit, CListView, CModelIndex, CAbstractListModel, CTableView, CAbstractTableModel,
 	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget, CTableWidgetItem, CTableWidget, 
 	CContextMenuEvent, CDragEnterEvent, CDragMoveEvent, CDragLeaveEvent, CDropEvent,
-	CDrag, CMimeData, CDropAction, CIcon
+	CDrag, CMimeData, CDropAction, CIcon, CDockWidget, CDockWidgetArea
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -1122,6 +1122,30 @@ dragSource.setGeometry(360, 650, 120, 60);
 
 const dropTarget = new DropTargetWidget(parent);
 dropTarget.setGeometry(500, 650, 180, 60);
+
+const dock = new CDockWidget("Properties");
+const dockContent = new CWidget();
+
+const dockLabel = new CLabel(dockContent);
+dockLabel.setText("Dock widget");
+//dockLabel.setGeometry(10, 10, 80, 24);
+
+const floatButton = new CPushButton(dockContent);
+floatButton.setText("Float");
+floatButton.setGeometry(10, 45, 60, 30);
+
+dock.setWidget(dockContent);
+
+mainWindow.addDockWidget(CDockWidgetArea.Right, dock);
+
+floatButton.clicked.connect(() => {
+	mainWindow.setDockWidgetFloating(dock, !dock.isFloating());
+
+	floatButton.setText(
+		dock.isFloating() ? "Dock" : "Float"
+	);
+});
+
 app.startUpdates();
 
 setInterval(() => {
