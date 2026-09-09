@@ -6,12 +6,10 @@ import { CStyle } from "./CStyle.js";
 import { CRect } from "../geometry/CRect.js";
 import { CFontMetrics } from "./CFontMetrics.js";
 import { COrientation } from "./COrientation.js";
-import type { CTabWidget } from "../widgets/CTabWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import { CFrameShadow, CFrameShape } from "../gui/CFrameStyle.js";
 import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
 import type { CStyleOptionToolButton } from "../gui/CStyleOptionToolButton.js";
-import type { CKeySequenceEdit } from "../widgets/CKeySequenceEdit.js";
 import { CIconMode, CIconState } from "./CIcon.js";
 import { CStyleState } from "./CStyleOption.js";
 import { CStyleOptionPushButton } from "./CStyleOptionPushButton.js";
@@ -29,6 +27,7 @@ import { CStyleOptionGroupBox } from "./CStyleOptionGroupBox.js";
 import { CStyleOptionToolBoxButton } from "./CStyleOptionToolBoxButton.js";
 import { CStyleOptionSplitterHandle } from "./CStyleOptionSplitterHandle.js";
 import { CStyleOptionKeySequenceEdit } from "./CStyleOptionKeySequenceEdit.js";
+import { CStyleOptionTabWidget } from "./CStyleOptionTabWidget.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -428,50 +427,59 @@ export class CDefaultStyle extends CStyle {
 		painter.drawText(option.text, indicatorX + indicatorSize + 6, option.rect.height() / 2);
 	}
 
-	override drawTabWidget(painter: CPainter, tabWidget: CTabWidget): void {
-		const palette = tabWidget.palette();
-		const tabHeight = tabWidget.tabHeight();
+	override drawTabWidget(painter: CPainter,
+		option: CStyleOptionTabWidget): void {
+		const palette = option.palette;
+		const tabHeight = option.tabHeight;
 
-		painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
-		painter.fillRect(new CRect(0, 0, tabWidget.width(), tabHeight));
+		painter.setFillStyle(
+			palette.color(CPaletteColorRole.Base).toCss()
+		);
+		painter.fillRect(
+			new CRect(0, 0, option.rect.width(), tabHeight)
+		);
 
 		let x = 0;
-		for (let i = 0; i < tabWidget.count(); ++i) {
-			const w = tabWidget.tabWidth(i)
-			const enabled = tabWidget.isTabEnabled(i);
-			const current = i === tabWidget.currentIndex();
-			const hovered = tabWidget.isTabHovered(i);
-			const pressed = tabWidget.isTabPressed(i);
+
+		for (const tab of option.tabs) {
+			const w = tab.width;
 
 			let backgroundRole = CPaletteColorRole.Button;
 			let foregroundRole = CPaletteColorRole.Text;
 
-			if (!enabled) {
+			if (!tab.enabled) {
 				backgroundRole = CPaletteColorRole.Window;
 				foregroundRole = CPaletteColorRole.DisabledText;
-			} else if (current || pressed) {
+			} else if (tab.current || tab.pressed) {
 				backgroundRole = CPaletteColorRole.Highlight;
 				foregroundRole = CPaletteColorRole.HighlightedText;
-			} else if (hovered) {
+			} else if (tab.hovered) {
 				backgroundRole = CPaletteColorRole.Hover;
 			}
 
-			painter.setFillStyle(palette.color(backgroundRole).toCss());			
-			painter.setStrokeStyle(palette.color(foregroundRole).toCss());
-			painter.drawRoundedRect(x + 1, 1, w - 1, tabHeight - 2, [9, 9, 0, 0]);
+			painter.setFillStyle(
+				palette.color(backgroundRole).toCss()
+			);
+			painter.setStrokeStyle(
+				palette.color(foregroundRole).toCss()
+			);
+			painter.drawRoundedRect(
+				x + 1, 1, w - 1, tabHeight - 2, [9, 9, 0, 0]
+			);
 
 			let textRole = CPaletteColorRole.ButtonText;
 
-			if (!enabled)
+			if (!tab.enabled)
 				textRole = CPaletteColorRole.DisabledText;
-			else if (current || pressed || hovered)
+			else if (tab.current || tab.pressed || tab.hovered)
 				textRole = CPaletteColorRole.HighlightedText;
 
 			painter.setFillStyle(palette.color(textRole).toCss());
-			painter.setFont(tabWidget.font());
+			painter.setFont(option.font);
 			painter.setTextAlign("center");
 			painter.setTextBaseline("middle");
-			painter.drawText(tabWidget.tabText(i), x + w / 2, tabHeight / 2);
+			painter.drawText(tab.text, x + w / 2, tabHeight / 2);
+
 			x += w;
 		}
 	}
@@ -813,6 +821,99 @@ export class CDefaultStyle extends CStyle {
 			centerY - arrowHeight / 2);
 	}
 
+	override drawSplitterHandle(painter: CPainter,
+		option: CStyleOptionSplitterHandle): void {
+		const palette = option.palette;
+		const rect = option.rect;
+
+		painter.setFillStyle(palette.color(CPaletteColorRole.Window).toCss());
+		painter.fillRect(rect);
+
+		painter.setStrokeStyle(palette.color(CPaletteColorRole.Mid).toCss());
+		painter.setLineWidth(3);
+
+		if (option.orientation === COrientation.Horizontal) {
+			const x = rect.width() / 2;
+			painter.drawLine(x, rect.height() / 2 - 8, x, rect.height() / 2 + 8);
+		} else {
+			const y = rect.height() / 2;
+			painter.drawLine(rect.width() / 2 - 8, y, rect.width() / 2 + 8, y);
+		}
+	}
+
+	override drawSizeGrip(painter: CPainter, option: CStyleOptionSizeGrip): void
+	{
+		const rect = option.rect;
+		const color = option.palette.color(CPaletteColorRole.Mid);
+		painter.setPen(color.toHex());
+
+		const right = rect.width() - 1;
+		const bottom = rect.height() - 1;
+
+		for (let i = 0; i < 4; ++i) {
+			const offset = i * 3;
+			painter.drawLine(right - offset, bottom, right, bottom - offset);
+		}
+	}
+
+	override drawToolBoxButton(painter: CPainter, option: CStyleOptionToolBoxButton): void {
+		const palette = option.palette;
+		let backgroundRole = CPaletteColorRole.Window;
+		let textRole = CPaletteColorRole.Text;
+
+		if (!(option.state & CStyleState.Enabled)) {
+			backgroundRole = CPaletteColorRole.Window;
+			textRole = CPaletteColorRole.DisabledText;
+		} else if (option.current ||
+			option.state & CStyleState.Sunken) {
+			backgroundRole = CPaletteColorRole.Highlight;
+			textRole = CPaletteColorRole.HighlightedText;
+		} else if (option.state & CStyleState.MouseOver) {
+			backgroundRole = CPaletteColorRole.Hover;
+			textRole = CPaletteColorRole.Text;
+		}
+
+		painter.setFillStyle(palette.color(backgroundRole).toCss());
+		painter.fillRect(option.rect);
+
+		painter.setStrokeStyle(palette.color(CPaletteColorRole.Mid).toCss());
+		painter.drawLine(0, option.rect.height() - 0.5,
+			option.rect.width(), option.rect.height() - 0.5
+		);
+
+		painter.setPen(palette.color(textRole).toCss());
+		painter.setFont(option.font);
+		painter.setTextAlign("left");
+		painter.setTextBaseline("middle");
+		painter.drawText(option.text, 8, option.rect.height() / 2);
+	}
+
+	override drawKeySequenceEdit(painter: CPainter, option: CStyleOptionKeySequenceEdit): void {
+		const palette = option.palette;
+		const textRole = option.state & CStyleState.Enabled
+			? CPaletteColorRole.Text
+			: CPaletteColorRole.DisabledText;
+
+		painter.setFillStyle(
+			palette.color(CPaletteColorRole.Base).toCss()
+		);
+		painter.fillRect(option.rect);
+
+		painter.setStrokeStyle(
+			palette.color(CPaletteColorRole.WindowText).toCss()
+		);
+		painter.strokeRect(option.rect);
+
+		painter.setPen(palette.color(textRole).toCss());
+		painter.setFont(option.font);
+		painter.setTextAlign("left");
+		painter.setTextBaseline("middle");
+
+		painter.drawText(
+			option.keySequence, 5, option.rect.height() / 2
+		);
+	}
+
 	#drawFrameHLine(painter: CPainter, option: CStyleOptionFrame, rect: CRect, 
 		lineWidth: number, midLineWidth: number): void { 
 		
@@ -912,96 +1013,5 @@ export class CDefaultStyle extends CStyle {
 		);
 	}
 
-	override drawSplitterHandle(painter: CPainter,
-		option: CStyleOptionSplitterHandle): void {
-		const palette = option.palette;
-		const rect = option.rect;
-
-		painter.setFillStyle(palette.color(CPaletteColorRole.Window).toCss());
-		painter.fillRect(rect);
-
-		painter.setStrokeStyle(palette.color(CPaletteColorRole.Mid).toCss());
-		painter.setLineWidth(3);
-
-		if (option.orientation === COrientation.Horizontal) {
-			const x = rect.width() / 2;
-			painter.drawLine(x, rect.height() / 2 - 8, x, rect.height() / 2 + 8);
-		} else {
-			const y = rect.height() / 2;
-			painter.drawLine(rect.width() / 2 - 8, y, rect.width() / 2 + 8, y);
-		}
-	}
-
-	override drawSizeGrip(painter: CPainter, option: CStyleOptionSizeGrip): void
-	{
-		const rect = option.rect;
-		const color = option.palette.color(CPaletteColorRole.Mid);
-		painter.setPen(color.toHex());
-
-		const right = rect.width() - 1;
-		const bottom = rect.height() - 1;
-
-		for (let i = 0; i < 4; ++i) {
-			const offset = i * 3;
-			painter.drawLine(right - offset, bottom, right, bottom - offset);
-		}
-	}
-
-	override drawToolBoxButton(painter: CPainter, option: CStyleOptionToolBoxButton): void {
-		const palette = option.palette;
-		let backgroundRole = CPaletteColorRole.Window;
-		let textRole = CPaletteColorRole.Text;
-
-		if (!(option.state & CStyleState.Enabled)) {
-			backgroundRole = CPaletteColorRole.Window;
-			textRole = CPaletteColorRole.DisabledText;
-		} else if (option.current ||
-			option.state & CStyleState.Sunken) {
-			backgroundRole = CPaletteColorRole.Highlight;
-			textRole = CPaletteColorRole.HighlightedText;
-		} else if (option.state & CStyleState.MouseOver) {
-			backgroundRole = CPaletteColorRole.Hover;
-			textRole = CPaletteColorRole.Text;
-		}
-
-		painter.setFillStyle(palette.color(backgroundRole).toCss());
-		painter.fillRect(option.rect);
-
-		painter.setStrokeStyle(palette.color(CPaletteColorRole.Mid).toCss());
-		painter.drawLine(0, option.rect.height() - 0.5,
-			option.rect.width(), option.rect.height() - 0.5
-		);
-
-		painter.setPen(palette.color(textRole).toCss());
-		painter.setFont(option.font);
-		painter.setTextAlign("left");
-		painter.setTextBaseline("middle");
-		painter.drawText(option.text, 8, option.rect.height() / 2);
-	}
-
-	override drawKeySequenceEdit(painter: CPainter, option: CStyleOptionKeySequenceEdit): void {
-		const palette = option.palette;
-		const textRole = option.state & CStyleState.Enabled
-			? CPaletteColorRole.Text
-			: CPaletteColorRole.DisabledText;
-
-		painter.setFillStyle(
-			palette.color(CPaletteColorRole.Base).toCss()
-		);
-		painter.fillRect(option.rect);
-
-		painter.setStrokeStyle(
-			palette.color(CPaletteColorRole.WindowText).toCss()
-		);
-		painter.strokeRect(option.rect);
-
-		painter.setPen(palette.color(textRole).toCss());
-		painter.setFont(option.font);
-		painter.setTextAlign("left");
-		painter.setTextBaseline("middle");
-
-		painter.drawText(
-			option.keySequence, 5, option.rect.height() / 2
-		);
-	}
+	
 }

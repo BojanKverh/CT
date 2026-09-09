@@ -4,6 +4,7 @@ import type { CPainter } from "../painting/CPainter.js";
 import { CStackedWidget } from "./CStackedWidget.js";
 import { CWidget } from "./CWidget.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import { CStyleOptionTabWidget } from "../gui/CStyleOptionTabWidget.js";
 
 interface CTab {
 	text: string;
@@ -251,9 +252,12 @@ export class CTabWidget extends CWidget {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
-		this.style().drawTabWidget(painter, this);
-	}
+		const option = new CStyleOptionTabWidget();
+		option.initFromTabWidget(this);
 
+		this.style().drawTabWidget(painter, option);
+	}
+	
 	#tabAt(x: number, y: number): number {
 		if (y < 0 || y >= CTabWidget.#TAB_HEIGHT)
 			return -1;
