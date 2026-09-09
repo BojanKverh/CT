@@ -11,7 +11,6 @@ import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import { CFrameShadow, CFrameShape } from "../gui/CFrameStyle.js";
 import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
 import type { CStyleOptionToolButton } from "../gui/CStyleOptionToolButton.js";
-import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
 import type { CKeySequenceEdit } from "../widgets/CKeySequenceEdit.js";
 import { CIconMode, CIconState } from "./CIcon.js";
 import { CStyleState } from "./CStyleOption.js";
@@ -28,6 +27,7 @@ import { CStyleOptionSizeGrip } from "./CStyleOptionSizeGrip.js";
 import { CStyleOptionFrame } from "../gui/CStyleOptionFrame.js";
 import { CStyleOptionGroupBox } from "./CStyleOptionGroupBox.js";
 import { CStyleOptionToolBoxButton } from "./CStyleOptionToolBoxButton.js";
+import { CStyleOptionSplitterHandle } from "./CStyleOptionSplitterHandle.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -911,26 +911,23 @@ export class CDefaultStyle extends CStyle {
 		);
 	}
 
-	override drawSplitterHandle(painter: CPainter, handle: CSplitterHandle): void
-	{
-		const palette = handle.palette();
+	override drawSplitterHandle(painter: CPainter,
+		option: CStyleOptionSplitterHandle): void {
+		const palette = option.palette;
+		const rect = option.rect;
 
-		painter.setFillStyle(
-			palette.color(CPaletteColorRole.Window).toCss()
-		);
-		painter.fillRect(handle.rect());
+		painter.setFillStyle(palette.color(CPaletteColorRole.Window).toCss());
+		painter.fillRect(rect);
 
-		painter.setStrokeStyle(
-			palette.color(CPaletteColorRole.Mid).toCss()
-		);
-		painter.setLineWidth(1);
+		painter.setStrokeStyle(palette.color(CPaletteColorRole.Mid).toCss());
+		painter.setLineWidth(3);
 
-		if (handle.orientation() === COrientation.Horizontal) {
-			const x = handle.width() / 2;
-			painter.drawLine(x, handle.height() / 2 - 8, x, handle.height() / 2 + 8);
+		if (option.orientation === COrientation.Horizontal) {
+			const x = rect.width() / 2;
+			painter.drawLine(x, rect.height() / 2 - 8, x, rect.height() / 2 + 8);
 		} else {
-			const y = handle.height() / 2;
-			painter.drawLine(handle.width() / 2 - 8, y, handle.width() / 2 + 8, y);
+			const y = rect.height() / 2;
+			painter.drawLine(rect.width() / 2 - 8, y, rect.width() / 2 + 8, y);
 		}
 	}
 

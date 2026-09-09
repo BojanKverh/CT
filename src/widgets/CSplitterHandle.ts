@@ -6,7 +6,7 @@ import type { CSplitter } from "./CSplitter.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
-
+import { CStyleOptionSplitterHandle } from "../gui/CStyleOptionSplitterHandle.js";
 export class CSplitterHandle extends CWidget
 {
 	#m_orientation: COrientation;
@@ -63,9 +63,11 @@ export class CSplitterHandle extends CWidget
 		return new CSize(0, size);
 	}
 
-	protected override paintEvent(painter: CPainter): void
-	{
-		this.style().drawSplitterHandle(painter, this);
+	protected override paintEvent(painter: CPainter): void {
+		const option = new CStyleOptionSplitterHandle();
+		option.initFromSplitterHandle(this);
+
+		this.style().drawSplitterHandle(painter, option);
 	}
 
 	protected override mousePressEvent(event: CMouseEvent): void
