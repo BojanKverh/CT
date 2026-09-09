@@ -4,6 +4,7 @@ import type { CPainter } from "../painting/CPainter.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CKeyEvent } from "../events/CKeyEvent";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import { CStyleOptionSlider } from "../gui/CStyleOptionSlider.js";
 
 export class CSlider extends CWidget {
 	#m_minimum = 0;
@@ -88,7 +89,10 @@ export class CSlider extends CWidget {
     }
 
     protected override paintEvent(painter: CPainter): void {
-		this.style().drawSlider(painter, this);
+		const option = new CStyleOptionSlider();
+		option.initFromSlider(this);
+
+		this.style().drawSlider(painter, option);
 	}
 
 	protected override mousePressEvent(event: CMouseEvent): void {

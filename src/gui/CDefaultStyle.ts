@@ -29,6 +29,7 @@ import { CStyleOptionCheckBox } from "./CStyleOptionCheckBox.js";
 import { CStyleOptionRadioButton } from "./CStyleOptionRadioButton.js";
 import { CStyleOptionComboBox } from "./CStyleOptionComboBox.js";
 import { CStyleOptionLineEdit } from "../gui/CStyleOptionLineEdit.js";
+import { CStyleOptionSlider } from "../gui/CStyleOptionSlider.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -216,31 +217,32 @@ export class CDefaultStyle extends CStyle {
 		}
 	}
 
-	override drawSlider(painter: CPainter, slider: CSlider): void {
-		const palette = slider.palette();
-
+	override drawSlider(painter: CPainter, option: CStyleOptionSlider): void {
 		const grooveHeight = 4;
 		const handleW = this.sliderHandleSize();
 		const handleH = 12;
 
 		const grooveX = handleW / 2;
-		const grooveY = (slider.height() - grooveHeight) / 2;
-		const grooveWidth = Math.max(0, slider.width() - handleW);
+		const grooveY = (option.rect.height() - grooveHeight) / 2;
+		const grooveWidth = Math.max(0, option.rect.width() - handleW);
 
-		painter.setFillStyle(palette.color(CPaletteColorRole.Window).toCss());
+		painter.setFillStyle(
+			option.palette.color(CPaletteColorRole.Window).toCss());
+		painter.fillRect(
+			new CRect(grooveX, grooveY, grooveWidth, grooveHeight));
 
-		painter.fillRect(new CRect(grooveX, grooveY, grooveWidth, grooveHeight));
-		const range = slider.maximum() - slider.minimum();
-		const ratio = range === 0? 0 : (slider.value() - slider.minimum()) / range;
+		const range = option.maximum - option.minimum;
+		const ratio = range === 0? 0
+			: (option.value - option.minimum) / range;
 
 		const handleCenterX = grooveX + grooveWidth * ratio;
+		const handleY = (option.rect.height() - handleH) / 2;
 
-		const handleY = (slider.height() - handleH) / 2;
+		painter.setFillStyle(
+			option.palette.color(CPaletteColorRole.Highlight).toCss());
 
-		painter.setFillStyle(palette.color(CPaletteColorRole.Highlight).toCss());
-
-		painter.fillRect(new CRect(handleCenterX - handleW / 2, handleY, handleW,
-			handleH));
+		painter.fillRect(new CRect(handleCenterX - handleW / 2,
+			handleY, handleW, handleH));
 	}
 
 	override drawProgressBar(painter: CPainter, progressBar: CProgressBar): void {

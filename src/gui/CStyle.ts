@@ -19,6 +19,7 @@ import type { CStyleOptionCheckBox } from "./CStyleOptionCheckBox.js";
 import type { CStyleOptionRadioButton } from "./CStyleOptionRadioButton.js";
 import type { CStyleOptionComboBox } from "./CStyleOptionComboBox.js";
 import type { CStyleOptionLineEdit } from "../gui/CStyleOptionLineEdit.js";
+import type { CStyleOptionSlider } from "./CStyleOptionSlider.js";
 
 export abstract class CStyle {
 	
@@ -33,7 +34,7 @@ export abstract class CStyle {
 	abstract drawToolButton(painter: CPainter, option: CStyleOptionToolButton): void;
     abstract drawCheckBox(painter: CPainter, option: CStyleOptionCheckBox): void;
     abstract drawLineEdit(painter: CPainter, option: CStyleOptionLineEdit): void;
-    abstract drawSlider(painter: CPainter, slider: CSlider): void;
+    abstract drawSlider(painter: CPainter, option: CStyleOptionSlider): void;
     abstract drawProgressBar(painter: CPainter, progressBar : CProgressBar): void;
     abstract drawGroupBox(painter: CPainter, groupBox: CGroupBox): void;
     abstract drawScrollBar(painter: CPainter, scrollBar: CScrollBar): void;
