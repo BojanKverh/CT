@@ -1,6 +1,7 @@
 import { CWidget } from "./CWidget.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CRect } from "../geometry/CRect.js";
+import { CStyleOptionGroupBox } from "../gui/CStyleOptionGroupBox.js";
 
 export class CGroupBox extends CWidget {
 	#m_title: string;
@@ -30,6 +31,9 @@ export class CGroupBox extends CWidget {
 	}
 
     protected override paintEvent(painter: CPainter): void {
-		this.style().drawGroupBox(painter, this);
+		const option = new CStyleOptionGroupBox();
+		option.initFromGroupBox(this);
+
+		this.style().drawGroupBox(painter, option);
 	}
 }

@@ -18,6 +18,7 @@ import type { CStyleOptionProgressBar } from "./CStyleOptionProgressBar.js";
 import type { CStyleOptionToolBar } from "./CStyleOptionToolBar.js";
 import type { CStyleOptionSizeGrip } from "./CStyleOptionSizeGrip.js";
 import type { CStyleOptionFrame } from "./CStyleOptionFrame.js";
+import type { CStyleOptionGroupBox } from "./CStyleOptionGroupBox.js";
 
 export abstract class CStyle {
 	
@@ -34,7 +35,7 @@ export abstract class CStyle {
     abstract drawLineEdit(painter: CPainter, option: CStyleOptionLineEdit): void;
     abstract drawSlider(painter: CPainter, option: CStyleOptionSlider): void;
     abstract drawProgressBar(painter: CPainter, option: CStyleOptionProgressBar): void;
-    abstract drawGroupBox(painter: CPainter, groupBox: CGroupBox): void;
+    abstract drawGroupBox(painter: CPainter, option: CStyleOptionGroupBox): void;
     abstract drawScrollBar(painter: CPainter, option: CStyleOptionScrollBar): void;
     abstract drawRadioButton(painter: CPainter, option: CStyleOptionRadioButton): void
     abstract drawTabWidget(painter: CPainter, tabWidget: CTabWidget): void

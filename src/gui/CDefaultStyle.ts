@@ -28,6 +28,7 @@ import { CStyleOptionProgressBar } from "./CStyleOptionProgressBar.js";
 import { CStyleOptionToolBar } from "./CStyleOptionToolBar.js";
 import { CStyleOptionSizeGrip } from "./CStyleOptionSizeGrip.js";
 import { CStyleOptionFrame } from "../gui/CStyleOptionFrame.js";
+import { CStyleOptionGroupBox } from "./CStyleOptionGroupBox.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -276,27 +277,34 @@ export class CDefaultStyle extends CStyle {
 			option.rect.height() / 2);
 	}
 
-	override drawGroupBox(painter: CPainter, groupBox: CGroupBox): void {
-		const palette = groupBox.palette();
-		const title = groupBox.title();
+	override drawGroupBox(painter: CPainter, option: CStyleOptionGroupBox): void {
+		const palette = option.palette;
+		const title = option.title;
+		const rect = option.rect;
 
 		const titleMargin = 8;
 		const titlePadding = 4;
 		const frameY = 8;
 
-		painter.setStrokeStyle(palette.color(CPaletteColorRole.WindowText).toCss());
+		painter.setStrokeStyle(
+			palette.color(CPaletteColorRole.WindowText).toCss()
+		);
 
-		painter.setFillStyle(palette.color(groupBox.isEnabled()? CPaletteColorRole.Text
-					: CPaletteColorRole.DisabledText).toCss());
+		const textRole = option.state & CStyleState.Enabled ?
+			CPaletteColorRole.Text : CPaletteColorRole.DisabledText;
 
-		painter.setFont(groupBox.font());
+		painter.setFillStyle(palette.color(textRole).toCss());
+		painter.setFont(option.font);
 
 		if (title.length === 0) {
-			painter.strokeRect(new CRect(0, frameY, groupBox.width(), groupBox.height() - frameY));
+			painter.strokeRect(
+				new CRect(0, frameY, rect.width(),
+					rect.height() - frameY)
+			);
 			return;
 		}
 
-		const metrics = new CFontMetrics(groupBox.font());
+		const metrics = new CFontMetrics(option.font);
 		const titleWidth = metrics.textWidth(title);
 		const titleStart = titleMargin;
 		const titleEnd = titleStart + titleWidth + 2 * titlePadding;
@@ -305,20 +313,32 @@ export class CDefaultStyle extends CStyle {
 		painter.drawLine(0, frameY, titleStart, frameY);
 
 		// Top-right part of frame.
-		painter.drawLine(titleEnd + 0.5, frameY + 0.5, groupBox.width() - 0.5, frameY - 0.5);
+		painter.drawLine(
+			titleEnd + 0.5, frameY + 0.5,
+			rect.width() - 0.5, frameY - 0.5
+		);
 
 		// Left side.
-		painter.drawLine(0.5, frameY + 0.5, 0.5, groupBox.height() - 0.5);
+		painter.drawLine(
+			0.5, frameY + 0.5,
+			0.5, rect.height() - 0.5
+		);
 
 		// Right side.
-		painter.drawLine(groupBox.width() - 0.5, frameY + 0.5, groupBox.width() - 0.5, groupBox.height() -0.5);
+		painter.drawLine(
+			rect.width() - 0.5, frameY + 0.5,
+			rect.width() - 0.5, rect.height() - 0.5
+		);
 
 		// Bottom.
-		painter.drawLine(0.5, groupBox.height() - 0.5, groupBox.width() - 0.5, groupBox.height() - 0.5);
+		painter.drawLine(
+			0.5, rect.height() - 0.5,
+			rect.width() - 0.5, rect.height() - 0.5
+		);
 
 		painter.setTextAlign("left");
 		painter.setTextBaseline("middle");
-		painter.drawText( title, titleStart + titlePadding, frameY);
+		painter.drawText(title, titleStart + titlePadding, frameY);
 	}
 
 	override drawScrollBar(painter: CPainter, option: CStyleOptionScrollBar): void {
