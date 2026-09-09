@@ -9,7 +9,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget, CTableWidgetItem, CTableWidget, 
 	CContextMenuEvent, CDragEnterEvent, CDragMoveEvent, CDragLeaveEvent, CDropEvent,
 	CDrag, CMimeData, CDropAction, CIcon, CDockWidget, CDockWidgetArea,
-	CCursorShape
+	CCursorShape, CDial
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -1158,6 +1158,15 @@ floatButton.clicked.connect(() => {
 	floatButton.setText(
 		dock.isFloating() ? "Dock" : "Float"
 	);
+});
+
+const dial = new CDial(mainWindow); // oziroma tvoj root widget
+dial.setGeometry(520, 250, 120, 120);
+dial.setRange(0, 200);
+dial.setValue(50);
+
+dial.valueChanged.connect((value) => {
+	console.log("Dial value:", value);
 });
 
 app.startUpdates();

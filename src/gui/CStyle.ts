@@ -33,6 +33,7 @@ export abstract class CStyle {
     abstract drawCheckBox(painter: CPainter, option: CStyleOptionCheckBox): void;
     abstract drawLineEdit(painter: CPainter, option: CStyleOptionLineEdit): void;
     abstract drawSlider(painter: CPainter, option: CStyleOptionSlider): void;
+    abstract drawDial(painter: CPainter, option: CStyleOptionSlider): void;
     abstract drawProgressBar(painter: CPainter, option: CStyleOptionProgressBar): void;
     abstract drawGroupBox(painter: CPainter, option: CStyleOptionGroupBox): void;
     abstract drawScrollBar(painter: CPainter, option: CStyleOptionScrollBar): void;

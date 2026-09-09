@@ -253,6 +253,45 @@ export class CDefaultStyle extends CStyle {
 			handleY, handleW, handleH));
 	}
 
+	override drawDial(painter: CPainter, option: CStyleOptionSlider): void {
+		const rect = option.rect;
+		const centerX = rect.width() / 2;
+		const centerY = rect.height() / 2;
+		const radius = Math.max(0, Math.min(rect.width(), rect.height()) / 2 - 4);
+
+		if (radius <= 0)
+			return;
+
+		painter.setFillStyle(
+			option.palette.color(CPaletteColorRole.Base).toCss());
+		painter.fillEllipse(centerX, centerY, radius, radius);
+
+		painter.setStrokeStyle(
+			option.palette.color(CPaletteColorRole.WindowText).toCss());
+		painter.setLineWidth(1);
+		painter.drawEllipse(centerX, centerY, radius, radius);
+
+		const range = option.maximum - option.minimum;
+		const ratio = range === 0 ? 0
+			: (option.value - option.minimum) / range;
+
+		const angleDegrees = 135 + 270 * ratio;
+		const angle = angleDegrees * Math.PI / 180;
+		const needleLength = radius * 0.72;
+		const needleX = centerX + Math.cos(angle) * needleLength;
+		const needleY = centerY + Math.sin(angle) * needleLength;
+
+		painter.setStrokeStyle(
+			option.palette.color(CPaletteColorRole.Highlight).toCss());
+		painter.setLineWidth(2);
+		painter.drawLine(centerX, centerY, needleX, needleY);
+
+		const centerRadius = Math.max(2, radius * 0.08);
+		painter.setFillStyle(
+			option.palette.color(CPaletteColorRole.Highlight).toCss());
+		painter.fillEllipse(centerX, centerY, centerRadius, centerRadius);
+	}
+
 	override drawProgressBar(painter: CPainter, option: CStyleOptionProgressBar): void {
 		const range = option.maximum - option.minimum;
 		const ratio = range === 0? 0
