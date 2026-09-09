@@ -13,7 +13,6 @@ import { CFrameShadow, CFrameShape } from "../gui/CFrameStyle.js";
 import type { CFrame } from "../widgets/CFrame.js";
 import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
 import type { CStyleOptionToolButton } from "../gui/CStyleOptionToolButton.js";
-import type { CToolBar } from "../widgets/CToolBar.js";
 import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
 import type { CSizeGrip } from "../widgets/CSizeGrip.js";
 import type { CToolBoxButton } from "../widgets/CToolBoxButton.js";
@@ -28,6 +27,7 @@ import { CStyleOptionLineEdit } from "../gui/CStyleOptionLineEdit.js";
 import { CStyleOptionSlider } from "../gui/CStyleOptionSlider.js";
 import { CStyleOptionScrollBar } from "./CStyleOptionScrollBar.js";
 import { CStyleOptionProgressBar } from "./CStyleOptionProgressBar.js";
+import { CStyleOptionToolBar } from "./CStyleOptionToolBar.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -750,10 +750,14 @@ export class CDefaultStyle extends CStyle {
 		}
 	}
 
-	override drawToolBar(painter: CPainter, toolBar: CToolBar): void {
-		const palette = toolBar.palette();
-		painter.setFillStyle(palette.color(CPaletteColorRole.Window).toCss());
-		painter.fillRect(toolBar.rect());
+	override drawToolBar(painter: CPainter, option: CStyleOptionToolBar): void {
+		painter.setFillStyle(
+			option.palette.color(CPaletteColorRole.Window).toCss());
+		painter.fillRect(option.rect);
+
+		painter.setStrokeStyle(
+			option.palette.color(CPaletteColorRole.Mid).toCss());
+		painter.strokeRect(option.rect);
 	}
 
 	override drawComboBox(painter: CPainter,

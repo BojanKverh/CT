@@ -18,6 +18,7 @@ import type { CStyleOptionLineEdit } from "../gui/CStyleOptionLineEdit.js";
 import type { CStyleOptionSlider } from "./CStyleOptionSlider.js";
 import type { CStyleOptionScrollBar } from "./CStyleOptionScrollBar.js"
 import type { CStyleOptionProgressBar } from "./CStyleOptionProgressBar.js";
+import type { CStyleOptionToolBar } from "./CStyleOptionToolBar.js";
 
 export abstract class CStyle {
 	
@@ -41,7 +42,7 @@ export abstract class CStyle {
     abstract drawToolTip(painter: CPainter, toolTip: CToolTipWidget): void;
     abstract drawFrame(painter: CPainter, frame: CFrame): void;
     abstract drawComboBox(painter: CPainter, option: CStyleOptionComboBox): void;
-    abstract drawToolBar(painter: CPainter, toolBar: CToolBar): void;
+    abstract drawToolBar(painter: CPainter, option: CStyleOptionToolBar): void;
     abstract drawSplitterHandle(painter: CPainter, handle: CSplitterHandle): void;
     abstract drawSizeGrip(painter: CPainter, sizeGrip: CSizeGrip): void;
     abstract drawToolBoxButton(painter: CPainter, button: CToolBoxButton): void;

@@ -4,6 +4,7 @@ import { CPainter } from "../painting/CPainter.js";
 import { CToolButton } from "./CToolButton.js";
 import { CWidget } from "./CWidget.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
+import { CStyleOptionToolBar } from "../gui/CStyleOptionToolBar.js";
 
 type CToolBarItem =
 	| {
@@ -198,7 +199,10 @@ export class CToolBar extends CWidget {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
-		this.style().drawToolBar(painter, this);
+		const option = new CStyleOptionToolBar();
+		option.initFromToolBar(this);
+
+		this.style().drawToolBar(painter, option);
 	}
 
 	#updateItemGeometry(): void {
