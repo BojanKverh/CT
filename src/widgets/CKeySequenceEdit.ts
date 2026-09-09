@@ -6,6 +6,7 @@ import type { CPainter } from "../painting/CPainter.js";
 import { CSize } from "../geometry/CSize.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
+import { CStyleOptionKeySequenceEdit } from "../gui/CStyleOptionKeySequenceEdit.js";
 
 export class CKeySequenceEdit extends CWidget {
 	readonly keySequenceChanged = new CSignal<[string]>();
@@ -41,7 +42,10 @@ export class CKeySequenceEdit extends CWidget {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
-		this.style().drawKeySequenceEdit(painter, this);
+		const option = new CStyleOptionKeySequenceEdit();
+		option.initFromKeySequenceEdit(this);
+
+		this.style().drawKeySequenceEdit(painter, option);
 	}
 
 	protected override keyPressEvent(event: CKeyEvent): void {

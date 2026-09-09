@@ -28,6 +28,7 @@ import { CStyleOptionFrame } from "../gui/CStyleOptionFrame.js";
 import { CStyleOptionGroupBox } from "./CStyleOptionGroupBox.js";
 import { CStyleOptionToolBoxButton } from "./CStyleOptionToolBoxButton.js";
 import { CStyleOptionSplitterHandle } from "./CStyleOptionSplitterHandle.js";
+import { CStyleOptionKeySequenceEdit } from "./CStyleOptionKeySequenceEdit.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -978,28 +979,29 @@ export class CDefaultStyle extends CStyle {
 		painter.drawText(option.text, 8, option.rect.height() / 2);
 	}
 
-	override drawKeySequenceEdit(painter: CPainter, edit: CKeySequenceEdit): void
-	{
-		const palette = edit.palette();
-		const textRole = edit.isEnabled()
+	override drawKeySequenceEdit(painter: CPainter, option: CStyleOptionKeySequenceEdit): void {
+		const palette = option.palette;
+		const textRole = option.state & CStyleState.Enabled
 			? CPaletteColorRole.Text
 			: CPaletteColorRole.DisabledText;
 
 		painter.setFillStyle(
 			palette.color(CPaletteColorRole.Base).toCss()
 		);
-		painter.fillRect(edit.rect());
+		painter.fillRect(option.rect);
 
 		painter.setStrokeStyle(
 			palette.color(CPaletteColorRole.WindowText).toCss()
 		);
-		painter.strokeRect(edit.rect());
+		painter.strokeRect(option.rect);
 
 		painter.setPen(palette.color(textRole).toCss());
-		painter.setFont(edit.font());
+		painter.setFont(option.font);
 		painter.setTextAlign("left");
 		painter.setTextBaseline("middle");
 
-		painter.drawText(edit.keySequence(), 5, edit.height() / 2);
+		painter.drawText(
+			option.keySequence, 5, option.rect.height() / 2
+		);
 	}
 }
