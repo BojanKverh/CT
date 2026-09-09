@@ -1,15 +1,13 @@
 import { CAlignment } from "../core/CAlignment.js";
 import { CPaletteColorRole } from "./CPalette.js";
 import type { CPainter } from "../painting/CPainter.js";
-import type { CLabel } from "../widgets/CLabel.js";
 import { CStyle } from "./CStyle.js";
 import { CRect } from "../geometry/CRect.js";
 import { CFontMetrics } from "./CFontMetrics.js";
 import { COrientation } from "./COrientation.js";
-import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import { CFrameShadow, CFrameShape } from "../gui/CFrameStyle.js";
 import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
-import type { CStyleOptionToolButton } from "../gui/CStyleOptionToolButton.js";
+import { CStyleOptionToolButton } from "../gui/CStyleOptionToolButton.js";
 import { CIconMode, CIconState } from "./CIcon.js";
 import { CStyleState } from "./CStyleOption.js";
 import { CStyleOptionPushButton } from "./CStyleOptionPushButton.js";
@@ -29,6 +27,7 @@ import { CStyleOptionSplitterHandle } from "./CStyleOptionSplitterHandle.js";
 import { CStyleOptionKeySequenceEdit } from "./CStyleOptionKeySequenceEdit.js";
 import { CStyleOptionTabWidget } from "./CStyleOptionTabWidget.js";
 import { CStyleOptionLabel } from "./CStyleOptionLabel.js";
+import { CStyleOptionToolTipWidget } from "../gui/CStyleOptionToolTipWidget.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -495,21 +494,28 @@ export class CDefaultStyle extends CStyle {
 		}
 	}
 
-	override drawToolTip(painter: CPainter, toolTip: CToolTipWidget): void {
-		const palette = toolTip.palette();
+	override drawToolTip(painter: CPainter, option: CStyleOptionToolTipWidget): void {
+		const palette = option.palette;
 
-		painter.setFillStyle(palette.color(CPaletteColorRole.ToolTipBase).toCss());
-		painter.fillRect(toolTip.rect());
+		painter.setFillStyle(
+			palette.color(CPaletteColorRole.ToolTipBase).toCss()
+		);
+		painter.fillRect(option.rect);
 
-		painter.setStrokeStyle(palette.color(CPaletteColorRole.WindowText).toCss());
-		painter.strokeRect(toolTip.rect());
+		painter.setStrokeStyle(
+			palette.color(CPaletteColorRole.WindowText).toCss()
+		);
+		painter.strokeRect(option.rect);
 
-		painter.setFillStyle(palette.color(CPaletteColorRole.ToolTipText).toCss());
-		painter.setFont(toolTip.font());
+		painter.setFillStyle(
+			palette.color(CPaletteColorRole.ToolTipText).toCss()
+		);
+		painter.setFont(option.font);
 		painter.setTextAlign("left");
 		painter.setTextBaseline("middle");
 
-		painter.drawText(toolTip.text(), this.toolTipHorizontalPadding(), toolTip.height() / 2);
+		painter.drawText(option.text, this.toolTipHorizontalPadding(),
+			option.rect.height() / 2);
 	}
 
 	override drawFrame(painter: CPainter, option: CStyleOptionFrame): void {

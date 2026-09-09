@@ -2,6 +2,7 @@ import { CFontMetrics } from "../gui/CFontMetrics.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CSize } from "../geometry/CSize.js";
 import { CWidget } from "./CWidget.js";
+import { CStyleOptionToolTipWidget } from "../gui/CStyleOptionToolTipWidget.js";
 
 export class CToolTipWidget extends CWidget {
 	#m_text = "";
@@ -34,6 +35,9 @@ export class CToolTipWidget extends CWidget {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
-		this.style().drawToolTip(painter, this);
+		const option = new CStyleOptionToolTipWidget();
+		option.initFromToolTip(this);
+
+		this.style().drawToolTip(painter, option);
 	}
 }
