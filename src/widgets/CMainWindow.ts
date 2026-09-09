@@ -6,17 +6,55 @@ import { CStatusBar } from "./CStatusBar.js";
 import { CDockArea, CDockWidgetArea } from "./CDockArea.js";
 import { CDockWidget } from "./CDockWidget.js";
 
+export interface CMainWindowDockState {
+	id: string;
+	area: CDockWidgetArea;
+	floating: boolean;
+	visible: boolean;
+	dockWidth: number;
+	dockHeight: number;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+
+export interface CMainWindowToolBarState {
+	id: string;
+	index: number;
+	visible: boolean;
+}
+
+export interface CMainWindowState {
+	version: 1;
+	dockWidgets: CMainWindowDockState[];
+	toolBars: CMainWindowToolBarState[];
+	menuBarVisible: boolean | null;
+	statusBarVisible: boolean | null;
+}
+
 export class CMainWindow extends CWidget {
 	#m_menuBar: CMenuBar | null = null;
 	#m_toolBars: CToolBar[] = [];
+	#m_dockWidgets: CDockWidget[] = [];
 	#m_statusBar: CStatusBar | null = null;
 	#m_dockArea: CDockArea;
-
+	#m_beforeUnloadHandler: () => void;
+	static readonly WorkspaceStorageKey: string = "ct.CMainWindow.workspace";
 
 	constructor(parent: CWidget | null = null) {
 		super(parent);
 
 		this.#m_dockArea = new CDockArea(this);
+		this.#m_beforeUnloadHandler = () => this.saveWorkspace();
+
+		if (typeof globalThis.addEventListener === "function") {
+			globalThis.addEventListener(
+				"beforeunload",
+				this.#m_beforeUnloadHandler
+			);
+		}
+
 		this.#updateGeometry();
 	}
 
@@ -38,6 +76,7 @@ export class CMainWindow extends CWidget {
 
 		this.#updateGeometry();
 		this.update();
+		this.restoreWorkspace();
 	}
 
 	addToolBar(toolBar: CToolBar): void {
@@ -47,8 +86,12 @@ export class CMainWindow extends CWidget {
 		toolBar.setParent(this);
 		this.#m_toolBars.push(toolBar);
 
+		if (toolBar.workspaceId() === "")
+			toolBar.setWorkspaceId(`toolbar-${this.#m_toolBars.length - 1}`);
+
 		this.#updateGeometry();
 		this.update();
+		this.restoreWorkspace();
 	}
 
 	removeToolBar(toolBar: CToolBar): void {
@@ -86,6 +129,7 @@ export class CMainWindow extends CWidget {
 
 		this.#updateGeometry();
 		this.update();
+		this.restoreWorkspace();
 	}
 
 	centralWidget(): CWidget | null {
@@ -97,15 +141,30 @@ export class CMainWindow extends CWidget {
 	}
 
 	addDockWidget(area: CDockWidgetArea, dockWidget: CDockWidget): void {
+		if (!this.#m_dockWidgets.includes(dockWidget)) {
+			this.#m_dockWidgets.push(dockWidget);
+
+			if (dockWidget.workspaceId() === "")
+				dockWidget.setWorkspaceId(`dock-${this.#m_dockWidgets.length - 1}`);
+		}
+
 		if (dockWidget.isFloating())
 			dockWidget.setFloatingState(false);
 
 		dockWidget.setMainWindow(this);
 		dockWidget.setDockWidgetArea(area);
 		this.#m_dockArea.addDockWidget(area, dockWidget);
+		this.restoreWorkspace();
 	}
 
 	removeDockWidget(dockWidget: CDockWidget): void {
+		const index = this.#m_dockWidgets.indexOf(dockWidget);
+
+		if (index !== -1)
+			this.#m_dockWidgets.splice(index, 1);
+
+		dockWidget.setMainWindow(null);
+
 		if (dockWidget.isFloating()) {
 			if (dockWidget.parent() === this)
 				dockWidget.setParent(null);
@@ -157,45 +216,42 @@ export class CMainWindow extends CWidget {
 	}
 
 	dockWidget(dockWidget: CDockWidget, area: CDockWidgetArea): void {
+		if (!this.#m_dockWidgets.includes(dockWidget)) {
+			this.#m_dockWidgets.push(dockWidget);
+
+			if (dockWidget.workspaceId() === "")
+				dockWidget.setWorkspaceId(`dock-${this.#m_dockWidgets.length - 1}`);
+		}
+
+		dockWidget.setMainWindow(this);
+		const oldArea = dockWidget.lastDockArea();
+
+		const oldHorizontal = oldArea === CDockWidgetArea.Top || oldArea === CDockWidgetArea.Bottom;
+		const newHorizontal = area === CDockWidgetArea.Top || area === CDockWidgetArea.Bottom;
+
+		if (oldHorizontal !== newHorizontal) {
+			const width = dockWidget.dockWidth();
+			const height = dockWidget.dockHeight();
+			dockWidget.setDockWidth(height);
+			dockWidget.setDockHeight(width);
+		}
+
 		dockWidget.setDockWidgetArea(area);
 		this.#m_dockArea.addDockWidget(area, dockWidget);
 		dockWidget.setFloatingState(false);
 		this.update();
 	}
 
-	dockAreaAt(canvasX: number, canvasY: number
+	dockAreaAt(
+		dockWidget: CDockWidget,
+		canvasX: number,
+		canvasY: number
 	): CDockWidgetArea | null {
-		const pos = this.mapFromCanvas(canvasX, canvasY);
-
-		if (pos.x() < 0 || pos.y() < 0 ||
-			pos.x() >= this.width() ||
-			pos.y() >= this.height()) {
-			return null;
-		}
-
-		const marginX = Math.min(
-			80,
-			this.width() / 4
+		return this.#m_dockArea.dockAreaAt(
+			dockWidget,
+			canvasX,
+			canvasY
 		);
-
-		const marginY = Math.min(
-			80,
-			this.height() / 4
-		);
-
-		if (pos.x() < marginX)
-			return CDockWidgetArea.Left;
-
-		if (pos.x() >= this.width() - marginX)
-			return CDockWidgetArea.Right;
-
-		if (pos.y() < marginY)
-			return CDockWidgetArea.Top;
-
-		if (pos.y() >= this.height() - marginY)
-			return CDockWidgetArea.Bottom;
-
-		return null;
 	}
 
 	updateDockPreview(
@@ -205,12 +261,158 @@ export class CMainWindow extends CWidget {
 	): void {
 		this.#m_dockArea.setDockPreview(
 			dockWidget,
-			this.dockAreaAt(canvasX, canvasY)
+			this.dockAreaAt(dockWidget, canvasX, canvasY)
 		);
 	}
 
 	clearDockPreview(): void {
 		this.#m_dockArea.clearDockPreview();
+	}
+
+	saveState(): string {
+		const state: CMainWindowState = {
+			version: 1,
+			dockWidgets: this.#m_dockWidgets
+				.filter(dock => dock.workspaceId() !== "")
+				.map(dock => ({
+					id: dock.workspaceId(),
+					area: dock.lastDockArea(),
+					floating: dock.isFloating(),
+					visible: dock.isVisible(),
+					dockWidth: dock.dockWidth(),
+					dockHeight: dock.dockHeight(),
+					x: dock.x(),
+					y: dock.y(),
+					width: dock.width(),
+					height: dock.height()
+				})),
+			toolBars: this.#m_toolBars
+				.filter(toolBar => toolBar.workspaceId() !== "")
+				.map((toolBar, index) => ({
+					id: toolBar.workspaceId(),
+					index,
+					visible: toolBar.isVisible()
+				})),
+			menuBarVisible: this.#m_menuBar?.isVisible() ?? null,
+			statusBarVisible: this.#m_statusBar?.isVisible() ?? null
+		};
+
+		return JSON.stringify(state);
+	}
+
+	restoreState(serializedState: string): boolean {
+		let state: CMainWindowState;
+
+		try {
+			state = JSON.parse(serializedState) as CMainWindowState;
+		} catch {
+			return false;
+		}
+
+		if (state.version !== 1 ||
+			!Array.isArray(state.dockWidgets) ||
+			!Array.isArray(state.toolBars)) {
+			return false;
+		}
+
+		const docks = new Map(
+			this.#m_dockWidgets
+				.filter(dock => dock.workspaceId() !== "")
+				.map(dock => [dock.workspaceId(), dock])
+		);
+
+		for (const saved of state.dockWidgets) {
+			const dock = docks.get(saved.id);
+
+			if (dock === undefined)
+				continue;
+
+			/*
+			 * The saved area and dimensions already describe the final
+			 * orientation. Set the area first so dockWidget() does not
+			 * rotate the saved dimensions a second time.
+			 */
+			dock.setDockWidgetArea(saved.area);
+			dock.setDockWidth(saved.dockWidth);
+			dock.setDockHeight(saved.dockHeight);
+
+			if (saved.floating) {
+
+				if (!dock.isFloating()) {
+					this.dockWidget(dock, saved.area);
+					this.setDockWidgetFloating(dock, true);
+				}
+
+				dock.setGeometry(
+					saved.x, saved.y,
+					saved.width, saved.height
+				);
+			} else {
+				this.dockWidget(dock, saved.area);
+			}
+
+			if (saved.visible)
+				dock.show();
+			else
+				dock.hide();
+		}
+
+		const toolBars = new Map(
+			this.#m_toolBars
+				.filter(toolBar => toolBar.workspaceId() !== "")
+				.map(toolBar => [toolBar.workspaceId(), toolBar])
+		);
+
+		const ordered = [...state.toolBars]
+			.sort((a, b) => a.index - b.index)
+			.map(saved => toolBars.get(saved.id))
+			.filter((toolBar): toolBar is CToolBar =>
+				toolBar !== undefined
+			);
+
+		const orderedSet = new Set(ordered);
+		this.#m_toolBars = [
+			...ordered,
+			...this.#m_toolBars.filter(toolBar => !orderedSet.has(toolBar))
+		];
+
+		for (const saved of state.toolBars) {
+			const toolBar = toolBars.get(saved.id);
+
+			if (toolBar === undefined)
+				continue;
+
+			if (saved.visible)
+				toolBar.show();
+			else
+				toolBar.hide();
+		}
+
+		if (this.#m_menuBar !== null &&
+			state.menuBarVisible !== null) {
+			if (state.menuBarVisible)
+				this.#m_menuBar.show();
+			else
+				this.#m_menuBar.hide();
+		}
+
+		if (this.#m_statusBar !== null &&
+			state.statusBarVisible !== null) {
+			if (state.statusBarVisible)
+				this.#m_statusBar.show();
+			else
+				this.#m_statusBar.hide();
+		}
+
+		this.#updateGeometry();
+		this.update();
+		return true;
+	}
+
+	resetWorkspace(): void {
+		const storage = this.#workspaceStorage();
+		if (storage !== null)
+			storage.removeItem(CMainWindow.WorkspaceStorageKey);
 	}
 
 	override setGeometry(x: number, y: number, width: number, height: number
@@ -285,5 +487,52 @@ export class CMainWindow extends CWidget {
 		}
 
 		this.#m_dockArea.setGeometry(0, top, this.width(), Math.max(0, bottom - top));
+	}
+
+	saveWorkspace(): void {
+		const storage = this.#workspaceStorage();
+
+		if (storage === null)
+			return;
+
+		storage.setItem(
+			CMainWindow.WorkspaceStorageKey,
+			this.saveState()
+		);
+	}
+
+	restoreWorkspace(): boolean {
+		const storage = this.#workspaceStorage();
+
+		if (storage === null)
+			return false;
+
+		const state = storage.getItem(
+			CMainWindow.WorkspaceStorageKey
+		);
+
+		if (state === null)
+			return false;
+
+		return this.restoreState(state);
+	}
+
+	override destroy(): void {
+		if (typeof globalThis.removeEventListener === "function") {
+			globalThis.removeEventListener(
+				"beforeunload",
+				this.#m_beforeUnloadHandler
+			);
+		}
+
+		super.destroy();
+	}
+
+	#workspaceStorage(): Storage | null {
+		try {
+			return globalThis.localStorage ?? null;
+		} catch {
+			return null;
+		}
 	}
 }

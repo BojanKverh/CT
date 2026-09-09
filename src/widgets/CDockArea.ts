@@ -95,6 +95,38 @@ export class CDockArea extends CWidget {
 		return item?.position ?? null;
 	}
 
+	dockAreaAt(
+		widget: CDockWidget,
+		canvasX: number,
+		canvasY: number
+	): CDockWidgetArea | null {
+		const pos = this.mapFromCanvas(canvasX, canvasY);
+
+		if (pos.x() < 0 || pos.y() < 0 ||
+			pos.x() >= this.width() ||
+			pos.y() >= this.height()) {
+			return null;
+		}
+
+		const thickness = this.#dockThickness(widget);
+		const marginX = Math.min(thickness, this.width() / 4);
+		const marginY = Math.min(thickness, this.height() / 4);
+
+		if (pos.x() < marginX)
+			return CDockWidgetArea.Left;
+
+		if (pos.x() >= this.width() - marginX)
+			return CDockWidgetArea.Right;
+
+		if (pos.y() < marginY)
+			return CDockWidgetArea.Top;
+
+		if (pos.y() >= this.height() - marginY)
+			return CDockWidgetArea.Bottom;
+
+		return null;
+	}
+
 	setDockPreview(
 		widget: CDockWidget,
 		area: CDockWidgetArea | null
@@ -275,27 +307,49 @@ export class CDockArea extends CWidget {
 	): CRect {
 		const width = this.width();
 		const height = this.height();
+		const thickness = this.#dockThickness(widget);
 
 		switch (area) {
 		case CDockWidgetArea.Left: {
-			const previewWidth = Math.min(width, widget.dockWidth());
+			const previewWidth = Math.min(width, thickness);
 			return new CRect(0, 0, previewWidth, height);
 		}
 
 		case CDockWidgetArea.Right: {
-			const previewWidth = Math.min(width, widget.dockWidth());
-			return new CRect(width - previewWidth, 0, previewWidth, height);
+			const previewWidth = Math.min(width, thickness);
+			return new CRect(
+				width - previewWidth,
+				0,
+				previewWidth,
+				height
+			);
 		}
 
 		case CDockWidgetArea.Top: {
-			const previewHeight = Math.min(height, widget.dockHeight());
+			const previewHeight = Math.min(height, thickness);
 			return new CRect(0, 0, width, previewHeight);
 		}
 
 		case CDockWidgetArea.Bottom: {
-			const previewHeight = Math.min(height, widget.dockHeight());
-			return new CRect(0, height - previewHeight, width, previewHeight);
+			const previewHeight = Math.min(height, thickness);
+			return new CRect(
+				0,
+				height - previewHeight,
+				width,
+				previewHeight
+			);
 		}
 		}
+	}
+
+	#dockThickness(widget: CDockWidget): number {
+		const area = widget.lastDockArea();
+		const horizontal =
+			area === CDockWidgetArea.Top ||
+			area === CDockWidgetArea.Bottom;
+
+		return horizontal
+			? widget.dockHeight()
+			: widget.dockWidth();
 	}
 }

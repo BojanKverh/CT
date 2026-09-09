@@ -32,15 +32,50 @@ class TestWidget extends CWidget {
 	}
 }
 
+class TestLocalStorage implements Storage {
+	#m_values = new Map<string, string>();
+
+	get length(): number {
+		return this.#m_values.size;
+	}
+
+	clear(): void {
+		this.#m_values.clear();
+	}
+
+	getItem(key: string): string | null {
+		return this.#m_values.get(key) ?? null;
+	}
+
+	key(index: number): string | null {
+		return [...this.#m_values.keys()][index] ?? null;
+	}
+
+	removeItem(key: string): void {
+		this.#m_values.delete(key);
+	}
+
+	setItem(key: string, value: string): void {
+		this.#m_values.set(key, value);
+	}
+}
+
 describe("CMainWindow", () => {
 	let app: CApplication;
+	let storage: TestLocalStorage;
 
 	beforeEach(() => {
+		storage = new TestLocalStorage();
+		Object.defineProperty(globalThis, "localStorage", {
+			configurable: true,
+			value: storage
+		});
 		app = new CApplication(createTestCanvas());
 	});
 
 	afterEach(() => {
 		app.destroy();
+		storage.clear();
 	});
 
 	test("has no menu bar by default", () => {
@@ -569,4 +604,176 @@ describe("CMainWindow", () => {
 			CDockWidgetArea.Bottom
 		]);
 	});
+
+	test("saves and restores dock widget workspace state", () => {
+		const window = new CMainWindow();
+		const dock = new CDockWidget("Properties");
+
+		window.setGeometry(0, 0, 800, 600);
+		dock.setWorkspaceId("properties");
+		dock.setDockWidth(180);
+		dock.setDockHeight(120);
+		window.addDockWidget(CDockWidgetArea.Right, dock);
+		dock.hide();
+
+		const state = window.saveState();
+
+		dock.show();
+		dock.setDockWidth(90);
+		dock.setDockHeight(70);
+		window.dockWidget(dock, CDockWidgetArea.Left);
+
+		expect(window.restoreState(state)).toBe(true);
+		expect(window.dockWidgetArea(dock))
+			.toBe(CDockWidgetArea.Right);
+		expect(dock.dockWidth()).toBe(180);
+		expect(dock.dockHeight()).toBe(120);
+		expect(dock.isVisible()).toBe(false);
+	});
+
+	test("saves and restores floating dock geometry", () => {
+		const window = new CMainWindow();
+		const dock = new CDockWidget("Properties");
+
+		window.setGeometry(0, 0, 800, 600);
+		dock.setWorkspaceId("properties");
+		window.addDockWidget(CDockWidgetArea.Bottom, dock);
+		window.setDockWidgetFloating(dock, true);
+		dock.setGeometry(120, 80, 240, 160);
+
+		const state = window.saveState();
+
+		window.setDockWidgetFloating(dock, false);
+
+		expect(window.restoreState(state)).toBe(true);
+		expect(dock.isFloating()).toBe(true);
+		expect(dock.lastDockArea()).toBe(CDockWidgetArea.Bottom);
+		expect(dock.x()).toBe(120);
+		expect(dock.y()).toBe(80);
+		expect(dock.width()).toBe(240);
+		expect(dock.height()).toBe(160);
+	});
+
+	test("saves and restores toolbar order and visibility", () => {
+		const window = new CMainWindow();
+		const first = new CToolBar();
+		const second = new CToolBar();
+
+		first.setWorkspaceId("first");
+		second.setWorkspaceId("second");
+		window.addToolBar(first);
+		window.addToolBar(second);
+		second.hide();
+
+		const state = window.saveState();
+
+		second.show();
+		window.removeToolBar(first);
+		window.addToolBar(first);
+
+		expect(window.toolBars()).toEqual([second, first]);
+		expect(window.restoreState(state)).toBe(true);
+		expect(window.toolBars()).toEqual([first, second]);
+		expect(second.isVisible()).toBe(false);
+	});
+
+	test("saves and restores menu and status bar visibility", () => {
+		const window = new CMainWindow();
+		const menuBar = new CMenuBar();
+		const statusBar = new CStatusBar();
+
+		window.setMenuBar(menuBar);
+		window.setStatusBar(statusBar);
+		menuBar.hide();
+		statusBar.hide();
+
+		const state = window.saveState();
+
+		menuBar.show();
+		statusBar.show();
+
+		expect(window.restoreState(state)).toBe(true);
+		expect(menuBar.isVisible()).toBe(false);
+		expect(statusBar.isVisible()).toBe(false);
+	});
+
+	test("restoreState rejects invalid serialized state", () => {
+		const window = new CMainWindow();
+
+		expect(window.restoreState("not json")).toBe(false);
+		expect(window.restoreState(JSON.stringify({version: 2})))
+			.toBe(false);
+	});
+
+	test("automatically assigns workspace ids", () => {
+		const window = new CMainWindow();
+		const dock = new CDockWidget();
+		const toolBar = new CToolBar();
+
+		window.addDockWidget(CDockWidgetArea.Left, dock);
+		window.addToolBar(toolBar);
+
+		expect(dock.workspaceId()).toBe("dock-0");
+		expect(toolBar.workspaceId()).toBe("toolbar-0");
+	});
+
+	test("saves workspace to localStorage", () => {
+		const window = new CMainWindow();
+		const dock = new CDockWidget();
+
+		window.addDockWidget(CDockWidgetArea.Right, dock);
+		window.saveWorkspace();
+
+		const saved = localStorage.getItem(
+			CMainWindow.WorkspaceStorageKey
+		);
+
+		expect(saved).not.toBeNull();
+		expect(JSON.parse(saved!).dockWidgets[0].area)
+			.toBe(CDockWidgetArea.Right);
+	});
+
+	test("restores dock after simulated reload", () => {
+		const firstWindow = new CMainWindow();
+		const firstDock = new CDockWidget();
+
+		firstWindow.addDockWidget(
+			CDockWidgetArea.Left,
+			firstDock
+		);
+		firstWindow.dockWidget(
+			firstDock,
+			CDockWidgetArea.Right
+		);
+		firstWindow.saveWorkspace();
+		firstWindow.destroy();
+
+		const secondWindow = new CMainWindow();
+		const secondDock = new CDockWidget();
+
+		secondWindow.addDockWidget(
+			CDockWidgetArea.Left,
+			secondDock
+		);
+
+		expect(secondWindow.dockWidgetArea(secondDock))
+			.toBe(CDockWidgetArea.Right);
+	});
+
+	test("saveWorkspace stores current dock state", () => {
+		const window = new CMainWindow();
+		const dock = new CDockWidget();
+
+		window.addDockWidget(CDockWidgetArea.Bottom, dock);
+		window.saveWorkspace();
+
+		const saved = storage.getItem(
+			CMainWindow.WorkspaceStorageKey
+		);
+
+		expect(saved).not.toBeNull();
+		expect(JSON.parse(saved!).dockWidgets[0].area)
+			.toBe(CDockWidgetArea.Bottom);
+	});
+
 });

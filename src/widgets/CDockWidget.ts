@@ -18,6 +18,7 @@ export class CDockWidget extends CWidget {
 	readonly dockLocationChanged = new CSignal<[CDockWidgetArea]>();
 
 	#m_title = "";
+	#m_workspaceId = "";
 	#m_widget: CWidget | null = null;
 	#m_closable = true;
 	#m_closeHovered = false;
@@ -45,6 +46,14 @@ export class CDockWidget extends CWidget {
 
 	title(): string {
 		return this.#m_title;
+	}
+
+	workspaceId(): string {
+		return this.#m_workspaceId;
+	}
+
+	setWorkspaceId(id: string): void {
+		this.#m_workspaceId = id;
 	}
 
 	setTitle(title: string): void {
@@ -301,7 +310,7 @@ export class CDockWidget extends CWidget {
 
 		if (mainWindow !== null && this.#m_floating) {
 			const canvasPos = this.mapToCanvas(event.x(), event.y());
-			const area = mainWindow.dockAreaAt(canvasPos.x(), canvasPos.y());
+			const area = mainWindow.dockAreaAt(this, canvasPos.x(), canvasPos.y());
 
 			if (area !== null) {
 				mainWindow.dockWidget(this, area);

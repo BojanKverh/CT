@@ -75,10 +75,19 @@ export class CToolBar extends CWidget {
 	static readonly SeparatorExtent = 8;
 
 	#m_items: CToolBarItem[] = [];
+	#m_workspaceId = "";
 	#m_orientation = COrientation.Horizontal;
 
 	constructor(parent: CWidget | null = null) {
 		super(parent);
+	}
+
+	workspaceId(): string {
+		return this.#m_workspaceId;
+	}
+
+	setWorkspaceId(id: string): void {
+		this.#m_workspaceId = id;
 	}
 
 	orientation(): COrientation {

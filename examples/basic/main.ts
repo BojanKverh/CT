@@ -432,6 +432,7 @@ if (canvas === null)
 const app = new CApplication(canvas);
 
 const mainWindow = new CMainWindow();
+
 mainWindow.setGeometry(0, 0, canvas.width, canvas.height);
 
 const parent = new RedWidget();
