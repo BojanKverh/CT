@@ -4,11 +4,9 @@ import type { CPainter } from "../painting/CPainter.js";
 import type { CLabel } from "../widgets/CLabel.js";
 import { CStyle } from "./CStyle.js";
 import { CRect } from "../geometry/CRect.js";
-import type { CLineEdit } from "../widgets/CLineEdit.js";
 import { CFontMetrics } from "./CFontMetrics.js";
 import type { CProgressBar } from "../widgets/CProgressBar.js";
 import type { CGroupBox } from "../widgets/CGroupBox.js";
-import type { CScrollBar } from "../widgets/CScrollBar.js";
 import { COrientation } from "./COrientation.js";
 import type { CTabWidget } from "../widgets/CTabWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
@@ -17,7 +15,6 @@ import type { CFrame } from "../widgets/CFrame.js";
 import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
 import type { CStyleOptionToolButton } from "../gui/CStyleOptionToolButton.js";
 import type { CToolBar } from "../widgets/CToolBar.js";
-import type { CSlider } from "../widgets/CSlider.js";
 import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
 import type { CSizeGrip } from "../widgets/CSizeGrip.js";
 import type { CToolBoxButton } from "../widgets/CToolBoxButton.js";
@@ -30,6 +27,7 @@ import { CStyleOptionRadioButton } from "./CStyleOptionRadioButton.js";
 import { CStyleOptionComboBox } from "./CStyleOptionComboBox.js";
 import { CStyleOptionLineEdit } from "../gui/CStyleOptionLineEdit.js";
 import { CStyleOptionSlider } from "../gui/CStyleOptionSlider.js";
+import { CStyleOptionScrollBar } from "./CStyleOptionScrollBar.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -318,53 +316,61 @@ export class CDefaultStyle extends CStyle {
 		painter.drawText( title, titleStart + titlePadding, frameY);
 	}
 
-	override drawScrollBar(painter: CPainter, scrollBar: CScrollBar): void {
-		const palette = scrollBar.palette();
-		const buttonSize = scrollBar.buttonSize();
-		const trackStart = scrollBar.trackStart();
-		const trackLength = scrollBar.trackLength();
-		const thumbStart = scrollBar.thumbStart();
-		const thumbLength = scrollBar.thumbLength();
+	override drawScrollBar(painter: CPainter, option: CStyleOptionScrollBar): void {
+		const enabled = (option.state & CStyleState.Enabled) !== 0;
 
-		painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
-		painter.fillRect(scrollBar.rect());
+		painter.setFillStyle(
+			option.palette.color(CPaletteColorRole.Base).toCss());
+		painter.fillRect(option.rect);
 
-		painter.setFillStyle(palette.color(CPaletteColorRole.Button).toCss());
+		painter.setFillStyle(
+			option.palette.color(CPaletteColorRole.Button).toCss());
 
-		if (scrollBar.orientation() === COrientation.Horizontal) {
-			painter.fillRect(new CRect(0, 0, buttonSize, scrollBar.height()));
-			painter.fillRect(new CRect(scrollBar.width() - buttonSize, 0, buttonSize, scrollBar.height()));
-			painter.setFillStyle(palette.color(CPaletteColorRole.Window).toCss());
-			painter.fillRect(new CRect(trackStart, 0, trackLength, scrollBar.height()));
-			painter.setFillStyle(palette.color(CPaletteColorRole.Highlight).toCss());
-			painter.fillRect(new CRect(thumbStart, 0, thumbLength, scrollBar.height()));
+		if (option.orientation === COrientation.Horizontal) {
+			painter.fillRect(new CRect(0, 0, option.buttonSize,
+				option.rect.height()));
+			painter.fillRect(new CRect(
+				option.rect.width() - option.buttonSize, 0,
+				option.buttonSize, option.rect.height()));
 
-			painter.setFillStyle(scrollBar.isEnabled() ? palette.color(CPaletteColorRole.ButtonText).toCss()
-					: palette.color(CPaletteColorRole.DisabledText).toCss()
-			);
+			painter.setFillStyle(
+				option.palette.color(CPaletteColorRole.Window).toCss());
+			painter.fillRect(new CRect(option.trackStart, 0,
+				option.trackLength, option.rect.height()));
 
-			painter.setFont(scrollBar.font());
-			painter.setTextAlign("center");
-			painter.setTextBaseline("middle");
+			painter.setFillStyle(
+				option.palette.color(CPaletteColorRole.Highlight).toCss());
+			painter.fillRect(new CRect(option.thumbStart, 0,
+				option.thumbLength, option.rect.height()));
 		} else {
-			painter.fillRect(new CRect(0, 0, scrollBar.width(), buttonSize));
-			painter.fillRect(new CRect(0, scrollBar.height() - buttonSize, scrollBar.width(), buttonSize ));
-			painter.setFillStyle(palette.color(CPaletteColorRole.Window).toCss());
-			painter.fillRect(new CRect(0, trackStart, scrollBar.width(), trackLength));
-			painter.setFillStyle(palette.color(CPaletteColorRole.Highlight).toCss());
-			painter.fillRect(new CRect(0, thumbStart, scrollBar.width(), thumbLength));
+			painter.fillRect(new CRect(0, 0, option.rect.width(),
+				option.buttonSize));
+			painter.fillRect(new CRect(0,
+				option.rect.height() - option.buttonSize,
+				option.rect.width(), option.buttonSize));
 
-			painter.setFillStyle(scrollBar.isEnabled()? palette.color(CPaletteColorRole.ButtonText).toCss()
-				: palette.color(CPaletteColorRole.DisabledText).toCss()
-			);
+			painter.setFillStyle(
+				option.palette.color(CPaletteColorRole.Window).toCss());
+			painter.fillRect(new CRect(0, option.trackStart,
+				option.rect.width(), option.trackLength));
 
-			painter.setFont(scrollBar.font());
-			painter.setTextAlign("center");
-			painter.setTextBaseline("middle");
+			painter.setFillStyle(
+				option.palette.color(CPaletteColorRole.Highlight).toCss());
+			painter.fillRect(new CRect(0, option.thumbStart,
+				option.rect.width(), option.thumbLength));
 		}
 
-		painter.setStrokeStyle(palette.color(CPaletteColorRole.WindowText).toCss());
-		painter.strokeRect(scrollBar.rect());
+		const textRole = enabled? CPaletteColorRole.ButtonText
+			: CPaletteColorRole.DisabledText;
+
+		painter.setFillStyle(option.palette.color(textRole).toCss());
+		painter.setFont(option.font);
+		painter.setTextAlign("center");
+		painter.setTextBaseline("middle");
+
+		painter.setStrokeStyle(
+			option.palette.color(CPaletteColorRole.WindowText).toCss());
+		painter.strokeRect(option.rect);
 	}
 
 	override drawRadioButton(painter: CPainter, option: CStyleOptionRadioButton): void {

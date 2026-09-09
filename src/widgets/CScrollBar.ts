@@ -6,6 +6,7 @@ import type { CKeyEvent } from "../events/CKeyEvent.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CPushButton } from "../widgets/CPushButton.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import { CStyleOptionScrollBar } from "../gui/CStyleOptionScrollBar.js";
 
 export class CScrollBar extends CWidget {
 	#m_minimum = 0;
@@ -270,7 +271,10 @@ export class CScrollBar extends CWidget {
     }
 
     protected override paintEvent(painter: CPainter): void {
-		this.style().drawScrollBar(painter, this);
+		const option = new CStyleOptionScrollBar();
+		option.initFromScrollBar(this);
+
+		this.style().drawScrollBar(painter, option);
 	}
 
     #setValueFromThumbPosition(position: number): void {

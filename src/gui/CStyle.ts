@@ -20,7 +20,9 @@ import type { CStyleOptionRadioButton } from "./CStyleOptionRadioButton.js";
 import type { CStyleOptionComboBox } from "./CStyleOptionComboBox.js";
 import type { CStyleOptionLineEdit } from "../gui/CStyleOptionLineEdit.js";
 import type { CStyleOptionSlider } from "./CStyleOptionSlider.js";
+import type { CStyleOptionScrollBar
 
+ } from "./CStyleOptionScrollBar.js";
 export abstract class CStyle {
 	
     abstract sliderHandleSize(): number;
@@ -37,7 +39,7 @@ export abstract class CStyle {
     abstract drawSlider(painter: CPainter, option: CStyleOptionSlider): void;
     abstract drawProgressBar(painter: CPainter, progressBar : CProgressBar): void;
     abstract drawGroupBox(painter: CPainter, groupBox: CGroupBox): void;
-    abstract drawScrollBar(painter: CPainter, scrollBar: CScrollBar): void;
+    abstract drawScrollBar(painter: CPainter, option: CStyleOptionScrollBar): void;
     abstract drawRadioButton(painter: CPainter, option: CStyleOptionRadioButton): void
     abstract drawTabWidget(painter: CPainter, tabWidget: CTabWidget): void
     abstract drawToolTip(painter: CPainter, toolTip: CToolTipWidget): void;
