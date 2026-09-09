@@ -1,5 +1,4 @@
 import type { CPainter } from "../painting/CPainter.js";
-import type { CLabel } from "../widgets/CLabel.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import type { CStyleOptionToolButton } from "./CStyleOptionToolButton.js";
 import type { CStyleOptionPushButton } from "./CStyleOptionPushButton.js";
@@ -18,6 +17,7 @@ import type { CStyleOptionToolBoxButton } from "./CStyleOptionToolBoxButton.js";
 import type { CStyleOptionSplitterHandle } from "./CStyleOptionSplitterHandle.js";
 import type { CStyleOptionKeySequenceEdit } from "./CStyleOptionKeySequenceEdit.js";
 import type { CStyleOptionTabWidget } from "./CStyleOptionTabWidget.js";
+import type { CStyleOptionLabel } from "./CStyleOptionLabel.js";
 
 export abstract class CStyle {
 	
@@ -27,7 +27,7 @@ export abstract class CStyle {
     abstract comboBoxArrowWidth(): number;
     abstract splitterHandleWidth(): number;
 
-    abstract drawLabel(painter: CPainter, label: CLabel): void;
+    abstract drawLabel(painter: CPainter, option: CStyleOptionLabel): void;
     abstract drawPushButton(painter: CPainter, option: CStyleOptionPushButton): void;
 	abstract drawToolButton(painter: CPainter, option: CStyleOptionToolButton): void;
     abstract drawCheckBox(painter: CPainter, option: CStyleOptionCheckBox): void;

@@ -28,6 +28,7 @@ import { CStyleOptionToolBoxButton } from "./CStyleOptionToolBoxButton.js";
 import { CStyleOptionSplitterHandle } from "./CStyleOptionSplitterHandle.js";
 import { CStyleOptionKeySequenceEdit } from "./CStyleOptionKeySequenceEdit.js";
 import { CStyleOptionTabWidget } from "./CStyleOptionTabWidget.js";
+import { CStyleOptionLabel } from "./CStyleOptionLabel.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -52,61 +53,71 @@ export class CDefaultStyle extends CStyle {
 		return 6;
 	}
 
-	override drawLabel(painter: CPainter, label: CLabel): void {
-		const palette = label.palette();
-		if (label.pixmap() === null) {
-			painter.setBrush(palette.color(CPaletteColorRole.Base).toCss());
-			painter.fillRect(label.rect());
+		override drawLabel(painter: CPainter,
+		option: CStyleOptionLabel): void {
+		const palette = option.palette;
+
+		painter.setBrush(palette.color(CPaletteColorRole.Base).toCss());
+		painter.fillRect(option.rect);
+
+		if (option.pixmap === null) {
 			painter.setPen(palette.color(CPaletteColorRole.Text).toCss());
-			painter.setFont(label.font());
+			painter.setFont(option.font);
 
 			let x: number;
 			let y: number;
-			if (label.alignment() & CAlignment.Right) {
+
+			if (option.alignment & CAlignment.Right) {
 				painter.setTextAlign("right");
-				x = label.width();
-			} else if (label.alignment() & CAlignment.HCenter) {
+				x = option.rect.width();
+			} else if (option.alignment & CAlignment.HCenter) {
 				painter.setTextAlign("center");
-				x = label.width() / 2;
+				x = option.rect.width() / 2;
 			} else {
 				painter.setTextAlign("left");
 				x = 0;
 			}
 
-			if (label.alignment() & CAlignment.Bottom) {
+			if (option.alignment & CAlignment.Bottom) {
 				painter.setTextBaseline("bottom");
-				y = label.height();
-			} else if (label.alignment() & CAlignment.VCenter) {
+				y = option.rect.height();
+			} else if (option.alignment & CAlignment.VCenter) {
 				painter.setTextBaseline("middle");
-				y = label.height() / 2;
+				y = option.rect.height() / 2;
 			} else {
 				painter.setTextBaseline("top");
 				y = 0;
 			}
 
-			painter.drawText(label.text(), x, y);
+			painter.drawText(option.text, x, y);
 		} else {
-			painter.setBrush(palette.color(CPaletteColorRole.Base).toCss());
-			painter.fillRect(label.rect());
-			const pix = label.pixmap();
+			const pix = option.pixmap;
 			const margin = 3;
-			const maxWidth = Math.max(0, label.width() - 2 * margin);
-			const maxHeight = Math.max(0, label.height() - 2 * margin);
-			let w = pix !== null? pix.width() : 0;
-			let h = pix !== null? pix.height() : 0;
+			const maxWidth = Math.max(
+				0, option.rect.width() - 2 * margin
+			);
+			const maxHeight = Math.max(
+				0, option.rect.height() - 2 * margin
+			);
+			let w = pix.width();
+			let h = pix.height();
 
 			if (w > maxWidth || h > maxHeight) {
-				const scale = Math.min(maxWidth / w, maxHeight / h);
+				const scale = Math.min(
+					maxWidth / w, maxHeight / h
+				);
+
 				w *= scale;
 				h *= scale;
 			}
-			const x = (label.width() - w) / 2;
-			const y = (label.height() - h) / 2;
-			if (pix !== null)
-				painter.drawPixmap(pix, x, y, w, h);
+
+			const x = (option.rect.width() - w) / 2;
+			const y = (option.rect.height() - h) / 2;
+
+			painter.drawPixmap(pix, x, y, w, h);
 		}
 	}
-
+	
 	override drawPushButton(painter: CPainter, option: CStyleOptionPushButton): void {
 		const enabled = (option.state & CStyleState.Enabled) !== 0;
 		const down = (option.state & CStyleState.Sunken) !== 0;

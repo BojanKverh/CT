@@ -3,8 +3,8 @@ import { CPainter } from "../painting/CPainter.js";
 import { CAlignment } from "../core/CAlignment.js";
 import { CPixmap } from "../painting/CPixmap.js";
 import { CSize } from "../geometry/CSize.js";
-import { CFontMetrics } from "../gui/CFontMetrics.js";
 import { CWidget } from "./CWidget.js";
+import { CStyleOptionLabel } from "../gui/CStyleOptionLabel.js";
 
 export class CLabel extends CFrame {
 	#m_text = "";
@@ -63,6 +63,9 @@ export class CLabel extends CFrame {
 	}
 
     protected override paintEvent(painter: CPainter): void {
-	    this.style().drawLabel(painter, this);
-    }
+		const option = new CStyleOptionLabel();
+		option.initFromLabel(this);
+
+		this.style().drawLabel(painter, option);
+	}
 }
