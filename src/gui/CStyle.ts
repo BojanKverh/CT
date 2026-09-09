@@ -4,9 +4,7 @@ import type { CGroupBox } from "../widgets/CGroupBox.js";
 import type { CTabWidget } from "../widgets/CTabWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import type { CFrame } from "../widgets/CFrame.js";
-import type { CToolBar } from "../widgets/CToolBar.js";
 import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
-import type { CSizeGrip } from "../widgets/CSizeGrip.js";
 import type { CToolBoxButton } from "../widgets/CToolBoxButton.js";
 import type { CKeySequenceEdit } from "../widgets/CKeySequenceEdit.js";
 import type { CStyleOptionToolButton } from "./CStyleOptionToolButton.js";
@@ -19,6 +17,7 @@ import type { CStyleOptionSlider } from "./CStyleOptionSlider.js";
 import type { CStyleOptionScrollBar } from "./CStyleOptionScrollBar.js"
 import type { CStyleOptionProgressBar } from "./CStyleOptionProgressBar.js";
 import type { CStyleOptionToolBar } from "./CStyleOptionToolBar.js";
+import type { CStyleOptionSizeGrip } from "./CStyleOptionSizeGrip.js";
 
 export abstract class CStyle {
 	
@@ -44,7 +43,7 @@ export abstract class CStyle {
     abstract drawComboBox(painter: CPainter, option: CStyleOptionComboBox): void;
     abstract drawToolBar(painter: CPainter, option: CStyleOptionToolBar): void;
     abstract drawSplitterHandle(painter: CPainter, handle: CSplitterHandle): void;
-    abstract drawSizeGrip(painter: CPainter, sizeGrip: CSizeGrip): void;
+    abstract drawSizeGrip(painter: CPainter, option: CStyleOptionSizeGrip): void;
     abstract drawToolBoxButton(painter: CPainter, button: CToolBoxButton): void;
     abstract drawKeySequenceEdit(painter: CPainter, edit: CKeySequenceEdit): void;
 }

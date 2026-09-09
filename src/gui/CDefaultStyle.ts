@@ -14,7 +14,6 @@ import type { CFrame } from "../widgets/CFrame.js";
 import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
 import type { CStyleOptionToolButton } from "../gui/CStyleOptionToolButton.js";
 import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
-import type { CSizeGrip } from "../widgets/CSizeGrip.js";
 import type { CToolBoxButton } from "../widgets/CToolBoxButton.js";
 import type { CKeySequenceEdit } from "../widgets/CKeySequenceEdit.js";
 import { CIconMode, CIconState } from "./CIcon.js";
@@ -28,6 +27,7 @@ import { CStyleOptionSlider } from "../gui/CStyleOptionSlider.js";
 import { CStyleOptionScrollBar } from "./CStyleOptionScrollBar.js";
 import { CStyleOptionProgressBar } from "./CStyleOptionProgressBar.js";
 import { CStyleOptionToolBar } from "./CStyleOptionToolBar.js";
+import { CStyleOptionSizeGrip } from "./CStyleOptionSizeGrip.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -912,18 +912,17 @@ export class CDefaultStyle extends CStyle {
 		}
 	}
 
-	override drawSizeGrip(painter: CPainter, sizeGrip: CSizeGrip): void
+	override drawSizeGrip(painter: CPainter, option: CStyleOptionSizeGrip): void
 	{
-		const rect = sizeGrip.rect();
-		const color = sizeGrip.palette().color(CPaletteColorRole.Mid);
+		const rect = option.rect;
+		const color = option.palette.color(CPaletteColorRole.Mid);
 		painter.setPen(color.toHex());
 
-		const right = rect.width() - 3;
-		const bottom = rect.height() - 3;
+		const right = rect.width() - 1;
+		const bottom = rect.height() - 1;
 
-		for (let i = 0; i < 3; ++i) {
-			const offset = i * 4;
-
+		for (let i = 0; i < 4; ++i) {
+			const offset = i * 3;
 			painter.drawLine(right - offset, bottom, right, bottom - offset);
 		}
 	}

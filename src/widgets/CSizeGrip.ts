@@ -1,10 +1,10 @@
 import { CWidget } from "./CWidget.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
-import { CEventType } from "../events/CEvent.js";
 import { CSize } from "../geometry/CSize.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import { CStyleOptionSizeGrip } from "../gui/CStyleOptionSizeGrip.js";
 
 export class CSizeGrip extends CWidget
 {
@@ -101,8 +101,10 @@ export class CSizeGrip extends CWidget
 		event.accept();
 	}
 
-	protected override paintEvent(painter: CPainter): void
-	{
-		this.style().drawSizeGrip(painter, this);
+	protected override paintEvent(painter: CPainter): void {
+		const option = new CStyleOptionSizeGrip();
+		option.initFromSizeGrip(this);
+
+		this.style().drawSizeGrip(painter, option);
 	}
 }
