@@ -1,6 +1,7 @@
 import { CWidget } from "./CWidget.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CSize } from "../geometry/CSize.js";
+import { CStyleOptionProgressBar } from "../gui/CStyleOptionProgressBar.js";
 
 export class CProgressBar extends CWidget {
 	#m_minimum = 0;
@@ -70,6 +71,9 @@ export class CProgressBar extends CWidget {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
-		this.style().drawProgressBar(painter, this);
+		const option = new CStyleOptionProgressBar();
+		option.initFromProgressBar(this);
+
+		this.style().drawProgressBar(painter, option);
 	}
 }

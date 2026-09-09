@@ -1,10 +1,6 @@
 import type { CPainter } from "../painting/CPainter.js";
 import type { CLabel } from "../widgets/CLabel.js";
-import type { CLineEdit } from "../widgets/CLineEdit.js";
-import type { CSlider } from "../widgets/CSlider.js";
-import type { CProgressBar } from "../widgets/CProgressBar.js";
 import type { CGroupBox } from "../widgets/CGroupBox.js";
-import type { CScrollBar } from "../widgets/CScrollBar.js";
 import type { CTabWidget } from "../widgets/CTabWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import type { CFrame } from "../widgets/CFrame.js";
@@ -20,9 +16,9 @@ import type { CStyleOptionRadioButton } from "./CStyleOptionRadioButton.js";
 import type { CStyleOptionComboBox } from "./CStyleOptionComboBox.js";
 import type { CStyleOptionLineEdit } from "../gui/CStyleOptionLineEdit.js";
 import type { CStyleOptionSlider } from "./CStyleOptionSlider.js";
-import type { CStyleOptionScrollBar
+import type { CStyleOptionScrollBar } from "./CStyleOptionScrollBar.js"
+import type { CStyleOptionProgressBar } from "./CStyleOptionProgressBar.js";
 
- } from "./CStyleOptionScrollBar.js";
 export abstract class CStyle {
 	
     abstract sliderHandleSize(): number;
@@ -37,7 +33,7 @@ export abstract class CStyle {
     abstract drawCheckBox(painter: CPainter, option: CStyleOptionCheckBox): void;
     abstract drawLineEdit(painter: CPainter, option: CStyleOptionLineEdit): void;
     abstract drawSlider(painter: CPainter, option: CStyleOptionSlider): void;
-    abstract drawProgressBar(painter: CPainter, progressBar : CProgressBar): void;
+    abstract drawProgressBar(painter: CPainter, option: CStyleOptionProgressBar): void;
     abstract drawGroupBox(painter: CPainter, groupBox: CGroupBox): void;
     abstract drawScrollBar(painter: CPainter, option: CStyleOptionScrollBar): void;
     abstract drawRadioButton(painter: CPainter, option: CStyleOptionRadioButton): void

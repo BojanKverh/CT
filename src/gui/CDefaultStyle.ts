@@ -5,7 +5,6 @@ import type { CLabel } from "../widgets/CLabel.js";
 import { CStyle } from "./CStyle.js";
 import { CRect } from "../geometry/CRect.js";
 import { CFontMetrics } from "./CFontMetrics.js";
-import type { CProgressBar } from "../widgets/CProgressBar.js";
 import type { CGroupBox } from "../widgets/CGroupBox.js";
 import { COrientation } from "./COrientation.js";
 import type { CTabWidget } from "../widgets/CTabWidget.js";
@@ -28,6 +27,7 @@ import { CStyleOptionComboBox } from "./CStyleOptionComboBox.js";
 import { CStyleOptionLineEdit } from "../gui/CStyleOptionLineEdit.js";
 import { CStyleOptionSlider } from "../gui/CStyleOptionSlider.js";
 import { CStyleOptionScrollBar } from "./CStyleOptionScrollBar.js";
+import { CStyleOptionProgressBar } from "./CStyleOptionProgressBar.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -243,32 +243,37 @@ export class CDefaultStyle extends CStyle {
 			handleY, handleW, handleH));
 	}
 
-	override drawProgressBar(painter: CPainter, progressBar: CProgressBar): void {
-		const palette = progressBar.palette();
+	override drawProgressBar(painter: CPainter, option: CStyleOptionProgressBar): void {
+		const range = option.maximum - option.minimum;
+		const ratio = range === 0? 0
+			: (option.value - option.minimum) / range;
+		const fillWidth = option.rect.width() * ratio;
 
-		const range = progressBar.maximum() - progressBar.minimum();
+		painter.setFillStyle(
+			option.palette.color(CPaletteColorRole.Base).toCss());
+		painter.fillRect(option.rect);
 
-		const ratio = range === 0? 0 : (progressBar.value() - progressBar.minimum()) / range;
-		const fillWidth = progressBar.width() * ratio;
-		painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
-		painter.fillRect(progressBar.rect());
+		painter.setFillStyle(
+			option.palette.color(CPaletteColorRole.Highlight).toCss());
+		painter.fillRect(new CRect(0, 0, fillWidth,
+			option.rect.height()));
 
-		painter.setFillStyle(palette.color(CPaletteColorRole.Highlight).toCss());
-		painter.fillRect(new CRect(0, 0, fillWidth, progressBar.height()));
-
-		painter.setStrokeStyle(palette.color(CPaletteColorRole.WindowText).toCss());
-		painter.strokeRect(progressBar.rect());
+		painter.setStrokeStyle(
+			option.palette.color(CPaletteColorRole.WindowText).toCss());
+		painter.strokeRect(option.rect);
 
 		const percent = range === 0? 0 : Math.round(ratio * 100);
-
-		const textRole = progressBar.isEnabled()? CPaletteColorRole.Text
+		const enabled = (option.state & CStyleState.Enabled) !== 0;
+		const textRole = enabled? CPaletteColorRole.Text
 			: CPaletteColorRole.DisabledText;
-		painter.setFillStyle(palette.color(textRole).toCss());
-		painter.setFont(progressBar.font());
+
+		painter.setFillStyle(option.palette.color(textRole).toCss());
+		painter.setFont(option.font);
 		painter.setTextAlign("center");
 		painter.setTextBaseline("middle");
 
-		painter.drawText(`${percent} %`, progressBar.width() / 2, progressBar.height() / 2);
+		painter.drawText(`${percent} %`, option.rect.width() / 2,
+			option.rect.height() / 2);
 	}
 
 	override drawGroupBox(painter: CPainter, groupBox: CGroupBox): void {
