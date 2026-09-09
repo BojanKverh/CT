@@ -10,7 +10,6 @@ import { COrientation } from "./COrientation.js";
 import type { CTabWidget } from "../widgets/CTabWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import { CFrameShadow, CFrameShape } from "../gui/CFrameStyle.js";
-import type { CFrame } from "../widgets/CFrame.js";
 import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
 import type { CStyleOptionToolButton } from "../gui/CStyleOptionToolButton.js";
 import type { CSplitterHandle } from "../widgets/CSplitterHandle.js";
@@ -28,6 +27,7 @@ import { CStyleOptionScrollBar } from "./CStyleOptionScrollBar.js";
 import { CStyleOptionProgressBar } from "./CStyleOptionProgressBar.js";
 import { CStyleOptionToolBar } from "./CStyleOptionToolBar.js";
 import { CStyleOptionSizeGrip } from "./CStyleOptionSizeGrip.js";
+import { CStyleOptionFrame } from "../gui/CStyleOptionFrame.js";
 
 export class CDefaultStyle extends CStyle {
 
@@ -473,35 +473,35 @@ export class CDefaultStyle extends CStyle {
 		painter.drawText(toolTip.text(), this.toolTipHorizontalPadding(), toolTip.height() / 2);
 	}
 
-	override drawFrame(painter: CPainter, frame: CFrame): void {
-		const shape = frame.frameShape();
+	override drawFrame(painter: CPainter, option: CStyleOptionFrame): void {
+		const shape = option.frameShape;
 
 		if (shape === CFrameShape.NoFrame)
 			return;
 
-		const palette = frame.palette();
-		const rect = frame.frameRect();
-		const lineWidth = frame.lineWidth();
-		const midLineWidth = frame.midLineWidth();
+		const palette = option.palette;
+		const rect = option.rect;
+		const lineWidth = option.lineWidth;
+		const midLineWidth = option.midLineWidth;
 
 		if (lineWidth <= 0)
 			return;
 
 		if (shape === CFrameShape.HLine) {
 			this.#drawFrameHLine(
-				painter, frame, rect, lineWidth, midLineWidth
+				painter, option, rect, lineWidth, midLineWidth
 			);
 			return;
 		}
 
 		if (shape === CFrameShape.VLine) {
 			this.#drawFrameVLine(
-				painter, frame, rect, lineWidth, midLineWidth
+				painter, option, rect, lineWidth, midLineWidth
 			);
 			return;
 		}
 
-		if (frame.frameShadow() === CFrameShadow.Plain) {
+		if (option.frameShadow === CFrameShadow.Plain) {
 			const offset = lineWidth / 2;
 			const left = rect.x() + offset;
 			const top = rect.y() + offset;
@@ -520,7 +520,7 @@ export class CDefaultStyle extends CStyle {
 			return;
 		}
 
-		const raised = frame.frameShadow() === CFrameShadow.Raised;
+		const raised = option.frameShadow === CFrameShadow.Raised;
 		const topLeftRole = raised ?
 			CPaletteColorRole.Light : CPaletteColorRole.Dark;
 		const bottomRightRole = raised ?
@@ -793,11 +793,13 @@ export class CDefaultStyle extends CStyle {
 			centerY - arrowHeight / 2);
 	}
 
-	#drawFrameHLine(painter: CPainter, frame: CFrame, rect: CRect, lineWidth: number, midLineWidth: number): void {
-		const palette = frame.palette();
+	#drawFrameHLine(painter: CPainter, option: CStyleOptionFrame, rect: CRect, 
+		lineWidth: number, midLineWidth: number): void { 
+		
+		const palette = option.palette;
 		const center = rect.y() + rect.height() / 2;
 
-		if (frame.frameShadow() === CFrameShadow.Plain) {
+		if (option.frameShadow === CFrameShadow.Plain) {
 			painter.setPen(
 				palette.color(CPaletteColorRole.WindowText).toCss()
 			);
@@ -808,7 +810,7 @@ export class CDefaultStyle extends CStyle {
 			return;
 		}
 
-		const raised = frame.frameShadow() === CFrameShadow.Raised;
+		const raised = option.frameShadow === CFrameShadow.Raised;
 		const topRole = raised ?
 			CPaletteColorRole.Light : CPaletteColorRole.Dark;
 		const bottomRole = raised ?
@@ -841,11 +843,12 @@ export class CDefaultStyle extends CStyle {
 		);
 	}
 
-	#drawFrameVLine(painter: CPainter, frame: CFrame, rect: CRect, lineWidth: number, midLineWidth: number): void {
-		const palette = frame.palette();
+	#drawFrameVLine(painter: CPainter, option: CStyleOptionFrame, rect: CRect, 
+		lineWidth: number, midLineWidth: number): void {
+		const palette = option.palette;
 		const center = rect.x() + rect.width() / 2;
 
-		if (frame.frameShadow() === CFrameShadow.Plain) {
+		if (option.frameShadow === CFrameShadow.Plain) {
 			painter.setPen(
 				palette.color(CPaletteColorRole.WindowText).toCss()
 			);
@@ -856,7 +859,7 @@ export class CDefaultStyle extends CStyle {
 			return;
 		}
 
-		const raised = frame.frameShadow() === CFrameShadow.Raised;
+		const raised = option.frameShadow === CFrameShadow.Raised;
 		const leftRole = raised ?
 			CPaletteColorRole.Light : CPaletteColorRole.Dark;
 		const rightRole = raised ?

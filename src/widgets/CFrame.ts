@@ -2,6 +2,7 @@ import type { CPainter } from "../painting/CPainter.js";
 import { CRect } from "../geometry/CRect.js";
 import { CWidget } from "./CWidget.js";
 import { CFrameShape, CFrameShadow } from "../gui/CFrameStyle.js"
+import { CStyleOptionFrame } from "../gui/CStyleOptionFrame.js";
 
 export class CFrame extends CWidget {
 	#m_frameShape = CFrameShape.NoFrame;
@@ -94,14 +95,18 @@ export class CFrame extends CWidget {
 	}
 
 	protected override paintEvent(painter: CPainter): void {
-        super.paintEvent(painter);
+		super.paintEvent(painter);
+
 		if (this.#m_frameShape === CFrameShape.NoFrame)
 			return;
 
-		this.style().drawFrame(painter, this);
+		const option = new CStyleOptionFrame();
+		option.initFromFrame(this);
+
+		this.style().drawFrame(painter, option);
 	}
 
-    protected frameChanged(): void
+	protected frameChanged(): void
 	{
 	}
 }
