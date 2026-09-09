@@ -8,7 +8,8 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CTextEdit, CKeySequenceEdit, CListView, CModelIndex, CAbstractListModel, CTableView, CAbstractTableModel,
 	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget, CTableWidgetItem, CTableWidget, 
 	CContextMenuEvent, CDragEnterEvent, CDragMoveEvent, CDragLeaveEvent, CDropEvent,
-	CDrag, CMimeData, CDropAction, CIcon, CDockWidget, CDockWidgetArea
+	CDrag, CMimeData, CDropAction, CIcon, CDockWidget, CDockWidgetArea,
+	CCursorShape
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -332,6 +333,12 @@ class DemoTreeModel extends CAbstractItemModel {
 
 class DragSourceWidget extends CWidget {
 	#m_dragging = false;
+	#m_inProgress = false;
+
+	override cursor(): CCursorShape {
+		return this.#m_inProgress === true? CCursorShape.Grabbing : 
+			CCursorShape.Grab;
+	}
 
 	protected override paintEvent(painter: CPainter): void {
 		painter.setFillStyle("#4080e0");
@@ -341,6 +348,10 @@ class DragSourceWidget extends CWidget {
 		painter.drawText("Drag me", 20, 35);
 	}
 
+	protected override mouseEnterEvent(event: CMouseEvent): void {
+		this.#m_inProgress = false;
+	}
+
 	protected override mousePressEvent(event: CMouseEvent): void {
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
@@ -348,6 +359,7 @@ class DragSourceWidget extends CWidget {
 		}
 
 		this.#m_dragging = true;
+		this.#m_inProgress = true;
 		event.accept();
 	}
 
@@ -373,6 +385,7 @@ class DragSourceWidget extends CWidget {
 
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
 		this.#m_dragging = false;
+		this.#m_inProgress = false;
 		event.accept();
 	}
 }

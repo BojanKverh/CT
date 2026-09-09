@@ -6,5 +6,7 @@ export enum CCursorShape {
 	IBeam,
 	Cross,
 	SizeFDiag,
-    Disabled
+    Grab,
+	Grabbing,
+	Disabled
 }

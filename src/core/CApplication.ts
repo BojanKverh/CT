@@ -835,6 +835,12 @@ export class CApplication extends CObject {
 			case CCursorShape.SizeFDiag:
 				shape = "nwse-resize";
 				break;
+			case CCursorShape.Grab:
+				shape = "grab";
+				break;
+			case CCursorShape.Grabbing:
+				shape = "grabbing";
+				break;
 			case CCursorShape.Disabled:
 				shape = "not-allowed";
 				break;
