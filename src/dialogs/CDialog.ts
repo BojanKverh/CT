@@ -19,6 +19,7 @@ export class CDialog extends CWidget
 	#m_open = false;
 	#m_modal = false;
 	#m_result = CDialogResult.Rejected;
+	#m_owner: CWidget | null = null;
     static readonly TitleBarHeight = 20;
     #m_dragging = false;
     #m_dragOffsetX = 0;
@@ -32,9 +33,14 @@ export class CDialog extends CWidget
 
 	constructor(parent: CWidget | null = null)
 	{
-		super(parent);
+		super(null);
 
+		this.#m_owner = parent;
 		this.hide();
+
+		// CWidget without a parent registers itself as a normal top-level widget.
+		// A dialog belongs to the application's window/overlay stack instead.
+		CApplication.instance().unregisterTopLevelWidget(this);
 	}
 
 	override rect(): CRect {
@@ -102,6 +108,8 @@ export class CDialog extends CWidget
 		this.#m_open = true;
 		this.#m_result = CDialogResult.Rejected;
 
+		CApplication.instance().registerWindowWidget(this);
+
 		if (this.#m_modal)
 			CApplication.instance().registerModalWidget(this);
 
@@ -123,6 +131,7 @@ export class CDialog extends CWidget
 		if (this.#m_modal)
 			CApplication.instance().unregisterModalWidget(this);
 
+		CApplication.instance().unregisterWindowWidget(this);
 		this.#m_open = false;
 
 		this.hide();
@@ -272,20 +281,19 @@ export class CDialog extends CWidget
 
 	#center(): void
 	{
-		const parent = this.parent();
-		let width: number;
-		let height: number;
-
-		if (parent !== null) {
-			width = parent.width();
-			height = parent.height();
-		}	else {
-			const canvas = CApplication.instance().canvas();
-			width = canvas.width;
-			height = canvas.height;
+		if (this.#m_owner !== null) {
+			const ownerOrigin = this.#m_owner.mapToCanvas(0, 0);
+			this.move(
+				ownerOrigin.x() + Math.floor((this.#m_owner.width() - this.width()) / 2),
+				ownerOrigin.y() + Math.floor((this.#m_owner.height() - this.rect().height()) / 2)
+			);
+			return;
 		}
 
-		this.move(Math.floor((width - this.width()) / 2),
-			Math.floor((height - this.rect().height()) / 2));
+		const canvas = CApplication.instance().canvas();
+		this.move(
+			Math.floor((canvas.width - this.width()) / 2),
+			Math.floor((canvas.height - this.rect().height()) / 2)
+		);
 	}
 }

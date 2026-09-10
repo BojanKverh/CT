@@ -41,6 +41,7 @@ export class CApplication extends CObject {
     #m_palette = new CPalette();
     #m_style: CStyle = new CDefaultStyle();
     #m_popupWidgets: CPopupWidget[] = [];
+	#m_windowWidgets: CWidget[] = [];
 	#m_modalWidgets: CWidget[] = [];
 	#m_toolTipWidget: CToolTipWidget | null = null;
 	#m_toolTipTarget: CWidget | null = null;
@@ -159,6 +160,7 @@ export class CApplication extends CObject {
 
 		this.#m_topLevelWidgets.clear();
 		this.#m_popupWidgets.length = 0;
+		this.#m_windowWidgets.length = 0;
 		this.#m_mouseGrabber = null;
 		this.#m_hoverWidget = null;
         this.#m_focusWidget = null;
@@ -348,6 +350,26 @@ export class CApplication extends CObject {
 		this.requestRepaint();
 	}
 
+	registerWindowWidget(widget: CWidget): void {
+		const index = this.#m_windowWidgets.indexOf(widget);
+
+		if (index !== -1)
+			this.#m_windowWidgets.splice(index, 1);
+
+		this.#m_windowWidgets.push(widget);
+		this.requestRepaint();
+	}
+
+	unregisterWindowWidget(widget: CWidget): void {
+		const index = this.#m_windowWidgets.indexOf(widget);
+
+		if (index === -1)
+			return;
+
+		this.#m_windowWidgets.splice(index, 1);
+		this.requestRepaint();
+	}
+
 	registerModalWidget(widget: CWidget): void
 	{
 		this.closeAllPopups();
@@ -485,6 +507,18 @@ export class CApplication extends CObject {
 				return target;
 		}
 
+		for (let i = this.#m_windowWidgets.length - 1; i >= 0; --i) {
+			const windowWidget = this.#m_windowWidgets[i]!;
+			if (!windowWidget.isVisible())
+				continue;
+
+			const pos = windowWidget.mapFromCanvas(x, y);
+			const target = windowWidget.widgetAt(pos.x(), pos.y());
+
+			if (target !== null)
+				return target;
+		}
+
 		const modal = this.topModalWidget();
 		if (modal !== null) {
 			const pos = modal.mapFromCanvas(x, y);
@@ -531,6 +565,11 @@ export class CApplication extends CObject {
 
 		for (const widget of this.#m_topLevelWidgets)
 			widget.render(painter);
+
+		for (const windowWidget of this.#m_windowWidgets) {
+			if (windowWidget.isVisible())
+				windowWidget.render(painter);
+		}
 
 		for (const popup of this.#m_popupWidgets)
 			popup.render(painter);
