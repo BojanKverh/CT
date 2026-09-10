@@ -1181,7 +1181,7 @@ dial.valueChanged.connect((value) => {
 
 const tb = new CTextBrowser(parent);
 tb.setGeometry(460, 480, 200, 150);
-tb.setPlainText("This is CTextBrowser...\nHell yeah!");
+tb.setHtml('<h2>Canvas Toolkit</h2><p>This is <b>CTextBrowser</b>.<br/>Visit <a href="https://example.com">our website</a>.</p>');
 
 app.startUpdates();
 

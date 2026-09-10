@@ -370,6 +370,10 @@ export class CApplication extends CObject {
 		this.requestRepaint();
 	}
 
+	isWindowWidget(widget: CWidget): boolean {
+		return this.#m_windowWidgets.includes(widget);
+	}
+
 	registerModalWidget(widget: CWidget): void
 	{
 		this.closeAllPopups();
@@ -507,6 +511,12 @@ export class CApplication extends CObject {
 				return target;
 		}
 
+		const modal = this.topModalWidget();
+		if (modal !== null) {
+			const pos = modal.mapFromCanvas(x, y);
+			return modal.widgetAt(pos.x(), pos.y());
+		}
+
 		for (let i = this.#m_windowWidgets.length - 1; i >= 0; --i) {
 			const windowWidget = this.#m_windowWidgets[i]!;
 			if (!windowWidget.isVisible())
@@ -517,12 +527,6 @@ export class CApplication extends CObject {
 
 			if (target !== null)
 				return target;
-		}
-
-		const modal = this.topModalWidget();
-		if (modal !== null) {
-			const pos = modal.mapFromCanvas(x, y);
-			return modal.widgetAt(pos.x(), pos.y());
 		}
 
 		const widgets = [...this.#m_topLevelWidgets];
@@ -567,8 +571,21 @@ export class CApplication extends CObject {
 			widget.render(painter);
 
 		for (const windowWidget of this.#m_windowWidgets) {
-			if (windowWidget.isVisible())
+			if (!windowWidget.isVisible())
+				continue;
+
+			const origin = windowWidget.mapToCanvas(0, 0);
+
+			painter.save();
+			try {
+				painter.translate(
+					origin.x() - windowWidget.x(),
+					origin.y() - windowWidget.y()
+				);
 				windowWidget.render(painter);
+			} finally {
+				painter.restore();
+			}
 		}
 
 		for (const popup of this.#m_popupWidgets)

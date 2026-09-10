@@ -13,6 +13,7 @@ export enum CPaletteColorRole {
 	Hover,
 	ToolTipBase,
 	ToolTipText,
+	Link,
 	Light,
 	Mid,
 	Dark
@@ -35,6 +36,7 @@ export class CPalette {
 			this.#m_colors.set(CPaletteColorRole.Hover, new CColor(255, 128, 0));
 			this.#m_colors.set(CPaletteColorRole.ToolTipBase, new CColor(255, 255, 220));
 			this.#m_colors.set(CPaletteColorRole.ToolTipText, new CColor(0, 0, 0));
+			this.#m_colors.set(CPaletteColorRole.Link, new CColor(0, 0, 238));
 			this.#m_colors.set(CPaletteColorRole.Light, new CColor(255, 255, 255));
 			this.#m_colors.set(CPaletteColorRole.Mid, new CColor(160, 160, 160));
 			this.#m_colors.set(CPaletteColorRole.Dark, new CColor(96, 96, 96));
@@ -51,6 +53,7 @@ export class CPalette {
 			this.#m_colors.set(CPaletteColorRole.Hover, pal.color(CPaletteColorRole.Hover));
 			this.#m_colors.set(CPaletteColorRole.ToolTipBase, pal.color(CPaletteColorRole.ToolTipBase));
 			this.#m_colors.set(CPaletteColorRole.ToolTipText, pal.color(CPaletteColorRole.ToolTipText));
+			this.#m_colors.set(CPaletteColorRole.Link, pal.color(CPaletteColorRole.Link));
 			this.#m_colors.set(CPaletteColorRole.Light, pal.color(CPaletteColorRole.Light));
 			this.#m_colors.set(CPaletteColorRole.Mid, pal.color(CPaletteColorRole.Mid));
 			this.#m_colors.set(CPaletteColorRole.Dark, pal.color(CPaletteColorRole.Dark));

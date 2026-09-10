@@ -296,8 +296,13 @@ export class CWidget extends CObject {
 			}
 
 			for (const child of this.children()) {
-				if (child instanceof CWidget)
-					child.render(painter);
+				if (!(child instanceof CWidget))
+					continue;
+
+				if (CApplication.instance().isWindowWidget(child))
+					continue;
+
+				child.render(painter);
 			}
 
 			if (hasChildOffset) {
@@ -333,6 +338,9 @@ export class CWidget extends CObject {
             const child = children[i]!;
 
             if (!(child instanceof CWidget))
+                continue;
+
+            if (CApplication.instance().isWindowWidget(child))
                 continue;
 
             const widget = child.widgetAt(
@@ -553,6 +561,7 @@ export class CWidget extends CObject {
 	    while (widget !== null) {
 		    canvasX += widget.x();
 		    canvasY += widget.y();
+
 		    const parent = widget.parent();
 		    if (parent !== null) {
 			    const childOffset = parent.childOffset();

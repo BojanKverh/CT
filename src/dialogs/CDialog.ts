@@ -33,14 +33,15 @@ export class CDialog extends CWidget
 
 	constructor(parent: CWidget | null = null)
 	{
-		super(null);
+		super(parent);
 
 		this.#m_owner = parent;
 		this.hide();
 
-		// CWidget without a parent registers itself as a normal top-level widget.
-		// A dialog belongs to the application's window/overlay stack instead.
-		CApplication.instance().unregisterTopLevelWidget(this);
+		// A parentless dialog is visually managed by the window/overlay stack,
+		// not by the ordinary top-level-widget stack.
+		if (parent === null)
+			CApplication.instance().unregisterTopLevelWidget(this);
 	}
 
 	override rect(): CRect {
@@ -282,10 +283,9 @@ export class CDialog extends CWidget
 	#center(): void
 	{
 		if (this.#m_owner !== null) {
-			const ownerOrigin = this.#m_owner.mapToCanvas(0, 0);
 			this.move(
-				ownerOrigin.x() + Math.floor((this.#m_owner.width() - this.width()) / 2),
-				ownerOrigin.y() + Math.floor((this.#m_owner.height() - this.rect().height()) / 2)
+				Math.floor((this.#m_owner.width() - this.width()) / 2),
+				Math.floor((this.#m_owner.height() - this.rect().height()) / 2)
 			);
 			return;
 		}
