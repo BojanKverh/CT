@@ -2329,4 +2329,99 @@ test("setFontSize changes the selected text format", () => {
 		expect(edit.currentCharFormat().fontSize()).toBe(28);
 		expect(edit.toPlainText()).toBe("X");
 	});
+
+test("imports plain text from basic HTML", () => {
+		const edit = new CTextEdit();
+
+		edit.setHtml("<p>Hello <b>rich</b> text</p><p>Second line</p>");
+
+		expect(edit.toPlainText()).toBe("Hello rich text\nSecond line");
+	});
+
+	test("imports bold and italic formatting", () => {
+		const edit = new CTextEdit();
+
+		edit.setHtml("normal <b>bold</b> <i>italic</i>");
+
+		edit.setCursorPosition(8);
+		expect(edit.currentCharFormat().fontBold()).toBe(true);
+		expect(edit.currentCharFormat().fontItalic()).toBe(false);
+
+		edit.setCursorPosition(13);
+		expect(edit.currentCharFormat().fontBold()).toBe(false);
+		expect(edit.currentCharFormat().fontItalic()).toBe(true);
+	});
+
+	test("preserves nested formatting", () => {
+		const edit = new CTextEdit();
+
+		edit.setHtml("<b>bold <i>both</i> bold</b>");
+
+		edit.setCursorPosition(7);
+		expect(edit.currentCharFormat().fontBold()).toBe(true);
+		expect(edit.currentCharFormat().fontItalic()).toBe(true);
+
+		edit.setCursorPosition(12);
+		expect(edit.currentCharFormat().fontBold()).toBe(true);
+		expect(edit.currentCharFormat().fontItalic()).toBe(false);
+	});
+
+	test("imports span color font size and font family", () => {
+		const edit = new CTextEdit();
+
+		edit.setHtml(
+			'<span style="color: #ff0000; font-size: 30px; font-family: serif">styled</span>'
+		);
+
+		edit.setCursorPosition(2);
+		const format = edit.currentCharFormat();
+
+		expect(format.foreground()).toBe("#ff0000");
+		expect(format.fontSize()).toBe(30);
+		expect(format.fontFamily()).toBe("serif");
+	});
+
+	test("imports headings as bold enlarged text", () => {
+		const edit = new CTextEdit();
+
+		edit.setHtml("<h1>Heading</h1><p>Body</p>");
+
+		expect(edit.toPlainText()).toBe("Heading\nBody");
+
+		edit.setCursorPosition(2);
+		const heading = edit.currentCharFormat();
+		expect(heading.fontBold()).toBe(true);
+		expect(heading.fontSize()).not.toBeNull();
+
+		edit.setCursorPosition(9);
+		expect(edit.currentCharFormat().fontBold()).toBe(false);
+		expect(edit.currentCharFormat().fontSize()).toBeNull();
+	});
+
+	test("decodes common and numeric HTML entities", () => {
+		const edit = new CTextEdit();
+
+		edit.setHtml("A &amp; B &#33; &#x41;");
+
+		expect(edit.toPlainText()).toBe("A & B ! A");
+	});
+
+	test("unknown tags preserve their text content", () => {
+		const edit = new CTextEdit();
+
+		edit.setHtml("before <unknown>inside</unknown> after");
+
+		expect(edit.toPlainText()).toBe("before inside after");
+	});
+
+	test("setHtml replaces formatting even when plain text is unchanged", () => {
+		const edit = new CTextEdit();
+
+		edit.setHtml("<b>Hello</b>");
+		edit.setHtml("Hello");
+		edit.setCursorPosition(2);
+
+		expect(edit.toPlainText()).toBe("Hello");
+		expect(edit.currentCharFormat().fontBold()).toBe(false);
+	});
 });

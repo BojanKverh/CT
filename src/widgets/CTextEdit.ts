@@ -39,6 +39,17 @@ type CTextEditLineLayout = {
 	height: number;
 };
 
+type CParsedHtmlRange = {
+	start: number;
+	length: number;
+	format: CTextCharFormat;
+};
+
+type CParsedHtml = {
+	plainText: string;
+	ranges: CParsedHtmlRange[];
+};
+
 class CTextEditContentWidget extends CWidget {
 	#m_textEdit: CTextEdit;
 
@@ -119,6 +130,42 @@ export class CTextEdit extends CScrollArea {
 
 	toPlainText(): string {
 		return this.#m_document.toPlainText();
+	}
+
+	setHtml(html: string): void {
+		const parsed = this.#parseHtml(html);
+		const hadSelection = this.hasSelection();
+
+		this.#m_undoStack = [];
+		this.#m_redoStack = [];
+		this.#m_undoGroup = null;
+
+		this.#m_document.setPlainText(parsed.plainText);
+
+		for (const range of parsed.ranges) {
+			if (range.length <= 0)
+				continue;
+
+			this.#m_document.setCharFormat(
+				range.start,
+				range.length,
+				range.format
+			);
+		}
+
+		this.#m_cursorPosition = parsed.plainText.length;
+		this.#m_selectionAnchor = this.#m_cursorPosition;
+		this.#syncCurrentCharFormatFromCursor();
+
+		this.textChanged.emit();
+
+		if (hadSelection)
+			this.selectionChanged.emit();
+
+		this.#updateContentGeometry();
+		this.#ensureCursorVisible();
+		this.#resetCursorBlink();
+		this.#m_contentWidget.update();
 	}
 
 	setPlainText(text: string): void {
@@ -1262,6 +1309,270 @@ export class CTextEdit extends CScrollArea {
 		return prefixes.length > 0
 			? `${prefixes.join(" ")} ${font}`
 			: font;
+	}
+
+	#parseHtml(html: string): CParsedHtml {
+		const ranges: CParsedHtmlRange[] = [];
+		let plainText = "";
+
+		const baseFormat = new CTextCharFormat();
+		const formatStack: CTextCharFormat[] = [baseFormat];
+
+		const currentFormat = (): CTextCharFormat =>
+			formatStack[formatStack.length - 1]!.clone();
+
+		const appendText = (rawText: string): void => {
+			let text = this.#decodeHtmlEntities(rawText);
+			text = text.replace(/\s+/g, " ");
+
+			if (text.length === 0)
+				return;
+
+			if (
+				(plainText.length === 0 || plainText.endsWith("\n")) &&
+				text.startsWith(" ")
+			)
+				text = text.slice(1);
+
+			if (text.length === 0)
+				return;
+
+			const start = plainText.length;
+			plainText += text;
+
+			ranges.push({
+				start,
+				length: text.length,
+				format: currentFormat()
+			});
+		};
+
+		const appendNewLine = (): void => {
+			if (plainText.length === 0 || plainText.endsWith("\n"))
+				return;
+
+			const start = plainText.length;
+			plainText += "\n";
+
+			ranges.push({
+				start,
+				length: 1,
+				format: currentFormat()
+			});
+		};
+
+		const pushModifiedFormat = (
+			modifier: (format: CTextCharFormat) => void
+		): void => {
+			const format = currentFormat();
+			modifier(format);
+			formatStack.push(format);
+		};
+
+		const popFormat = (): void => {
+			if (formatStack.length > 1)
+				formatStack.pop();
+		};
+
+		const tokens = html.match(/<[^>]*>|[^<]+/g) ?? [];
+
+		for (const token of tokens) {
+			if (!token.startsWith("<")) {
+				appendText(token);
+				continue;
+			}
+
+			const match =
+				/^<\s*(\/?)\s*([a-zA-Z0-9]+)([^>]*)>$/.exec(token);
+
+			if (match === null)
+				continue;
+
+			const closing = match[1] === "/";
+			const tag = match[2]!.toLowerCase();
+			const attributes = match[3] ?? "";
+
+			if (tag === "br") {
+				appendNewLine();
+				continue;
+			}
+
+			if (tag === "p" || tag === "div") {
+				if (closing)
+					appendNewLine();
+				else if (plainText.length > 0 && !plainText.endsWith("\n"))
+					appendNewLine();
+
+				continue;
+			}
+
+			if (tag === "b" || tag === "strong") {
+				if (closing)
+					popFormat();
+				else
+					pushModifiedFormat(format => format.setFontBold(true));
+				continue;
+			}
+
+			if (tag === "i" || tag === "em") {
+				if (closing)
+					popFormat();
+				else
+					pushModifiedFormat(format => format.setFontItalic(true));
+				continue;
+			}
+
+			const headingMatch = /^h([1-3])$/.exec(tag);
+
+			if (headingMatch !== null) {
+				if (closing) {
+					popFormat();
+					appendNewLine();
+				}
+				else {
+					if (plainText.length > 0 && !plainText.endsWith("\n"))
+						appendNewLine();
+
+					const heading = Number(headingMatch[1]);
+					const factor = heading === 1
+						? 1.8
+						: heading === 2
+							? 1.5
+							: 1.25;
+
+					pushModifiedFormat(format => {
+						format.setFontBold(true);
+						format.setFontSize(
+							this.#baseFontPixelSize() * factor
+						);
+					});
+				}
+				continue;
+			}
+
+			if (tag === "span") {
+				if (closing) {
+					popFormat();
+					continue;
+				}
+
+				pushModifiedFormat(format => {
+					this.#applyInlineStyle(format, attributes);
+				});
+			}
+		}
+
+		while (plainText.endsWith("\n")) {
+			plainText = plainText.slice(0, -1);
+
+			const last = ranges[ranges.length - 1];
+			if (last === undefined)
+				break;
+
+			if (last.start + last.length > plainText.length) {
+				const newLength = plainText.length - last.start;
+				if (newLength <= 0)
+					ranges.pop();
+				else
+					last.length = newLength;
+			}
+		}
+
+		return {
+			plainText,
+			ranges: ranges.filter(range => range.length > 0)
+		};
+	}
+
+	#applyInlineStyle(
+		format: CTextCharFormat,
+		attributes: string
+	): void {
+		const styleMatch =
+			/\bstyle\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(attributes);
+
+		if (styleMatch === null)
+			return;
+
+		const style = styleMatch[1] ?? styleMatch[2] ?? "";
+
+		for (const declaration of style.split(";")) {
+			const colon = declaration.indexOf(":");
+			if (colon < 0)
+				continue;
+
+			const property = declaration.slice(0, colon).trim().toLowerCase();
+			const value = declaration.slice(colon + 1).trim();
+
+			if (property === "color" && value.length > 0) {
+				format.setForeground(value);
+				continue;
+			}
+
+			if (property === "font-size") {
+				const sizeMatch = /^(\d+(?:\.\d+)?)px$/i.exec(value);
+				if (sizeMatch !== null)
+					format.setFontSize(Number(sizeMatch[1]));
+				continue;
+			}
+
+			if (property === "font-family" && value.length > 0) {
+				format.setFontFamily(
+					value.replace(/^['"]|['"]$/g, "")
+				);
+				continue;
+			}
+
+			if (property === "font-weight") {
+				const numericWeight = Number(value);
+				format.setFontBold(
+					value.toLowerCase() === "bold" ||
+					(Number.isFinite(numericWeight) && numericWeight >= 600)
+				);
+				continue;
+			}
+
+			if (property === "font-style") {
+				format.setFontItalic(value.toLowerCase() === "italic");
+			}
+		}
+	}
+
+	#baseFontPixelSize(): number {
+		const match = /(\d+(?:\.\d+)?)px/.exec(this.font());
+		return match === null ? 14 : Number(match[1]);
+	}
+
+	#decodeHtmlEntities(text: string): string {
+		const entities: Record<string, string> = {
+			amp: "&",
+			lt: "<",
+			gt: ">",
+			quot: '"',
+			apos: "'",
+			nbsp: " "
+		};
+
+		return text.replace(
+			/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);/g,
+			(match, entity: string) => {
+				if (entity.startsWith("#x")) {
+					const code = Number.parseInt(entity.slice(2), 16);
+					return Number.isFinite(code)
+						? String.fromCodePoint(code)
+						: match;
+				}
+
+				if (entity.startsWith("#")) {
+					const code = Number.parseInt(entity.slice(1), 10);
+					return Number.isFinite(code)
+						? String.fromCodePoint(code)
+						: match;
+				}
+
+				return entities[entity] ?? match;
+			}
+		);
 	}
 
 	#modifyCurrentFormats(
