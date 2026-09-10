@@ -984,6 +984,14 @@ const splitter = new CSplitter(COrientation.Horizontal, parent);
 splitter.setGeometry(580, 100, 400, 300);
 
 const leftW = new CTextEdit;
+leftW.setPlainText("This is CTextEdit.\nTrying to display bold and italic text...");
+leftW.setSelection(37, 41);
+leftW.setFontBold(true);
+leftW.setTextColor("#ff0000");
+leftW.setFontSize(32);
+leftW.setSelection(46, 52);
+leftW.setFontItalic(true);
+leftW.setTextColor("#008080");
 leftW.setMinimumSize(150, 300);
 leftW.setMaximumSize(350, 300);
 const rightW = new BlueWidget(splitter);

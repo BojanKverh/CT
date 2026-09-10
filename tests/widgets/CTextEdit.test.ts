@@ -1,24 +1,15 @@
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	test,
-	vi
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { CApplication } from "../../src/core/CApplication.js";
 import { CTextEdit } from "../../src/widgets/CTextEdit.js";
 import { CEventType } from "../../src/events/CEvent.js";
 import { CKeyEvent } from "../../src/events/CKeyEvent.js";
-import {
-	CMouseButton,
-	CMouseEvent
-} from "../../src/events/CMouseEvent.js";
+import { CMouseButton, CMouseEvent } from "../../src/events/CMouseEvent.js";
 import { CFontMetrics } from "../../src/gui/CFontMetrics.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { createTestWindow } from "../helpers/createTestWindow.js";
-import { CClipboard } from "../../src/index.js";
+import { CClipboard } from "../../src/core/CClipboard.js";
+import { CTextCharFormat } from "../../src/gui/CTextCharFormat.js";
 
 describe("CTextEdit", () => {
 	beforeEach(() => {
@@ -2208,5 +2199,134 @@ describe("CTextEdit", () => {
 		expect(edit.horizontalScrollBar().isVisible()).toBe(false);
 		expect(content.width()).toBe(edit.viewport().width());
 		expect(content.width()).toBeLessThan(edit.width());
+	});
+
+test("setFontBold formats the current selection", () => {
+		const edit = new CTextEdit();
+		edit.setPlainText("Hello world");
+
+		edit.setSelection(6, 11);
+		edit.setFontBold(true);
+
+		edit.setCursorPosition(7);
+		expect(edit.currentCharFormat().fontBold()).toBe(true);
+
+		edit.setCursorPosition(1);
+		expect(edit.currentCharFormat().fontBold()).toBe(false);
+	});
+
+	test("setFontItalic preserves existing bold formatting", () => {
+		const edit = new CTextEdit();
+		edit.setPlainText("abcdef");
+
+		edit.setSelection(1, 5);
+		edit.setFontBold(true);
+
+		edit.setSelection(2, 4);
+		edit.setFontItalic(true);
+
+		edit.setCursorPosition(3);
+		expect(edit.currentCharFormat().fontBold()).toBe(true);
+		expect(edit.currentCharFormat().fontItalic()).toBe(true);
+
+		edit.setCursorPosition(1);
+		expect(edit.currentCharFormat().fontBold()).toBe(false);
+		expect(edit.currentCharFormat().fontItalic()).toBe(false);
+	});
+
+	test("format without selection is used by subsequently inserted text", () => {
+		const edit = new CTextEdit();
+
+		edit.setFontBold(true);
+		edit.insert("A");
+
+		expect(edit.toPlainText()).toBe("A");
+		expect(edit.currentCharFormat().fontBold()).toBe(true);
+
+		edit.setCursorPosition(1);
+		expect(edit.currentCharFormat().fontBold()).toBe(true);
+	});
+
+	test("setCurrentCharFormat replaces the selection format", () => {
+		const edit = new CTextEdit();
+		const format = new CTextCharFormat();
+
+		edit.setPlainText("Hello");
+		edit.setSelection(0, 5);
+
+		format.setFontBold(true);
+		format.setFontItalic(true);
+		format.setForeground("#123456");
+
+		edit.setCurrentCharFormat(format);
+		edit.setCursorPosition(2);
+
+		const current = edit.currentCharFormat();
+
+		expect(current.fontBold()).toBe(true);
+		expect(current.fontItalic()).toBe(true);
+		expect(current.foreground()).toBe("#123456");
+	});
+
+	test("selection formatting is undoable and redoable", () => {
+		const edit = new CTextEdit();
+		edit.setPlainText("Hello");
+
+		edit.setSelection(0, 5);
+		edit.setFontBold(true);
+
+		edit.undo();
+		edit.setCursorPosition(2);
+		expect(edit.currentCharFormat().fontBold()).toBe(false);
+
+		edit.redo();
+		edit.setCursorPosition(2);
+		expect(edit.currentCharFormat().fontBold()).toBe(true);
+	});
+
+	test("setTextColor modifies only the selected text", () => {
+		const edit = new CTextEdit();
+		edit.setPlainText("red black");
+
+		edit.setSelection(0, 3);
+		edit.setTextColor("#ff0000");
+
+		edit.setCursorPosition(1);
+		expect(edit.currentCharFormat().foreground()).toBe("#ff0000");
+
+		edit.setCursorPosition(5);
+		expect(edit.currentCharFormat().foreground()).toBeNull();
+	});
+
+test("setFontSize changes the selected text format", () => {
+		const edit = new CTextEdit();
+		edit.setPlainText("small BIG small");
+		edit.setSelection(6, 9);
+
+		edit.setFontSize(30);
+
+		expect(edit.currentCharFormat().fontSize()).toBe(30);
+		expect(edit.toPlainText()).toBe("small BIG small");
+	});
+
+	test("setFontFamily changes the selected text format", () => {
+		const edit = new CTextEdit();
+		edit.setPlainText("abc");
+		edit.selectAll();
+
+		edit.setFontFamily("serif");
+
+		expect(edit.currentCharFormat().fontFamily()).toBe("serif");
+		expect(edit.toPlainText()).toBe("abc");
+	});
+
+	test("font size becomes the active insertion format without a selection", () => {
+		const edit = new CTextEdit();
+		edit.setFontSize(28);
+
+		edit.insert("X");
+
+		expect(edit.currentCharFormat().fontSize()).toBe(28);
+		expect(edit.toPlainText()).toBe("X");
 	});
 });

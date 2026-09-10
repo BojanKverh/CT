@@ -15,12 +15,15 @@ import { CCursorShape } from "../gui/CCursorShape.js";
 import { CRect } from "../geometry/CRect.js";
 import { CSize } from "../geometry/CSize.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import { CTextDocument } from "../gui/CTextDocument.js";
+import { CTextCharFormat } from "../gui/CTextCharFormat.js";
 import { CClipboard } from "../core/CClipboard.js";
 
 type CTextEditState = {
-	text: string;
+	document: CTextDocument;
 	cursorPosition: number;
 	selectionAnchor: number;
+	currentCharFormat: CTextCharFormat;
 };
 
 type CTextEditUndoGroup =
@@ -28,6 +31,13 @@ type CTextEditUndoGroup =
 	| "backspace"
 	| "delete"
 	| null;
+
+type CTextEditLineLayout = {
+	text: string;
+	start: number;
+	y: number;
+	height: number;
+};
 
 class CTextEditContentWidget extends CWidget {
 	#m_textEdit: CTextEdit;
@@ -64,11 +74,12 @@ export class CTextEdit extends CScrollArea {
 	readonly textChanged = new CSignal<[]>();
 	readonly selectionChanged = new CSignal<[]>();
 
-	#m_text = "";
+	#m_document = new CTextDocument();
 	#m_cursorPosition = 0;
 	#m_selectionAnchor = 0;
 	#m_selectingWithMouse = false;
 	#m_readOnly = false;
+	#m_currentCharFormat = new CTextCharFormat();
     #m_undoStack: CTextEditState[] = [];
 	#m_redoStack: CTextEditState[] = [];
 	#m_restoringHistory = false;
@@ -107,11 +118,11 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	toPlainText(): string {
-		return this.#m_text;
+		return this.#m_document.toPlainText();
 	}
 
 	setPlainText(text: string): void {
-		if (this.#m_text === text)
+		if (this.#m_document.toPlainText() === text)
 			return;
 
 		const hadSelection = this.hasSelection();
@@ -120,9 +131,10 @@ export class CTextEdit extends CScrollArea {
 		this.#m_redoStack = [];
 		this.#m_undoGroup = null;
 
-		this.#m_text = text;
+		this.#m_document.setPlainText(text);
 		this.#m_cursorPosition = text.length;
 		this.#m_selectionAnchor = this.#m_cursorPosition;
+		this.#syncCurrentCharFormatFromCursor();
 
 		this.textChanged.emit();
 
@@ -136,16 +148,17 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	clear(): void {
-		if (this.#m_text.length === 0)
+		if (this.#m_document.length() === 0)
 			return;
 
 		this.#pushUndoState();
 
 		const hadSelection = this.hasSelection();
 
-		this.#m_text = "";
+		this.#m_document.clear();
 		this.#m_cursorPosition = 0;
 		this.#m_selectionAnchor = 0;
+		this.#m_currentCharFormat = new CTextCharFormat();
 
 		this.textChanged.emit();
 
@@ -210,7 +223,7 @@ export class CTextEdit extends CScrollArea {
 		if (!this.hasSelection())
 			return "";
 
-		return this.#m_text.slice(
+		return this.#m_document.toPlainText().slice(
 			this.selectionStart(),
 			this.selectionEnd()
 		);
@@ -218,7 +231,7 @@ export class CTextEdit extends CScrollArea {
 
 	setSelection(anchor: number, position: number): void {
 		this.#breakUndoGroup();
-		const length = this.#m_text.length;
+		const length = this.#m_document.length();
 		const oldAnchor = this.#m_selectionAnchor;
 		const oldPosition = this.#m_cursorPosition;
 
@@ -252,13 +265,72 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	selectAll(): void {
-		this.setSelection(0, this.#m_text.length);
+		this.setSelection(0, this.#m_document.length());
 	}
 
 	insert(text: string): void {
 		this.#insert(text, null);
 	}
 	
+	protected textDocument(): CTextDocument {
+		return this.#m_document;
+	}
+
+	currentCharFormat(): CTextCharFormat {
+		if (this.hasSelection() && this.#m_document.length() > 0)
+			return this.#m_document.charFormatAt(this.selectionStart());
+
+		return this.#m_currentCharFormat.clone();
+	}
+
+	setCurrentCharFormat(format: CTextCharFormat): void {
+		if (this.hasSelection()) {
+			this.#pushUndoState();
+			this.#m_document.setCharFormat(
+				this.selectionStart(),
+				this.selectionEnd() - this.selectionStart(),
+				format
+			);
+			this.#m_currentCharFormat = format.clone();
+			this.textChanged.emit();
+			this.#updateContentGeometry();
+			this.#m_contentWidget.update();
+			return;
+		}
+
+		this.#m_currentCharFormat = format.clone();
+	}
+
+	setFontBold(bold: boolean): void {
+		this.#modifyCurrentFormats(format => {
+			format.setFontBold(bold);
+		});
+	}
+
+	setFontItalic(italic: boolean): void {
+		this.#modifyCurrentFormats(format => {
+			format.setFontItalic(italic);
+		});
+	}
+
+	setTextColor(color: string | null): void {
+		this.#modifyCurrentFormats(format => {
+			format.setForeground(color);
+		});
+	}
+
+	setFontFamily(family: string | null): void {
+		this.#modifyCurrentFormats(format => {
+			format.setFontFamily(family);
+		});
+	}
+
+	setFontSize(size: number | null): void {
+		this.#modifyCurrentFormats(format => {
+			format.setFontSize(size);
+		});
+	}
+
 	canUndo(): boolean {
 		return this.#m_undoStack.length > 0;
 	}
@@ -341,14 +413,11 @@ export class CTextEdit extends CScrollArea {
 
 	paintText(painter: CPainter): void {
 		const palette = this.palette();
-		const metrics = new CFontMetrics(this.font());
 		const margin = CTextEdit.#TEXT_MARGIN;
-		const lineHeight = CTextEdit.#LINE_HEIGHT;
 
 		painter.setBrush(palette.color(CPaletteColorRole.Base).toCss());
 		painter.fillRect(this.#m_contentWidget.rect());
 
-		painter.setFont(this.font());
 		painter.setTextAlign("left");
 		painter.setTextBaseline("top");
 
@@ -356,13 +425,18 @@ export class CTextEdit extends CScrollArea {
 			? CPaletteColorRole.Text
 			: CPaletteColorRole.DisabledText;
 
-		const lines = this.#lines();
+		const layouts = this.#lineLayouts();
 
-		for (let line = 0; line < lines.length; ++line) {
-			const info = lines[line]!;
-			const y = margin + line * lineHeight;
-
-			this.#paintLine(painter, metrics, info.text, info.start, margin, y, textRole);
+		for (const line of layouts) {
+			this.#paintFormattedLine(
+				painter,
+				line.text,
+				line.start,
+				margin,
+				line.y,
+				line.height,
+				textRole
+			);
 		}
 
 		if (this.hasFocus() && this.#m_cursorVisible) {
@@ -370,18 +444,23 @@ export class CTextEdit extends CScrollArea {
 				this.#m_cursorPosition
 			);
 
-			const line = lines[position.line]!;
+			const line = layouts[position.line]!;
 
-			const cursorX = margin + metrics.textWidth(
-				line.text.slice(0, position.column)
+			const cursorX = margin + this.#textWidth(
+				line.start,
+				position.column
 			);
 
-			const cursorY =
-				margin + position.line * lineHeight;
+			painter.setPen(
+				palette.color(CPaletteColorRole.Text).toCss()
+			);
 
-			painter.setPen(palette.color(CPaletteColorRole.Text).toCss());
-
-			painter.drawLine(cursorX, cursorY, cursorX, cursorY + lineHeight);
+			painter.drawLine(
+				cursorX,
+				line.y,
+				cursorX,
+				line.y + line.height
+			);
 		}
 	}
 
@@ -401,6 +480,7 @@ export class CTextEdit extends CScrollArea {
 
 		this.#m_cursorPosition = position;
 		this.#m_selectionAnchor = position;
+		this.#syncCurrentCharFormatFromCursor();
 		this.#m_selectingWithMouse = true;
 
 		this.#resetCursorBlink();
@@ -564,11 +644,11 @@ export class CTextEdit extends CScrollArea {
 			}
 			if (this.#m_cursorPosition > 0) {
                 this.#pushUndoState("backspace");
-				this.#m_text = this.#m_text.slice(0, this.#m_cursorPosition - 1)
-					+ this.#m_text.slice(this.#m_cursorPosition);
+				this.#m_document.remove(this.#m_cursorPosition - 1, 1);
 
 				--this.#m_cursorPosition;
 				this.#m_selectionAnchor = this.#m_cursorPosition;
+				this.#syncCurrentCharFormatFromCursor();
 				this.textChanged.emit();
 
 				this.#updateContentGeometry();
@@ -591,12 +671,12 @@ export class CTextEdit extends CScrollArea {
 				return;
 			}
 
-			if (this.#m_cursorPosition < this.#m_text.length) {
+			if (this.#m_cursorPosition < this.#m_document.length()) {
                 this.#pushUndoState("delete");
-				this.#m_text = this.#m_text.slice(0, this.#m_cursorPosition)
-					+ this.#m_text.slice(this.#m_cursorPosition + 1);
+				this.#m_document.remove(this.#m_cursorPosition, 1);
 
 				this.#m_selectionAnchor = this.#m_cursorPosition;
+				this.#syncCurrentCharFormatFromCursor();
 				this.textChanged.emit();
 
 				this.#updateContentGeometry();
@@ -633,43 +713,128 @@ export class CTextEdit extends CScrollArea {
 		super.focusOutEvent(event);
 	}
 
-	#paintLine(painter: CPainter, metrics: CFontMetrics, text: string, lineStart: number, x: number, y: number,
-        textRole: CPaletteColorRole): void {
+	#paintFormattedLine(
+		painter: CPainter,
+		text: string,
+		lineStart: number,
+		x: number,
+		y: number,
+		lineHeight: number,
+		textRole: CPaletteColorRole
+	): void {
+		if (text.length === 0)
+			return;
 
 		const palette = this.palette();
-		const selectionStart = this.selectionStart();
-		const selectionEnd = this.selectionEnd();
 		const lineEnd = lineStart + text.length;
+		let currentX = x;
 
-		const start = Math.max(selectionStart, lineStart);
-		const end = Math.min(selectionEnd, lineEnd);
+		for (const range of this.#m_document.formatRanges()) {
+			const start = Math.max(lineStart, range.start);
+			const end = Math.min(
+				lineEnd,
+				range.start + range.length
+			);
 
-		if (!this.hasSelection() || start >= end) {
-			painter.setPen(palette.color(textRole).toCss());
-			painter.drawText(text, x, y);
-			return;
+			if (start >= end)
+				continue;
+
+			const segment = this.#m_document.toPlainText().slice(
+				start,
+				end
+			);
+
+			const font = this.#fontForFormat(range.format);
+			const metrics = new CFontMetrics(font);
+			const segmentWidth = metrics.textWidth(segment);
+
+			painter.setFont(font);
+
+			const selectionStart = Math.max(
+				start,
+				this.selectionStart()
+			);
+			const selectionEnd = Math.min(
+				end,
+				this.selectionEnd()
+			);
+
+			if (!this.hasSelection()
+				|| selectionStart >= selectionEnd) {
+				painter.setPen(
+					range.format.foreground()
+						?? palette.color(textRole).toCss()
+				);
+				painter.drawText(segment, currentX, y);
+				currentX += segmentWidth;
+				continue;
+			}
+
+			const selectedLocalStart =
+				selectionStart - start;
+			const selectedLocalEnd =
+				selectionEnd - start;
+
+			const before = segment.slice(
+				0,
+				selectedLocalStart
+			);
+			const selected = segment.slice(
+				selectedLocalStart,
+				selectedLocalEnd
+			);
+			const after = segment.slice(selectedLocalEnd);
+
+			const beforeWidth = metrics.textWidth(before);
+			const selectedWidth = metrics.textWidth(selected);
+
+			if (before.length > 0) {
+				painter.setPen(
+					range.format.foreground()
+						?? palette.color(textRole).toCss()
+				);
+				painter.drawText(before, currentX, y);
+			}
+
+			painter.setBrush(
+				palette.color(
+					CPaletteColorRole.Highlight
+				).toCss()
+			);
+			painter.fillRect(
+				new CRect(
+					currentX + beforeWidth,
+					y,
+					selectedWidth,
+					lineHeight
+				)
+			);
+
+			painter.setPen(
+				palette.color(
+					CPaletteColorRole.HighlightedText
+				).toCss()
+			);
+			painter.drawText(
+				selected,
+				currentX + beforeWidth,
+				y
+			);
+
+			if (after.length > 0) {
+				painter.setPen(
+					range.format.foreground()
+						?? palette.color(textRole).toCss()
+				);
+				painter.drawText(
+					after,
+					currentX + beforeWidth + selectedWidth,
+					y
+				);
+			}
+
+			currentX += segmentWidth;
 		}
-
-		const localStart = start - lineStart;
-		const localEnd = end - lineStart;
-
-		const before = text.slice(0, localStart);
-		const selected = text.slice(localStart, localEnd);
-		const after = text.slice(localEnd);
-
-		const selectionX = x + metrics.textWidth(before);
-
-		const selectionWidth = metrics.textWidth(selected);
-
-		painter.setBrush(palette.color(CPaletteColorRole.Highlight).toCss());
-		painter.fillRect(new CRect(selectionX, y, selectionWidth, CTextEdit.#LINE_HEIGHT));
-
-		painter.setPen(palette.color(textRole).toCss());
-		painter.drawText(before, x, y);
-		painter.setPen(palette.color(CPaletteColorRole.HighlightedText).toCss());
-		painter.drawText(selected, selectionX, y);
-		painter.setPen(palette.color(textRole).toCss());
-		painter.drawText(after, selectionX + selectionWidth, y);
 	}
 
 	#lines(): { text: string; start: number }[] {
@@ -678,7 +843,7 @@ export class CTextEdit extends CScrollArea {
 			start: number;
 		}[] = [];
 
-		const lines = this.#m_text.split("\n");
+		const lines = this.#m_document.toPlainText().split("\n");
 		let start = 0;
 
 		for (const text of lines) {
@@ -692,6 +857,72 @@ export class CTextEdit extends CScrollArea {
 
 		return result;
 	}
+
+
+	#lineLayouts(): CTextEditLineLayout[] {
+		const lines = this.#lines();
+		const result: CTextEditLineLayout[] = [];
+		let y = CTextEdit.#TEXT_MARGIN;
+
+		for (const line of lines) {
+			const height = this.#lineHeight(
+				line.start,
+				line.text.length
+			);
+
+			result.push({
+				text: line.text,
+				start: line.start,
+				y,
+				height
+			});
+
+			y += height;
+		}
+
+		return result;
+	}
+
+	#lineHeight(start: number, length: number): number {
+		let height = CTextEdit.#LINE_HEIGHT;
+
+		if (length === 0)
+			return height;
+
+		const end = start + length;
+
+		for (const range of this.#m_document.formatRanges()) {
+			const rangeStart = Math.max(start, range.start);
+			const rangeEnd = Math.min(
+				end,
+				range.start + range.length
+			);
+
+			if (rangeStart >= rangeEnd)
+				continue;
+
+			/*
+			 * Preserve CTextEdit's historical 18 px line height for the
+			 * default character format.  Only an explicitly assigned rich-
+			 * text font size is allowed to enlarge a line.
+			 *
+			 * This is important because mouse hit-testing and scrolling of
+			 * ordinary plain text have always been based on #LINE_HEIGHT.
+			 */
+			const size = range.format.fontSize();
+
+			if (size === null)
+				continue;
+
+			height = Math.max(
+				height,
+				Math.ceil(size * 1.35)
+			);
+		}
+
+		return height;
+	}
+
 
 	#lineColumnAt(position: number): {
 		line: number;
@@ -751,30 +982,43 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	#cursorPositionAt(x: number, y: number): number {
-		const metrics = new CFontMetrics(this.font());
-		const lines = this.#lines();
+		const layouts = this.#lineLayouts();
 		const margin = CTextEdit.#TEXT_MARGIN;
 
-		const lineIndex = Math.max(0, Math.min(Math.floor((y - margin) / CTextEdit.#LINE_HEIGHT),
-				lines.length - 1));
+		let lineIndex = 0;
 
-		const line = lines[lineIndex]!;
+		if (y <= margin) {
+			lineIndex = 0;
+		}
+		else {
+			lineIndex = layouts.length - 1;
+
+			for (let i = 0; i < layouts.length; ++i) {
+				const line = layouts[i]!;
+
+				if (y < line.y + line.height) {
+					lineIndex = i;
+					break;
+				}
+			}
+		}
+
+		const line = layouts[lineIndex]!;
 		const textX = x - margin;
 
 		if (textX <= 0)
 			return line.start;
 
-		for (let i = 1;
-			i <= line.text.length;
-			++i) {
-			const previousWidth = metrics.textWidth(line.text.slice(0, i - 1));
+		let previousWidth = 0;
 
-			const width = metrics.textWidth(line.text.slice(0, i));
-
+		for (let i = 1; i <= line.text.length; ++i) {
+			const width = this.#textWidth(line.start, i);
 			const middle = (previousWidth + width) / 2;
 
 			if (textX < middle)
 				return line.start + i - 1;
+
+			previousWidth = width;
 		}
 
 		return line.start + line.text.length;
@@ -785,7 +1029,7 @@ export class CTextEdit extends CScrollArea {
 		keepAnchor: boolean
 	): void {
 		this.#breakUndoGroup();
-		const clamped = Math.max(0, Math.min(position, this.#m_text.length));
+		const clamped = Math.max(0, Math.min(position, this.#m_document.length()));
 
 		if (this.#m_cursorPosition === clamped && (keepAnchor || this.#m_selectionAnchor === clamped))
 			return;
@@ -795,8 +1039,10 @@ export class CTextEdit extends CScrollArea {
 
 		this.#m_cursorPosition = clamped;
 
-		if (!keepAnchor)
+		if (!keepAnchor) {
 			this.#m_selectionAnchor = clamped;
+			this.#syncCurrentCharFormatFromCursor();
+		}
 
 		if (oldAnchor !== this.#m_selectionAnchor || oldPosition !== this.#m_cursorPosition)
 			this.selectionChanged.emit();
@@ -814,10 +1060,11 @@ export class CTextEdit extends CScrollArea {
 		const start = this.selectionStart();
 		const end = this.selectionEnd();
 
-		this.#m_text = this.#m_text.slice(0, start) + this.#m_text.slice(end);
+		this.#m_document.remove(start, end - start);
 
 		this.#m_cursorPosition = start;
 		this.#m_selectionAnchor = start;
+		this.#syncCurrentCharFormatFromCursor();
 
 		this.textChanged.emit();
 		this.selectionChanged.emit();
@@ -831,17 +1078,30 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	#contentWidth(): number {
-		const metrics = new CFontMetrics(this.font());
 		let width = 0;
 
-		for (const line of this.#lines())
-			width = Math.max(width, metrics.textWidth(line.text));
+		for (const line of this.#lines()) {
+			width = Math.max(
+				width,
+				this.#textWidth(
+					line.start,
+					line.text.length
+				)
+			);
+		}
 
 		return width + 2 * CTextEdit.#TEXT_MARGIN;
 	}
 
 	#contentHeight(): number {
-		return 2 * CTextEdit.#TEXT_MARGIN + this.#lines().length * CTextEdit.#LINE_HEIGHT;
+		const layouts = this.#lineLayouts();
+
+		if (layouts.length === 0)
+			return 2 * CTextEdit.#TEXT_MARGIN;
+
+		const last = layouts[layouts.length - 1]!;
+
+		return last.y + last.height + CTextEdit.#TEXT_MARGIN;
 	}
 
 	#updateContentGeometry(): void {
@@ -868,33 +1128,57 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	#ensureCursorVisible(): void {
-		const metrics = new CFontMetrics(this.font());
-
 		const position = this.#lineColumnAt(
 			this.#m_cursorPosition
 		);
 
-		const line = this.#lines()[position.line]!;
+		const line = this.#lineLayouts()[position.line]!;
 
-		const cursorX = CTextEdit.#TEXT_MARGIN + metrics.textWidth(line.text.slice(0, position.column));
+		const cursorX = CTextEdit.#TEXT_MARGIN
+			+ this.#textWidth(
+				line.start,
+				position.column
+			);
 
-		const cursorY = CTextEdit.#TEXT_MARGIN + position.line * CTextEdit.#LINE_HEIGHT;
+		const cursorY = line.y;
+		const cursorHeight = line.height;
 
 		let scrollX = this.scrollX();
 		let scrollY = this.scrollY();
 
 		if (cursorX < scrollX + CTextEdit.#TEXT_MARGIN)
-			scrollX = Math.max(0, cursorX - CTextEdit.#TEXT_MARGIN);
-		else if (cursorX > scrollX + this.viewport().width() - CTextEdit.#TEXT_MARGIN) {
-			scrollX = cursorX - this.viewport().width() + CTextEdit.#TEXT_MARGIN;
+			scrollX = Math.max(
+				0,
+				cursorX - CTextEdit.#TEXT_MARGIN
+			);
+		else if (
+			cursorX >
+			scrollX
+				+ this.viewport().width()
+				- CTextEdit.#TEXT_MARGIN
+		) {
+			scrollX =
+				cursorX
+					- this.viewport().width()
+					+ CTextEdit.#TEXT_MARGIN;
 		}
 
 		if (cursorY < scrollY + CTextEdit.#TEXT_MARGIN)
-			scrollY = Math.max(0, cursorY - CTextEdit.#TEXT_MARGIN);
-		else if (cursorY + CTextEdit.#LINE_HEIGHT > scrollY + this.viewport().height() 
-					- CTextEdit.#TEXT_MARGIN) {
-			scrollY = cursorY + CTextEdit.#LINE_HEIGHT - this.viewport().height()
-				+ CTextEdit.#TEXT_MARGIN;
+			scrollY = Math.max(
+				0,
+				cursorY - CTextEdit.#TEXT_MARGIN
+			);
+		else if (
+			cursorY + cursorHeight >
+			scrollY
+				+ this.viewport().height()
+				- CTextEdit.#TEXT_MARGIN
+		) {
+			scrollY =
+				cursorY
+					+ cursorHeight
+					- this.viewport().height()
+					+ CTextEdit.#TEXT_MARGIN;
 		}
 
 		this.scrollTo(scrollX, scrollY);
@@ -919,11 +1203,130 @@ export class CTextEdit extends CScrollArea {
 		this.#startCursorBlink();
 	}
 
+	#textWidth(start: number, length: number): number {
+		if (length <= 0)
+			return 0;
+
+		const end = start + length;
+		const text = this.#m_document.toPlainText();
+		let width = 0;
+
+		for (const range of this.#m_document.formatRanges()) {
+			const rangeStart = Math.max(start, range.start);
+			const rangeEnd = Math.min(
+				end,
+				range.start + range.length
+			);
+
+			if (rangeStart >= rangeEnd)
+				continue;
+
+			const font = this.#fontForFormat(range.format);
+			const metrics = new CFontMetrics(font);
+
+			width += metrics.textWidth(
+				text.slice(rangeStart, rangeEnd)
+			);
+		}
+
+		return width;
+	}
+
+	#fontForFormat(format: CTextCharFormat): string {
+		let font = this.font();
+
+		if (format.fontSize() !== null) {
+			font = font.replace(
+				/(\d+(?:\.\d+)?)px/,
+				`${format.fontSize()}px`
+			);
+		}
+
+		if (format.fontFamily() !== null) {
+			const family = format.fontFamily()!;
+			font = font.replace(
+				/(\d+(?:\.\d+)?)px(?:\/[^\s]+)?\s+.+$/,
+				(_match, size: string) =>
+					`${size}px ${family}`
+			);
+		}
+
+		const prefixes: string[] = [];
+
+		if (format.fontItalic())
+			prefixes.push("italic");
+
+		if (format.fontBold())
+			prefixes.push("bold");
+
+		return prefixes.length > 0
+			? `${prefixes.join(" ")} ${font}`
+			: font;
+	}
+
+	#modifyCurrentFormats(
+		modify: (format: CTextCharFormat) => void
+	): void {
+		if (!this.hasSelection()) {
+			const format = this.#m_currentCharFormat.clone();
+			modify(format);
+			this.#m_currentCharFormat = format;
+			return;
+		}
+
+		this.#pushUndoState();
+
+		const start = this.selectionStart();
+		const end = this.selectionEnd();
+
+		for (const range of this.#m_document.formatRanges()) {
+			const rangeStart = Math.max(start, range.start);
+			const rangeEnd = Math.min(
+				end,
+				range.start + range.length
+			);
+
+			if (rangeStart >= rangeEnd)
+				continue;
+
+			const format = range.format.clone();
+			modify(format);
+
+			this.#m_document.setCharFormat(
+				rangeStart,
+				rangeEnd - rangeStart,
+				format
+			);
+		}
+
+		this.#m_currentCharFormat =
+			this.#m_document.charFormatAt(start);
+
+		this.textChanged.emit();
+		this.#updateContentGeometry();
+		this.#m_contentWidget.update();
+	}
+
+	#syncCurrentCharFormatFromCursor(): void {
+		if (this.#m_document.length() === 0) {
+			this.#m_currentCharFormat = new CTextCharFormat();
+			return;
+		}
+
+		const position = this.#m_cursorPosition > 0
+			? this.#m_cursorPosition - 1
+			: 0;
+
+		this.#m_currentCharFormat =
+			this.#m_document.charFormatAt(position);
+	}
+
 	#currentState(): CTextEditState {
 		return {
-			text: this.#m_text,
+			document: this.#m_document.clone(),
 			cursorPosition: this.#m_cursorPosition,
-			selectionAnchor: this.#m_selectionAnchor
+			selectionAnchor: this.#m_selectionAnchor,
+			currentCharFormat: this.#m_currentCharFormat.clone()
 		};
 	}
 
@@ -946,11 +1349,13 @@ export class CTextEdit extends CScrollArea {
 		this.#m_restoringHistory = true;
 
 		const hadSelection = this.hasSelection();
-		const textChanged = this.#m_text !== state.text;
+		const textChanged =
+			this.#m_document.toPlainText() !== state.document.toPlainText();
 
-		this.#m_text = state.text;
+		this.#m_document = state.document.clone();
 		this.#m_cursorPosition = state.cursorPosition;
 		this.#m_selectionAnchor = state.selectionAnchor;
+		this.#m_currentCharFormat = state.currentCharFormat.clone();
 
 		this.#updateContentGeometry();
 		this.#ensureCursorVisible();
@@ -975,7 +1380,14 @@ export class CTextEdit extends CScrollArea {
 		const start = hadSelection? this.selectionStart() : this.#m_cursorPosition;
 		const end = hadSelection? this.selectionEnd() : this.#m_cursorPosition;
 
-		this.#m_text = this.#m_text.slice(0, start) + text + this.#m_text.slice(end);
+		if (hadSelection)
+			this.#m_document.remove(start, end - start);
+
+		this.#m_document.insert(
+			start,
+			text,
+			this.#m_currentCharFormat
+		);
 		this.#m_cursorPosition = start + text.length;
 		this.#m_selectionAnchor = this.#m_cursorPosition;
 		this.textChanged.emit();
