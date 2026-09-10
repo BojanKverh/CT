@@ -1,10 +1,14 @@
 import { CSize } from "../geometry/CSize.js";
 import { CWidget } from "./CWidget.js";
 import { CMenuBar } from "./CMenuBar.js";
-import { CToolBar } from "./CToolBar.js";
+import { CToolBar, CToolBarArea } from "./CToolBar.js";
 import { CStatusBar } from "./CStatusBar.js";
 import { CDockArea, CDockWidgetArea } from "./CDockArea.js";
 import { CDockWidget } from "./CDockWidget.js";
+import { COrientation } from "../gui/COrientation.js";
+import type { CPainter } from "../painting/CPainter.js";
+import { CRect } from "../geometry/CRect.js";
+import { CPaletteColorRole } from "../gui/CPalette.js";
 
 export interface CMainWindowDockState {
 	id: string;
@@ -21,25 +25,38 @@ export interface CMainWindowDockState {
 
 export interface CMainWindowToolBarState {
 	id: string;
+	area: CToolBarArea;
 	index: number;
 	visible: boolean;
 }
 
 export interface CMainWindowState {
-	version: 1;
+	version: 2;
 	dockWidgets: CMainWindowDockState[];
 	toolBars: CMainWindowToolBarState[];
 	menuBarVisible: boolean | null;
 	statusBarVisible: boolean | null;
 }
 
+type CToolBarItem = {
+	area: CToolBarArea;
+	toolBar: CToolBar;
+	floating: boolean;
+};
+
+type CToolBarPreview = {
+	toolBar: CToolBar;
+	area: CToolBarArea;
+};
+
 export class CMainWindow extends CWidget {
 	#m_menuBar: CMenuBar | null = null;
-	#m_toolBars: CToolBar[] = [];
+	#m_toolBars: CToolBarItem[] = [];
 	#m_dockWidgets: CDockWidget[] = [];
 	#m_statusBar: CStatusBar | null = null;
 	#m_dockArea: CDockArea;
 	#m_beforeUnloadHandler: () => void;
+	#m_toolBarPreview: CToolBarPreview | null = null;
 	static readonly WorkspaceStorageKey: string = "ct.CMainWindow.workspace";
 
 	constructor(parent: CWidget | null = null) {
@@ -79,12 +96,34 @@ export class CMainWindow extends CWidget {
 		this.restoreWorkspace();
 	}
 
-	addToolBar(toolBar: CToolBar): void {
-		if (this.#m_toolBars.includes(toolBar))
+	addToolBar(toolBar: CToolBar): void;
+	addToolBar(area: CToolBarArea, toolBar: CToolBar): void;
+
+	addToolBar(
+		areaOrToolBar: CToolBarArea | CToolBar,
+		maybeToolBar?: CToolBar
+	): void {
+		const area = areaOrToolBar instanceof CToolBar
+			? CToolBarArea.Top
+			: areaOrToolBar;
+
+		const toolBar = areaOrToolBar instanceof CToolBar
+			? areaOrToolBar
+			: maybeToolBar!;
+
+		if (this.#m_toolBars.some(item => item.toolBar === toolBar))
 			return;
 
 		toolBar.setParent(this);
-		this.#m_toolBars.push(toolBar);
+		toolBar.setMainWindow(this);
+		toolBar.setFloatingState(false);
+		this.#setToolBarOrientation(toolBar, area);
+
+		this.#m_toolBars.push({
+			area,
+			toolBar,
+			floating: false
+		});
 
 		if (toolBar.workspaceId() === "")
 			toolBar.setWorkspaceId(`toolbar-${this.#m_toolBars.length - 1}`);
@@ -95,21 +134,201 @@ export class CMainWindow extends CWidget {
 	}
 
 	removeToolBar(toolBar: CToolBar): void {
-		const index = this.#m_toolBars.indexOf(toolBar);
+		const index = this.#m_toolBars.findIndex(
+			item => item.toolBar === toolBar
+		);
 
 		if (index === -1)
 			return;
 
 		this.#m_toolBars.splice(index, 1);
+		toolBar.setMainWindow(null);
+		toolBar.setFloatingState(false);
 		toolBar.setParent(null);
 
 		this.#updateGeometry();
 		this.update();
 	}
 
-	toolBars(): readonly CToolBar[] {
-		return this.#m_toolBars;
+	toolBars(area?: CToolBarArea): readonly CToolBar[] {
+		return this.#m_toolBars
+			.filter(item => area === undefined || item.area === area)
+			.map(item => item.toolBar);
 	}
+
+	toolBarArea(toolBar: CToolBar): CToolBarArea | null {
+		return this.#m_toolBars.find(
+			item => item.toolBar === toolBar
+		)?.area ?? null;
+	}
+
+	moveToolBar(
+		toolBar: CToolBar,
+		area: CToolBarArea,
+		index?: number
+	): void {
+		const oldIndex = this.#m_toolBars.findIndex(
+			item => item.toolBar === toolBar
+		);
+
+		if (oldIndex === -1)
+			return;
+
+		const removed = this.#m_toolBars.splice(oldIndex, 1);
+		const item = removed[0];
+
+		if (item === undefined)
+			return;
+
+		item.area = area;
+		item.floating = false;
+		toolBar.setFloatingState(false);
+		this.#setToolBarOrientation(toolBar, area);
+
+		if (index === undefined) {
+			this.#m_toolBars.push(item);
+		} else {
+			const areaIndices = this.#m_toolBars
+				.map((candidate, i) => ({candidate, i}))
+				.filter(entry => entry.candidate.area === area)
+				.map(entry => entry.i);
+
+			const clampedIndex = Math.max(
+				0,
+				Math.min(index, areaIndices.length)
+			);
+
+			let insertionIndex: number;
+
+			if (clampedIndex === areaIndices.length) {
+				insertionIndex = areaIndices.length === 0
+					? this.#m_toolBars.length
+					: areaIndices[areaIndices.length - 1]! + 1;
+			} else {
+				insertionIndex = areaIndices[clampedIndex]!;
+			}
+
+			this.#m_toolBars.splice(insertionIndex, 0, item);
+		}
+
+		this.#updateGeometry();
+		this.update();
+	}
+
+
+
+	beginToolBarDrag(toolBar: CToolBar): void {
+		const item = this.#m_toolBars.find(
+			item => item.toolBar === toolBar
+		);
+
+		if (item === undefined || item.floating)
+			return;
+
+		const x = toolBar.x();
+		const y = toolBar.y();
+		const hint = toolBar.sizeHint();
+
+		item.floating = true;
+		toolBar.setFloatingState(true);
+		toolBar.setParent(this);
+		toolBar.setGeometry(
+			x,
+			y,
+			hint.width(),
+			hint.height()
+		);
+
+		this.#updateGeometry();
+		this.update();
+	}
+
+	dockToolBar(
+		toolBar: CToolBar,
+		area: CToolBarArea,
+		index?: number
+	): void {
+		const item = this.#m_toolBars.find(
+			item => item.toolBar === toolBar
+		);
+
+		if (item === undefined)
+			return;
+
+		item.floating = false;
+		toolBar.setFloatingState(false);
+
+		this.moveToolBar(toolBar, area, index);
+	}
+
+	toolBarAreaAt(
+		canvasX: number,
+		canvasY: number
+	): CToolBarArea | null {
+		const pos = this.mapFromCanvas(canvasX, canvasY);
+
+		if (
+			pos.x() < 0 ||
+			pos.y() < 0 ||
+			pos.x() >= this.width() ||
+			pos.y() >= this.height()
+		)
+			return null;
+
+		const marginX = Math.min(64, this.width() / 4);
+		const marginY = Math.min(64, this.height() / 4);
+
+		if (pos.x() < marginX)
+			return CToolBarArea.Left;
+
+		if (pos.x() >= this.width() - marginX)
+			return CToolBarArea.Right;
+
+		if (pos.y() < marginY)
+			return CToolBarArea.Top;
+
+		if (pos.y() >= this.height() - marginY)
+			return CToolBarArea.Bottom;
+
+		return null;
+	}
+
+
+	updateToolBarPreview(
+		toolBar: CToolBar,
+		canvasX: number,
+		canvasY: number
+	): void {
+		const area = this.toolBarAreaAt(canvasX, canvasY);
+
+		if (area === null) {
+			this.clearToolBarPreview();
+			return;
+		}
+
+		if (
+			this.#m_toolBarPreview?.toolBar === toolBar &&
+			this.#m_toolBarPreview.area === area
+		)
+			return;
+
+		this.#m_toolBarPreview = {
+			toolBar,
+			area
+		};
+
+		this.update();
+	}
+
+	clearToolBarPreview(): void {
+		if (this.#m_toolBarPreview === null)
+			return;
+
+		this.#m_toolBarPreview = null;
+		this.update();
+	}
+
+
 
 	statusBar(): CStatusBar | null {
 		return this.#m_statusBar;
@@ -271,7 +490,7 @@ export class CMainWindow extends CWidget {
 
 	saveState(): string {
 		const state: CMainWindowState = {
-			version: 1,
+			version: 2,
 			dockWidgets: this.#m_dockWidgets
 				.filter(dock => dock.workspaceId() !== "")
 				.map(dock => ({
@@ -287,11 +506,12 @@ export class CMainWindow extends CWidget {
 					height: dock.height()
 				})),
 			toolBars: this.#m_toolBars
-				.filter(toolBar => toolBar.workspaceId() !== "")
-				.map((toolBar, index) => ({
-					id: toolBar.workspaceId(),
+				.filter(toolBar => toolBar.toolBar.workspaceId() !== "")
+				.map((item, index) => ({
+					id: item.toolBar.workspaceId(),
+					area: item.area,
 					index,
-					visible: toolBar.isVisible()
+					visible: item.toolBar.isVisible()
 				})),
 			menuBarVisible: this.#m_menuBar?.isVisible() ?? null,
 			statusBarVisible: this.#m_statusBar?.isVisible() ?? null
@@ -309,7 +529,7 @@ export class CMainWindow extends CWidget {
 			return false;
 		}
 
-		if (state.version !== 1 ||
+		if (state.version !== 2 ||
 			!Array.isArray(state.dockWidgets) ||
 			!Array.isArray(state.toolBars)) {
 			return false;
@@ -359,34 +579,46 @@ export class CMainWindow extends CWidget {
 
 		const toolBars = new Map(
 			this.#m_toolBars
-				.filter(toolBar => toolBar.workspaceId() !== "")
-				.map(toolBar => [toolBar.workspaceId(), toolBar])
+				.filter(item => item.toolBar.workspaceId() !== "")
+				.map(item => [item.toolBar.workspaceId(), item.toolBar])
 		);
 
-		const ordered = [...state.toolBars]
-			.sort((a, b) => a.index - b.index)
-			.map(saved => toolBars.get(saved.id))
-			.filter((toolBar): toolBar is CToolBar =>
-				toolBar !== undefined
-			);
+		const savedToolBars: CToolBarItem[] = [];
 
-		const orderedSet = new Set(ordered);
-		this.#m_toolBars = [
-			...ordered,
-			...this.#m_toolBars.filter(toolBar => !orderedSet.has(toolBar))
-		];
-
-		for (const saved of state.toolBars) {
+		for (const saved of [...state.toolBars].sort(
+			(a, b) => a.index - b.index
+		)) {
 			const toolBar = toolBars.get(saved.id);
 
 			if (toolBar === undefined)
 				continue;
+
+			toolBar.setMainWindow(this);
+			toolBar.setFloatingState(false);
+			this.#setToolBarOrientation(toolBar, saved.area);
+
+			savedToolBars.push({
+				area: saved.area,
+				toolBar,
+				floating: false
+			});
 
 			if (saved.visible)
 				toolBar.show();
 			else
 				toolBar.hide();
 		}
+
+		const restored = new Set(
+			savedToolBars.map(item => item.toolBar)
+		);
+
+		this.#m_toolBars = [
+			...savedToolBars,
+			...this.#m_toolBars.filter(
+				item => !restored.has(item.toolBar)
+			)
+		];
 
 		if (this.#m_menuBar !== null &&
 			state.menuBarVisible !== null) {
@@ -415,6 +647,49 @@ export class CMainWindow extends CWidget {
 			storage.removeItem(CMainWindow.WorkspaceStorageKey);
 	}
 
+
+	override render(painter: CPainter): void {
+		super.render(painter);
+
+		if (
+			this.#m_toolBarPreview === null ||
+			!this.isVisible()
+		)
+			return;
+
+		const rect = this.#toolBarPreviewRect(
+			this.#m_toolBarPreview.toolBar,
+			this.#m_toolBarPreview.area
+		);
+
+		painter.save();
+
+		try {
+			painter.translate(this.x(), this.y());
+			painter.clipRect(this.rect());
+
+			const color = this.palette().color(
+				CPaletteColorRole.Highlight
+			);
+
+			color.setAlpha(64);
+			painter.setBrush(color.toCss());
+			painter.fillRect(rect);
+
+			color.setAlpha(230);
+			painter.setPen(color.toCss());
+			painter.drawRect(
+				rect.x(),
+				rect.y(),
+				rect.width(),
+				rect.height()
+			);
+		} finally {
+			painter.restore();
+		}
+	}
+
+
 	override setGeometry(x: number, y: number, width: number, height: number
 	): void {
 		super.setGeometry(x, y, width, height);
@@ -429,30 +704,54 @@ export class CMainWindow extends CWidget {
 	override sizeHint(): CSize {
 		const center = this.#m_dockArea.sizeHint();
 
-		let width = center.width();
-		let height = center.height();
+		let centerWidth = center.width();
+		let centerHeight = center.height();
+		let topBottomHeight = 0;
+		let horizontalToolBarWidth = 0;
+		let sideWidth = 0;
+		let verticalToolBarHeight = 0;
 
-		if (this.#m_menuBar !== null && this.#m_menuBar.isVisible())
-			height += this.#m_menuBar.sizeHint().height();
-
-		for (const toolBar of this.#m_toolBars) {
-			if (!toolBar.isVisible())
+		for (const item of this.#m_toolBars) {
+			if (!item.toolBar.isVisible() || item.floating)
 				continue;
 
-			width = Math.max(width, toolBar.sizeHint().width());
-			height += toolBar.sizeHint().height();
+			if (
+				item.area === CToolBarArea.Top ||
+				item.area === CToolBarArea.Bottom
+			) {
+				topBottomHeight += item.toolBar.sizeHint().height();
+				horizontalToolBarWidth = Math.max(
+					horizontalToolBarWidth,
+					item.toolBar.sizeHint().width()
+				);
+			} else {
+				sideWidth += item.toolBar.sizeHint().width();
+				verticalToolBarHeight = Math.max(
+					verticalToolBarHeight,
+					item.toolBar.sizeHint().height()
+				);
+			}
+		}
+
+		centerWidth += sideWidth;
+		centerHeight = Math.max(centerHeight, verticalToolBarHeight);
+
+		let width = Math.max(centerWidth, horizontalToolBarWidth);
+		let height = centerHeight + topBottomHeight;
+
+		if (this.#m_menuBar !== null && this.#m_menuBar.isVisible()) {
+			width = Math.max(width, this.#m_menuBar.sizeHint().width());
+			height += this.#m_menuBar.sizeHint().height();
 		}
 
 		if (this.#m_statusBar !== null && this.#m_statusBar.isVisible()) {
-			width = Math.max(
-				width,
-				this.#m_statusBar.sizeHint().width()
-			);
+			width = Math.max(width, this.#m_statusBar.sizeHint().width());
 			height += this.#m_statusBar.sizeHint().height();
 		}
 
 		return new CSize(width, height);
 	}
+
 
 	protected override childVisibilityChanged(
 		_child: CWidget
@@ -462,7 +761,9 @@ export class CMainWindow extends CWidget {
 	}
 
 	#updateGeometry(): void {
+		let left = 0;
 		let top = 0;
+		let right = this.width();
 		let bottom = this.height();
 
 		if (this.#m_menuBar !== null && this.#m_menuBar.isVisible()) {
@@ -471,23 +772,197 @@ export class CMainWindow extends CWidget {
 			top += height;
 		}
 
-		for (const toolBar of this.#m_toolBars) {
-			if (!toolBar.isVisible())
-				continue;
-
-			const height = toolBar.sizeHint().height();
-			toolBar.setGeometry(0, top, this.width(), height);
-			top += height;
-		}
-
 		if (this.#m_statusBar !== null && this.#m_statusBar.isVisible()) {
 			const height = this.#m_statusBar.sizeHint().height();
 			bottom -= height;
-			this.#m_statusBar.setGeometry(0, bottom, this.width(), height);
+			this.#m_statusBar.setGeometry(
+				0,
+				bottom,
+				this.width(),
+				height
+			);
 		}
 
-		this.#m_dockArea.setGeometry(0, top, this.width(), Math.max(0, bottom - top));
+		for (const item of this.#m_toolBars) {
+			if (
+				!item.toolBar.isVisible() ||
+				item.floating ||
+				item.area !== CToolBarArea.Top
+			)
+				continue;
+
+			const height = item.toolBar.sizeHint().height();
+			item.toolBar.setGeometry(left, top, Math.max(0, right - left), height);
+			top += height;
+		}
+
+		for (const item of this.#m_toolBars) {
+			if (
+				!item.toolBar.isVisible() ||
+				item.floating ||
+				item.area !== CToolBarArea.Bottom
+			)
+				continue;
+
+			const height = item.toolBar.sizeHint().height();
+			bottom -= height;
+			item.toolBar.setGeometry(left, bottom, Math.max(0, right - left), height);
+		}
+
+		for (const item of this.#m_toolBars) {
+			if (
+				!item.toolBar.isVisible() ||
+				item.floating ||
+				item.area !== CToolBarArea.Left
+			)
+				continue;
+
+			const width = item.toolBar.sizeHint().width();
+			item.toolBar.setGeometry(left, top, width, Math.max(0, bottom - top));
+			left += width;
+		}
+
+		for (const item of this.#m_toolBars) {
+			if (
+				!item.toolBar.isVisible() ||
+				item.floating ||
+				item.area !== CToolBarArea.Right
+			)
+				continue;
+
+			const width = item.toolBar.sizeHint().width();
+			right -= width;
+			item.toolBar.setGeometry(right, top, width, Math.max(0, bottom - top));
+		}
+
+		this.#m_dockArea.setGeometry(
+			left,
+			top,
+			Math.max(0, right - left),
+			Math.max(0, bottom - top)
+		);
 	}
+
+
+	#toolBarPreviewRect(
+		toolBar: CToolBar,
+		area: CToolBarArea
+	): CRect {
+		let left = 0;
+		let top = 0;
+		let right = this.width();
+		let bottom = this.height();
+
+		if (this.#m_menuBar !== null && this.#m_menuBar.isVisible())
+			top += this.#m_menuBar.sizeHint().height();
+
+		if (this.#m_statusBar !== null && this.#m_statusBar.isVisible())
+			bottom -= this.#m_statusBar.sizeHint().height();
+
+		for (const item of this.#m_toolBars) {
+			if (
+				item.toolBar === toolBar ||
+				!item.toolBar.isVisible() ||
+				item.floating
+			)
+				continue;
+
+			switch (item.area) {
+			case CToolBarArea.Top:
+				top += item.toolBar.sizeHint().height();
+				break;
+
+			case CToolBarArea.Bottom:
+				bottom -= item.toolBar.sizeHint().height();
+				break;
+
+			case CToolBarArea.Left:
+				left += item.toolBar.sizeHint().width();
+				break;
+
+			case CToolBarArea.Right:
+				right -= item.toolBar.sizeHint().width();
+				break;
+			}
+		}
+
+		const horizontal =
+			area === CToolBarArea.Top ||
+			area === CToolBarArea.Bottom;
+
+		const extent = toolBar.extent();
+
+		switch (area) {
+		case CToolBarArea.Top: {
+			const height = Math.min(
+				Math.max(0, bottom - top),
+				extent
+			);
+
+			return new CRect(
+				left,
+				top,
+				Math.max(0, right - left),
+				height
+			);
+		}
+
+		case CToolBarArea.Bottom: {
+			const height = Math.min(
+				Math.max(0, bottom - top),
+				extent
+			);
+
+			return new CRect(
+				left,
+				bottom - height,
+				Math.max(0, right - left),
+				height
+			);
+		}
+
+		case CToolBarArea.Left: {
+			const width = Math.min(
+				Math.max(0, right - left),
+				extent
+			);
+
+			return new CRect(
+				left,
+				top,
+				width,
+				Math.max(0, bottom - top)
+			);
+		}
+
+		case CToolBarArea.Right: {
+			const width = Math.min(
+				Math.max(0, right - left),
+				extent
+			);
+
+			return new CRect(
+				right - width,
+				top,
+				width,
+				Math.max(0, bottom - top)
+			);
+		}
+		}
+	}
+
+	#setToolBarOrientation(
+		toolBar: CToolBar,
+		area: CToolBarArea
+	): void {
+		toolBar.setOrientation(
+			area === CToolBarArea.Left ||
+			area === CToolBarArea.Right
+				? COrientation.Vertical
+				: COrientation.Horizontal
+		);
+	}
+
 
 	saveWorkspace(): void {
 		const storage = this.#workspaceStorage();

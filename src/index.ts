@@ -47,7 +47,7 @@ export { CComboBox } from "./widgets/CComboBox.js";
 export { CFormLayout } from "./layouts/CFormLayout.js";
 export { CToolButton } from "./widgets/CToolButton.js";
 export { CToolButtonStyle } from "./gui/CToolButtonStyle.js"
-export { CToolBar } from "./widgets/CToolBar.js";
+export { CToolBar, CToolBarArea } from "./widgets/CToolBar.js";
 export { CStatusBar } from "./widgets/CStatusBar.js";
 export { CDockArea, CDockWidgetArea } from "./widgets/CDockArea.js";
 export { CDockWidget } from "./widgets/CDockWidget.js";

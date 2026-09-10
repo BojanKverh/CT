@@ -301,8 +301,10 @@ describe("CMainWindow", () => {
 		expect(second.y()).toBe(
 			first.sizeHint().height()
 		);
-		expect(central.y()).toBe(
-			first.sizeHint().height() +
+		expect(central.y()).toBe(0);
+		expect(central.height()).toBe(
+			600 -
+			first.sizeHint().height() -
 			second.sizeHint().height()
 		);
 	});

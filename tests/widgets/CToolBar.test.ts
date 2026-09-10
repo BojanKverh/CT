@@ -140,7 +140,9 @@ describe("CToolBar", () => {
 		toolBar.setGeometry(10, 20, 200, 36);
 		const button = toolBar.addAction(action);
 
-		expect(button.x()).toBe(CToolBar.Margin);
+		expect(button.x()).toBe(
+			CToolBar.Margin + CToolBar.GripExtent
+		);
 		expect(button.y()).toBe(CToolBar.Margin);
 		expect(button.height()).toBe(
 			36 - 2 * CToolBar.Margin
@@ -163,10 +165,15 @@ describe("CToolBar", () => {
 		toolBar.addWidget(first);
 		toolBar.addWidget(second);
 
-		expect(first.x()).toBe(CToolBar.Margin);
+		expect(first.x()).toBe(
+			CToolBar.Margin + CToolBar.GripExtent
+		);
 		expect(first.width()).toBe(30);
 		expect(second.x()).toBe(
-			CToolBar.Margin + 30 + CToolBar.Spacing
+			CToolBar.Margin +
+			CToolBar.GripExtent +
+			30 +
+			CToolBar.Spacing
 		);
 		expect(second.width()).toBe(30);
 	});
@@ -177,7 +184,9 @@ describe("CToolBar", () => {
 		toolBar.setGeometry(0, 0, 200, 36);
 		const separator = toolBar.addSeparator();
 
-		expect(separator.x()).toBe(CToolBar.Margin);
+		expect(separator.x()).toBe(
+			CToolBar.Margin + CToolBar.GripExtent
+		);
 		expect(separator.y()).toBe(CToolBar.Margin);
 		expect(separator.width()).toBe(
 			CToolBar.SeparatorExtent
@@ -202,7 +211,9 @@ describe("CToolBar", () => {
 		toolBar.addWidget(widget);
 
 		expect(widget.x()).toBe(CToolBar.Margin);
-		expect(widget.y()).toBe(CToolBar.Margin);
+		expect(widget.y()).toBe(
+			CToolBar.Margin + CToolBar.GripExtent
+		);
 		expect(widget.width()).toBe(
 			48 - 2 * CToolBar.Margin
 		);
@@ -217,7 +228,9 @@ describe("CToolBar", () => {
 		const separator = toolBar.addSeparator();
 
 		expect(separator.x()).toBe(CToolBar.Margin);
-		expect(separator.y()).toBe(CToolBar.Margin);
+		expect(separator.y()).toBe(
+			CToolBar.Margin + CToolBar.GripExtent
+		);
 		expect(separator.width()).toBe(
 			48 - 2 * CToolBar.Margin
 		);
@@ -245,7 +258,9 @@ describe("CToolBar", () => {
 		toolBar.setOrientation(COrientation.Vertical);
 
 		expect(widget.x()).toBe(CToolBar.Margin);
-		expect(widget.y()).toBe(CToolBar.Margin);
+		expect(widget.y()).toBe(
+			CToolBar.Margin + CToolBar.GripExtent
+		);
 		expect(widget.width()).toBe(40);
 		expect(widget.height()).toBe(22);
 	});

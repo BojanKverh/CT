@@ -3,7 +3,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
 	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
 	CTabWidget, CFrame, CFrameShadow, CFrameShape, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
-	CToolBar, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
+	CToolBar, CToolBarArea, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
 	CColorDialog, CSplitter, CSizeGrip, CToolBox, CCalendarWidget, CDateEdit, CTimeEdit, CDateTimeEdit,
 	CTextEdit, CKeySequenceEdit, CListView, CModelIndex, CAbstractListModel, CTableView, CAbstractTableModel,
 	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget, CTableWidgetItem, CTableWidget, 
@@ -491,7 +491,8 @@ but.clicked.connect(async () => {
 		const saveAction = new CAction();
 		const pixmap = await CPixmap.fromUrl("/icons/save.png");
 		const icon = new CIcon(pixmap);
-		saveAction.setIcon(icon);toolBar.addAction(newAction);
+		saveAction.setIcon(icon);
+		toolBar.addAction(newAction);
 
 		toolBar.addAction(openAction);
 		toolBar.addSeparator();
@@ -1151,6 +1152,15 @@ floatButton.setGeometry(10, 45, 60, 30);
 dock.setWidget(dockContent);
 
 mainWindow.addDockWidget(CDockWidgetArea.Right, dock);
+const toolBar1 = new CToolBar();
+//toolBar1.setGeometry(0, 0, 500, 120);
+toolBar1.setExtent(45);
+
+const newAction = new CAction("New");
+toolBar1.addAction(newAction);
+const openAction = new CAction("Open");
+toolBar1.addAction(openAction);
+mainWindow.addToolBar(CToolBarArea.Top, toolBar1);
 
 floatButton.clicked.connect(() => {
 	mainWindow.setDockWidgetFloating(dock, !dock.isFloating());
