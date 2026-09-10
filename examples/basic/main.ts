@@ -9,7 +9,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget, CTableWidgetItem, CTableWidget, 
 	CContextMenuEvent, CDragEnterEvent, CDragMoveEvent, CDragLeaveEvent, CDropEvent,
 	CDrag, CMimeData, CDropAction, CIcon, CDockWidget, CDockWidgetArea,
-	CCursorShape, CDial
+	CCursorShape, CDial, CTextBrowser
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -1178,6 +1178,10 @@ dial.setValue(50);
 dial.valueChanged.connect((value) => {
 	console.log("Dial value:", value);
 });
+
+const tb = new CTextBrowser(parent);
+tb.setGeometry(460, 480, 200, 150);
+tb.setPlainText("This is CTextBrowser...\nHell yeah!");
 
 app.startUpdates();
 

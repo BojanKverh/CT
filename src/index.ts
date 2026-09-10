@@ -94,3 +94,4 @@ export { CStyleOptionPushButton } from "./gui/CStyleOptionPushButton.js";
 export { CStyleOptionComboBox } from "./gui/CStyleOptionComboBox.js";
 export { CStyleOptionLineEdit } from "./gui/CStyleOptionLineEdit.js";
 export { CDial } from "./widgets/CDial.js";
+export { CTextBrowser } from "./widgets/CTextBrowser.js";
