@@ -3,33 +3,46 @@ import { CWidget } from "../widgets/CWidget.js";
 import { CBoxLayoutItem } from "./CBoxLayoutItem.js";
 import { CSize } from "../geometry/CSize.js";
 
+/**
+ * Direction in which a box layout arranges its items.
+ */
 export enum CBoxLayoutDirection {
+	/** Arrange items horizontally from left to right. */
 	LeftToRight,
+	/** Arrange items vertically from top to bottom. */
 	TopToBottom
 }
 
+/**
+ * Layout that arranges widgets and stretches in a single row or column.
+ */
 export class CBoxLayout extends CLayout {
 	#m_direction: CBoxLayoutDirection;
 
+	/** Creates a box layout using the specified direction. */
 	constructor(direction: CBoxLayoutDirection) {
 		super();
 		this.#m_direction = direction;
 	}
 
+	/** Returns the layout direction. */
 	direction(): CBoxLayoutDirection {
 		return this.#m_direction;
 	}
 
+	/** Adds a widget with an optional stretch factor. */
 	override addWidget(widget: CWidget, stretch = 0): void {
 		this.addItem(new CBoxLayoutItem(widget, stretch));
 	}
 
+	/** Adds all widgets from another layout with an optional stretch factor. */
 	addLayout(layout: CLayout, stretch = 0): void {
 		const widget = new CWidget();
 		widget.setLayout(layout);
 		this.addWidget(widget, stretch);
 	}
 
+	/** Returns the preferred size required by the arranged items. */
 	override sizeHint(): CSize {
 		const count = this.count();
 		if (count === 0)
@@ -89,6 +102,7 @@ export class CBoxLayout extends CLayout {
 		}
 	}
 
+	/** Recalculates and applies item geometries. */
 	override update(): void {
 		const parent = this.parentWidget();
 

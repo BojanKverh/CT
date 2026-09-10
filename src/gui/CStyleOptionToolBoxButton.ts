@@ -2,11 +2,25 @@ import { CStyleOptionButton } from "./CStyleOptionButton.js";
 import { CStyleState } from "./CStyleOption.js";
 import type { CToolBoxButton } from "../widgets/CToolBoxButton.js";
 
+/**
+ * Contains style information used to render a tool box button.
+ */
 export class CStyleOptionToolBoxButton extends CStyleOptionButton {
-	text = "";
-	current = false;
+		/**
+	 * Returns or updates the text value.
+	 */
+text = "";
+		/**
+	 * Returns or updates the current value.
+	 */
+current = false;
 
-	constructor(other: CStyleOptionToolBoxButton | null = null) {
+		/**
+	 * Creates a new CStyleOptionToolBoxButton instance.
+	 *
+	 * @param other Other.
+	 */
+constructor(other: CStyleOptionToolBoxButton | null = null) {
 		super(other);
 
 		if (other) {
@@ -15,7 +29,12 @@ export class CStyleOptionToolBoxButton extends CStyleOptionButton {
 		}
 	}
 
-	initFromToolBoxButton(button: CToolBoxButton): void {
+		/**
+	 * Initializes this style option from the specified tool box button.
+	 *
+	 * @param button Button.
+	 */
+initFromToolBoxButton(button: CToolBoxButton): void {
 		this.initFromButton(button);
 
 		this.text = button.text();

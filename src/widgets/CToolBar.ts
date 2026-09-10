@@ -9,10 +9,15 @@ import { CStyleOptionToolBar } from "../gui/CStyleOptionToolBar.js";
 import { CMouseButton, type CMouseEvent } from "../events/CMouseEvent.js";
 import type { CMainWindow } from "./CMainWindow.js";
 
+/** Defines the available tool bar area values. */
 export enum CToolBarArea {
+	/** Represents left. */
 	Left,
+	/** Represents right. */
 	Right,
+	/** Represents top. */
 	Top,
+	/** Represents bottom. */
 	Bottom
 }
 
@@ -78,6 +83,7 @@ class CToolBarSeparator extends CWidget {
 	}
 }
 
+/** Implements the tool bar widget. */
 export class CToolBar extends CWidget {
 	static readonly DefaultExtent = 36;
 	static readonly Spacing = 2;
@@ -97,50 +103,63 @@ export class CToolBar extends CWidget {
 	#m_mainWindow: CMainWindow | null = null;
 	#m_extent = CToolBar.DefaultExtent;
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
+		/** Provides super behavior. */
 		super(parent);
 	}
 
+	/** Provides workspace id behavior. */
 	workspaceId(): string {
 		return this.#m_workspaceId;
 	}
 
+	/** Sets the workspace id. */
 	setWorkspaceId(id: string): void {
 		this.#m_workspaceId = id;
 	}
 
+	/** Returns whether the movable condition is active. */
 	isMovable(): boolean {
 		return this.#m_movable;
 	}
 
+	/** Sets the movable. */
 	setMovable(movable: boolean): void {
 		this.#m_movable = movable;
 		this.update();
 	}
 
+	/** Returns whether the floating condition is active. */
 	isFloating(): boolean {
 		return this.#m_floating;
 	}
 
+	/** Sets the floating state. */
 	setFloatingState(floating: boolean): void {
 		this.#m_floating = floating;
 	}
 
+	/** Provides main window behavior. */
 	mainWindow(): CMainWindow | null {
 		return this.#m_mainWindow;
 	}
 
+	/** Sets the main window. */
 	setMainWindow(mainWindow: CMainWindow | null): void {
 		this.#m_mainWindow = mainWindow;
 	}
 
+	/** Provides extent behavior. */
 	extent(): number {
 		return this.#m_extent;
 	}
 
+	/** Sets the extent. */
 	setExtent(extent: number): void {
 		const value = Math.max(0, extent);
 
+		/** Provides if behavior. */
 		if (this.#m_extent === value)
 			return;
 
@@ -148,17 +167,22 @@ export class CToolBar extends CWidget {
 		this.update();
 	}
 
+	/** Provides orientation behavior. */
 	orientation(): COrientation {
 		return this.#m_orientation;
 	}
 
+	/** Sets the orientation. */
 	setOrientation(orientation: COrientation): void {
+		/** Provides if behavior. */
 		if (this.#m_orientation === orientation)
 			return;
 
 		this.#m_orientation = orientation;
 
+		/** Provides for behavior. */
 		for (const item of this.#m_items) {
+			/** Provides if behavior. */
 			if (item.type === "separator")
 				item.widget.setOrientation(orientation);
 		}
@@ -167,10 +191,12 @@ export class CToolBar extends CWidget {
 		this.update();
 	}
 
+	/** Provides count behavior. */
 	count(): number {
 		return this.#m_items.length;
 	}
 
+	/** Adds action. */
 	addAction(action: CAction): CToolButton {
 		const button = new CToolButton(this);
 
@@ -185,6 +211,7 @@ export class CToolBar extends CWidget {
 		return button;
 	}
 
+	/** Adds separator. */
 	addSeparator(): CWidget {
 		const separator = new CToolBarSeparator(
 			this.#m_orientation,
@@ -202,6 +229,7 @@ export class CToolBar extends CWidget {
 		return separator;
 	}
 
+	/** Adds widget. */
 	addWidget(widget: CWidget): CWidget {
 		widget.setParent(this);
 
@@ -212,17 +240,22 @@ export class CToolBar extends CWidget {
 		return widget;
 	}
 
+	/** Provides action at behavior. */
 	actionAt(index: number): CAction | null {
 		const item = this.#m_items[index];
 
+		/** Provides if behavior. */
 		if (item === undefined || item.type !== "action")
 			return null;
 
 		return item.action;
 	}
 
+	/** Provides widget for action behavior. */
 	widgetForAction(action: CAction): CToolButton | null {
+		/** Provides for behavior. */
 		for (const item of this.#m_items) {
+			/** Provides if behavior. */
 			if (
 				item.type === "action" &&
 				item.action === action
@@ -234,7 +267,9 @@ export class CToolBar extends CWidget {
 		return null;
 	}
 
+	/** Clears the current contents. */
 	clear(): void {
+		/** Provides for behavior. */
 		for (const item of this.#m_items) {
 			const widget = item.type === "action"
 				? item.button
@@ -248,10 +283,13 @@ export class CToolBar extends CWidget {
 		this.update();
 	}
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
 		let extent = CToolBar.Margin * 2 + CToolBar.GripExtent;
 
+		/** Provides for behavior. */
 		for (const item of this.#m_items) {
+			/** Provides if behavior. */
 			if (item.type === "separator") {
 				extent += CToolBar.SeparatorExtent + CToolBar.Spacing;
 				continue;
@@ -269,6 +307,7 @@ export class CToolBar extends CWidget {
 			) + CToolBar.Spacing;
 		}
 
+		/** Provides if behavior. */
 		if (this.#m_items.length > 0)
 			extent -= CToolBar.Spacing;
 
@@ -277,6 +316,7 @@ export class CToolBar extends CWidget {
 			: new CSize(this.#m_extent, extent);
 	}
 
+	/** Sets the geometry. */
 	override setGeometry(
 		x: number,
 		y: number,
@@ -288,23 +328,28 @@ export class CToolBar extends CWidget {
 		this.#updateItemGeometry();
 	}
 
+	/** Provides resize behavior. */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 
 		this.#updateItemGeometry();
 	}
 
+	/** Handles the paint event. */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionToolBar();
 		option.initFromToolBar(this);
 
 		this.style().drawToolBar(painter, option);
 
+		/** Provides if behavior. */
 		if (this.#m_movable)
 			this.#drawGrip(painter);
 	}
 
+	/** Handles the mouse press event. */
 	protected override mousePressEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (
 			event.button() !== CMouseButton.LeftButton ||
 			!this.#m_movable ||
@@ -315,6 +360,7 @@ export class CToolBar extends CWidget {
 		}
 
 		const mainWindow = this.#m_mainWindow;
+		/** Provides if behavior. */
 		if (mainWindow === null) {
 			event.ignore();
 			return;
@@ -329,13 +375,16 @@ export class CToolBar extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the mouse move event. */
 	protected override mouseMoveEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (!this.#m_dragging) {
 			event.ignore();
 			return;
 		}
 
 		const mainWindow = this.#m_mainWindow;
+		/** Provides if behavior. */
 		if (mainWindow === null) {
 			this.#m_dragging = false;
 			event.ignore();
@@ -344,6 +393,7 @@ export class CToolBar extends CWidget {
 
 		const canvasPos = this.mapToCanvas(event.x(), event.y());
 
+		/** Provides if behavior. */
 		if (!this.#m_floating)
 			mainWindow.beginToolBarDrag(this);
 
@@ -354,6 +404,7 @@ export class CToolBar extends CWidget {
 		);
 
 		const parent = this.parent();
+		/** Provides if behavior. */
 		if (parent !== null) {
 			const pos = parent.mapFromCanvas(
 				canvasPos.x(),
@@ -369,7 +420,9 @@ export class CToolBar extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the mouse release event. */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (
 			event.button() !== CMouseButton.LeftButton ||
 			!this.#m_dragging
@@ -381,6 +434,7 @@ export class CToolBar extends CWidget {
 		this.#m_dragging = false;
 
 		const mainWindow = this.#m_mainWindow;
+		/** Provides if behavior. */
 		if (mainWindow !== null) {
 			mainWindow.clearToolBarPreview();
 
@@ -409,12 +463,15 @@ export class CToolBar extends CWidget {
 
 		let position = margin + CToolBar.GripExtent;
 
+		/** Provides for behavior. */
 		for (const item of this.#m_items) {
 			const widget = item.type === "action"
 				? item.button
 				: item.widget;
 
+			/** Provides if behavior. */
 			if (item.type === "separator") {
+				/** Provides if behavior. */
 				if (this.#m_orientation === COrientation.Horizontal) {
 					widget.setGeometry(
 						position,
@@ -440,6 +497,7 @@ export class CToolBar extends CWidget {
 
 			const hint = widget.sizeHint();
 
+			/** Provides if behavior. */
 			if (this.#m_orientation === COrientation.Horizontal) {
 				const height = Math.max(0, this.height() - 2 * margin);
 				widget.setGeometry(position, margin, hint.width(), height);
@@ -457,6 +515,7 @@ export class CToolBar extends CWidget {
 		}
 	}
 	#gripContains(x: number, y: number): boolean {
+		/** Provides if behavior. */
 		if (this.#m_orientation === COrientation.Horizontal) {
 			return x >= 0 &&
 				x < CToolBar.Margin + CToolBar.GripExtent &&
@@ -475,10 +534,12 @@ export class CToolBar extends CWidget {
 			this.palette().color(CPaletteColorRole.Mid).toCss()
 		);
 
+		/** Provides if behavior. */
 		if (this.#m_orientation === COrientation.Horizontal) {
 			const x1 = CToolBar.Margin + 3;
 			const x2 = CToolBar.Margin + 7;
 
+			/** Provides for behavior. */
 			for (let y = 8; y <= this.height() - 8; y += 5) {
 				painter.drawLine(x1, y, x1 + 1, y);
 				painter.drawLine(x2, y, x2 + 1, y);
@@ -487,6 +548,7 @@ export class CToolBar extends CWidget {
 			const y1 = CToolBar.Margin + 3;
 			const y2 = CToolBar.Margin + 7;
 
+			/** Provides for behavior. */
 			for (let x = 8; x <= this.width() - 8; x += 5) {
 				painter.drawLine(x, y1, x, y1 + 1);
 				painter.drawLine(x, y2, x, y2 + 1);

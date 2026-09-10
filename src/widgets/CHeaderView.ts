@@ -8,6 +8,7 @@ import { CAbstractItemModel } from "../models/CAbstractItemModel.js";
 import { CPainter } from "../painting/CPainter.js";
 import { CWidget } from "./CWidget.js";
 
+/** Implements the header view widget. */
 export class CHeaderView extends CWidget {
 	static readonly DefaultSectionWidth = 120;
 	static readonly DefaultSectionHeight = 24;
@@ -25,24 +26,31 @@ export class CHeaderView extends CWidget {
 	#m_resizeStartSize = 0;
 	#m_resizeNextSectionSize = 0;
 
+	/** Public section resized member. */
 	readonly sectionResized =
 		new CSignal<[number, number, number]>();
 
+	/** Creates a new instance. */
 	constructor(orientation: COrientation,
 		parent: CWidget | null = null) {
+		/** Provides super behavior. */
 		super(parent);
 		this.#m_orientation = orientation;
 	}
 
+	/** Provides orientation behavior. */
 	orientation(): COrientation {
 		return this.#m_orientation;
 	}
 
+	/** Provides model behavior. */
 	model(): CAbstractItemModel | null {
 		return this.#m_model;
 	}
 
+	/** Sets the model. */
 	setModel(model: CAbstractItemModel | null): void {
+		/** Provides if behavior. */
 		if (this.#m_model === model)
 			return;
 
@@ -51,13 +59,16 @@ export class CHeaderView extends CWidget {
 		this.update();
 	}
 
+	/** Provides offset behavior. */
 	offset(): number {
 		return this.#m_offset;
 	}
 
+	/** Sets the offset. */
 	setOffset(offset: number): void {
 		offset = Math.max(0, offset);
 
+		/** Provides if behavior. */
 		if (this.#m_offset === offset)
 			return;
 
@@ -65,19 +76,24 @@ export class CHeaderView extends CWidget {
 		this.update();
 	}
 
+	/** Provides section size behavior. */
 	sectionSize(section: number): number {
+		/** Provides if behavior. */
 		if (section < 0)
 			return 0;
 
 		const size = this.#m_sectionSizes[section];
 
+		/** Provides if behavior. */
 		if (size !== undefined)
 			return size;
 
 		return this.#defaultSectionSize();
 	}
 
+	/** Provides resize section behavior. */
 	resizeSection(section: number, size: number): void {
+		/** Provides if behavior. */
 		if (section < 0 || section >= this.#sectionCount())
 			return;
 
@@ -85,6 +101,7 @@ export class CHeaderView extends CWidget {
 
 		const oldSize = this.sectionSize(section);
 
+		/** Provides if behavior. */
 		if (oldSize === size)
 			return;
 
@@ -94,29 +111,36 @@ export class CHeaderView extends CWidget {
 		this.update();
 	}
 
+	/** Provides section position behavior. */
 	sectionPosition(section: number): number {
+		/** Provides if behavior. */
 		if (section <= 0)
 			return 0;
 
 		let position = 0;
 
+		/** Provides for behavior. */
 		for (let i = 0; i < section; i++)
 			position += this.sectionSize(i);
 
 		return position;
 	}
 
+	/** Provides section at behavior. */
 	sectionAt(position: number): number {
 		position += this.#m_offset;
 
+		/** Provides if behavior. */
 		if (position < 0)
 			return -1;
 
 		let sectionPosition = 0;
 
+		/** Provides for behavior. */
 		for (let section = 0; section < this.#sectionCount(); section++) {
 			const size = this.sectionSize(section);
 
+			/** Provides if behavior. */
 			if (position >= sectionPosition &&
 				position < sectionPosition + size)
 				return section;
@@ -127,16 +151,20 @@ export class CHeaderView extends CWidget {
 		return -1;
 	}
 
+	/** Provides length behavior. */
 	length(): number {
 		let result = 0;
 
+		/** Provides for behavior. */
 		for (let section = 0; section < this.#sectionCount(); section++)
 			result += this.sectionSize(section);
 
 		return result;
 	}
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
+		/** Provides if behavior. */
 		if (this.#m_orientation === COrientation.Horizontal) {
 			return new CSize(
 				this.length(),
@@ -150,6 +178,7 @@ export class CHeaderView extends CWidget {
 		);
 	}
 
+	/** Handles the paint event. */
 	protected override paintEvent(painter: CPainter): void {
 		const palette = this.palette();
 		const base = palette.color(
@@ -163,6 +192,7 @@ export class CHeaderView extends CWidget {
 		painter.setPen(base);
 		painter.drawRect(0, 0, this.width(), this.height());
 
+		/** Provides if behavior. */
 		if (this.#m_model === null)
 			return;
 
@@ -172,12 +202,15 @@ export class CHeaderView extends CWidget {
 		painter.setTextBaseline("middle");
 		painter.setTextAlign("left");
 
+		/** Provides for behavior. */
 		for (let section = 0; section < count; section++) {
 			const sectionSize = this.sectionSize(section);
 			const position =
 				this.sectionPosition(section) - this.#m_offset;
 
+			/** Provides if behavior. */
 			if (this.#m_orientation === COrientation.Horizontal) {
+				/** Provides if behavior. */
 				if (position + sectionSize < 0 ||
 					position >= this.width())
 					continue;
@@ -187,12 +220,14 @@ export class CHeaderView extends CWidget {
 				painter.drawRect(position, 0, sectionSize, this.height());
 
 				painter.drawText(
+					/** Provides string behavior. */
 					String(this.#m_model.headerData(
 						section, this.#m_orientation) ?? ""),
 					position + 5,
 					this.height() / 2
 				);
 			} else {
+				/** Provides if behavior. */
 				if (position + sectionSize < 0 ||
 					position >= this.height())
 					continue;
@@ -202,6 +237,7 @@ export class CHeaderView extends CWidget {
 				painter.drawRect(0, position, this.width(), sectionSize);
 
 				painter.drawText(
+					/** Provides string behavior. */
 					String(this.#m_model.headerData(
 						section, this.#m_orientation) ?? ""),
 					5,
@@ -211,7 +247,9 @@ export class CHeaderView extends CWidget {
 		}
 	}
 
+	/** Handles the mouse press event. */
 	protected override mousePressEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -220,6 +258,7 @@ export class CHeaderView extends CWidget {
 		const position = this.#eventPosition(event);
 		const section = this.#sectionHandleAt(position);
 
+		/** Provides if behavior. */
 		if (section < 0) {
 			event.ignore();
 			return;
@@ -232,9 +271,11 @@ export class CHeaderView extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the mouse move event. */
 	protected override mouseMoveEvent(event: CMouseEvent): void {
 		const position = this.#eventPosition(event);
 
+		/** Provides if behavior. */
 		if (this.#m_resizeSection >= 0) {
 			let delta = position - this.#m_resizeStartPosition;
 
@@ -275,12 +316,15 @@ export class CHeaderView extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the mouse release event. */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (this.#m_resizeSection < 0) {
 			event.ignore();
 			return;
@@ -291,6 +335,7 @@ export class CHeaderView extends CWidget {
 		const position = this.#eventPosition(event);
 		const section = this.#sectionHandleAt(position);
 
+		/** Provides if behavior. */
 		if (section >= 0) {
 			this.setCursor(
 				this.#m_orientation === COrientation.Horizontal
@@ -304,7 +349,9 @@ export class CHeaderView extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the mouse leave event. */
 	protected override mouseLeaveEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (this.#m_resizeSection < 0)
 			this.setCursor(CCursorShape.Arrow);
 
@@ -312,6 +359,7 @@ export class CHeaderView extends CWidget {
 	}
 
 	#sectionCount(): number {
+		/** Provides if behavior. */
 		if (this.#m_model === null)
 			return 0;
 
@@ -332,6 +380,7 @@ export class CHeaderView extends CWidget {
 
 		this.#m_sectionSizes = [];
 
+		/** Provides for behavior. */
 		for (let section = 0; section < count; section++)
 			this.#m_sectionSizes.push(size);
 	}
@@ -348,9 +397,11 @@ export class CHeaderView extends CWidget {
 		let end = 0;
 		const count = this.#sectionCount();
 
+		/** Provides for behavior. */
 		for (let section = 0; section < count - 1; section++) {
 			end += this.sectionSize(section);
 
+			/** Provides if behavior. */
 			if (Math.abs(position - end) <=
 				CHeaderView.ResizeHandleMargin)
 				return section;

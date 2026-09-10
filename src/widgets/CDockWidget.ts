@@ -9,12 +9,15 @@ import { CSignal } from "../core/CSignal.js";
 import { CDockWidgetArea } from "./CDockArea.js";
 import type { CMainWindow } from "./CMainWindow.js";
 
+/** Implements the dock widget widget. */
 export class CDockWidget extends CWidget {
 	static readonly TitleBarHeight = 24;
 	static readonly CloseButtonWidth = 24;
 	static readonly DefaultWidth = 100;
 	static readonly DefaultHeight = 80;
+	/** Signal emitted when top level changes. */
 	readonly topLevelChanged = new CSignal<[boolean]>();
+	/** Signal emitted when dock location changes. */
 	readonly dockLocationChanged = new CSignal<[CDockWidgetArea]>();
 
 	#m_title = "";
@@ -35,28 +38,35 @@ export class CDockWidget extends CWidget {
 	#m_dragWasFloating = false;
 	#m_dragDockArea = CDockWidgetArea.Left;
 
+	/** Creates a new instance. */
 	constructor(
 		title = "",
 		parent: CWidget | null = null
 	) {
+		/** Provides super behavior. */
 		super(parent);
 
 		this.#m_title = title;
 	}
 
+	/** Provides title behavior. */
 	title(): string {
 		return this.#m_title;
 	}
 
+	/** Provides workspace id behavior. */
 	workspaceId(): string {
 		return this.#m_workspaceId;
 	}
 
+	/** Sets the workspace id. */
 	setWorkspaceId(id: string): void {
 		this.#m_workspaceId = id;
 	}
 
+	/** Sets the title. */
 	setTitle(title: string): void {
+		/** Provides if behavior. */
 		if (this.#m_title === title)
 			return;
 
@@ -64,19 +74,24 @@ export class CDockWidget extends CWidget {
 		this.update();
 	}
 
+	/** Provides widget behavior. */
 	widget(): CWidget | null {
 		return this.#m_widget;
 	}
 
+	/** Sets the widget. */
 	setWidget(widget: CWidget | null): void {
+		/** Provides if behavior. */
 		if (this.#m_widget === widget)
 			return;
 
+		/** Provides if behavior. */
 		if (this.#m_widget !== null)
 			this.#m_widget.setParent(null);
 
 		this.#m_widget = widget;
 
+		/** Provides if behavior. */
 		if (widget !== null)
 			widget.setParent(this);
 
@@ -88,11 +103,14 @@ export class CDockWidget extends CWidget {
 		this.update();
 	}
 
+	/** Returns whether the closable condition is active. */
 	isClosable(): boolean {
 		return this.#m_closable;
 	}
 
+	/** Sets the closable. */
 	setClosable(closable: boolean): void {
+		/** Provides if behavior. */
 		if (this.#m_closable === closable)
 			return;
 
@@ -102,23 +120,29 @@ export class CDockWidget extends CWidget {
 		this.update();
 	}
 
+	/** Returns whether the floating condition is active. */
 	isFloating(): boolean {
 		return this.#m_floating;
 	}
 
+	/** Returns whether the movable condition is active. */
 	isMovable(): boolean {
 		return this.#m_movable;
 	}
 
+	/** Sets the movable. */
 	setMovable(movable: boolean): void {
 		this.#m_movable = movable;
 	}
 
+	/** Provides last dock area behavior. */
 	lastDockArea(): CDockWidgetArea {
 		return this.#m_lastDockArea;
 	}
 
+	/** Sets the floating state. */
 	setFloatingState(floating: boolean): void {
+		/** Provides if behavior. */
 		if (this.#m_floating === floating)
 			return;
 
@@ -126,7 +150,9 @@ export class CDockWidget extends CWidget {
 		this.topLevelChanged.emit(floating);
 	}
 
+	/** Sets the dock widget area. */
 	setDockWidgetArea(area: CDockWidgetArea): void {
+		/** Provides if behavior. */
 		if (this.#m_lastDockArea === area)
 			return;
 
@@ -134,31 +160,39 @@ export class CDockWidget extends CWidget {
 		this.dockLocationChanged.emit(area);
 	}
 
+	/** Provides dock width behavior. */
 	dockWidth(): number {
 		return this.#m_dockWidth;
 	}
 
+	/** Sets the dock width. */
 	setDockWidth(width: number): void {
 		this.#m_dockWidth = Math.max(0, width);
 	}
 
+	/** Provides dock height behavior. */
 	dockHeight(): number {
 		return this.#m_dockHeight;
 	}
 
+	/** Sets the dock height. */
 	setDockHeight(height: number): void {
 		this.#m_dockHeight = Math.max(0, height);
 	}
 
+	/** Provides main window behavior. */
 	mainWindow(): CMainWindow | null {
 		return this.#m_mainWindow;
 	}
 
+	/** Sets the main window. */
 	setMainWindow(mainWindow: CMainWindow | null): void {
 		this.#m_mainWindow = mainWindow;
 	}
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
+		/** Provides if behavior. */
 		if (this.#m_widget === null) {
 			return new CSize(
 				CDockWidget.DefaultWidth,
@@ -178,6 +212,7 @@ export class CDockWidget extends CWidget {
 		);
 	}
 
+	/** Sets the geometry. */
 	override setGeometry(
 		x: number,
 		y: number,
@@ -189,12 +224,14 @@ export class CDockWidget extends CWidget {
 		this.#updateWidgetGeometry();
 	}
 
+	/** Provides resize behavior. */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 
 		this.#updateWidgetGeometry();
 	}
 
+	/** Handles the paint event. */
 	protected override paintEvent(painter: CPainter): void {
 		const palette = this.palette();
 		painter.setBrush(palette.color(CPaletteColorRole.Window).toCss());
@@ -208,16 +245,20 @@ export class CDockWidget extends CWidget {
 		painter.setTextBaseline("middle");
 		painter.drawText(this.#m_title, 6, CDockWidget.TitleBarHeight / 2);
 
+		/** Provides if behavior. */
 		if (this.#m_closable)
 			this.#drawCloseButton(painter);
 	}
 
+	/** Handles the mouse press event. */
 	protected override mousePressEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (this.#m_closable &&
 			this.#closeButtonContains(event.x(), event.y())) {
 			this.hide();
@@ -225,6 +266,7 @@ export class CDockWidget extends CWidget {
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (!this.#m_movable ||
 			event.y() < 0 ||
 			event.y() >= CDockWidget.TitleBarHeight) {
@@ -242,7 +284,9 @@ export class CDockWidget extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the mouse move event. */
 	protected override mouseMoveEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (this.#m_dragging) {
 			const canvasPos = this.mapToCanvas(
 				event.x(), event.y()
@@ -250,17 +294,20 @@ export class CDockWidget extends CWidget {
 
 			const mainWindow = this.#m_mainWindow;
 
+			/** Provides if behavior. */
 			if (mainWindow === null) {
 				this.#m_dragging = false;
 				event.ignore();
 				return;
 			}
 
+			/** Provides if behavior. */
 			if (!this.#m_floating)
 				mainWindow.setDockWidgetFloating(this, true);
 
 			const parent = this.parent();
 
+			/** Provides if behavior. */
 			if (parent !== null) {
 				const pos = parent.mapFromCanvas(
 					canvasPos.x(), canvasPos.y()
@@ -285,6 +332,7 @@ export class CDockWidget extends CWidget {
 			event.x(), event.y()
 		);
 
+		/** Provides if behavior. */
 		if (this.#m_closeHovered !== hovered) {
 			this.#m_closeHovered = hovered;
 			this.update();
@@ -293,7 +341,9 @@ export class CDockWidget extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the mouse release event. */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton ||
 			!this.#m_dragging) {
 			event.ignore();
@@ -304,14 +354,17 @@ export class CDockWidget extends CWidget {
 
 		const mainWindow = this.#m_mainWindow;
 
+		/** Provides if behavior. */
 		if (mainWindow !== null) {
 			mainWindow.clearDockPreview();
 		}
 
+		/** Provides if behavior. */
 		if (mainWindow !== null && this.#m_floating) {
 			const canvasPos = this.mapToCanvas(event.x(), event.y());
 			const area = mainWindow.dockAreaAt(this, canvasPos.x(), canvasPos.y());
 
+			/** Provides if behavior. */
 			if (area !== null) {
 				mainWindow.dockWidget(this, area);
 			} else if (!this.#m_dragWasFloating) {
@@ -324,9 +377,11 @@ export class CDockWidget extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the mouse leave event. */
 	protected override mouseLeaveEvent(
 		event: CMouseEvent
 	): void {
+		/** Provides if behavior. */
 		if (this.#m_closeHovered) {
 			this.#m_closeHovered = false;
 			this.update();
@@ -336,6 +391,7 @@ export class CDockWidget extends CWidget {
 	}
 
 	#updateWidgetGeometry(): void {
+		/** Provides if behavior. */
 		if (this.#m_widget === null)
 			return;
 
@@ -345,9 +401,11 @@ export class CDockWidget extends CWidget {
     }
 
 	#closeButtonContains(x: number, y: number): boolean {
+		/** Provides if behavior. */
 		if (!this.#m_closable)
 			return false;
 
+		/** Provides return behavior. */
 		return (x >= this.width() - CDockWidget.CloseButtonWidth &&
 			x < this.width() && y >= 0 && y < CDockWidget.TitleBarHeight);
 	}
@@ -357,6 +415,7 @@ export class CDockWidget extends CWidget {
 			this.width() -
 			CDockWidget.CloseButtonWidth;
 
+		/** Provides if behavior. */
 		if (this.#m_closeHovered) {
             painter.setBrush(this.palette().color(CPaletteColorRole.Mid).toCss());
 			painter.fillRect(new CRect(x, 0, CDockWidget.CloseButtonWidth, CDockWidget.TitleBarHeight));

@@ -1,28 +1,87 @@
 import { CColor } from "./CColor.js";
 
+/**
+ * Identifies semantic color roles in a widget palette.
+ */
 export enum CPaletteColorRole {
-	Window,
-	WindowText,
-	Base,
-	Text,
-	Button,
-	ButtonText,
-	DisabledText,
-    Highlight,
-	HighlightedText,
-	Hover,
-	ToolTipBase,
-	ToolTipText,
-	Link,
-	Light,
-	Mid,
-	Dark
+		/**
+	 * Window.
+	 */
+Window,
+		/**
+	 * Window text.
+	 */
+WindowText,
+		/**
+	 * Base.
+	 */
+Base,
+		/**
+	 * Text.
+	 */
+Text,
+		/**
+	 * Button.
+	 */
+Button,
+		/**
+	 * Button text.
+	 */
+ButtonText,
+		/**
+	 * Disabled text.
+	 */
+DisabledText,
+        /**
+     * Highlight.
+     */
+Highlight,
+		/**
+	 * Highlighted text.
+	 */
+HighlightedText,
+		/**
+	 * Hover.
+	 */
+Hover,
+		/**
+	 * Tool tip base.
+	 */
+ToolTipBase,
+		/**
+	 * Tool tip text.
+	 */
+ToolTipText,
+		/**
+	 * Link.
+	 */
+Link,
+		/**
+	 * Light.
+	 */
+Light,
+		/**
+	 * Mid.
+	 */
+Mid,
+		/**
+	 * Dark.
+	 */
+Dark
 }
 
+/**
+ * Stores colors used to render widgets for different semantic roles.
+ */
 export class CPalette {
 	#m_colors = new Map<CPaletteColorRole, CColor>();
 
-	constructor(pal: CPalette | null = null) {
+		/**
+	 * Creates a new CPalette instance.
+	 *
+	 * @param pal Pal.
+	 */
+constructor(pal: CPalette | null = null) {
 		if (pal === null) {
 			this.#m_colors.set(CPaletteColorRole.Window, new CColor(224, 224, 224));
 			this.#m_colors.set(CPaletteColorRole.WindowText, new CColor(0, 0, 0));
@@ -60,7 +119,14 @@ export class CPalette {
 		}
 	}
 
-	color(role: CPaletteColorRole): CColor {
+		/**
+	 * Returns the color assigned to the specified palette role.
+	 *
+	 * @param role Role.
+	 *
+	 * @returns The resulting value.
+	 */
+color(role: CPaletteColorRole): CColor {
 		const color = this.#m_colors.get(role);
 
 		if (color === undefined)
@@ -69,11 +135,24 @@ export class CPalette {
 		return new CColor(color.red(), color.green(), color.blue(), color.alpha());
 	}
 
-	setColor(role: CPaletteColorRole, color: CColor): void {
+		/**
+	 * Assigns a color to the specified palette role.
+	 *
+	 * @param role Role.
+	 * @param color Color.
+	 */
+setColor(role: CPaletteColorRole, color: CColor): void {
 		this.#m_colors.set(role, color);
 	}
 
-	isEqual(other: CPalette): boolean {
+		/**
+	 * Returns whether this palette is equal to another palette.
+	 *
+	 * @param other Other.
+	 *
+	 * @returns The resulting value.
+	 */
+isEqual(other: CPalette): boolean {
 		for (const [role, color] of this.#m_colors) {
 			if (!color.equals(other.color(role)))
 				return false;

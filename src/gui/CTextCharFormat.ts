@@ -1,5 +1,11 @@
+/**
+ * Defines the supported font weights.
+ */
 export type CFontWeight = "normal" | "bold";
 
+/**
+ * Describes character-level formatting in a rich-text document.
+ */
 export class CTextCharFormat {
 	#m_fontWeight: CFontWeight = "normal";
 	#m_italic = false;
@@ -9,7 +15,12 @@ export class CTextCharFormat {
 	#m_underline = false;
 	#m_anchorHref: string | null = null;
 
-	constructor(other: CTextCharFormat | null = null) {
+		/**
+	 * Creates a new CTextCharFormat instance.
+	 *
+	 * @param other Other.
+	 */
+constructor(other: CTextCharFormat | null = null) {
 		if (other === null)
 			return;
 
@@ -22,78 +33,170 @@ export class CTextCharFormat {
 		this.#m_anchorHref = other.anchorHref();
 	}
 
-	clone(): CTextCharFormat {
+		/**
+	 * Creates an independent copy of this object.
+	 *
+	 * @returns The resulting value.
+	 */
+clone(): CTextCharFormat {
 		return new CTextCharFormat(this);
 	}
 
-	fontWeight(): CFontWeight {
+		/**
+	 * Returns the font weight setting.
+	 *
+	 * @returns The resulting value.
+	 */
+fontWeight(): CFontWeight {
 		return this.#m_fontWeight;
 	}
 
-	setFontWeight(weight: CFontWeight): void {
+		/**
+	 * Sets the font weight.
+	 *
+	 * @param weight Weight.
+	 */
+setFontWeight(weight: CFontWeight): void {
 		this.#m_fontWeight = weight;
 	}
 
-	fontBold(): boolean {
+		/**
+	 * Returns the font bold setting.
+	 *
+	 * @returns The resulting value.
+	 */
+fontBold(): boolean {
 		return this.#m_fontWeight === "bold";
 	}
 
-	setFontBold(bold: boolean): void {
+		/**
+	 * Sets the font bold.
+	 *
+	 * @param bold Bold.
+	 */
+setFontBold(bold: boolean): void {
 		this.#m_fontWeight = bold ? "bold" : "normal";
 	}
 
-	fontItalic(): boolean {
+		/**
+	 * Returns the font italic setting.
+	 *
+	 * @returns The resulting value.
+	 */
+fontItalic(): boolean {
 		return this.#m_italic;
 	}
 
-	setFontItalic(italic: boolean): void {
+		/**
+	 * Sets the font italic.
+	 *
+	 * @param italic Italic.
+	 */
+setFontItalic(italic: boolean): void {
 		this.#m_italic = italic;
 	}
 
-	foreground(): string | null {
+		/**
+	 * Returns or updates the foreground value.
+	 *
+	 * @returns The resulting value.
+	 */
+foreground(): string | null {
 		return this.#m_foreground;
 	}
 
-	setForeground(color: string | null): void {
+		/**
+	 * Sets the foreground.
+	 *
+	 * @param color Color.
+	 */
+setForeground(color: string | null): void {
 		this.#m_foreground = color;
 	}
 
-	fontFamily(): string | null {
+		/**
+	 * Returns the font family setting.
+	 *
+	 * @returns The resulting value.
+	 */
+fontFamily(): string | null {
 		return this.#m_fontFamily;
 	}
 
-	setFontFamily(family: string | null): void {
+		/**
+	 * Sets the font family.
+	 *
+	 * @param family Family.
+	 */
+setFontFamily(family: string | null): void {
 		this.#m_fontFamily = family;
 	}
 
-	fontSize(): number | null {
+		/**
+	 * Returns the font size setting.
+	 *
+	 * @returns The resulting value.
+	 */
+fontSize(): number | null {
 		return this.#m_fontSize;
 	}
 
-	setFontSize(size: number | null): void {
+		/**
+	 * Sets the font size.
+	 *
+	 * @param size Size.
+	 */
+setFontSize(size: number | null): void {
 		if (size !== null && size <= 0)
 			throw new RangeError("Font size must be greater than zero.");
 
 		this.#m_fontSize = size;
 	}
 
-	fontUnderline(): boolean {
+		/**
+	 * Returns the font underline setting.
+	 *
+	 * @returns The resulting value.
+	 */
+fontUnderline(): boolean {
 		return this.#m_underline;
 	}
 
-	setFontUnderline(underline: boolean): void {
+		/**
+	 * Sets the font underline.
+	 *
+	 * @param underline Underline.
+	 */
+setFontUnderline(underline: boolean): void {
 		this.#m_underline = underline;
 	}
 
-	anchorHref(): string | null {
+		/**
+	 * Returns or updates the anchor href value.
+	 *
+	 * @returns The resulting value.
+	 */
+anchorHref(): string | null {
 		return this.#m_anchorHref;
 	}
 
-	setAnchorHref(href: string | null): void {
+		/**
+	 * Sets the anchor href.
+	 *
+	 * @param href Href.
+	 */
+setAnchorHref(href: string | null): void {
 		this.#m_anchorHref = href;
 	}
 
-	equals(other: CTextCharFormat): boolean {
+		/**
+	 * Returns whether this object is equal to another object.
+	 *
+	 * @param other Other.
+	 *
+	 * @returns The resulting value.
+	 */
+equals(other: CTextCharFormat): boolean {
 		return this.#m_fontWeight === other.#m_fontWeight
 			&& this.#m_italic === other.#m_italic
 			&& this.#m_foreground === other.#m_foreground

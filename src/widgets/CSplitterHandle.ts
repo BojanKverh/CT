@@ -7,6 +7,7 @@ import type { CPainter } from "../painting/CPainter.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CStyleOptionSplitterHandle } from "../gui/CStyleOptionSplitterHandle.js";
+/** Implements the splitter handle widget. */
 export class CSplitterHandle extends CWidget
 {
 	#m_orientation: COrientation;
@@ -15,7 +16,9 @@ export class CSplitterHandle extends CWidget
 	#m_pressed = false;
 	#m_pressOffset = 0;
 
+	/** Creates a new instance. */
 	constructor(orientation: COrientation, splitter: CSplitter, index: number) {
+		/** Provides super behavior. */
 		super(splitter);
 
 		this.#m_orientation = orientation;
@@ -27,13 +30,16 @@ export class CSplitterHandle extends CWidget
 		this.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
+	/** Provides orientation behavior. */
 	orientation(): COrientation
 	{
 		return this.#m_orientation;
 	}
 
+	/** Sets the orientation. */
 	setOrientation(orientation: COrientation): void
 	{
+		/** Provides if behavior. */
 		if (this.#m_orientation === orientation)
 			return;
 
@@ -43,26 +49,31 @@ export class CSplitterHandle extends CWidget
 		this.update();
 	}
 
+	/** Provides splitter behavior. */
 	splitter(): CSplitter
 	{
 		return this.#m_splitter;
 	}
 
+	/** Provides index behavior. */
 	index(): number
 	{
 		return this.#m_index;
 	}
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize
 	{
 		const size = this.#m_splitter.handleWidth();
 
+		/** Provides if behavior. */
 		if (this.#m_orientation === COrientation.Horizontal)
 			return new CSize(size, 0);
 
 		return new CSize(0, size);
 	}
 
+	/** Handles the paint event. */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionSplitterHandle();
 		option.initFromSplitterHandle(this);
@@ -70,8 +81,10 @@ export class CSplitterHandle extends CWidget
 		this.style().drawSplitterHandle(painter, option);
 	}
 
+	/** Handles the mouse press event. */
 	protected override mousePressEvent(event: CMouseEvent): void
 	{
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -84,8 +97,10 @@ export class CSplitterHandle extends CWidget
 		event.accept();
 	}
 
+	/** Handles the mouse move event. */
 	protected override mouseMoveEvent(event: CMouseEvent): void
 	{
+		/** Provides if behavior. */
 		if (!this.#m_pressed) {
 			event.ignore();
 			return;
@@ -106,8 +121,10 @@ export class CSplitterHandle extends CWidget
 		event.accept();
 	}
 
+	/** Handles the mouse release event. */
 	protected override mouseReleaseEvent(event: CMouseEvent): void
 	{
+		/** Provides if behavior. */
 		if (!this.#m_pressed) {
 			event.ignore();
 			return;
@@ -117,10 +134,12 @@ export class CSplitterHandle extends CWidget
 		event.accept();
 	}
 
+    /** Handles the mouse enter event. */
     protected override mouseEnterEvent(event: CMouseEvent): void {
         
     }
 
+    /** Handles the mouse leave event. */
     protected override mouseLeaveEvent(event: CMouseEvent): void {
         
     }

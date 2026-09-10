@@ -1,20 +1,55 @@
 import { CStyleOption } from "./CStyleOption.js";
 import type { CTabWidget } from "../widgets/CTabWidget.js";
 
+/**
+ * Contains style information used to render a tab.
+ */
 export interface CStyleOptionTab {
-	text: string;
-	width: number;
-	enabled: boolean;
-	current: boolean;
-	hovered: boolean;
-	pressed: boolean;
+		/**
+	 * The text value.
+	 */
+text: string;
+		/**
+	 * The width value.
+	 */
+width: number;
+		/**
+	 * The enabled value.
+	 */
+enabled: boolean;
+		/**
+	 * The current value.
+	 */
+current: boolean;
+		/**
+	 * The hovered value.
+	 */
+hovered: boolean;
+		/**
+	 * The pressed value.
+	 */
+pressed: boolean;
 }
 
+/**
+ * Contains style information used to render a tab widget.
+ */
 export class CStyleOptionTabWidget extends CStyleOption {
-	tabHeight = 0;
-	tabs: CStyleOptionTab[] = [];
+		/**
+	 * Returns or updates the tab height value.
+	 */
+tabHeight = 0;
+		/**
+	 * Returns or updates the tabs value.
+	 */
+tabs: CStyleOptionTab[] = [];
 
-	constructor(other: CStyleOptionTabWidget | null = null) {
+		/**
+	 * Creates a new CStyleOptionTabWidget instance.
+	 *
+	 * @param other Other.
+	 */
+constructor(other: CStyleOptionTabWidget | null = null) {
 		super(other);
 
 		if (other) {
@@ -23,7 +58,12 @@ export class CStyleOptionTabWidget extends CStyleOption {
 		}
 	}
 
-	initFromTabWidget(tabWidget: CTabWidget): void {
+		/**
+	 * Initializes this style option from the specified tab widget.
+	 *
+	 * @param tabWidget Tab widget.
+	 */
+initFromTabWidget(tabWidget: CTabWidget): void {
 		this.initFrom(tabWidget);
 
 		this.tabHeight = tabWidget.tabHeight();

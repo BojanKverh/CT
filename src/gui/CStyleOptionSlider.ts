@@ -1,12 +1,29 @@
 import { CStyleOption } from "./CStyleOption.js";
 import type { CSlider } from "../widgets/CSlider.js";
 
+/**
+ * Contains style information used to render a slider.
+ */
 export class CStyleOptionSlider extends CStyleOption {
-	minimum = 0;
-	maximum = 100;
-	value = 0;
+		/**
+	 * Returns or updates the minimum value.
+	 */
+minimum = 0;
+		/**
+	 * Returns or updates the maximum value.
+	 */
+maximum = 100;
+		/**
+	 * Returns or updates the value value.
+	 */
+value = 0;
 
-	constructor(other: CStyleOptionSlider | null = null) {
+		/**
+	 * Creates a new CStyleOptionSlider instance.
+	 *
+	 * @param other Other.
+	 */
+constructor(other: CStyleOptionSlider | null = null) {
 		super(other);
 
 		if (other === null)
@@ -17,7 +34,12 @@ export class CStyleOptionSlider extends CStyleOption {
 		this.value = other.value;
 	}
 
-	initFromSlider(slider: CSlider): void {
+		/**
+	 * Initializes this style option from the specified slider.
+	 *
+	 * @param slider Slider.
+	 */
+initFromSlider(slider: CSlider): void {
 		this.initFrom(slider);
 
 		this.minimum = slider.minimum();

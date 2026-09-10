@@ -1,10 +1,21 @@
 import { CStyleOptionButton } from "./CStyleOptionButton.js";
 import type { CRadioButton } from "../widgets/CRadioButton.js";
 
+/**
+ * Contains style information used to render a radio button.
+ */
 export class CStyleOptionRadioButton extends CStyleOptionButton {
-	text = "";
+		/**
+	 * Returns or updates the text value.
+	 */
+text = "";
 
-	constructor(other: CStyleOptionRadioButton | null = null) {
+		/**
+	 * Creates a new CStyleOptionRadioButton instance.
+	 *
+	 * @param other Other.
+	 */
+constructor(other: CStyleOptionRadioButton | null = null) {
 		super(other);
 
 		if (other === null)
@@ -13,7 +24,12 @@ export class CStyleOptionRadioButton extends CStyleOptionButton {
 		this.text = other.text;
 	}
 
-	initFromRadioButton(radioButton: CRadioButton): void {
+		/**
+	 * Initializes this style option from the specified radio button.
+	 *
+	 * @param radioButton Radio button.
+	 */
+initFromRadioButton(radioButton: CRadioButton): void {
 		this.initFromButton(radioButton);
 		this.text = radioButton.text();
 	}

@@ -5,14 +5,37 @@ import { CToolButtonStyle } from "./CToolButtonStyle.js";
 import { CStyleState } from "./CStyleOption.js";
 import type { CToolButton } from "../widgets/CToolButton.js";
 
+/**
+ * Contains style information used to render a tool button.
+ */
 export class CStyleOptionToolButton extends CStyleOptionButton {
-	text = "";
-	icon: CIcon | null = null;
-	iconSize = new CSize(16, 16);
-	toolButtonStyle = CToolButtonStyle.IconOnly;
-    autoRaise = false;
+		/**
+	 * Returns or updates the text value.
+	 */
+text = "";
+		/**
+	 * Returns or updates the icon value.
+	 */
+icon: CIcon | null = null;
+		/**
+	 * Returns the icon size used by the style.
+	 */
+iconSize = new CSize(16, 16);
+		/**
+	 * Returns or updates the tool button style value.
+	 */
+toolButtonStyle = CToolButtonStyle.IconOnly;
+        /**
+     * Returns or updates the auto raise value.
+     */
+autoRaise = false;
 	
-	constructor(other: CStyleOptionToolButton | null = null) {
+		/**
+	 * Creates a new CStyleOptionToolButton instance.
+	 *
+	 * @param other Other.
+	 */
+constructor(other: CStyleOptionToolButton | null = null) {
 		super(other);
 
 		if (other === null)
@@ -27,7 +50,12 @@ export class CStyleOptionToolButton extends CStyleOptionButton {
         this.autoRaise = other.autoRaise;
 	}
 
-	initFromToolButton(button: CToolButton): void {
+		/**
+	 * Initializes this style option from the specified tool button.
+	 *
+	 * @param button Button.
+	 */
+initFromToolButton(button: CToolButton): void {
 		this.initFromButton(button);
 
 		this.text = button.text();

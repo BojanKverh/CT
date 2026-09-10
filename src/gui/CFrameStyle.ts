@@ -1,13 +1,43 @@
+/**
+ * Defines the geometric shape of a frame.
+ */
 export enum CFrameShape {
-    NoFrame,
-    Box,
-    Panel,
-    HLine,
-    VLine
+        /**
+     * No frame.
+     */
+NoFrame,
+        /**
+     * Box.
+     */
+Box,
+        /**
+     * Panel.
+     */
+Panel,
+        /**
+     * Hline.
+     */
+HLine,
+        /**
+     * Vline.
+     */
+VLine
 }
 
+/**
+ * Defines the visual shadow style of a frame.
+ */
 export enum CFrameShadow {
-    Plain,
-    Raised,
-    Sunken
+        /**
+     * Plain.
+     */
+Plain,
+        /**
+     * Raised.
+     */
+Raised,
+        /**
+     * The control is pressed or sunken.
+     */
+Sunken
 }

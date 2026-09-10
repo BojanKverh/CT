@@ -1,14 +1,37 @@
 import { CStyleOption } from "./CStyleOption.js";
 import type { CLineEdit } from "../widgets/CLineEdit.js";
 
+/**
+ * Contains style information used to render a line edit.
+ */
 export class CStyleOptionLineEdit extends CStyleOption {
-	text = "";
-	cursorPosition = 0;
-	cursorVisible = false;
-	selectionStart = 0;
-	selectionEnd = 0;
+		/**
+	 * Returns or updates the text value.
+	 */
+text = "";
+		/**
+	 * Returns or updates the cursor position value.
+	 */
+cursorPosition = 0;
+		/**
+	 * Returns or updates the cursor visible value.
+	 */
+cursorVisible = false;
+		/**
+	 * Returns or updates the selection start value.
+	 */
+selectionStart = 0;
+		/**
+	 * Returns or updates the selection end value.
+	 */
+selectionEnd = 0;
 
-	constructor(other: CStyleOptionLineEdit | null = null) {
+		/**
+	 * Creates a new CStyleOptionLineEdit instance.
+	 *
+	 * @param other Other.
+	 */
+constructor(other: CStyleOptionLineEdit | null = null) {
 		super(other);
 
 		if (other === null)
@@ -21,7 +44,12 @@ export class CStyleOptionLineEdit extends CStyleOption {
 		this.selectionEnd = other.selectionEnd;
 	}
 
-	initFromLineEdit(lineEdit: CLineEdit): void {
+		/**
+	 * Initializes this style option from the specified line edit.
+	 *
+	 * @param lineEdit Line edit.
+	 */
+initFromLineEdit(lineEdit: CLineEdit): void {
 		this.initFrom(lineEdit);
 
 		this.text = lineEdit.text();

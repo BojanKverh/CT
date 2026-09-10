@@ -10,6 +10,7 @@ import type { CPainter } from "../painting/CPainter.js";
 import { CRect } from "../geometry/CRect.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 
+/** Defines the public cmain window dock state API. */
 export interface CMainWindowDockState {
 	id: string;
 	area: CDockWidgetArea;
@@ -23,6 +24,7 @@ export interface CMainWindowDockState {
 	height: number;
 }
 
+/** Defines the public cmain window tool bar state API. */
 export interface CMainWindowToolBarState {
 	id: string;
 	area: CToolBarArea;
@@ -30,6 +32,7 @@ export interface CMainWindowToolBarState {
 	visible: boolean;
 }
 
+/** Defines the public cmain window state API. */
 export interface CMainWindowState {
 	version: 2;
 	dockWidgets: CMainWindowDockState[];
@@ -49,6 +52,7 @@ type CToolBarPreview = {
 	area: CToolBarArea;
 };
 
+/** Implements the main window widget. */
 export class CMainWindow extends CWidget {
 	#m_menuBar: CMenuBar | null = null;
 	#m_toolBars: CToolBarItem[] = [];
@@ -59,12 +63,15 @@ export class CMainWindow extends CWidget {
 	#m_toolBarPreview: CToolBarPreview | null = null;
 	static readonly WorkspaceStorageKey: string = "ct.CMainWindow.workspace";
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
+		/** Provides super behavior. */
 		super(parent);
 
 		this.#m_dockArea = new CDockArea(this);
 		this.#m_beforeUnloadHandler = () => this.saveWorkspace();
 
+		/** Provides if behavior. */
 		if (typeof globalThis.addEventListener === "function") {
 			globalThis.addEventListener(
 				"beforeunload",
@@ -75,19 +82,24 @@ export class CMainWindow extends CWidget {
 		this.#updateGeometry();
 	}
 
+	/** Provides menu bar behavior. */
 	menuBar(): CMenuBar | null {
 		return this.#m_menuBar;
 	}
 
+	/** Sets the menu bar. */
 	setMenuBar(menuBar: CMenuBar | null): void {
+		/** Provides if behavior. */
 		if (this.#m_menuBar === menuBar)
 			return;
 
+		/** Provides if behavior. */
 		if (this.#m_menuBar !== null)
 			this.#m_menuBar.setParent(null);
 
 		this.#m_menuBar = menuBar;
 
+		/** Provides if behavior. */
 		if (menuBar !== null)
 			menuBar.setParent(this);
 
@@ -96,9 +108,12 @@ export class CMainWindow extends CWidget {
 		this.restoreWorkspace();
 	}
 
+	/** Adds tool bar. */
 	addToolBar(toolBar: CToolBar): void;
+	/** Adds tool bar. */
 	addToolBar(area: CToolBarArea, toolBar: CToolBar): void;
 
+	/** Adds tool bar. */
 	addToolBar(
 		areaOrToolBar: CToolBarArea | CToolBar,
 		maybeToolBar?: CToolBar
@@ -111,6 +126,7 @@ export class CMainWindow extends CWidget {
 			? areaOrToolBar
 			: maybeToolBar!;
 
+		/** Provides if behavior. */
 		if (this.#m_toolBars.some(item => item.toolBar === toolBar))
 			return;
 
@@ -125,6 +141,7 @@ export class CMainWindow extends CWidget {
 			floating: false
 		});
 
+		/** Provides if behavior. */
 		if (toolBar.workspaceId() === "")
 			toolBar.setWorkspaceId(`toolbar-${this.#m_toolBars.length - 1}`);
 
@@ -133,11 +150,13 @@ export class CMainWindow extends CWidget {
 		this.restoreWorkspace();
 	}
 
+	/** Removes tool bar. */
 	removeToolBar(toolBar: CToolBar): void {
 		const index = this.#m_toolBars.findIndex(
 			item => item.toolBar === toolBar
 		);
 
+		/** Provides if behavior. */
 		if (index === -1)
 			return;
 
@@ -150,18 +169,21 @@ export class CMainWindow extends CWidget {
 		this.update();
 	}
 
+	/** Provides tool bars behavior. */
 	toolBars(area?: CToolBarArea): readonly CToolBar[] {
 		return this.#m_toolBars
 			.filter(item => area === undefined || item.area === area)
 			.map(item => item.toolBar);
 	}
 
+	/** Provides tool bar area behavior. */
 	toolBarArea(toolBar: CToolBar): CToolBarArea | null {
 		return this.#m_toolBars.find(
 			item => item.toolBar === toolBar
 		)?.area ?? null;
 	}
 
+	/** Provides move tool bar behavior. */
 	moveToolBar(
 		toolBar: CToolBar,
 		area: CToolBarArea,
@@ -171,12 +193,14 @@ export class CMainWindow extends CWidget {
 			item => item.toolBar === toolBar
 		);
 
+		/** Provides if behavior. */
 		if (oldIndex === -1)
 			return;
 
 		const removed = this.#m_toolBars.splice(oldIndex, 1);
 		const item = removed[0];
 
+		/** Provides if behavior. */
 		if (item === undefined)
 			return;
 
@@ -185,6 +209,7 @@ export class CMainWindow extends CWidget {
 		toolBar.setFloatingState(false);
 		this.#setToolBarOrientation(toolBar, area);
 
+		/** Provides if behavior. */
 		if (index === undefined) {
 			this.#m_toolBars.push(item);
 		} else {
@@ -200,6 +225,7 @@ export class CMainWindow extends CWidget {
 
 			let insertionIndex: number;
 
+			/** Provides if behavior. */
 			if (clampedIndex === areaIndices.length) {
 				insertionIndex = areaIndices.length === 0
 					? this.#m_toolBars.length
@@ -217,11 +243,13 @@ export class CMainWindow extends CWidget {
 
 
 
+	/** Provides begin tool bar drag behavior. */
 	beginToolBarDrag(toolBar: CToolBar): void {
 		const item = this.#m_toolBars.find(
 			item => item.toolBar === toolBar
 		);
 
+		/** Provides if behavior. */
 		if (item === undefined || item.floating)
 			return;
 
@@ -243,6 +271,7 @@ export class CMainWindow extends CWidget {
 		this.update();
 	}
 
+	/** Provides dock tool bar behavior. */
 	dockToolBar(
 		toolBar: CToolBar,
 		area: CToolBarArea,
@@ -252,6 +281,7 @@ export class CMainWindow extends CWidget {
 			item => item.toolBar === toolBar
 		);
 
+		/** Provides if behavior. */
 		if (item === undefined)
 			return;
 
@@ -261,12 +291,14 @@ export class CMainWindow extends CWidget {
 		this.moveToolBar(toolBar, area, index);
 	}
 
+	/** Provides tool bar area at behavior. */
 	toolBarAreaAt(
 		canvasX: number,
 		canvasY: number
 	): CToolBarArea | null {
 		const pos = this.mapFromCanvas(canvasX, canvasY);
 
+		/** Provides if behavior. */
 		if (
 			pos.x() < 0 ||
 			pos.y() < 0 ||
@@ -278,15 +310,19 @@ export class CMainWindow extends CWidget {
 		const marginX = Math.min(64, this.width() / 4);
 		const marginY = Math.min(64, this.height() / 4);
 
+		/** Provides if behavior. */
 		if (pos.x() < marginX)
 			return CToolBarArea.Left;
 
+		/** Provides if behavior. */
 		if (pos.x() >= this.width() - marginX)
 			return CToolBarArea.Right;
 
+		/** Provides if behavior. */
 		if (pos.y() < marginY)
 			return CToolBarArea.Top;
 
+		/** Provides if behavior. */
 		if (pos.y() >= this.height() - marginY)
 			return CToolBarArea.Bottom;
 
@@ -294,6 +330,7 @@ export class CMainWindow extends CWidget {
 	}
 
 
+	/** Provides update tool bar preview behavior. */
 	updateToolBarPreview(
 		toolBar: CToolBar,
 		canvasX: number,
@@ -301,11 +338,13 @@ export class CMainWindow extends CWidget {
 	): void {
 		const area = this.toolBarAreaAt(canvasX, canvasY);
 
+		/** Provides if behavior. */
 		if (area === null) {
 			this.clearToolBarPreview();
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (
 			this.#m_toolBarPreview?.toolBar === toolBar &&
 			this.#m_toolBarPreview.area === area
@@ -320,7 +359,9 @@ export class CMainWindow extends CWidget {
 		this.update();
 	}
 
+	/** Clears tool bar preview. */
 	clearToolBarPreview(): void {
+		/** Provides if behavior. */
 		if (this.#m_toolBarPreview === null)
 			return;
 
@@ -330,19 +371,24 @@ export class CMainWindow extends CWidget {
 
 
 
+	/** Provides status bar behavior. */
 	statusBar(): CStatusBar | null {
 		return this.#m_statusBar;
 	}
 
+	/** Sets the status bar. */
 	setStatusBar(statusBar: CStatusBar | null): void {
+		/** Provides if behavior. */
 		if (this.#m_statusBar === statusBar)
 			return;
 
+		/** Provides if behavior. */
 		if (this.#m_statusBar !== null)
 			this.#m_statusBar.setParent(null);
 
 		this.#m_statusBar = statusBar;
 
+		/** Provides if behavior. */
 		if (statusBar !== null)
 			statusBar.setParent(this);
 
@@ -351,22 +397,28 @@ export class CMainWindow extends CWidget {
 		this.restoreWorkspace();
 	}
 
+	/** Provides central widget behavior. */
 	centralWidget(): CWidget | null {
 		return this.#m_dockArea.centralWidget();
 	}
 
+	/** Sets the central widget. */
 	setCentralWidget(widget: CWidget | null): void {
 		this.#m_dockArea.setCentralWidget(widget);
 	}
 
+	/** Adds dock widget. */
 	addDockWidget(area: CDockWidgetArea, dockWidget: CDockWidget): void {
+		/** Provides if behavior. */
 		if (!this.#m_dockWidgets.includes(dockWidget)) {
 			this.#m_dockWidgets.push(dockWidget);
 
+			/** Provides if behavior. */
 			if (dockWidget.workspaceId() === "")
 				dockWidget.setWorkspaceId(`dock-${this.#m_dockWidgets.length - 1}`);
 		}
 
+		/** Provides if behavior. */
 		if (dockWidget.isFloating())
 			dockWidget.setFloatingState(false);
 
@@ -376,15 +428,19 @@ export class CMainWindow extends CWidget {
 		this.restoreWorkspace();
 	}
 
+	/** Removes dock widget. */
 	removeDockWidget(dockWidget: CDockWidget): void {
 		const index = this.#m_dockWidgets.indexOf(dockWidget);
 
+		/** Provides if behavior. */
 		if (index !== -1)
 			this.#m_dockWidgets.splice(index, 1);
 
 		dockWidget.setMainWindow(null);
 
+		/** Provides if behavior. */
 		if (dockWidget.isFloating()) {
+			/** Provides if behavior. */
 			if (dockWidget.parent() === this)
 				dockWidget.setParent(null);
 
@@ -396,18 +452,23 @@ export class CMainWindow extends CWidget {
 		this.#m_dockArea.removeDockWidget(dockWidget);
 	}
 
+	/** Provides dock widget area behavior. */
 	dockWidgetArea(dockWidget: CDockWidget): CDockWidgetArea | null {
 		return this.#m_dockArea.dockWidgetArea(dockWidget);
 	}
 
+	/** Sets the dock widget floating. */
 	setDockWidgetFloating(dockWidget: CDockWidget,
 		floating: boolean): void {
+		/** Provides if behavior. */
 		if (dockWidget.isFloating() === floating)
 			return;
 
+		/** Provides if behavior. */
 		if (floating) {
 			const area = this.#m_dockArea.dockWidgetArea(dockWidget);
 
+			/** Provides if behavior. */
 			if (area === null)
 				return;
 
@@ -434,10 +495,13 @@ export class CMainWindow extends CWidget {
 		this.update();
 	}
 
+	/** Provides dock widget behavior. */
 	dockWidget(dockWidget: CDockWidget, area: CDockWidgetArea): void {
+		/** Provides if behavior. */
 		if (!this.#m_dockWidgets.includes(dockWidget)) {
 			this.#m_dockWidgets.push(dockWidget);
 
+			/** Provides if behavior. */
 			if (dockWidget.workspaceId() === "")
 				dockWidget.setWorkspaceId(`dock-${this.#m_dockWidgets.length - 1}`);
 		}
@@ -448,6 +512,7 @@ export class CMainWindow extends CWidget {
 		const oldHorizontal = oldArea === CDockWidgetArea.Top || oldArea === CDockWidgetArea.Bottom;
 		const newHorizontal = area === CDockWidgetArea.Top || area === CDockWidgetArea.Bottom;
 
+		/** Provides if behavior. */
 		if (oldHorizontal !== newHorizontal) {
 			const width = dockWidget.dockWidth();
 			const height = dockWidget.dockHeight();
@@ -461,6 +526,7 @@ export class CMainWindow extends CWidget {
 		this.update();
 	}
 
+	/** Provides dock area at behavior. */
 	dockAreaAt(
 		dockWidget: CDockWidget,
 		canvasX: number,
@@ -473,6 +539,7 @@ export class CMainWindow extends CWidget {
 		);
 	}
 
+	/** Provides update dock preview behavior. */
 	updateDockPreview(
 		dockWidget: CDockWidget,
 		canvasX: number,
@@ -484,10 +551,12 @@ export class CMainWindow extends CWidget {
 		);
 	}
 
+	/** Clears dock preview. */
 	clearDockPreview(): void {
 		this.#m_dockArea.clearDockPreview();
 	}
 
+	/** Provides save state behavior. */
 	saveState(): string {
 		const state: CMainWindowState = {
 			version: 2,
@@ -520,6 +589,7 @@ export class CMainWindow extends CWidget {
 		return JSON.stringify(state);
 	}
 
+	/** Provides restore state behavior. */
 	restoreState(serializedState: string): boolean {
 		let state: CMainWindowState;
 
@@ -529,6 +599,7 @@ export class CMainWindow extends CWidget {
 			return false;
 		}
 
+		/** Provides if behavior. */
 		if (state.version !== 2 ||
 			!Array.isArray(state.dockWidgets) ||
 			!Array.isArray(state.toolBars)) {
@@ -541,9 +612,11 @@ export class CMainWindow extends CWidget {
 				.map(dock => [dock.workspaceId(), dock])
 		);
 
+		/** Provides for behavior. */
 		for (const saved of state.dockWidgets) {
 			const dock = docks.get(saved.id);
 
+			/** Provides if behavior. */
 			if (dock === undefined)
 				continue;
 
@@ -556,8 +629,10 @@ export class CMainWindow extends CWidget {
 			dock.setDockWidth(saved.dockWidth);
 			dock.setDockHeight(saved.dockHeight);
 
+			/** Provides if behavior. */
 			if (saved.floating) {
 
+				/** Provides if behavior. */
 				if (!dock.isFloating()) {
 					this.dockWidget(dock, saved.area);
 					this.setDockWidgetFloating(dock, true);
@@ -571,6 +646,7 @@ export class CMainWindow extends CWidget {
 				this.dockWidget(dock, saved.area);
 			}
 
+			/** Provides if behavior. */
 			if (saved.visible)
 				dock.show();
 			else
@@ -585,11 +661,13 @@ export class CMainWindow extends CWidget {
 
 		const savedToolBars: CToolBarItem[] = [];
 
+		/** Provides for behavior. */
 		for (const saved of [...state.toolBars].sort(
 			(a, b) => a.index - b.index
 		)) {
 			const toolBar = toolBars.get(saved.id);
 
+			/** Provides if behavior. */
 			if (toolBar === undefined)
 				continue;
 
@@ -603,6 +681,7 @@ export class CMainWindow extends CWidget {
 				floating: false
 			});
 
+			/** Provides if behavior. */
 			if (saved.visible)
 				toolBar.show();
 			else
@@ -620,16 +699,20 @@ export class CMainWindow extends CWidget {
 			)
 		];
 
+		/** Provides if behavior. */
 		if (this.#m_menuBar !== null &&
 			state.menuBarVisible !== null) {
+			/** Provides if behavior. */
 			if (state.menuBarVisible)
 				this.#m_menuBar.show();
 			else
 				this.#m_menuBar.hide();
 		}
 
+		/** Provides if behavior. */
 		if (this.#m_statusBar !== null &&
 			state.statusBarVisible !== null) {
+			/** Provides if behavior. */
 			if (state.statusBarVisible)
 				this.#m_statusBar.show();
 			else
@@ -641,16 +724,20 @@ export class CMainWindow extends CWidget {
 		return true;
 	}
 
+	/** Provides reset workspace behavior. */
 	resetWorkspace(): void {
 		const storage = this.#workspaceStorage();
+		/** Provides if behavior. */
 		if (storage !== null)
 			storage.removeItem(CMainWindow.WorkspaceStorageKey);
 	}
 
 
+	/** Renders the widget. */
 	override render(painter: CPainter): void {
 		super.render(painter);
 
+		/** Provides if behavior. */
 		if (
 			this.#m_toolBarPreview === null ||
 			!this.isVisible()
@@ -690,17 +777,20 @@ export class CMainWindow extends CWidget {
 	}
 
 
+	/** Sets the geometry. */
 	override setGeometry(x: number, y: number, width: number, height: number
 	): void {
 		super.setGeometry(x, y, width, height);
 		this.#updateGeometry();
 	}
 
+	/** Provides resize behavior. */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 		this.#updateGeometry();
 	}
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
 		const center = this.#m_dockArea.sizeHint();
 
@@ -711,10 +801,13 @@ export class CMainWindow extends CWidget {
 		let sideWidth = 0;
 		let verticalToolBarHeight = 0;
 
+		/** Provides for behavior. */
 		for (const item of this.#m_toolBars) {
+			/** Provides if behavior. */
 			if (!item.toolBar.isVisible() || item.floating)
 				continue;
 
+			/** Provides if behavior. */
 			if (
 				item.area === CToolBarArea.Top ||
 				item.area === CToolBarArea.Bottom
@@ -739,11 +832,13 @@ export class CMainWindow extends CWidget {
 		let width = Math.max(centerWidth, horizontalToolBarWidth);
 		let height = centerHeight + topBottomHeight;
 
+		/** Provides if behavior. */
 		if (this.#m_menuBar !== null && this.#m_menuBar.isVisible()) {
 			width = Math.max(width, this.#m_menuBar.sizeHint().width());
 			height += this.#m_menuBar.sizeHint().height();
 		}
 
+		/** Provides if behavior. */
 		if (this.#m_statusBar !== null && this.#m_statusBar.isVisible()) {
 			width = Math.max(width, this.#m_statusBar.sizeHint().width());
 			height += this.#m_statusBar.sizeHint().height();
@@ -753,6 +848,7 @@ export class CMainWindow extends CWidget {
 	}
 
 
+	/** Handles child visibility changed behavior. */
 	protected override childVisibilityChanged(
 		_child: CWidget
 	): void {
@@ -766,12 +862,14 @@ export class CMainWindow extends CWidget {
 		let right = this.width();
 		let bottom = this.height();
 
+		/** Provides if behavior. */
 		if (this.#m_menuBar !== null && this.#m_menuBar.isVisible()) {
 			const height = this.#m_menuBar.sizeHint().height();
 			this.#m_menuBar.setGeometry(0, top, this.width(), height);
 			top += height;
 		}
 
+		/** Provides if behavior. */
 		if (this.#m_statusBar !== null && this.#m_statusBar.isVisible()) {
 			const height = this.#m_statusBar.sizeHint().height();
 			bottom -= height;
@@ -783,7 +881,9 @@ export class CMainWindow extends CWidget {
 			);
 		}
 
+		/** Provides for behavior. */
 		for (const item of this.#m_toolBars) {
+			/** Provides if behavior. */
 			if (
 				!item.toolBar.isVisible() ||
 				item.floating ||
@@ -796,7 +896,9 @@ export class CMainWindow extends CWidget {
 			top += height;
 		}
 
+		/** Provides for behavior. */
 		for (const item of this.#m_toolBars) {
+			/** Provides if behavior. */
 			if (
 				!item.toolBar.isVisible() ||
 				item.floating ||
@@ -809,7 +911,9 @@ export class CMainWindow extends CWidget {
 			item.toolBar.setGeometry(left, bottom, Math.max(0, right - left), height);
 		}
 
+		/** Provides for behavior. */
 		for (const item of this.#m_toolBars) {
+			/** Provides if behavior. */
 			if (
 				!item.toolBar.isVisible() ||
 				item.floating ||
@@ -822,7 +926,9 @@ export class CMainWindow extends CWidget {
 			left += width;
 		}
 
+		/** Provides for behavior. */
 		for (const item of this.#m_toolBars) {
+			/** Provides if behavior. */
 			if (
 				!item.toolBar.isVisible() ||
 				item.floating ||
@@ -853,13 +959,17 @@ export class CMainWindow extends CWidget {
 		let right = this.width();
 		let bottom = this.height();
 
+		/** Provides if behavior. */
 		if (this.#m_menuBar !== null && this.#m_menuBar.isVisible())
 			top += this.#m_menuBar.sizeHint().height();
 
+		/** Provides if behavior. */
 		if (this.#m_statusBar !== null && this.#m_statusBar.isVisible())
 			bottom -= this.#m_statusBar.sizeHint().height();
 
+		/** Provides for behavior. */
 		for (const item of this.#m_toolBars) {
+			/** Provides if behavior. */
 			if (
 				item.toolBar === toolBar ||
 				!item.toolBar.isVisible() ||
@@ -867,6 +977,7 @@ export class CMainWindow extends CWidget {
 			)
 				continue;
 
+			/** Provides switch behavior. */
 			switch (item.area) {
 			case CToolBarArea.Top:
 				top += item.toolBar.sizeHint().height();
@@ -892,6 +1003,7 @@ export class CMainWindow extends CWidget {
 
 		const extent = toolBar.extent();
 
+		/** Provides switch behavior. */
 		switch (area) {
 		case CToolBarArea.Top: {
 			const height = Math.min(
@@ -964,9 +1076,11 @@ export class CMainWindow extends CWidget {
 	}
 
 
+	/** Provides save workspace behavior. */
 	saveWorkspace(): void {
 		const storage = this.#workspaceStorage();
 
+		/** Provides if behavior. */
 		if (storage === null)
 			return;
 
@@ -976,9 +1090,11 @@ export class CMainWindow extends CWidget {
 		);
 	}
 
+	/** Provides restore workspace behavior. */
 	restoreWorkspace(): boolean {
 		const storage = this.#workspaceStorage();
 
+		/** Provides if behavior. */
 		if (storage === null)
 			return false;
 
@@ -986,13 +1102,16 @@ export class CMainWindow extends CWidget {
 			CMainWindow.WorkspaceStorageKey
 		);
 
+		/** Provides if behavior. */
 		if (state === null)
 			return false;
 
 		return this.restoreState(state);
 	}
 
+	/** Releases resources owned by the widget. */
 	override destroy(): void {
+		/** Provides if behavior. */
 		if (typeof globalThis.removeEventListener === "function") {
 			globalThis.removeEventListener(
 				"beforeunload",

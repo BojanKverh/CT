@@ -6,6 +6,7 @@ import type { CPainter } from "../painting/CPainter.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CStyleOptionSizeGrip } from "../gui/CStyleOptionSizeGrip.js";
 
+/** Implements the size grip widget. */
 export class CSizeGrip extends CWidget
 {
 	#m_pressed = false;
@@ -14,8 +15,10 @@ export class CSizeGrip extends CWidget
 	#m_pressWidth = 0;
 	#m_pressHeight = 0;
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null)
 	{
+		/** Provides super behavior. */
 		super(parent);
 
 		this.setCursor(CCursorShape.SizeFDiag);
@@ -24,13 +27,16 @@ export class CSizeGrip extends CWidget
         this.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize
 	{
 		return new CSize(16, 16);
 	}
 
+	/** Handles the mouse press event. */
 	protected override mousePressEvent(event: CMouseEvent): void
 	{
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -38,6 +44,7 @@ export class CSizeGrip extends CWidget
 
 		const parent = this.parent();
 
+		/** Provides if behavior. */
 		if (!parent) {
 			event.ignore();
 			return;
@@ -54,8 +61,10 @@ export class CSizeGrip extends CWidget
 		event.accept();
 	}
 
+	/** Handles the mouse move event. */
 	protected override mouseMoveEvent(event: CMouseEvent): void
 	{
+		/** Provides if behavior. */
 		if (!this.#m_pressed) {
 			event.ignore();
 			return;
@@ -63,6 +72,7 @@ export class CSizeGrip extends CWidget
 
 		const parent = this.parent();
 
+		/** Provides if behavior. */
 		if (!parent) {
 			event.ignore();
 			return;
@@ -89,8 +99,10 @@ export class CSizeGrip extends CWidget
 		event.accept();
 	}
 
+	/** Handles the mouse release event. */
 	protected override mouseReleaseEvent(event: CMouseEvent): void
 	{
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -101,6 +113,7 @@ export class CSizeGrip extends CWidget
 		event.accept();
 	}
 
+	/** Handles the paint event. */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionSizeGrip();
 		option.initFromSizeGrip(this);

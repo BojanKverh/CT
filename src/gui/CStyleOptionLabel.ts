@@ -3,12 +3,29 @@ import { CAlignment } from "../core/CAlignment.js";
 import type { CPixmap } from "../painting/CPixmap.js";
 import type { CLabel } from "../widgets/CLabel.js";
 
+/**
+ * Contains style information used to render a label.
+ */
 export class CStyleOptionLabel extends CStyleOption {
-	text = "";
-	alignment = CAlignment.Left | CAlignment.VCenter;
-	pixmap: CPixmap | null = null;
+		/**
+	 * Returns or updates the text value.
+	 */
+text = "";
+		/**
+	 * Returns or updates the alignment value.
+	 */
+alignment = CAlignment.Left | CAlignment.VCenter;
+		/**
+	 * Returns the best matching pixmap for the requested size, mode, and state.
+	 */
+pixmap: CPixmap | null = null;
 
-	constructor(other: CStyleOptionLabel | null = null) {
+		/**
+	 * Creates a new CStyleOptionLabel instance.
+	 *
+	 * @param other Other.
+	 */
+constructor(other: CStyleOptionLabel | null = null) {
 		super(other);
 
 		if (other) {
@@ -18,7 +35,12 @@ export class CStyleOptionLabel extends CStyleOption {
 		}
 	}
 
-	initFromLabel(label: CLabel): void {
+		/**
+	 * Initializes this style option from the specified label.
+	 *
+	 * @param label Label.
+	 */
+initFromLabel(label: CLabel): void {
 		this.initFrom(label);
 
 		this.text = label.text();

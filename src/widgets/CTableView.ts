@@ -43,6 +43,7 @@ class CTableViewContentWidget extends CWidget {
 	}
 }
 
+/** Implements the table view widget. */
 export class CTableView extends CWidget {
 	static readonly RowHeight =
 		CHeaderView.DefaultSectionHeight;
@@ -61,7 +62,9 @@ export class CTableView extends CWidget {
 	#m_disconnectDataChanged: (() => void) | null = null;
 	#m_disconnectModelReset: (() => void) | null = null;
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
+		/** Provides super behavior. */
 		super(parent);
 
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
@@ -98,16 +101,20 @@ export class CTableView extends CWidget {
 		});
 	}
 
+	/** Provides model behavior. */
 	model(): CAbstractItemModel | null {
 		return this.#m_model;
 	}
 
+	/** Sets the model. */
 	setModel(model: CAbstractItemModel | null): void {
+		/** Provides if behavior. */
 		if (this.#m_model === model)
 			return;
 
 		this.#disconnectModel();
 
+		/** Provides if behavior. */
 		if (this.#m_selectionModel !== null) {
 			this.#m_selectionModel.destroy();
 			this.#m_selectionModel = null;
@@ -118,6 +125,7 @@ export class CTableView extends CWidget {
 		this.#m_horizontalHeader.setModel(model);
 		this.#m_verticalHeader.setModel(model);
 
+		/** Provides if behavior. */
 		if (model !== null) {
 			this.#m_selectionModel =
 				new CItemSelectionModel(model, this);
@@ -141,74 +149,92 @@ export class CTableView extends CWidget {
 		this.update();
 	}
 
+	/** Provides selection model behavior. */
 	selectionModel(): CItemSelectionModel | null {
 		return this.#m_selectionModel;
 	}
 
+	/** Returns the current index. */
 	currentIndex(): CModelIndex {
 		return this.#m_selectionModel?.currentIndex()
 			?? new CModelIndex();
 	}
 
+	/** Sets the current index. */
 	setCurrentIndex(index: CModelIndex): void {
+		/** Provides if behavior. */
 		if (this.#m_selectionModel === null)
 			return;
 
+		/** Provides if behavior. */
 		if (index.isValid() && index.model() !== this.#m_model)
 			return;
 
 		this.#m_selectionModel.setCurrentIndex(index);
 
+		/** Provides if behavior. */
 		if (index.isValid())
 			this.#ensureIndexVisible(index);
 
 		this.#m_contentWidget.update();
 	}
 
+	/** Provides horizontal header behavior. */
 	horizontalHeader(): CHeaderView {
 		return this.#m_horizontalHeader;
 	}
 
+	/** Provides vertical header behavior. */
 	verticalHeader(): CHeaderView {
 		return this.#m_verticalHeader;
 	}
 
+	/** Provides viewport behavior. */
 	viewport(): CWidget {
 		return this.#m_scrollArea.viewport();
 	}
 
+	/** Provides horizontal scroll bar behavior. */
 	horizontalScrollBar(): CScrollBar {
 		return this.#m_scrollArea.horizontalScrollBar();
 	}
 
+	/** Provides vertical scroll bar behavior. */
 	verticalScrollBar(): CScrollBar {
 		return this.#m_scrollArea.verticalScrollBar();
 	}
 
+	/** Provides scroll x behavior. */
 	scrollX(): number {
 		return this.#m_scrollArea.scrollX();
 	}
 
+	/** Provides scroll y behavior. */
 	scrollY(): number {
 		return this.#m_scrollArea.scrollY();
 	}
 
+	/** Sets the scroll x. */
 	setScrollX(x: number): void {
 		this.#m_scrollArea.setScrollX(x);
 	}
 
+	/** Sets the scroll y. */
 	setScrollY(y: number): void {
 		this.#m_scrollArea.setScrollY(y);
 	}
 
+	/** Provides scroll to behavior. */
 	scrollTo(x: number, y: number): void {
 		this.#m_scrollArea.scrollTo(x, y);
 	}
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
 		return new CSize(400, 240);
 	}
 
+	/** Sets the geometry. */
 	override setGeometry(
 		x: number,
 		y: number,
@@ -219,14 +245,17 @@ export class CTableView extends CWidget {
 		this.#updateGeometry();
 	}
 
+	/** Provides resize behavior. */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 		this.#updateGeometry();
 	}
 
+	/** Provides paint cells behavior. */
 	paintCells(painter: CPainter): void {
 		const model = this.#m_model;
 
+		/** Provides if behavior. */
 		if (model === null)
 			return;
 
@@ -261,7 +290,9 @@ export class CTableView extends CWidget {
 		painter.setTextBaseline("middle");
         painter.setTextAlign("left");
 
+		/** Provides for behavior. */
 		for (let row = 0; row < model.rowCount(); row++) {
+			/** Provides for behavior. */
 			for (
 				let column = 0;
 				column < model.columnCount();
@@ -288,7 +319,9 @@ export class CTableView extends CWidget {
 		}
 	}
 
+	/** Handles the content mouse press event. */
 	contentMousePressEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.type() !== CEventType.MousePress
 			|| event.button() !== CMouseButton.LeftButton
 			|| this.#m_model === null
@@ -307,6 +340,7 @@ export class CTableView extends CWidget {
 		const index =
 			this.#m_model.index(row, column);
 
+		/** Provides if behavior. */
 		if (!index.isValid()) {
 			event.ignore();
 			return;
@@ -320,7 +354,9 @@ export class CTableView extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the content key press event. */
 	contentKeyPressEvent(event: CKeyEvent): void {
+		/** Provides if behavior. */
 		if (this.#m_model === null
 			|| this.#m_selectionModel === null) {
 			event.ignore();
@@ -330,6 +366,7 @@ export class CTableView extends CWidget {
 		const rows = this.#m_model.rowCount();
 		const columns = this.#m_model.columnCount();
 
+		/** Provides if behavior. */
 		if (rows === 0 || columns === 0) {
 			event.ignore();
 			return;
@@ -338,10 +375,12 @@ export class CTableView extends CWidget {
 		let row = this.currentIndex().row();
 		let column = this.currentIndex().column();
 
+		/** Provides if behavior. */
 		if (!this.currentIndex().isValid()) {
 			row = 0;
 			column = 0;
 		} else {
+			/** Provides switch behavior. */
 			switch (event.key()) {
 				case "ArrowLeft":
 					column = Math.max(0, column - 1);
@@ -360,6 +399,7 @@ export class CTableView extends CWidget {
 					break;
 
 				case "Home":
+					/** Provides if behavior. */
 					if (event.ctrl())
 						row = 0;
 
@@ -367,6 +407,7 @@ export class CTableView extends CWidget {
 					break;
 
 				case "End":
+					/** Provides if behavior. */
 					if (event.ctrl())
 						row = rows - 1;
 
@@ -467,11 +508,13 @@ export class CTableView extends CWidget {
 	}
 
 	#disconnectModel(): void {
+		/** Provides if behavior. */
 		if (this.#m_disconnectDataChanged !== null) {
 			this.#m_disconnectDataChanged();
 			this.#m_disconnectDataChanged = null;
 		}
 
+		/** Provides if behavior. */
 		if (this.#m_disconnectModelReset !== null) {
 			this.#m_disconnectModelReset();
 			this.#m_disconnectModelReset = null;
@@ -479,6 +522,7 @@ export class CTableView extends CWidget {
 	}
 
 	#ensureIndexVisible(index: CModelIndex): void {
+		/** Provides if behavior. */
 		if (!index.isValid())
 			return;
 
@@ -493,11 +537,13 @@ export class CTableView extends CWidget {
 		let scrollX = this.#m_scrollArea.scrollX();
 		let scrollY = this.#m_scrollArea.scrollY();
 
+		/** Provides if behavior. */
 		if (x < scrollX)
 			scrollX = x;
 		else if (right > scrollX + viewportWidth)
 			scrollX = right - viewportWidth;
 
+		/** Provides if behavior. */
 		if (y < scrollY)
 			scrollY = y;
 		else if (bottom > scrollY + viewportHeight)

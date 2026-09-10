@@ -8,11 +8,25 @@ import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CRect } from "../geometry/CRect.js";
 import { CPoint } from "../geometry/CPoint.js";
 
+/**
+ * Represents the result of a dialog.
+ */
 export enum CDialogResult {
+/**
+ * The dialog was rejected or closed without acceptance.
+ */
 	Rejected = 0,
+/**
+ * The dialog was accepted.
+ */
 	Accepted = 1
 }
 
+/**
+ * Base class for top-level dialog windows.
+ *
+ * Provides modal and non-modal display, a title bar, acceptance/rejection semantics, and basic window dragging.
+ */
 export class CDialog extends CWidget
 {
 	#m_windowTitle = "";
@@ -26,11 +40,22 @@ export class CDialog extends CWidget
     #m_dragOffsetY = 0;
     #m_closeButtonHovered = false;
 
+/**
+ * Emitted when the dialog is accepted.
+ */
 	readonly accepted = new CSignal<[]>();
+/**
+ * Emitted when the dialog is rejected.
+ */
 	readonly rejected = new CSignal<[]>();
 
     static readonly CloseButtonWidth = 24;
 
+/**
+ * Creates a dialog.
+ *
+ * @param parent Optional owner widget.
+ */
 	constructor(parent: CWidget | null = null)
 	{
 		super(parent);
@@ -44,6 +69,11 @@ export class CDialog extends CWidget
 			CApplication.instance().unregisterTopLevelWidget(this);
 	}
 
+/**
+ * Returns the full dialog rectangle, including the title bar.
+ *
+ * @returns The dialog rectangle.
+ */
 	override rect(): CRect {
 		return new CRect(
 			0,
@@ -53,19 +83,39 @@ export class CDialog extends CWidget
 		);
 	}
 
+/**
+ * Returns the rectangle available to dialog contents.
+ *
+ * @returns The content rectangle.
+ */
 	override contentsRect(): CRect {
 		return new CRect(0, 0, this.width(), this.height());
 	}
 
+/**
+ * Returns the offset applied to child widgets below the title bar.
+ *
+ * @returns The child content offset.
+ */
 	protected override childOffset(): CPoint {
 		return new CPoint(0, CDialog.TitleBarHeight);
 	}
 
+/**
+ * Returns the dialog window title.
+ *
+ * @returns The current window title.
+ */
 	windowTitle(): string
 	{
 		return this.#m_windowTitle;
 	}
 
+/**
+ * Sets the dialog window title.
+ *
+ * @param title New window title.
+ */
 	setWindowTitle(title: string): void
 	{
 		if (this.#m_windowTitle === title)
@@ -75,16 +125,31 @@ export class CDialog extends CWidget
 		this.update();
 	}
 
+/**
+ * Returns whether the dialog is currently open.
+ *
+ * @returns `true` if the dialog is open.
+ */
 	isOpen(): boolean
 	{
 		return this.#m_open;
 	}
 
+/**
+ * Returns whether the dialog is modal.
+ *
+ * @returns `true` if the dialog is modal.
+ */
 	isModal(): boolean
 	{
 		return this.#m_modal;
 	}
 
+/**
+ * Sets whether the dialog is modal.
+ *
+ * @param modal `true` to make the dialog modal.
+ */
 	setModal(modal: boolean): void
 	{
 		if (this.#m_modal === modal)
@@ -93,11 +158,19 @@ export class CDialog extends CWidget
 		this.#m_modal = modal;
 	}
 
+/**
+ * Returns the current dialog result.
+ *
+ * @returns The current acceptance result.
+ */
 	result(): CDialogResult
 	{
 		return this.#m_result;
 	}
 
+/**
+ * Opens the dialog.
+ */
 	open(): void
 	{
 		if (this.#m_open)
@@ -118,12 +191,18 @@ export class CDialog extends CWidget
 		this.setFocus();
 	}
 
+/**
+ * Opens the dialog modally.
+ */
 	exec(): void
 	{
 		this.setModal(true);
 		this.open();
 	}
 
+/**
+ * Closes the dialog without changing its current result.
+ */
 	close(): void
 	{
 		if (!this.#m_open)
@@ -138,6 +217,9 @@ export class CDialog extends CWidget
 		this.hide();
 	}
 
+/**
+ * Accepts and closes the dialog, then emits `accepted`.
+ */
 	accept(): void
 	{
 		if (!this.#m_open)
@@ -149,6 +231,9 @@ export class CDialog extends CWidget
 		this.accepted.emit();
 	}
 
+/**
+ * Rejects and closes the dialog, then emits `rejected`.
+ */
 	reject(): void
 	{
 		if (!this.#m_open)
@@ -160,6 +245,13 @@ export class CDialog extends CWidget
 		this.rejected.emit();
 	}
 
+/**
+ * Handles keyboard input for the dialog.
+ *
+ * Pressing Escape rejects the dialog.
+ *
+ * @param event Key event to handle.
+ */
 	protected override keyPressEvent(event: CKeyEvent): void
 	{
 		if (event.key() === "Escape") {
@@ -171,6 +263,11 @@ export class CDialog extends CWidget
 		event.ignore();
 	}
 
+/**
+ * Paints the dialog frame and title bar.
+ *
+ * @param painter Painter used to render the dialog.
+ */
 	protected override paintEvent(painter: CPainter): void
     {
 	    const base = this.palette().color(CPaletteColorRole.Base).toCss();
@@ -204,6 +301,11 @@ export class CDialog extends CWidget
         painter.drawText("×", this.width() - CDialog.CloseButtonWidth / 2, CDialog.TitleBarHeight / 2);
     }
 
+/**
+ * Handles mouse presses on the title bar and close button.
+ *
+ * @param event Mouse event to handle.
+ */
     protected override mousePressEvent(event: CMouseEvent): void
     {
 	    if (event.button() !== CMouseButton.LeftButton) {
@@ -228,6 +330,11 @@ export class CDialog extends CWidget
 	    event.accept();
     }
 
+/**
+ * Handles dialog dragging and close-button hover state.
+ *
+ * @param event Mouse event to handle.
+ */
     protected override mouseMoveEvent(event: CMouseEvent): void
     {
 	    const closeButtonHovered = this.#isCloseButtonAt(event.x(), event.y());
@@ -245,6 +352,11 @@ export class CDialog extends CWidget
 	    event.accept();
     }
 
+/**
+ * Finishes a title-bar drag or activates the close button.
+ *
+ * @param event Mouse event to handle.
+ */
     protected override mouseReleaseEvent(event: CMouseEvent): void
     {
 	    if (event.button() !== CMouseButton.LeftButton) {
@@ -268,6 +380,11 @@ export class CDialog extends CWidget
 	    event.accept();
     }
 
+/**
+ * Clears title-bar hover state when the pointer leaves the dialog.
+ *
+ * @param event Mouse event to handle.
+ */
     protected override mouseLeaveEvent(event: CMouseEvent): void {
         this.#m_closeButtonHovered = false;
         this.update();

@@ -212,13 +212,17 @@ class CTreeWidgetModel extends CAbstractItemModel {
 	}
 }
 
+/** Implements the tree widget widget. */
 export class CTreeWidget extends CTreeView {
 	#m_treeModel: CTreeWidgetModel;
 
+	/** Signal emitted when current item changes. */
 	readonly currentItemChanged =
 		new CSignal<[CTreeWidgetItem | null, CTreeWidgetItem | null]>();
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
+		/** Provides super behavior. */
 		super(parent);
 
 		this.#m_treeModel = new CTreeWidgetModel(this);
@@ -234,40 +238,50 @@ export class CTreeWidget extends CTreeView {
 		);
 	}
 
+	/** Adds top level item. */
 	addTopLevelItem(item: CTreeWidgetItem): void {
 		this.#m_treeModel.addTopLevelItem(item);
 	}
 
+	/** Inserts top level item. */
 	insertTopLevelItem(index: number, item: CTreeWidgetItem): void {
 		this.#m_treeModel.insertTopLevelItem(index, item);
 	}
 
+	/** Removes and returns top level item. */
 	takeTopLevelItem(index: number): CTreeWidgetItem | null {
 		return this.#m_treeModel.takeTopLevelItem(index);
 	}
 
+	/** Provides top level item behavior. */
 	topLevelItem(index: number): CTreeWidgetItem | null {
 		return this.#m_treeModel.topLevelItem(index);
 	}
 
+	/** Provides top level item count behavior. */
 	topLevelItemCount(): number {
 		return this.#m_treeModel.topLevelItemCount();
 	}
 
+	/** Provides index of top level item behavior. */
 	indexOfTopLevelItem(item: CTreeWidgetItem): number {
 		return this.#m_treeModel.indexOfTopLevelItem(item);
 	}
 
+	/** Sets the header labels. */
 	setHeaderLabels(labels: string[]): void {
 		this.#m_treeModel.setHeaderLabels(labels);
 	}
 
+	/** Returns the current item. */
 	currentItem(): CTreeWidgetItem | null {
 		return this.#m_treeModel.itemFromIndex(this.currentIndex());
 	}
 
+	/** Sets the current item. */
 	setCurrentItem(item: CTreeWidgetItem | null,
 		column: number = 0): void {
+		/** Provides if behavior. */
 		if (item === null) {
 			this.setCurrentIndex(new CModelIndex());
 			return;
@@ -276,22 +290,27 @@ export class CTreeWidget extends CTreeView {
 		const index =
 			this.#m_treeModel.indexFromItem(item, column);
 
+		/** Provides if behavior. */
 		if (index.isValid())
 			this.setCurrentIndex(index);
 	}
 
+	/** Returns the selected items. */
 	selectedItems(): CTreeWidgetItem[] {
 		const selectionModel = this.selectionModel();
 
+		/** Provides if behavior. */
 		if (selectionModel === null)
 			return [];
 
 		const result: CTreeWidgetItem[] = [];
 
+		/** Provides for behavior. */
 		for (const index of selectionModel.selectedIndexes()) {
 			const item =
 				this.#m_treeModel.itemFromIndex(index);
 
+			/** Provides if behavior. */
 			if (item !== null && !result.includes(item))
 				result.push(item);
 		}
@@ -299,10 +318,12 @@ export class CTreeWidget extends CTreeView {
 		return result;
 	}
 
+	/** Provides item from index behavior. */
 	itemFromIndex(index: CModelIndex): CTreeWidgetItem | null {
 		return this.#m_treeModel.itemFromIndex(index);
 	}
 
+	/** Provides index from item behavior. */
 	indexFromItem(item: CTreeWidgetItem,
 		column: number = 0): CModelIndex {
 		return this.#m_treeModel.indexFromItem(item, column);

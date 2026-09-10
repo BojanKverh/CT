@@ -29,30 +29,64 @@ import { CStyleOptionTabWidget } from "./CStyleOptionTabWidget.js";
 import { CStyleOptionLabel } from "./CStyleOptionLabel.js";
 import { CStyleOptionToolTipWidget } from "../gui/CStyleOptionToolTipWidget.js";
 
+/**
+ * Provides the default visual style used to render Canvas Toolkit widgets.
+ */
 export class CDefaultStyle extends CStyle {
 
-	override sliderHandleSize(): number {
+		/**
+	 * Returns the slider handle size used by the style.
+	 *
+	 * @returns The resulting value.
+	 */
+override sliderHandleSize(): number {
 		return 16;
 	}
 
-	override toolTipHorizontalPadding(): number {
+		/**
+	 * Returns the tool tip horizontal padding used by the style.
+	 *
+	 * @returns The resulting value.
+	 */
+override toolTipHorizontalPadding(): number {
 		return 6;
 	}
 
-	override toolTipVerticalPadding(): number {
+		/**
+	 * Returns the tool tip vertical padding used by the style.
+	 *
+	 * @returns The resulting value.
+	 */
+override toolTipVerticalPadding(): number {
 		return 3;
 	}
 
-	override comboBoxArrowWidth(): number {
+		/**
+	 * Returns the combo box arrow width used by the style.
+	 *
+	 * @returns The resulting value.
+	 */
+override comboBoxArrowWidth(): number {
 		return 24;
 	}
 
-	override splitterHandleWidth(): number
+		/**
+	 * Returns the splitter handle width used by the style.
+	 *
+	 * @returns The resulting value.
+	 */
+override splitterHandleWidth(): number
 	{
 		return 6;
 	}
 
-		override drawLabel(painter: CPainter,
+				/**
+		 * Draws the label using the supplied painter and style option.
+		 *
+		 * @param painter Painter.
+		 * @param option Option.
+		 */
+override drawLabel(painter: CPainter,
 		option: CStyleOptionLabel): void {
 		const palette = option.palette;
 
@@ -117,7 +151,13 @@ export class CDefaultStyle extends CStyle {
 		}
 	}
 	
-	override drawPushButton(painter: CPainter, option: CStyleOptionPushButton): void {
+		/**
+	 * Draws the push button using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawPushButton(painter: CPainter, option: CStyleOptionPushButton): void {
 		const enabled = (option.state & CStyleState.Enabled) !== 0;
 		const down = (option.state & CStyleState.Sunken) !== 0;
 		const hovered = (option.state & CStyleState.MouseOver) !== 0;
@@ -143,7 +183,13 @@ export class CDefaultStyle extends CStyle {
 		painter.drawText(option.text, option.rect.width() / 2, option.rect.height() / 2);
 	}
 
-	override drawCheckBox(painter: CPainter, option: CStyleOptionCheckBox): void {
+		/**
+	 * Draws the check box using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawCheckBox(painter: CPainter, option: CStyleOptionCheckBox): void {
 		const enabled = (option.state & CStyleState.Enabled) !== 0;
 		const checked = (option.state & CStyleState.On) !== 0;
 		const boxSize = 16;
@@ -170,7 +216,13 @@ export class CDefaultStyle extends CStyle {
 		painter.drawText(option.text, boxSize + 6, option.rect.height() / 2);
 	}
 	
-	override drawLineEdit(painter: CPainter, option: CStyleOptionLineEdit): void {
+		/**
+	 * Draws the line edit using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawLineEdit(painter: CPainter, option: CStyleOptionLineEdit): void {
 		const metrics = new CFontMetrics(option.font);
 		const enabled = (option.state & CStyleState.Enabled) !== 0;
 		const focused = (option.state & CStyleState.HasFocus) !== 0;
@@ -225,7 +277,13 @@ export class CDefaultStyle extends CStyle {
 		}
 	}
 
-	override drawSlider(painter: CPainter, option: CStyleOptionSlider): void {
+		/**
+	 * Draws the slider using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawSlider(painter: CPainter, option: CStyleOptionSlider): void {
 		const grooveHeight = 4;
 		const handleW = this.sliderHandleSize();
 		const handleH = 12;
@@ -253,7 +311,13 @@ export class CDefaultStyle extends CStyle {
 			handleY, handleW, handleH));
 	}
 
-	override drawDial(painter: CPainter, option: CStyleOptionSlider): void {
+		/**
+	 * Draws the dial using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawDial(painter: CPainter, option: CStyleOptionSlider): void {
 		const rect = option.rect;
 		const centerX = rect.width() / 2;
 		const centerY = rect.height() / 2;
@@ -334,7 +398,13 @@ export class CDefaultStyle extends CStyle {
 		}
 	}
 
-	override drawProgressBar(painter: CPainter, option: CStyleOptionProgressBar): void {
+		/**
+	 * Draws the progress bar using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawProgressBar(painter: CPainter, option: CStyleOptionProgressBar): void {
 		const range = option.maximum - option.minimum;
 		const ratio = range === 0? 0
 			: (option.value - option.minimum) / range;
@@ -367,7 +437,13 @@ export class CDefaultStyle extends CStyle {
 			option.rect.height() / 2);
 	}
 
-	override drawGroupBox(painter: CPainter, option: CStyleOptionGroupBox): void {
+		/**
+	 * Draws the group box using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawGroupBox(painter: CPainter, option: CStyleOptionGroupBox): void {
 		const palette = option.palette;
 		const title = option.title;
 		const rect = option.rect;
@@ -431,7 +507,13 @@ export class CDefaultStyle extends CStyle {
 		painter.drawText(title, titleStart + titlePadding, frameY);
 	}
 
-	override drawScrollBar(painter: CPainter, option: CStyleOptionScrollBar): void {
+		/**
+	 * Draws the scroll bar using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawScrollBar(painter: CPainter, option: CStyleOptionScrollBar): void {
 		const enabled = (option.state & CStyleState.Enabled) !== 0;
 
 		painter.setFillStyle(
@@ -488,7 +570,13 @@ export class CDefaultStyle extends CStyle {
 		painter.strokeRect(option.rect);
 	}
 
-	override drawRadioButton(painter: CPainter, option: CStyleOptionRadioButton): void {
+		/**
+	 * Draws the radio button using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawRadioButton(painter: CPainter, option: CStyleOptionRadioButton): void {
 		const enabled = (option.state & CStyleState.Enabled) !== 0;
 		const checked = (option.state & CStyleState.On) !== 0;
 
@@ -518,7 +606,13 @@ export class CDefaultStyle extends CStyle {
 		painter.drawText(option.text, indicatorX + indicatorSize + 6, option.rect.height() / 2);
 	}
 
-	override drawTabWidget(painter: CPainter,
+		/**
+	 * Draws the tab widget using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawTabWidget(painter: CPainter,
 		option: CStyleOptionTabWidget): void {
 		const palette = option.palette;
 		const tabHeight = option.tabHeight;
@@ -575,7 +669,13 @@ export class CDefaultStyle extends CStyle {
 		}
 	}
 
-	override drawToolTip(painter: CPainter, option: CStyleOptionToolTipWidget): void {
+		/**
+	 * Draws the tool tip using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawToolTip(painter: CPainter, option: CStyleOptionToolTipWidget): void {
 		const palette = option.palette;
 
 		painter.setFillStyle(
@@ -599,7 +699,13 @@ export class CDefaultStyle extends CStyle {
 			option.rect.height() / 2);
 	}
 
-	override drawFrame(painter: CPainter, option: CStyleOptionFrame): void {
+		/**
+	 * Draws the frame using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawFrame(painter: CPainter, option: CStyleOptionFrame): void {
 		const shape = option.frameShape;
 
 		if (shape === CFrameShape.NoFrame)
@@ -726,7 +832,13 @@ export class CDefaultStyle extends CStyle {
 		);
 	}
 
-	override drawToolButton(painter: CPainter, option: CStyleOptionToolButton): void {
+		/**
+	 * Draws the tool button using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawToolButton(painter: CPainter, option: CStyleOptionToolButton): void {
 		const enabled = (option.state & CStyleState.Enabled) !== 0;
 		const hovered = (option.state & CStyleState.MouseOver) !== 0;
 		const down = (option.state & CStyleState.Sunken) !== 0;
@@ -876,7 +988,13 @@ export class CDefaultStyle extends CStyle {
 		}
 	}
 
-	override drawToolBar(painter: CPainter, option: CStyleOptionToolBar): void {
+		/**
+	 * Draws the tool bar using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawToolBar(painter: CPainter, option: CStyleOptionToolBar): void {
 		painter.setFillStyle(
 			option.palette.color(CPaletteColorRole.Window).toCss());
 		painter.fillRect(option.rect);
@@ -886,7 +1004,13 @@ export class CDefaultStyle extends CStyle {
 		painter.strokeRect(option.rect);
 	}
 
-	override drawComboBox(painter: CPainter,
+		/**
+	 * Draws the combo box using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawComboBox(painter: CPainter,
 		option: CStyleOptionComboBox): void {
 		const arrowWidth = this.comboBoxArrowWidth();
 		const arrowX = option.rect.width() - arrowWidth;
@@ -919,7 +1043,13 @@ export class CDefaultStyle extends CStyle {
 			centerY - arrowHeight / 2);
 	}
 
-	override drawSplitterHandle(painter: CPainter,
+		/**
+	 * Draws the splitter handle using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawSplitterHandle(painter: CPainter,
 		option: CStyleOptionSplitterHandle): void {
 		const palette = option.palette;
 		const rect = option.rect;
@@ -939,7 +1069,13 @@ export class CDefaultStyle extends CStyle {
 		}
 	}
 
-	override drawSizeGrip(painter: CPainter, option: CStyleOptionSizeGrip): void
+		/**
+	 * Draws the size grip using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawSizeGrip(painter: CPainter, option: CStyleOptionSizeGrip): void
 	{
 		const rect = option.rect;
 		const color = option.palette.color(CPaletteColorRole.Mid);
@@ -954,7 +1090,13 @@ export class CDefaultStyle extends CStyle {
 		}
 	}
 
-	override drawToolBoxButton(painter: CPainter, option: CStyleOptionToolBoxButton): void {
+		/**
+	 * Draws the tool box button using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawToolBoxButton(painter: CPainter, option: CStyleOptionToolBoxButton): void {
 		const palette = option.palette;
 		let backgroundRole = CPaletteColorRole.Window;
 		let textRole = CPaletteColorRole.Text;
@@ -986,7 +1128,13 @@ export class CDefaultStyle extends CStyle {
 		painter.drawText(option.text, 8, option.rect.height() / 2);
 	}
 
-	override drawKeySequenceEdit(painter: CPainter, option: CStyleOptionKeySequenceEdit): void {
+		/**
+	 * Draws the key sequence edit using the supplied painter and style option.
+	 *
+	 * @param painter Painter.
+	 * @param option Option.
+	 */
+override drawKeySequenceEdit(painter: CPainter, option: CStyleOptionKeySequenceEdit): void {
 		const palette = option.palette;
 		const textRole = option.state & CStyleState.Enabled
 			? CPaletteColorRole.Text

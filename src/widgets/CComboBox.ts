@@ -58,6 +58,7 @@ class CComboLineEdit extends CLineEdit {
 	}
 }
 
+/** Implements the combo box widget. */
 export class CComboBox extends CWidget {
 	static readonly MaxVisibleItems = 10;
 
@@ -73,11 +74,16 @@ export class CComboBox extends CWidget {
 	#m_syncingText = false;
     #m_arrowHovered = false;
 
+	/** Signal emitted when current index changes. */
 	readonly currentIndexChanged = new CSignal<[number]>();
+	/** Signal emitted when current text changes. */
 	readonly currentTextChanged = new CSignal<[string]>();
+	/** Public activated member. */
 	readonly activated = new CSignal<[number]>();
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
+		/** Provides super behavior. */
 		super(parent);
 
 		this.#m_lineEdit = new CComboLineEdit(this);
@@ -97,20 +103,26 @@ export class CComboBox extends CWidget {
 		this.#updateGeometry();
 	}
 
+	/** Returns whether the editable condition is active. */
 	isEditable(): boolean {
 		return this.#m_editable;
 	}
 
+	/** Sets the editable. */
 	setEditable(editable: boolean): void {
+		/** Provides if behavior. */
 		if (this.#m_editable === editable)
 			return;
 
 		this.#m_editable = editable;
 
+		/** Provides if behavior. */
 		if (!editable) {
+			/** Provides if behavior. */
 			if (this.#m_currentIndex === -1) {
 				const index = this.findText(this.#m_lineEdit.text());
 
+				/** Provides if behavior. */
 				if (index !== -1)
 					this.#setCurrentIndex(index);
 				else
@@ -125,19 +137,24 @@ export class CComboBox extends CWidget {
 		this.update();
 	}
 
+	/** Provides line edit behavior. */
 	lineEdit(): CLineEdit {
 		return this.#m_lineEdit;
 	}
 
+	/** Adds item. */
 	addItem(text: string): void {
 		this.insertItem(this.#m_items.length, text);
 	}
 
+    /** Adds items. */
     addItems(items: string[]): void {
+        /** Provides for behavior. */
         for (const item of items)
 			this.addItem(item);
     }
 
+	/** Inserts item. */
 	insertItem(index: number, text: string): void {
 		index = Math.max(0, Math.min(index, this.#m_items.length));
 
@@ -146,6 +163,7 @@ export class CComboBox extends CWidget {
 		this.#m_items.splice(index, 0, text);
 		this.#m_listWidget.insertItem(index, text);
 
+		/** Provides if behavior. */
 		if (currentIndex === -1) {
 			this.#setCurrentIndex(0);
 		} else if (index <= currentIndex) {
@@ -157,7 +175,9 @@ export class CComboBox extends CWidget {
 		this.update();
 	}
 
+	/** Removes item. */
 	removeItem(index: number): void {
+		/** Provides if behavior. */
 		if (index < 0 || index >= this.#m_items.length)
 			return;
 
@@ -166,6 +186,7 @@ export class CComboBox extends CWidget {
 		this.#m_items.splice(index, 1);
 		this.#m_listWidget.takeItem(index);
 
+		/** Provides if behavior. */
 		if (this.#m_items.length === 0) {
 			this.#setCurrentIndex(-1);
 		} else if (index === currentIndex) {
@@ -180,7 +201,9 @@ export class CComboBox extends CWidget {
 		this.update();
 	}
 
+	/** Clears the current contents. */
 	clear(): void {
+		/** Provides if behavior. */
 		if (this.#m_items.length === 0)
 			return;
 
@@ -191,18 +214,23 @@ export class CComboBox extends CWidget {
 		this.update();
 	}
 
+	/** Provides count behavior. */
 	count(): number {
 		return this.#m_items.length;
 	}
 
+	/** Provides item text behavior. */
 	itemText(index: number): string {
 		return this.#m_items[index] ?? "";
 	}
 
+	/** Sets the item text. */
 	setItemText(index: number, text: string): void {
+		/** Provides if behavior. */
 		if (index < 0 || index >= this.#m_items.length)
 			return;
 
+		/** Provides if behavior. */
 		if (this.#m_items[index] === text)
 			return;
 
@@ -212,12 +240,15 @@ export class CComboBox extends CWidget {
 
 		const item = this.#m_listWidget.item(index);
 
+		/** Provides if behavior. */
 		if (item !== null)
 			item.setText(text);
 
+		/** Provides if behavior. */
 		if (index === this.#m_currentIndex)
 			this.#syncLineEditText(text);
 
+		/** Provides if behavior. */
 		if (oldText !== this.currentText())
 			this.currentTextChanged.emit(this.currentText());
 
@@ -226,22 +257,28 @@ export class CComboBox extends CWidget {
 		this.update();
 	}
 
+	/** Returns the current index. */
 	currentIndex(): number {
 		return this.#m_currentIndex;
 	}
 
+	/** Sets the current index. */
 	setCurrentIndex(index: number): void {
+		/** Provides if behavior. */
 		if (index < -1 || index >= this.#m_items.length)
 			return;
 
 		this.#setCurrentIndex(index);
 	}
 
+	/** Returns the current text. */
 	currentText(): string {
 		return this.#m_lineEdit.text();
 	}
 
+	/** Sets the current text. */
 	setCurrentText(text: string): void {
+		/** Provides if behavior. */
 		if (this.#m_editable) {
 			this.#m_lineEdit.setText(text);
 			return;
@@ -249,32 +286,40 @@ export class CComboBox extends CWidget {
 
 		const index = this.findText(text);
 
+		/** Provides if behavior. */
 		if (index !== -1)
 			this.#setCurrentIndex(index);
 	}
 
+	/** Finds text. */
 	findText(text: string): number {
 		return this.#m_items.indexOf(text);
 	}
 
+	/** Returns whether the down condition is active. */
 	isDown(): boolean {
 		return this.#m_down;
 	}
 
+	/** Provides popup behavior. */
 	popup(): CPopupWidget {
 		return this.#m_popup;
 	}
 
+	/** Provides list widget behavior. */
 	listWidget(): CListWidget {
 		return this.#m_listWidget;
 	}
 
+	/** Shows popup. */
 	showPopup(): void {
+		/** Provides if behavior. */
 		if (this.#m_items.length === 0)
 			return;
 
 		this.#updatePopupGeometry();
 
+		/** Provides if behavior. */
 		if (this.#m_currentIndex !== -1)
 			this.#m_listWidget.setCurrentRow(this.#m_currentIndex);
 
@@ -282,23 +327,29 @@ export class CComboBox extends CWidget {
 		this.#m_listWidget.setFocus();
 	}
 
+	/** Hides popup. */
 	hidePopup(): void {
 		this.#m_popup.close();
 	}
 
+    /** Returns whether the arrow hovered condition is active. */
     isArrowHovered(): boolean
 	{
 		return this.#m_arrowHovered;
 	}
 
+	/** Provides handle combo key behavior. */
 	handleComboKey(event: CKeyEvent): void
 	{
+		/** Provides if behavior. */
 		if (event.key() === "ArrowDown") {
+			/** Provides if behavior. */
 			if (this.#m_popup.isOpen()) {
 				this.#m_listWidget.event(event);
 				return;
 			}
 
+			/** Provides if behavior. */
 			if (this.#m_currentIndex < this.#m_items.length - 1)
 				this.#setCurrentIndex(this.#m_currentIndex + 1);
 
@@ -306,12 +357,15 @@ export class CComboBox extends CWidget {
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (event.key() === "ArrowUp") {
+			/** Provides if behavior. */
 			if (this.#m_popup.isOpen()) {
 				this.#m_listWidget.event(event);
 				return;
 			}
 
+			/** Provides if behavior. */
 			if (this.#m_currentIndex > 0)
 				this.#setCurrentIndex(this.#m_currentIndex - 1);
 
@@ -319,22 +373,26 @@ export class CComboBox extends CWidget {
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (event.key() === "Escape") {
 			this.hidePopup();
 			event.accept();
 		}
 	}
 
+	/** Provides activate popup item behavior. */
 	activatePopupItem(): void
 	{
 		const item = this.#m_listWidget.currentItem();
 
+		/** Provides if behavior. */
 		if (item === null)
 			return;
 
 		this.#itemActivated(item);
 	}
 
+	/** Sets the geometry. */
 	override setGeometry(
 		x: number, y: number, width: number, height: number
 	): void {
@@ -343,16 +401,19 @@ export class CComboBox extends CWidget {
 		this.#updateGeometry();
 	}
 
+	/** Provides resize behavior. */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 
 		this.#updateGeometry();
 	}
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
 		return new CSize(120, 30);
 	}
 
+	/** Releases resources owned by the widget. */
 	override destroy(): void {
 		this.#m_popup.close();
 		this.#m_popup.destroy();
@@ -360,12 +421,15 @@ export class CComboBox extends CWidget {
 		super.destroy();
 	}
 
+	/** Handles the mouse press event. */
 	protected override mousePressEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (
 			this.#m_editable &&
 			event.x() < this.width() - this.style().comboBoxArrowWidth()
@@ -380,7 +444,9 @@ export class CComboBox extends CWidget {
 		this.update();
 	}
 
+	/** Handles the mouse release event. */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -396,6 +462,7 @@ export class CComboBox extends CWidget {
 			event.y() >= 0 &&
 			event.y() < this.height();
 
+		/** Provides if behavior. */
 		if (!wasDown || !insideArrow) {
             this.#m_arrowHovered = false;
             this.update();
@@ -403,16 +470,19 @@ export class CComboBox extends CWidget {
         }
 
 		this.update();
+        /** Provides if behavior. */
         if (this.#m_popup.isOpen())
 			this.hidePopup();
 		else
 			this.showPopup();        
 	}
 
+	/** Handles the mouse move event. */
 	protected override mouseMoveEvent(event: CMouseEvent): void
 	{
 		const hovered = event.x() >= this.width() - this.style().comboBoxArrowWidth();
 
+		/** Provides if behavior. */
 		if (hovered !== this.#m_arrowHovered) {
 			this.#m_arrowHovered = hovered;
 			this.update();
@@ -421,8 +491,10 @@ export class CComboBox extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the mouse leave event. */
 	protected override mouseLeaveEvent(event: CMouseEvent): void
 	{
+		/** Provides if behavior. */
 		if (this.#m_arrowHovered) {
 			this.#m_arrowHovered = false;
 			this.update();
@@ -431,8 +503,10 @@ export class CComboBox extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the key press event. */
 	protected override keyPressEvent(event: CKeyEvent): void
 	{
+		/** Provides switch behavior. */
 		switch (event.key()) {
 			case "ArrowDown":
 			case "ArrowUp":
@@ -442,6 +516,7 @@ export class CComboBox extends CWidget {
 
 			case "Enter":
 			case " ":
+				/** Provides if behavior. */
 				if (this.#m_popup.isOpen())
 					this.activatePopupItem();
 				else
@@ -456,6 +531,7 @@ export class CComboBox extends CWidget {
 		}
 	}
 
+	/** Handles the paint event. */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionComboBox();
 		option.initFromComboBox(this);
@@ -464,6 +540,7 @@ export class CComboBox extends CWidget {
 	}
 
 	#setCurrentIndex(index: number): void {
+		/** Provides if behavior. */
 		if (index === this.#m_currentIndex)
 			return;
 
@@ -478,6 +555,7 @@ export class CComboBox extends CWidget {
 
 		this.currentIndexChanged.emit(index);
 
+		/** Provides if behavior. */
 		if (oldText !== text)
 			this.currentTextChanged.emit(text);
 
@@ -485,6 +563,7 @@ export class CComboBox extends CWidget {
 	}
 
 	#syncLineEditText(text: string): void {
+		/** Provides if behavior. */
 		if (this.#m_lineEdit.text() === text)
 			return;
 
@@ -494,14 +573,17 @@ export class CComboBox extends CWidget {
 	}
 
 	#lineEditTextChanged(text: string): void {
+		/** Provides if behavior. */
 		if (this.#m_syncingText)
 			return;
 
+		/** Provides if behavior. */
 		if (!this.#m_editable)
 			return;
 
 		const index = this.findText(text);
 
+		/** Provides if behavior. */
 		if (index !== this.#m_currentIndex) {
 			this.#m_currentIndex = index;
 			this.#m_listWidget.setCurrentRow(index);
@@ -515,6 +597,7 @@ export class CComboBox extends CWidget {
 	#itemActivated(item: CListWidgetItem): void {
 		const index = this.#m_listWidget.row(item);
 
+		/** Provides if behavior. */
 		if (index === -1)
 			return;
 
@@ -522,6 +605,7 @@ export class CComboBox extends CWidget {
 		this.hidePopup();
 		this.activated.emit(index);
 
+		/** Provides if behavior. */
 		if (this.#m_editable)
 			this.#m_lineEdit.setFocus();
 		else
@@ -546,6 +630,7 @@ export class CComboBox extends CWidget {
 		const frameWidth = this.#m_listWidget.frameWidth();
 		const height = rows * CListWidget.ItemHeight + 2 * frameWidth;
 		let popupWidth = this.width();
+		/** Provides for behavior. */
 		for (const text of this.#m_items) {
 			const textWidth = this.fontMetrics().textWidth(text);
 

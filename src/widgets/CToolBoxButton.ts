@@ -6,6 +6,7 @@ import type { CWidget } from "./CWidget.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CStyleOptionToolBoxButton } from "../gui/CStyleOptionToolBoxButton.js";
 
+/** Implements the tool box button widget. */
 export class CToolBoxButton extends CAbstractButton
 {
 	static readonly #HEIGHT = 28;
@@ -15,29 +16,36 @@ export class CToolBoxButton extends CAbstractButton
 	#m_down = false;
 	#m_current = false;
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null)
 	{
+		/** Provides super behavior. */
 		super(parent);
         this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
+	/** Returns whether the hovered condition is active. */
 	isHovered(): boolean
 	{
 		return this.#m_hovered;
 	}
 
+	/** Returns whether the down condition is active. */
 	isDown(): boolean
 	{
 		return this.#m_down;
 	}
 
+	/** Returns whether the current condition is active. */
 	isCurrent(): boolean
 	{
 		return this.#m_current;
 	}
 
+	/** Sets the current. */
 	setCurrent(current: boolean): void
 	{
+		/** Provides if behavior. */
 		if (this.#m_current === current)
 			return;
 
@@ -45,6 +53,7 @@ export class CToolBoxButton extends CAbstractButton
 		this.update();
 	}
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize
 	{
 		return new CSize(
@@ -54,8 +63,10 @@ export class CToolBoxButton extends CAbstractButton
 		);
 	}
 
+	/** Handles the mouse press event. */
 	protected override mousePressEvent(event: CMouseEvent): void
 	{
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton ||
 			!this.isEnabled()) {
 			event.ignore();
@@ -68,8 +79,10 @@ export class CToolBoxButton extends CAbstractButton
 		this.update();
 	}
 
+	/** Handles the mouse release event. */
 	protected override mouseReleaseEvent(event: CMouseEvent): void
 	{
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -81,12 +94,15 @@ export class CToolBoxButton extends CAbstractButton
 		event.accept();
 		this.update();
 
+		/** Provides if behavior. */
 		if (wasDown && this.isEnabled())
 			this.clicked.emit();
 	}
 
+	/** Handles the mouse move event. */
 	protected override mouseMoveEvent(event: CMouseEvent): void
 	{
+		/** Provides if behavior. */
 		if (this.#m_hovered) {
 			event.ignore();
 			return;
@@ -98,8 +114,10 @@ export class CToolBoxButton extends CAbstractButton
 		this.update();
 	}
 
+	/** Handles the mouse leave event. */
 	protected override mouseLeaveEvent(event: CMouseEvent): void
     {
+	    /** Provides if behavior. */
 	    if (!this.#m_hovered && !this.#m_down) {
 		    event.ignore();
 		    return;
@@ -112,6 +130,7 @@ export class CToolBoxButton extends CAbstractButton
 	    this.update();
     }
 
+	/** Handles the paint event. */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionToolBoxButton();
 		option.initFromToolBoxButton(this);

@@ -1,5 +1,14 @@
+/**
+ * Provides browser-native file selection helpers.
+ */
 export class CFileDialog
 {
+/**
+ * Opens a native file picker for selecting one file.
+ *
+ * @param accept Optional HTML file-type accept filter.
+ * @returns A promise resolving to the selected file, or `null` if canceled.
+ */
 	static getOpenFile(
 		accept = ""
 	): Promise<File | null>
@@ -29,6 +38,12 @@ export class CFileDialog
 		});
 	}
 
+/**
+ * Opens a native file picker for selecting multiple files.
+ *
+ * @param accept Optional HTML file-type accept filter.
+ * @returns A promise resolving to the selected files, or an empty array if canceled.
+ */
 	static getOpenFiles(
 		accept = ""
 	): Promise<File[]>

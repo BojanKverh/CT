@@ -15,6 +15,7 @@ type CMenuItem =
 	| { type: "menu"; text: string; menu: CMenu }
 	| { type: "separator" };
 
+/** Implements the menu widget. */
 export class CMenu extends CPopupWidget {
 	static readonly ItemHeight = 28;
 	static readonly SeparatorHeight = 9;
@@ -27,13 +28,17 @@ export class CMenu extends CPopupWidget {
     #m_parentMenu: CMenu | null = null;
 	#m_menuBar: CMenuBar | null = null;
 
+    /** Public closed member. */
     readonly closed = new CSignal<[]>();
 
+	/** Creates a new instance. */
 	constructor() {
+		/** Provides super behavior. */
 		super();
 		this.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
+	/** Adds action. */
 	addAction(action: CAction): CAction {
 		this.#m_items.push({ type: "action", action });
 		this.#updateGeometry();
@@ -41,6 +46,7 @@ export class CMenu extends CPopupWidget {
 		return action;
 	}
 
+	/** Adds menu. */
 	addMenu(text: string, menu: CMenu): CMenu {
         menu.#m_parentMenu = this;
 		this.#m_items.push({ type: "menu", text, menu });
@@ -49,54 +55,66 @@ export class CMenu extends CPopupWidget {
 		return menu;
 	}
 
+	/** Adds separator. */
 	addSeparator(): void {
 		this.#m_items.push({ type: "separator" });
 		this.#updateGeometry();
 	}
 
+	/** Clears the current contents. */
 	clear(): void {
 		this.#m_items = [];
 		this.#m_hoveredIndex = -1;
 		this.#updateGeometry();
 	}
 
+	/** Provides count behavior. */
 	count(): number {
 		return this.#m_items.length;
 	}
 
+	/** Provides action at behavior. */
 	actionAt(index: number): CAction | null {
 		const item = this.#m_items[index];
 
+		/** Provides if behavior. */
 		if (item === undefined || item.type !== "action")
 			return null;
 
 		return item.action;
 	}
 
+	/** Provides menu at behavior. */
 	menuAt(index: number): CMenu | null {
 		const item = this.#m_items[index];
 
+		/** Provides if behavior. */
 		if (item === undefined || item.type !== "menu")
 			return null;
 
 		return item.menu;
 	}
 
+	/** Sets the menu bar. */
 	setMenuBar(menuBar: CMenuBar | null): void
 	{
 		this.#m_menuBar = menuBar;
 	}
 
+	/** Provides open behavior. */
 	override open(): void
 	{
 		super.open();
 
+		/** Provides if behavior. */
 		if (!this.#isSelectableItem(this.#m_hoveredIndex))
 			this.selectFirstItem();
 		this.#updateSubMenu();
 	}
 
+	/** Provides close behavior. */
 	override close(): void {
+        /** Provides if behavior. */
         if (!this.isOpen())
             return;
 
@@ -105,17 +123,22 @@ export class CMenu extends CPopupWidget {
         this.closed.emit();
 
 		const parent: CMenu | null = this.#m_parentMenu;
+		/** Provides if behavior. */
 		if (parent !== null && parent.isOpen())
 			parent.setFocus();
 	}
 
+    /** Returns the current index. */
     currentIndex(): number {
 		return this.#m_hoveredIndex;
 	}
 
+	/** Provides select first item behavior. */
 	selectFirstItem(): void
 	{
+		/** Provides for behavior. */
 		for (let i = 0; i < this.#m_items.length; ++i) {
+			/** Provides if behavior. */
 			if (this.#isSelectableItem(i)) {
 				this.#setCurrentIndex(i);
 				return;
@@ -123,8 +146,10 @@ export class CMenu extends CPopupWidget {
 		}
 	}
 
+	/** Provides focus open sub menu behavior. */
 	focusOpenSubMenu(): boolean
 	{
+		/** Provides if behavior. */
 		if (this.#m_openSubMenu === null)
 			return false;
 
@@ -132,15 +157,18 @@ export class CMenu extends CPopupWidget {
 		return true;
 	}
 
+	/** Provides exec behavior. */
 	exec(pos: CPoint): void {
 		this.move(pos.x(), pos.y());
 		this.open();
 		this.setFocus();
 	}
 
+	/** Handles the mouse move event. */
 	protected override mouseMoveEvent(event: CMouseEvent): void {
 		const index = this.#itemIndexAt(event.y());
 
+		/** Provides if behavior. */
 		if (index !== this.#m_hoveredIndex) {
 			this.#m_hoveredIndex = index;
 			this.#updateSubMenu();
@@ -149,7 +177,9 @@ export class CMenu extends CPopupWidget {
 		event.accept();
 	}
 
+	/** Handles the mouse leave event. */
 	protected override mouseLeaveEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (this.#m_hoveredIndex !== -1) {
 			this.#m_hoveredIndex = -1;
 			this.update();
@@ -158,9 +188,11 @@ export class CMenu extends CPopupWidget {
 		event.accept();
 	}
 
+	/** Handles the mouse press event. */
 	protected override mousePressEvent(event: CMouseEvent): void {
 		const index = this.#itemIndexAt(event.y());
 
+		/** Provides if behavior. */
 		if (index === -1) {
 			event.ignore();
 			return;
@@ -168,16 +200,19 @@ export class CMenu extends CPopupWidget {
 
 		const item = this.#m_items[index]!;
 
+		/** Provides if behavior. */
 		if (item.type === "separator") {
 			event.accept();
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (item.type === "menu") {
 			event.accept();
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (!item.action.isEnabled()) {
 			event.accept();
 			return;
@@ -189,9 +224,12 @@ export class CMenu extends CPopupWidget {
 		event.accept();
 	}
 
+	/** Handles the key press event. */
 	protected override keyPressEvent(event: CKeyEvent): void {
+		/** Provides switch behavior. */
 		switch (event.key()) {
 			case "ArrowRight":
+				/** Provides if behavior. */
 				if (this.#m_parentMenu !== null)
 					this.#enterSubMenu();
 				else if (this.#m_menuBar !== null)
@@ -201,6 +239,7 @@ export class CMenu extends CPopupWidget {
 				break;
 
 			case "ArrowLeft":
+				/** Provides if behavior. */
 				if (this.#m_parentMenu !== null)
 					this.#closeToParentMenu();
 				else if (this.#m_menuBar !== null)
@@ -230,6 +269,7 @@ export class CMenu extends CPopupWidget {
 		}
 	}
 
+	/** Handles the paint event. */
 	protected override paintEvent(painter: CPainter): void {
 		painter.setBrush(this.palette().color(CPaletteColorRole.Base).toCss());
 		painter.setPen(this.palette().color(CPaletteColorRole.Text).toCss());
@@ -238,9 +278,11 @@ export class CMenu extends CPopupWidget {
         
 		let y = 0;
 
+		/** Provides for behavior. */
 		for (let i = 0; i < this.#m_items.length; ++i) {
 			const item = this.#m_items[i]!;
 
+			/** Provides if behavior. */
 			if (item.type === "separator") {
 				const separatorY = y + CMenu.SeparatorHeight / 2;
 
@@ -260,19 +302,23 @@ export class CMenu extends CPopupWidget {
                     this.palette().color(CPaletteColorRole.Text);
                  
 
+            /** Provides if behavior. */
             if (i === this.#m_hoveredIndex && enabled) {
 				painter.setBrush(this.palette().color(CPaletteColorRole.Highlight).toCss());
 				painter.drawRect(1, y, this.width() - 2, CMenu.ItemHeight);
             }
 
+			/** Provides if behavior. */
 			if (item.type === "action") {
                 const size = CMenu.ItemHeight / 2;
                 const x = CMenu.HorizontalPadding;
+                /** Provides if behavior. */
                 if (item.action.isCheckable()) {
                     painter.setBrush(this.palette().color(CPaletteColorRole.Base).toCss());
                     painter.setPen(this.palette().color(CPaletteColorRole.Text).toCss());
                     painter.drawRect(x, y + CMenu.ItemHeight / 4, size, size);
                 }
+                /** Provides if behavior. */
                 if (item.action.isChecked()) {
                     painter.setBrush(this.palette().color(CPaletteColorRole.Highlight).toCss());
                     painter.setPen(this.palette().color(CPaletteColorRole.Highlight).toCss());
@@ -294,11 +340,13 @@ export class CMenu extends CPopupWidget {
 	#itemIndexAt(y: number): number {
 		let top = 0;
 
+		/** Provides for behavior. */
 		for (let i = 0; i < this.#m_items.length; ++i) {
 			const item = this.#m_items[i]!;
 			const height = item.type === "separator"
 				? CMenu.SeparatorHeight : CMenu.ItemHeight;
 
+			/** Provides if behavior. */
 			if (y >= top && y < top + height)
 				return i;
 
@@ -312,7 +360,9 @@ export class CMenu extends CPopupWidget {
 		let height = 0;
 		let width = 120;
 
+		/** Provides for behavior. */
 		for (const item of this.#m_items) {
+			/** Provides if behavior. */
 			if (item.type === "separator") {
 				height += CMenu.SeparatorHeight;
 				continue;
@@ -340,6 +390,7 @@ export class CMenu extends CPopupWidget {
     #itemY(index: number): number {
 		let y = 0;
 
+		/** Provides for behavior. */
 		for (let i = 0; i < index; ++i) {
 			y += this.#m_items[i]!.type === "separator"
 				? CMenu.SeparatorHeight
@@ -352,11 +403,13 @@ export class CMenu extends CPopupWidget {
 	#updateSubMenu(): void {
 		const item = this.#m_items[this.#m_hoveredIndex];
 
+		/** Provides if behavior. */
 		if (item === undefined || item.type !== "menu") {
 			this.#closeSubMenu();
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (this.#m_openSubMenu === item.menu)
 			return;
 
@@ -374,6 +427,7 @@ export class CMenu extends CPopupWidget {
 	}
 
 	#closeSubMenu(): void {
+		/** Provides if behavior. */
 		if (this.#m_openSubMenu === null)
 			return;
 
@@ -384,6 +438,7 @@ export class CMenu extends CPopupWidget {
 	#closeMenuChain(): void {
 		let menu: CMenu | null = this;
 
+		/** Provides while behavior. */
 		while (menu !== null) {
             const parent: CMenu | null = menu.#m_parentMenu;
 
@@ -393,14 +448,17 @@ export class CMenu extends CPopupWidget {
 	}
 
 	#selectNextItem(): void {
+		/** Provides if behavior. */
 		if (this.#m_items.length === 0)
 			return;
 
 		let index = this.#m_hoveredIndex;
 
+		/** Provides for behavior. */
 		for (let i = 0; i < this.#m_items.length; ++i) {
 			index = (index + 1) % this.#m_items.length;
 
+			/** Provides if behavior. */
 			if (this.#isSelectableItem(index)) {
 				this.#setCurrentIndex(index);
 				return;
@@ -409,18 +467,22 @@ export class CMenu extends CPopupWidget {
 	}
 
 	#selectPreviousItem(): void {
+		/** Provides if behavior. */
 		if (this.#m_items.length === 0)
 			return;
 
 		let index = this.#m_hoveredIndex;
 
+		/** Provides if behavior. */
 		if (index === -1)
 			index = 0;
 
+		/** Provides for behavior. */
 		for (let i = 0; i < this.#m_items.length; ++i) {
 			index = (index - 1 + this.#m_items.length) %
 				this.#m_items.length;
 
+			/** Provides if behavior. */
 			if (this.#isSelectableItem(index)) {
 				this.#setCurrentIndex(index);
 				return;
@@ -431,9 +493,11 @@ export class CMenu extends CPopupWidget {
 	#isSelectableItem(index: number): boolean {
 		const item = this.#m_items[index];
 
+		/** Provides if behavior. */
 		if (item === undefined || item.type === "separator")
 			return false;
 
+		/** Provides if behavior. */
 		if (item.type === "action")
 			return item.action.isEnabled();
 
@@ -441,6 +505,7 @@ export class CMenu extends CPopupWidget {
 	}
 
 	#setCurrentIndex(index: number): void {
+		/** Provides if behavior. */
 		if (index === this.#m_hoveredIndex)
 			return;
 
@@ -452,9 +517,11 @@ export class CMenu extends CPopupWidget {
 	#activateCurrentItem(): void {
 		const item = this.#m_items[this.#m_hoveredIndex];
 
+		/** Provides if behavior. */
 		if (item === undefined || item.type !== "action")
 			return;
 
+		/** Provides if behavior. */
 		if (!item.action.isEnabled())
 			return;
 
@@ -463,6 +530,7 @@ export class CMenu extends CPopupWidget {
 	}
 
 	#closeToParentMenu(): void {
+		/** Provides if behavior. */
 		if (this.#m_parentMenu === null)
 			return;
 
@@ -475,6 +543,7 @@ export class CMenu extends CPopupWidget {
 	#enterSubMenu(): void {
 		const item = this.#m_items[this.#m_hoveredIndex];
 
+		/** Provides if behavior. */
 		if (item === undefined || item.type !== "menu")
 			return;
 

@@ -52,6 +52,7 @@ class CTreeViewContentWidget extends CWidget {
 	}
 }
 
+/** Implements the tree view widget. */
 export class CTreeView extends CWidget {
 	static readonly RowHeight = 24;
 	static readonly IndentWidth = 20;
@@ -69,10 +70,14 @@ export class CTreeView extends CWidget {
 	#m_disconnectDataChanged: (() => void) | null = null;
 	#m_disconnectModelReset: (() => void) | null = null;
 
+	/** Public expanded member. */
 	readonly expanded = new CSignal<[CModelIndex]>();
+	/** Public collapsed member. */
 	readonly collapsed = new CSignal<[CModelIndex]>();
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
+		/** Provides super behavior. */
 		super(parent);
 
 		this.#m_header =
@@ -97,11 +102,14 @@ export class CTreeView extends CWidget {
 		});
 	}
 
+	/** Provides model behavior. */
 	model(): CAbstractItemModel | null {
 		return this.#m_model;
 	}
 
+	/** Sets the model. */
 	setModel(model: CAbstractItemModel | null): void {
+		/** Provides if behavior. */
 		if (this.#m_model === model)
 			return;
 
@@ -115,6 +123,7 @@ export class CTreeView extends CWidget {
 
 		this.#m_header.setModel(model);
 
+		/** Provides if behavior. */
 		if (model !== null) {
 			this.#m_selectionModel =
 				new CItemSelectionModel(model, this);
@@ -147,82 +156,102 @@ export class CTreeView extends CWidget {
 		this.#m_header.update();
 	}
 
+	/** Provides selection model behavior. */
 	selectionModel(): CItemSelectionModel | null {
 		return this.#m_selectionModel;
 	}
 
+	/** Returns the current index. */
 	currentIndex(): CModelIndex {
 		return this.#m_selectionModel?.currentIndex()
 			?? new CModelIndex();
 	}
 
+	/** Sets the current index. */
 	setCurrentIndex(index: CModelIndex): void {
+		/** Provides if behavior. */
 		if (index.isValid() && index.model() !== this.#m_model)
 			return;
 
 		this.#m_selectionModel?.setCurrentIndex(index);
 
+		/** Provides if behavior. */
 		if (index.isValid())
 			this.#ensureIndexVisible(index);
 
 		this.#m_contentWidget.update();
 	}
 
+	/** Provides header behavior. */
 	header(): CHeaderView {
 		return this.#m_header;
 	}
 
+	/** Provides viewport behavior. */
 	viewport(): CWidget {
 		return this.#m_scrollArea.viewport();
 	}
 
+	/** Provides horizontal scroll bar behavior. */
 	horizontalScrollBar(): CScrollBar {
 		return this.#m_scrollArea.horizontalScrollBar();
 	}
 
+	/** Provides vertical scroll bar behavior. */
 	verticalScrollBar(): CScrollBar {
 		return this.#m_scrollArea.verticalScrollBar();
 	}
 
+	/** Provides scroll x behavior. */
 	scrollX(): number {
 		return this.#m_scrollArea.scrollX();
 	}
 
+	/** Provides scroll y behavior. */
 	scrollY(): number {
 		return this.#m_scrollArea.scrollY();
 	}
 
+	/** Sets the scroll x. */
 	setScrollX(x: number): void {
 		this.#m_scrollArea.setScrollX(x);
 	}
 
+	/** Sets the scroll y. */
 	setScrollY(y: number): void {
 		this.#m_scrollArea.setScrollY(y);
 	}
 
+	/** Provides scroll to behavior. */
 	scrollTo(x: number, y: number): void {
 		this.#m_scrollArea.scrollTo(x, y);
 	}
 
+	/** Returns whether the expanded condition is active. */
 	isExpanded(index: CModelIndex): boolean {
 		return this.#m_expandedIndexes.some(
 			expanded => expanded.equals(index)
 		);
 	}
 
+	/** Sets the expanded. */
 	setExpanded(index: CModelIndex, expanded: boolean): void {
+		/** Provides if behavior. */
 		if (!index.isValid() ||
 			index.model() !== this.#m_model)
 			return;
 
+		/** Provides if behavior. */
 		if (this.#m_model?.rowCount(index) === 0)
 			return;
 
 		const currentlyExpanded = this.isExpanded(index);
 
+		/** Provides if behavior. */
 		if (currentlyExpanded === expanded)
 			return;
 
+		/** Provides if behavior. */
 		if (expanded) {
 			this.#m_expandedIndexes.push(index);
 			this.expanded.emit(index);
@@ -241,22 +270,27 @@ export class CTreeView extends CWidget {
 		this.#m_contentWidget.update();
 	}
 
+	/** Provides expand behavior. */
 	expand(index: CModelIndex): void {
 		this.setExpanded(index, true);
 	}
 
+	/** Provides collapse behavior. */
 	collapse(index: CModelIndex): void {
 		this.setExpanded(index, false);
 	}
 
+	/** Toggles expanded. */
 	toggleExpanded(index: CModelIndex): void {
 		this.setExpanded(index, !this.isExpanded(index));
 	}
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
 		return new CSize(400, 240);
 	}
 
+	/** Sets the geometry. */
 	override setGeometry(
 		x: number,
 		y: number,
@@ -267,12 +301,15 @@ export class CTreeView extends CWidget {
 		this.#updateGeometry();
 	}
 
+	/** Provides resize behavior. */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 		this.#updateGeometry();
 	}
 
+	/** Provides paint rows behavior. */
 	paintRows(painter: CPainter): void {
+		/** Provides if behavior. */
 		if (this.#m_model === null)
 			return;
 
@@ -295,17 +332,21 @@ export class CTreeView extends CWidget {
 		painter.setTextBaseline("middle");
 		painter.setTextAlign("left");
 
+		/** Provides for behavior. */
 		for (let row = 0; row < this.#m_rows.length; row++) {
 			const treeRow = this.#m_rows[row];
 
+			/** Provides if behavior. */
 			if (treeRow === undefined)
 				continue;
 
 			const y = row * CTreeView.RowHeight;
 
+			/** Provides for behavior. */
 			for (let column = 0; column < columns; column++) {
 				const index = this.#indexForColumn(treeRow, column);
 
+				/** Provides if behavior. */
 				if (!index.isValid())
 					continue;
 
@@ -325,6 +366,7 @@ export class CTreeView extends CWidget {
 				const selected =
 					this.#m_selectionModel?.isSelected(index) ?? false;
 
+				/** Provides if behavior. */
 				if (selected) {
 					const highlight = palette.color(
 						CPaletteColorRole.Highlight
@@ -352,11 +394,13 @@ export class CTreeView extends CWidget {
 
 				let textX = x + 5;
 
+				/** Provides if behavior. */
 				if (column === 0) {
 					textX +=
 						treeRow.depth *
 						CTreeView.IndentWidth;
 
+					/** Provides if behavior. */
 					if (treeRow.hasChildren) {
 						this.#paintIndicator(
 							painter,
@@ -371,6 +415,7 @@ export class CTreeView extends CWidget {
 				}
 
 				painter.drawText(
+					/** Provides string behavior. */
 					String(this.#m_model.data(index) ?? ""),
 					textX,
 					y + CTreeView.RowHeight / 2
@@ -381,7 +426,9 @@ export class CTreeView extends CWidget {
 		}
 	}
     
+    /** Handles the content mouse press event. */
     contentMousePressEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.type() !== CEventType.MousePress ||
 			event.button() !== CMouseButton.LeftButton ||
 			this.#m_model === null ||
@@ -394,6 +441,7 @@ export class CTreeView extends CWidget {
 			event.pos().y() / CTreeView.RowHeight
 		);
 
+		/** Provides if behavior. */
 		if (row < 0 || row >= this.#m_rows.length) {
 			event.ignore();
 			return;
@@ -401,11 +449,13 @@ export class CTreeView extends CWidget {
 
 		const treeRow = this.#m_rows[row];
 
+		/** Provides if behavior. */
 		if (treeRow === undefined) {
 			event.ignore();
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (this.#indicatorContains(treeRow, event.pos().x())) {
 			this.toggleExpanded(treeRow.index);
 			event.accept();
@@ -415,6 +465,7 @@ export class CTreeView extends CWidget {
 		const column =
 			this.#m_header.sectionAt(event.pos().x());
 
+		/** Provides if behavior. */
 		if (column < 0 ||
 			column >= this.#m_model.columnCount()) {
 			event.ignore();
@@ -423,6 +474,7 @@ export class CTreeView extends CWidget {
 
 		const index = this.#indexForColumn(treeRow, column);
 
+		/** Provides if behavior. */
 		if (!index.isValid()) {
 			event.ignore();
 			return;
@@ -437,7 +489,9 @@ export class CTreeView extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the content key press event. */
 	contentKeyPressEvent(event: CKeyEvent): void {
+		/** Provides if behavior. */
 		if (this.#m_model === null ||
 			this.#m_selectionModel === null ||
 			this.#m_rows.length === 0) {
@@ -447,9 +501,11 @@ export class CTreeView extends CWidget {
 
 		let current = this.currentIndex();
 
+		/** Provides if behavior. */
 		if (!current.isValid()) {
 			const firstRow = this.#m_rows[0];
 
+			/** Provides if behavior. */
 			if (firstRow === undefined) {
 				event.ignore();
 				return;
@@ -462,6 +518,7 @@ export class CTreeView extends CWidget {
 
 		const visibleRow = this.#visibleRowForIndex(current);
 
+		/** Provides if behavior. */
 		if (visibleRow < 0) {
 			event.ignore();
 			return;
@@ -469,8 +526,10 @@ export class CTreeView extends CWidget {
 
 		let target = current;
 
+		/** Provides switch behavior. */
 		switch (event.key()) {
 			case "ArrowUp":
+				/** Provides if behavior. */
 				if (visibleRow > 0)
 					target = this.#indexAtVisibleRow(
 						visibleRow - 1,
@@ -480,6 +539,7 @@ export class CTreeView extends CWidget {
 				break;
 
 			case "ArrowDown":
+				/** Provides if behavior. */
 				if (visibleRow < this.#m_rows.length - 1)
 					target = this.#indexAtVisibleRow(
 						visibleRow + 1,
@@ -491,12 +551,15 @@ export class CTreeView extends CWidget {
 			case "ArrowRight": {
 				const treeRow = this.#m_rows[visibleRow];
 
+				/** Provides if behavior. */
 				if (treeRow === undefined)
 					break;
 
+				/** Provides if behavior. */
 				if (!treeRow.hasChildren)
 					break;
 
+				/** Provides if behavior. */
 				if (!this.isExpanded(treeRow.index)) {
 					this.expand(treeRow.index);
 				} else {
@@ -506,6 +569,7 @@ export class CTreeView extends CWidget {
 						treeRow.index
 					);
 
+					/** Provides if behavior. */
 					if (child.isValid())
 						target = child;
 				}
@@ -516,9 +580,11 @@ export class CTreeView extends CWidget {
 			case "ArrowLeft": {
 				const treeRow = this.#m_rows[visibleRow];
 
+				/** Provides if behavior. */
 				if (treeRow === undefined)
 					break;
 
+				/** Provides if behavior. */
 				if (treeRow.hasChildren &&
 					this.isExpanded(treeRow.index)) {
 					this.collapse(treeRow.index);
@@ -528,6 +594,7 @@ export class CTreeView extends CWidget {
 				const parent =
 					this.#m_model.parentIndex(current);
 
+				/** Provides if behavior. */
 				if (parent.isValid()) {
 					const parentColumn =
 						this.#m_model.index(
@@ -583,6 +650,7 @@ export class CTreeView extends CWidget {
 				return;
 		}
 
+		/** Provides if behavior. */
 		if (target.isValid() &&
 			!target.equals(current))
 			this.#selectIndex(target);
@@ -591,6 +659,7 @@ export class CTreeView extends CWidget {
 	}
 
 	#selectIndex(index: CModelIndex): void {
+		/** Provides if behavior. */
 		if (this.#m_selectionModel === null)
 			return;
 
@@ -606,9 +675,11 @@ export class CTreeView extends CWidget {
 		row: CTreeViewRow,
 		column: number
 	): CModelIndex {
+		/** Provides if behavior. */
 		if (this.#m_model === null)
 			return new CModelIndex();
 
+		/** Provides if behavior. */
 		if (column === 0)
 			return row.index;
 
@@ -623,11 +694,13 @@ export class CTreeView extends CWidget {
 		row: number,
 		column: number
 	): CModelIndex {
+		/** Provides if behavior. */
 		if (row < 0 || row >= this.#m_rows.length)
 			return new CModelIndex();
 
 		const treeRow = this.#m_rows[row];
 
+		/** Provides if behavior. */
 		if (treeRow === undefined)
 			return new CModelIndex();
 
@@ -638,6 +711,7 @@ export class CTreeView extends CWidget {
 	}
 
 	#visibleRowForIndex(index: CModelIndex): number {
+		/** Provides if behavior. */
 		if (this.#m_model === null)
 			return -1;
 
@@ -652,6 +726,7 @@ export class CTreeView extends CWidget {
 	#rebuildRows(): void {
 		this.#m_rows = [];
 
+		/** Provides if behavior. */
 		if (this.#m_model === null)
 			return;
 
@@ -665,15 +740,18 @@ export class CTreeView extends CWidget {
 		parent: CModelIndex,
 		depth: number
 	): void {
+		/** Provides if behavior. */
 		if (this.#m_model === null)
 			return;
 
 		const count = this.#m_model.rowCount(parent);
 
+		/** Provides for behavior. */
 		for (let row = 0; row < count; row++) {
 			const index =
 				this.#m_model.index(row, 0, parent);
 
+			/** Provides if behavior. */
 			if (!index.isValid())
 				continue;
 
@@ -687,6 +765,7 @@ export class CTreeView extends CWidget {
 				hasChildren
 			});
 
+			/** Provides if behavior. */
 			if (hasChildren &&
 				this.isExpanded(index)) {
 				this.#appendChildren(
@@ -701,6 +780,7 @@ export class CTreeView extends CWidget {
 		row: CTreeViewRow,
 		x: number
 	): boolean {
+		/** Provides if behavior. */
 		if (!row.hasChildren)
 			return false;
 
@@ -724,6 +804,7 @@ export class CTreeView extends CWidget {
 
 		painter.setPen(color);
 
+		/** Provides if behavior. */
 		if (this.isExpanded(row.index)) {
 			painter.drawLine(
 				centerX - 4,
@@ -758,6 +839,7 @@ export class CTreeView extends CWidget {
 	#ensureIndexVisible(index: CModelIndex): void {
 		const row = this.#visibleRowForIndex(index);
 
+		/** Provides if behavior. */
 		if (row < 0)
 			return;
 
@@ -782,11 +864,13 @@ export class CTreeView extends CWidget {
 		let scrollX = this.scrollX();
 		let scrollY = this.scrollY();
 
+		/** Provides if behavior. */
 		if (x < scrollX)
 			scrollX = x;
 		else if (right > scrollX + viewportWidth)
 			scrollX = right - viewportWidth;
 
+		/** Provides if behavior. */
 		if (y < scrollY)
 			scrollY = y;
 		else if (bottom > scrollY + viewportHeight)

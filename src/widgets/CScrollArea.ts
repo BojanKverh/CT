@@ -5,6 +5,7 @@ import { COrientation } from "../gui/COrientation.js";
 import { CScrollBar } from "./CScrollBar.js";
 import { CWheelEvent } from "../events/CWheelEvent.js";
 
+/** Implements the scroll area widget. */
 export class CScrollArea extends CFrame {
 	#m_viewport: CWidget;
 	#m_widget: CWidget | null = null;
@@ -13,7 +14,9 @@ export class CScrollArea extends CFrame {
     #m_horizontalScrollBar: CScrollBar;
 	#m_verticalScrollBar: CScrollBar;
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
+		/** Provides super behavior. */
 		super(parent);
 
 		this.#m_viewport = new CWidget(this);
@@ -33,20 +36,25 @@ export class CScrollArea extends CFrame {
 		this.#updateGeometry();
 	}
 
+	/** Provides viewport behavior. */
 	viewport(): CWidget {
 		return this.#m_viewport;
 	}
 
+	/** Provides widget behavior. */
 	widget(): CWidget | null {
 		return this.#m_widget;
 	}
 
+	/** Sets the widget. */
 	setWidget(widget: CWidget): CWidget | null {
+		/** Provides if behavior. */
 		if (this.#m_widget === widget)
 			return null;
 
 		const oldWidget = this.#m_widget;
 
+		/** Provides if behavior. */
 		if (oldWidget !== null)
 			oldWidget.setParent(null);
 
@@ -63,22 +71,27 @@ export class CScrollArea extends CFrame {
 		return oldWidget;
 	}
 
+    /** Provides scroll x behavior. */
     scrollX(): number {
 		return this.#m_scrollX;
 	}
 
+	/** Provides scroll y behavior. */
 	scrollY(): number {
 		return this.#m_scrollY;
 	}
 
+	/** Sets the scroll x. */
 	setScrollX(x: number): void {
 		this.scrollTo(x, this.#m_scrollY);
 	}
 
+	/** Sets the scroll y. */
 	setScrollY(y: number): void {
 		this.scrollTo(this.#m_scrollX, y);
 	}
 
+    /** Provides scroll to behavior. */
     scrollTo(x: number, y: number): void {
 	    const maxX = Math.max(0,
 		    (this.#m_widget?.width() ?? 0) - this.#m_viewport.width());
@@ -88,6 +101,7 @@ export class CScrollArea extends CFrame {
 
 	    const scrollX = Math.max(0, Math.min(x, maxX));
 	    const scrollY = Math.max(0, Math.min(y, maxY));
+	    /** Provides if behavior. */
 	    if (scrollX === this.#m_scrollX && scrollY === this.#m_scrollY)
 		    return;
 
@@ -95,39 +109,48 @@ export class CScrollArea extends CFrame {
 	    this.#m_scrollY = scrollY;
 	    this.#updateWidgetPosition();
 
+	    /** Provides if behavior. */
 	    if (this.#m_horizontalScrollBar.value() !== scrollX)
 		    this.#m_horizontalScrollBar.setValue(scrollX);
 
+	    /** Provides if behavior. */
 	    if (this.#m_verticalScrollBar.value() !== scrollY)
 		    this.#m_verticalScrollBar.setValue(scrollY);
 
 	    this.update();
     }
 
+	/** Provides horizontal scroll bar behavior. */
 	horizontalScrollBar(): CScrollBar {
 		return this.#m_horizontalScrollBar;
 	}
 
+	/** Provides vertical scroll bar behavior. */
 	verticalScrollBar(): CScrollBar {
 		return this.#m_verticalScrollBar;
 	}
 	
+	/** Sets the geometry. */
 	override setGeometry(x: number, y: number, width: number, height: number): void {
 		super.setGeometry(x, y, width, height);
 		this.#updateGeometry();
 	}
 
+	/** Provides resize behavior. */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 		this.#updateGeometry();
 	}
 
+	/** Handles frame changed behavior. */
 	protected override frameChanged(): void
 	{
 		this.#updateGeometry();
 	}
 
+    /** Handles the wheel event. */
     protected override wheelEvent(event: CWheelEvent): void {
+    	/** Provides if behavior. */
     	if (!this.#m_verticalScrollBar.isVisible()) {
 	    	event.ignore();
 		    return;
@@ -137,12 +160,14 @@ export class CScrollArea extends CFrame {
 	    event.accept();
     }
 
+	/** Handles update scroll bars behavior. */
 	protected updateScrollBars(): void
 	{
 		this.#updateGeometry();
 	}
 
 	#updateWidgetPosition(): void {
+		/** Provides if behavior. */
 		if (this.#m_widget === null)
 			return;
 
@@ -165,17 +190,21 @@ export class CScrollArea extends CFrame {
 		let horizontalVisible = contentWidth > viewportWidth;
 		let verticalVisible = contentHeight > viewportHeight;
 
+		/** Provides if behavior. */
 		if (verticalVisible)
 			viewportWidth -= scrollBarSize;
 
+		/** Provides if behavior. */
 		if (horizontalVisible)
 			viewportHeight -= scrollBarSize;
 
+		/** Provides if behavior. */
 		if (!horizontalVisible && contentWidth > viewportWidth) {
 			horizontalVisible = true;
 			viewportHeight -= scrollBarSize;
 		}
 
+		/** Provides if behavior. */
 		if (!verticalVisible && contentHeight > viewportHeight) {
 			verticalVisible = true;
 			viewportWidth -= scrollBarSize;
@@ -191,6 +220,7 @@ export class CScrollArea extends CFrame {
 		this.#m_horizontalScrollBar.setVisible(horizontalVisible);
 		this.#m_verticalScrollBar.setVisible(verticalVisible);
 
+		/** Provides if behavior. */
 		if (horizontalVisible) {
 			this.#m_horizontalScrollBar.setGeometry(
 				frameWidth,
@@ -207,6 +237,7 @@ export class CScrollArea extends CFrame {
 			this.#m_horizontalScrollBar.setValue(this.#m_scrollX);
 		}
 
+		/** Provides if behavior. */
 		if (verticalVisible) {
 			this.#m_verticalScrollBar.setGeometry(
 				frameWidth + viewportWidth,

@@ -8,10 +8,14 @@ import { CWidget } from "./CWidget.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 
+/** Implements the date time edit widget. */
 export class CDateTimeEdit extends CWidget
 {
+	/** Signal emitted when date time changes. */
 	readonly dateTimeChanged = new CSignal<[Date]>();
+	/** Signal emitted when date changes. */
 	readonly dateChanged = new CSignal<[Date]>();
+	/** Signal emitted when time changes. */
 	readonly timeChanged = new CSignal<[Date]>();
 
 	#m_dateTime: Date;
@@ -23,8 +27,10 @@ export class CDateTimeEdit extends CWidget
 
 	#m_updating = false;
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null)
 	{
+		/** Provides super behavior. */
 		super(parent);
 
 		this.#m_minimumDateTime =
@@ -41,6 +47,7 @@ export class CDateTimeEdit extends CWidget
 
 		this.#m_dateEdit.dateChanged.connect(date =>
 		{
+			/** Provides if behavior. */
 			if (this.#m_updating)
 				return;
 
@@ -58,6 +65,7 @@ export class CDateTimeEdit extends CWidget
 
 		this.#m_timeEdit.timeChanged.connect(time =>
 		{
+			/** Provides if behavior. */
 			if (this.#m_updating)
 				return;
 
@@ -85,21 +93,26 @@ export class CDateTimeEdit extends CWidget
 		this.#updateGeometry();
 	}
 
+	/** Provides date time behavior. */
 	dateTime(): Date
 	{
 		return new Date(this.#m_dateTime);
 	}
 
+	/** Sets the date time. */
 	setDateTime(dateTime: Date): void
 	{
+		/** Provides if behavior. */
 		if (!this.#validDate(dateTime))
 			return;
 
 		dateTime = this.#normalizedDateTime(dateTime);
 
+		/** Provides if behavior. */
 		if (dateTime < this.#m_minimumDateTime)
 			dateTime = new Date(this.#m_minimumDateTime);
 
+		/** Provides if behavior. */
 		if (dateTime > this.#m_maximumDateTime)
 			dateTime = new Date(this.#m_maximumDateTime);
 
@@ -109,6 +122,7 @@ export class CDateTimeEdit extends CWidget
 		const timeChanged =
 			!this.#sameTime(dateTime, this.#m_dateTime);
 
+		/** Provides if behavior. */
 		if (!dateChanged && !timeChanged) {
 			this.#syncEditors();
 			return;
@@ -118,9 +132,11 @@ export class CDateTimeEdit extends CWidget
 
 		this.#syncEditors();
 
+		/** Provides if behavior. */
 		if (dateChanged)
 			this.dateChanged.emit(this.date());
 
+		/** Provides if behavior. */
 		if (timeChanged)
 			this.timeChanged.emit(this.time());
 
@@ -131,6 +147,7 @@ export class CDateTimeEdit extends CWidget
 		this.update();
 	}
 
+	/** Provides date behavior. */
 	date(): Date
 	{
 		return new Date(
@@ -140,8 +157,10 @@ export class CDateTimeEdit extends CWidget
 		);
 	}
 
+	/** Sets the date. */
 	setDate(date: Date): void
 	{
+		/** Provides if behavior. */
 		if (!this.#validDate(date))
 			return;
 
@@ -157,6 +176,7 @@ export class CDateTimeEdit extends CWidget
 		);
 	}
 
+	/** Provides time behavior. */
 	time(): Date
 	{
 		return this.#makeTime(
@@ -166,8 +186,10 @@ export class CDateTimeEdit extends CWidget
 		);
 	}
 
+	/** Sets the time. */
 	setTime(time: Date): void
 	{
+		/** Provides if behavior. */
 		if (!this.#validDate(time))
 			return;
 
@@ -183,21 +205,26 @@ export class CDateTimeEdit extends CWidget
 		);
 	}
 
+	/** Returns the minimum date time. */
 	minimumDateTime(): Date
 	{
 		return new Date(this.#m_minimumDateTime);
 	}
 
+	/** Sets the minimum date time. */
 	setMinimumDateTime(dateTime: Date): void
 	{
+		/** Provides if behavior. */
 		if (!this.#validDate(dateTime))
 			return;
 
 		dateTime = this.#normalizedDateTime(dateTime);
 
+		/** Provides if behavior. */
 		if (dateTime > this.#m_maximumDateTime)
 			return;
 
+		/** Provides if behavior. */
 		if (
 			this.#sameDateTime(
 				dateTime,
@@ -208,27 +235,33 @@ export class CDateTimeEdit extends CWidget
 
 		this.#m_minimumDateTime = new Date(dateTime);
 
+		/** Provides if behavior. */
 		if (this.#m_dateTime < this.#m_minimumDateTime)
 			this.setDateTime(this.#m_minimumDateTime);
 		else
 			this.#syncEditors();
 	}
 
+	/** Returns the maximum date time. */
 	maximumDateTime(): Date
 	{
 		return new Date(this.#m_maximumDateTime);
 	}
 
+	/** Sets the maximum date time. */
 	setMaximumDateTime(dateTime: Date): void
 	{
+		/** Provides if behavior. */
 		if (!this.#validDate(dateTime))
 			return;
 
 		dateTime = this.#normalizedDateTime(dateTime);
 
+		/** Provides if behavior. */
 		if (dateTime < this.#m_minimumDateTime)
 			return;
 
+		/** Provides if behavior. */
 		if (
 			this.#sameDateTime(
 				dateTime,
@@ -239,80 +272,95 @@ export class CDateTimeEdit extends CWidget
 
 		this.#m_maximumDateTime = new Date(dateTime);
 
+		/** Provides if behavior. */
 		if (this.#m_dateTime > this.#m_maximumDateTime)
 			this.setDateTime(this.#m_maximumDateTime);
 		else
 			this.#syncEditors();
 	}
 
+	/** Provides date display format behavior. */
 	dateDisplayFormat(): string
 	{
 		return this.#m_dateEdit.displayFormat();
 	}
 
+	/** Sets the date display format. */
 	setDateDisplayFormat(format: string): void
 	{
 		this.#m_dateEdit.setDisplayFormat(format);
 		this.#updateGeometry();
 	}
 
+	/** Provides time display format behavior. */
 	timeDisplayFormat(): string
 	{
 		return this.#m_timeEdit.displayFormat();
 	}
 
+	/** Sets the time display format. */
 	setTimeDisplayFormat(format: string): void
 	{
 		this.#m_timeEdit.setDisplayFormat(format);
 		this.#updateGeometry();
 	}
 
+	/** Provides calendar popup behavior. */
 	calendarPopup(): boolean
 	{
 		return this.#m_dateEdit.calendarPopup();
 	}
 
+	/** Sets the calendar popup. */
 	setCalendarPopup(enabled: boolean): void
 	{
 		this.#m_dateEdit.setCalendarPopup(enabled);
 		this.#updateGeometry();
 	}
 
+	/** Shows popup. */
 	showPopup(): void
 	{
 		this.#m_dateEdit.showPopup();
 	}
 
+	/** Hides popup. */
 	hidePopup(): void
 	{
 		this.#m_dateEdit.hidePopup();
 	}
 
+	/** Provides calendar widget behavior. */
 	calendarWidget(): CCalendarWidget
 	{
 		return this.#m_dateEdit.calendarWidget();
 	}
 
+	/** Provides date edit behavior. */
 	dateEdit(): CDateEdit
 	{
 		return this.#m_dateEdit;
 	}
 
+	/** Provides time edit behavior. */
 	timeEdit(): CTimeEdit
 	{
 		return this.#m_timeEdit;
 	}
 
+	/** Provides date line edit behavior. */
 	dateLineEdit(): CSectionLineEdit
 	{
 		return this.#m_dateEdit.lineEdit();
 	}
 
+	/** Provides time line edit behavior. */
 	timeLineEdit(): CSectionLineEdit
 	{
 		return this.#m_timeEdit.lineEdit();
 	}
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize
 	{
 		const dateSize = this.#m_dateEdit.sizeHint();
@@ -327,6 +375,7 @@ export class CDateTimeEdit extends CWidget
 		);
 	}
 
+	/** Sets the geometry. */
 	override setGeometry(
 		x: number,
 		y: number,
@@ -339,6 +388,7 @@ export class CDateTimeEdit extends CWidget
 		this.#updateGeometry();
 	}
 
+	/** Provides resize behavior. */
 	override resize(width: number, height: number): void
 	{
 		super.resize(width, height);
@@ -354,6 +404,7 @@ export class CDateTimeEdit extends CWidget
 		dateLineEdit.nextSectionRequested.connect(
 			(previous, current) =>
 			{
+				/** Provides if behavior. */
 				if (current >= previous)
 					return;
 
@@ -364,6 +415,7 @@ export class CDateTimeEdit extends CWidget
 		dateLineEdit.previousSectionRequested.connect(
 			(previous, current) =>
 			{
+				/** Provides if behavior. */
 				if (current <= previous)
 					return;
 
@@ -374,6 +426,7 @@ export class CDateTimeEdit extends CWidget
 		timeLineEdit.nextSectionRequested.connect(
 			(previous, current) =>
 			{
+				/** Provides if behavior. */
 				if (current >= previous)
 					return;
 
@@ -384,6 +437,7 @@ export class CDateTimeEdit extends CWidget
 		timeLineEdit.previousSectionRequested.connect(
 			(previous, current) =>
 			{
+				/** Provides if behavior. */
 				if (current <= previous)
 					return;
 
@@ -394,6 +448,7 @@ export class CDateTimeEdit extends CWidget
 
 	#selectFirstSection(lineEdit: CSectionLineEdit): void
 	{
+		/** Provides if behavior. */
 		if (lineEdit.sections().length === 0)
 			return;
 
@@ -405,6 +460,7 @@ export class CDateTimeEdit extends CWidget
 	{
 		const count = lineEdit.sections().length;
 
+		/** Provides if behavior. */
 		if (count === 0)
 			return;
 
@@ -444,6 +500,7 @@ export class CDateTimeEdit extends CWidget
 		let maximum =
 			this.#makeTime(23, 59, 59);
 
+		/** Provides if behavior. */
 		if (
 			this.#sameDate(
 				this.#m_dateTime,
@@ -457,6 +514,7 @@ export class CDateTimeEdit extends CWidget
 			);
 		}
 
+		/** Provides if behavior. */
 		if (
 			this.#sameDate(
 				this.#m_dateTime,
@@ -497,6 +555,7 @@ export class CDateTimeEdit extends CWidget
 
 		let dateWidth = dateHint.width();
 
+		/** Provides if behavior. */
 		if (hintWidth > 0) {
 			dateWidth = Math.round(
 				this.width() *

@@ -3,11 +3,23 @@ import { CGridLayoutItem } from "./CGridLayoutItem.js";
 import { CSize } from "../geometry/CSize.js";
 import type { CWidget } from "../widgets/CWidget.js";
 
+/**
+ * Layout that arranges widgets in a row-and-column grid.
+ *
+ * Widgets may span multiple cells, and rows and columns may be assigned
+ * independent stretch factors.
+ */
 export class CGridLayout extends CLayout
 {
 	#m_rowStretch = new Map<number, number>();
 	#m_columnStretch = new Map<number, number>();
 
+	/**
+	 * Adds a widget to the grid.
+	 *
+	 * Without coordinates, the widget is placed automatically. Explicit
+	 * coordinates may also specify row and column spans.
+	 */
 	override addWidget(widget: CWidget): void;
 	override addWidget(widget: CWidget, row: number, column: number,
 		rowSpan?: number, columnSpan?: number): void;
@@ -30,6 +42,7 @@ export class CGridLayout extends CLayout
 				columnSpan));
 	}
 
+	/** Returns the number of rows currently occupied by grid items. */
 	rowCount(): number {
 		let count = 0;
 
@@ -42,6 +55,7 @@ export class CGridLayout extends CLayout
 		return count;
 	}
 
+	/** Returns the number of columns currently occupied by grid items. */
 	columnCount(): number {
 		let count = 0;
 
@@ -54,6 +68,7 @@ export class CGridLayout extends CLayout
 		return count;
 	}
 
+	/** Sets the non-negative stretch factor for a row. */
 	setRowStretch(row: number, stretch: number): void {
 		if (row < 0 || stretch < 0)
 			return;
@@ -66,6 +81,7 @@ export class CGridLayout extends CLayout
 		this.update();
 	}
 
+	/** Sets the non-negative stretch factor for a column. */
 	setColumnStretch(column: number, stretch: number): void {
 		if (column < 0 || stretch < 0)
 			return;
@@ -78,14 +94,17 @@ export class CGridLayout extends CLayout
 		this.update();
 	}
 
+	/** Returns the stretch factor for a row. */
 	rowStretch(row: number): number {
 		return this.#m_rowStretch.get(row) ?? 0;
 	}
 
+	/** Returns the stretch factor for a column. */
 	columnStretch(column: number): number {
 		return this.#m_columnStretch.get(column) ?? 0;
 	}
 
+	/** Returns the preferred size required by the grid. */
 	override sizeHint(): CSize {
 		const rows = this.rowCount();
 		const columns = this.columnCount();
@@ -114,6 +133,7 @@ export class CGridLayout extends CLayout
 		return new CSize(width, height);
 	}
 
+	/** Recalculates and applies grid-cell geometries. */
 	override update(): void {
 		const parent = this.parentWidget();
 

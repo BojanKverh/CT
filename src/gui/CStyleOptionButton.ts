@@ -1,12 +1,25 @@
 import { CStyleOption, CStyleState } from "./CStyleOption.js";
 import type { CAbstractButton } from "../widgets/CAbstractButton.js";
 
+/**
+ * Contains style information used to render a button.
+ */
 export class CStyleOptionButton extends CStyleOption {
-	constructor(other: CStyleOptionButton | null = null) {
+		/**
+	 * Creates a new CStyleOptionButton instance.
+	 *
+	 * @param other Other.
+	 */
+constructor(other: CStyleOptionButton | null = null) {
 		super(other);
 	}
 
-	initFromButton(button: CAbstractButton): void {
+		/**
+	 * Initializes this style option from the specified button.
+	 *
+	 * @param button Button.
+	 */
+initFromButton(button: CAbstractButton): void {
 		this.initFrom(button);
 
 		if (button.isChecked())

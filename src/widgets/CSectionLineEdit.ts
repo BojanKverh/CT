@@ -8,29 +8,38 @@ import { CLineEdit } from "./CLineEdit.js";
 import { CWidget } from "./CWidget.js";
 
 
+/** Defines the public cline edit section API. */
 export type CLineEditSection = {
 	start: number;
 	length: number;
 };
 
 
+/** Implements the section line edit widget. */
 export class CSectionLineEdit extends CLineEdit
 {
+	/** Signal emitted when section changes. */
 	readonly sectionChanged = new CSignal<[number]>();
+	/** Public step requested member. */
 	readonly stepRequested = new CSignal<[number, number]>();
+    /** Public previous section requested member. */
     readonly previousSectionRequested = new CSignal<[number, number]>();
+    /** Public next section requested member. */
     readonly nextSectionRequested = new CSignal<[number, number]>();
 
 	#m_sections: CLineEditSection[] = [];
 	#m_currentSection = -1;
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null)
 	{
+		/** Provides super behavior. */
 		super(parent);
 
 		this.setReadOnly(true);
 	}
 
+	/** Provides sections behavior. */
 	sections(): readonly CLineEditSection[]
 	{
 		return this.#m_sections.map(section => ({
@@ -39,6 +48,7 @@ export class CSectionLineEdit extends CLineEdit
 		}));
 	}
 
+	/** Sets the sections. */
 	setSections(sections: CLineEditSection[]): void
 	{
 		this.#m_sections = sections.map(section => ({
@@ -46,6 +56,7 @@ export class CSectionLineEdit extends CLineEdit
 			length: section.length
 		}));
 
+		/** Provides if behavior. */
 		if (this.#m_sections.length === 0) {
 			this.#m_currentSection = -1;
 			this.clearSelection();
@@ -56,16 +67,20 @@ export class CSectionLineEdit extends CLineEdit
 		this.#updateSelection();
 	}
 
+	/** Returns the current section. */
 	currentSection(): number
 	{
 		return this.#m_currentSection;
 	}
 
+	/** Sets the current section. */
 	setCurrentSection(section: number): void
 	{
+        /** Provides if behavior. */
         if (section < 0 || section >= this.#m_sections.length)
 			return;
 
+		/** Provides if behavior. */
 		if (section === this.#m_currentSection) {
 			this.#updateSelection();
 			return;
@@ -77,13 +92,16 @@ export class CSectionLineEdit extends CLineEdit
 		this.sectionChanged.emit(section);
 	}
 
+    /** Handles the focus out event. */
     protected override focusOutEvent(event: CFocusEvent): void {
         this.clearSelection();
         event.accept();
     }
 
+	/** Handles the mouse press event. */
 	protected override mousePressEvent(event: CMouseEvent): void
 	{
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -91,6 +109,7 @@ export class CSectionLineEdit extends CLineEdit
 
 		const section = this.#sectionAt(event.x());
 
+		/** Provides if behavior. */
 		if (section === -1) {
 			event.ignore();
 			return;
@@ -102,13 +121,16 @@ export class CSectionLineEdit extends CLineEdit
 		event.accept();
 	}
 
+	/** Handles the mouse move event. */
 	protected override mouseMoveEvent(event: CMouseEvent): void
 	{
 		event.ignore();
 	}
 
+	/** Handles the mouse release event. */
 	protected override mouseReleaseEvent(event: CMouseEvent): void
 	{
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -117,13 +139,16 @@ export class CSectionLineEdit extends CLineEdit
 		event.accept();
 	}
 
+	/** Handles the key press event. */
 	protected override keyPressEvent(event: CKeyEvent): void
 	{
+		/** Provides if behavior. */
 		if (this.#m_sections.length === 0) {
 			event.ignore();
 			return;
 		}
 
+		/** Provides switch behavior. */
 		switch (event.key()) {
 			case "ArrowLeft":
 				this.#previousSection();
@@ -183,6 +208,7 @@ export class CSectionLineEdit extends CLineEdit
 		const metrics = new CFontMetrics(this.font());
 		const textX = x - 5;
 
+		/** Provides for behavior. */
 		for (let i = 0; i < this.#m_sections.length; ++i) {
 			const section = this.#m_sections[i]!;
 
@@ -200,6 +226,7 @@ export class CSectionLineEdit extends CLineEdit
 			const right =
 				left + metrics.textWidth(selected);
 
+			/** Provides if behavior. */
 			if (textX >= left && textX <= right)
 				return i;
 		}
@@ -209,6 +236,7 @@ export class CSectionLineEdit extends CLineEdit
 
 	#updateSelection(): void
 	{
+		/** Provides if behavior. */
 		if (
 			this.#m_currentSection < 0 ||
 			this.#m_currentSection >= this.#m_sections.length

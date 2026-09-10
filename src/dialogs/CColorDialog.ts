@@ -15,6 +15,9 @@ import { CLabel } from "../widgets/CLabel.js";
 import { CDialogButtonBox, CStandardButton } from "./CDialogButtonBox.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 
+/**
+ * Dialog for interactively selecting an RGB color.
+ */
 export class CColorDialog extends CDialog
 {
 	static readonly DefaultWidth = 300;
@@ -22,7 +25,13 @@ export class CColorDialog extends CDialog
 	static readonly Margin = 12;
 	static readonly Spacing = 6;
 
+/**
+ * Emitted whenever the current color changes.
+ */
 	readonly currentColorChanged = new CSignal<[CColor]>();
+/**
+ * Emitted when the current color is accepted.
+ */
 	readonly colorSelected = new CSignal<[CColor]>();
 
 	#m_color: CColor;
@@ -38,6 +47,12 @@ export class CColorDialog extends CDialog
 
 	#m_updating = false;
 
+/**
+ * Creates a color selection dialog.
+ *
+ * @param color Initial color.
+ * @param parent Optional parent widget.
+ */
 	constructor(
 		color = new CColor(0, 0, 0),
 		parent: CWidget | null = null
@@ -160,11 +175,21 @@ export class CColorDialog extends CDialog
 		this.setWindowTitle("Pick color");
 	}
 
+/**
+ * Returns a copy of the currently selected color.
+ *
+ * @returns Current color.
+ */
 	currentColor(): CColor {
 	    return new CColor(this.#m_color.red(), this.#m_color.green(), this.#m_color.blue(), 
             this.#m_color.alpha());
 	}
 
+/**
+ * Sets the current color.
+ *
+ * @param color Color to select.
+ */
 	setCurrentColor(color: CColor): void {
 		if (this.#m_color.equals(color))
 			return;
@@ -173,6 +198,13 @@ export class CColorDialog extends CDialog
 		this.currentColorChanged.emit(this.currentColor());
 	}
 
+/**
+ * Shows a modal color dialog.
+ *
+ * @param initial Initial color.
+ * @param parent Optional parent widget.
+ * @returns A promise resolving to the selected color, or `null` if rejected.
+ */
 	static getColor(
 		initial: CColor,
 		parent: CWidget | null = null

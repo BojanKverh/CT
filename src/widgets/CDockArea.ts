@@ -5,10 +5,15 @@ import type { CPainter } from "../painting/CPainter.js";
 import { CRect } from "../geometry/CRect.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 
+/** Defines the available dock widget area values. */
 export enum CDockWidgetArea {
+	/** Represents left. */
 	Left,
+	/** Represents right. */
 	Right,
+	/** Represents top. */
 	Top,
+	/** Represents bottom. */
 	Bottom
 }
 
@@ -22,6 +27,7 @@ type CDockPreview = {
 	area: CDockWidgetArea;
 };
 
+/** Implements the dock area widget. */
 export class CDockArea extends CWidget {
 	static readonly Spacing = 2;
 
@@ -29,23 +35,30 @@ export class CDockArea extends CWidget {
 	#m_dockWidgets: CDockAreaItem[] = [];
 	#m_dockPreview: CDockPreview | null = null;
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
+		/** Provides super behavior. */
 		super(parent);
 	}
 
+	/** Provides central widget behavior. */
 	centralWidget(): CWidget | null {
 		return this.#m_centralWidget;
 	}
 
+	/** Sets the central widget. */
 	setCentralWidget(widget: CWidget | null): void {
+		/** Provides if behavior. */
 		if (this.#m_centralWidget === widget)
 			return;
 
+		/** Provides if behavior. */
 		if (this.#m_centralWidget !== null)
 			this.#m_centralWidget.setParent(null);
 
 		this.#m_centralWidget = widget;
 
+		/** Provides if behavior. */
 		if (widget !== null)
 			widget.setParent(this);
 
@@ -53,9 +66,11 @@ export class CDockArea extends CWidget {
 		this.update();
 	}
 
+	/** Adds dock widget. */
 	addDockWidget(position: CDockWidgetArea, widget: CDockWidget): void {
 		const existing = this.#indexOf(widget);
 
+		/** Provides if behavior. */
 		if (existing !== -1)
 			this.#m_dockWidgets.splice(existing, 1);
 
@@ -70,9 +85,11 @@ export class CDockArea extends CWidget {
 		this.update();
 	}
 
+	/** Removes dock widget. */
 	removeDockWidget(widget: CDockWidget): void {
 		const index = this.#indexOf(widget);
 
+		/** Provides if behavior. */
 		if (index === -1)
 			return;
 
@@ -83,10 +100,12 @@ export class CDockArea extends CWidget {
 		this.update();
 	}
 
+	/** Provides dock widgets behavior. */
 	dockWidgets(position: CDockWidgetArea): readonly CDockWidget[] {
 		return this.#m_dockWidgets.filter(item => item.position === position).map(item => item.widget);
 	}
 
+	/** Provides dock widget area behavior. */
 	dockWidgetArea(widget: CDockWidget): CDockWidgetArea | null {
 		const item = this.#m_dockWidgets.find(
 			item => item.widget === widget
@@ -95,6 +114,7 @@ export class CDockArea extends CWidget {
 		return item?.position ?? null;
 	}
 
+	/** Provides dock area at behavior. */
 	dockAreaAt(
 		widget: CDockWidget,
 		canvasX: number,
@@ -102,6 +122,7 @@ export class CDockArea extends CWidget {
 	): CDockWidgetArea | null {
 		const pos = this.mapFromCanvas(canvasX, canvasY);
 
+		/** Provides if behavior. */
 		if (pos.x() < 0 || pos.y() < 0 ||
 			pos.x() >= this.width() ||
 			pos.y() >= this.height()) {
@@ -112,30 +133,37 @@ export class CDockArea extends CWidget {
 		const marginX = Math.min(thickness, this.width() / 4);
 		const marginY = Math.min(thickness, this.height() / 4);
 
+		/** Provides if behavior. */
 		if (pos.x() < marginX)
 			return CDockWidgetArea.Left;
 
+		/** Provides if behavior. */
 		if (pos.x() >= this.width() - marginX)
 			return CDockWidgetArea.Right;
 
+		/** Provides if behavior. */
 		if (pos.y() < marginY)
 			return CDockWidgetArea.Top;
 
+		/** Provides if behavior. */
 		if (pos.y() >= this.height() - marginY)
 			return CDockWidgetArea.Bottom;
 
 		return null;
 	}
 
+	/** Sets the dock preview. */
 	setDockPreview(
 		widget: CDockWidget,
 		area: CDockWidgetArea | null
 	): void {
+		/** Provides if behavior. */
 		if (area === null) {
 			this.clearDockPreview();
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (this.#m_dockPreview?.widget === widget &&
 			this.#m_dockPreview.area === area)
 			return;
@@ -144,7 +172,9 @@ export class CDockArea extends CWidget {
 		this.update();
 	}
 
+	/** Clears dock preview. */
 	clearDockPreview(): void {
+		/** Provides if behavior. */
 		if (this.#m_dockPreview === null)
 			return;
 
@@ -152,9 +182,11 @@ export class CDockArea extends CWidget {
 		this.update();
 	}
 
+	/** Renders the widget. */
 	override render(painter: CPainter): void {
 		super.render(painter);
 
+		/** Provides if behavior. */
 		if (this.#m_dockPreview === null ||
 			!this.isVisible()) {
 			return;
@@ -182,21 +214,25 @@ export class CDockArea extends CWidget {
 		}
 	}
 
+	/** Sets the geometry. */
 	override setGeometry(x: number, y: number, width: number, height: number): void {
 		super.setGeometry(x, y, width, height);
 		this.#updateGeometry();
 	}
 
+	/** Provides resize behavior. */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 		this.#updateGeometry();
 	}
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
 		return this.#m_centralWidget?.sizeHint()
 			?? new CSize(0, 0);
 	}
 
+    /** Handles child visibility changed behavior. */
     protected override childVisibilityChanged(_child: CWidget): void {
 	    this.#updateGeometry();
 	    this.update();
@@ -226,6 +262,7 @@ export class CDockArea extends CWidget {
 		left = this.#layoutLeft(left, top, bottom);
 		right = this.#layoutRight(right, top, bottom);
 
+		/** Provides if behavior. */
 		if (this.#m_centralWidget !== null) {
 			this.#m_centralWidget.setGeometry(left, top, Math.max(0, right - left),
 				Math.max(0, bottom - top));
@@ -237,6 +274,7 @@ export class CDockArea extends CWidget {
 		const widgets =
 			this.#widgets(CDockWidgetArea.Top);
 
+		/** Provides for behavior. */
 		for (const widget of widgets) {
 			const height = widget.dockHeight();
 			widget.setGeometry(left, top, Math.max(0, right - left), height);
@@ -250,6 +288,7 @@ export class CDockArea extends CWidget {
 		const widgets =
 			this.#widgets(CDockWidgetArea.Bottom);
 
+		/** Provides for behavior. */
 		for (
 			let i = widgets.length - 1;
 			i >= 0;
@@ -273,6 +312,7 @@ export class CDockArea extends CWidget {
 		const widgets =
 			this.#widgets(CDockWidgetArea.Left);
 
+		/** Provides for behavior. */
 		for (const widget of widgets) {
 			const width = widget.dockWidth();
 			widget.setGeometry(left, top, width, Math.max(0, bottom - top));
@@ -286,6 +326,7 @@ export class CDockArea extends CWidget {
 		const widgets =
 			this.#widgets(CDockWidgetArea.Right);
 
+		/** Provides for behavior. */
 		for (
 			let i = widgets.length - 1;
 			i >= 0;
@@ -309,6 +350,7 @@ export class CDockArea extends CWidget {
 		const height = this.height();
 		const thickness = this.#dockThickness(widget);
 
+		/** Provides switch behavior. */
 		switch (area) {
 		case CDockWidgetArea.Left: {
 			const previewWidth = Math.min(width, thickness);

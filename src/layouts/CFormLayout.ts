@@ -5,9 +5,15 @@ import type { CWidget } from "../widgets/CWidget.js";
 import { CLayout } from "./CLayout.js";
 import { CWidgetItem } from "./CWidgetItem.js";
 
+/**
+ * Role of an item within a form-layout row.
+ */
 export enum CFormLayoutItemRole {
+	/** Label cell of a two-column row. */
 	LabelRole,
+	/** Field cell of a two-column row. */
 	FieldRole,
+	/** Widget spanning the complete row. */
 	SpanningRole
 }
 
@@ -17,12 +23,21 @@ interface CFormLayoutRow {
 	spanningItem: CWidgetItem | null;
 }
 
+/**
+ * Two-column layout for label/field forms, with support for spanning rows.
+ */
 export class CFormLayout extends CLayout {
 	#m_rows: CFormLayoutRow[] = [];
 
 	#m_horizontalSpacing: number | null = null;
 	#m_verticalSpacing: number | null = null;
 
+	/**
+	 * Adds a row to the form.
+	 *
+	 * The row may consist of a generated text label and field, an explicit
+	 * label widget and field, or a single widget spanning the whole row.
+	 */
 	addRow(labelText: string, field: CWidget): void;
 	addRow(label: CWidget, field: CWidget): void;
 	addRow(widget: CWidget): void;
@@ -83,14 +98,17 @@ export class CFormLayout extends CLayout {
 		}
 	}
 
+	/** Returns the number of rows in the form. */
 	rowCount(): number {
 		return this.#m_rows.length;
 	}
 
+	/** Returns the horizontal spacing between labels and fields. */
 	horizontalSpacing(): number {
 		return this.#m_horizontalSpacing ?? this.spacing();
 	}
 
+	/** Sets the horizontal spacing between labels and fields. */
 	setHorizontalSpacing(spacing: number): void {
 		spacing = Math.max(0, spacing);
 
@@ -101,10 +119,12 @@ export class CFormLayout extends CLayout {
 		this.update();
 	}
 
+	/** Returns the vertical spacing between rows. */
 	verticalSpacing(): number {
 		return this.#m_verticalSpacing ?? this.spacing();
 	}
 
+	/** Sets the vertical spacing between rows. */
 	setVerticalSpacing(spacing: number): void {
 		spacing = Math.max(0, spacing);
 
@@ -115,6 +135,7 @@ export class CFormLayout extends CLayout {
 		this.update();
 	}
 
+	/** Returns a widget by flat index or by row and item role. */
 	override widgetAt(index: number): CWidget | null;
 	override widgetAt(row: number, role: CFormLayoutItemRole): CWidget | null;
 
@@ -144,11 +165,13 @@ export class CFormLayout extends CLayout {
 		return null;
 	}
 
+	/** Removes all rows and layout items. */
 	override clear(): void {
 		this.#m_rows.length = 0;
 		super.clear();
 	}
 
+	/** Recalculates and applies the geometry of all form rows. */
 	override update(): void {
 		const parent = this.parentWidget();
 
@@ -242,6 +265,7 @@ export class CFormLayout extends CLayout {
 		}
 	}
 
+	/** Returns the preferred size required by the form. */
 	sizeHint(): CSize {
 		const margins = this.contentsMargins();
 		const horizontalSpacing = this.horizontalSpacing();

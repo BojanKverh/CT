@@ -1,34 +1,78 @@
 import { CTextCharFormat } from "./CTextCharFormat.js";
 
+/**
+ * Describes a formatted range in a text document.
+ */
 export type CTextFormatRange = {
-	start: number;
-	length: number;
-	format: CTextCharFormat;
+		/**
+	 * The start value.
+	 */
+start: number;
+		/**
+	 * Returns the number of characters in the document.
+	 */
+length: number;
+		/**
+	 * The format value.
+	 */
+format: CTextCharFormat;
 };
 
 type CMutableTextFormatRange = {
-	start: number;
-	end: number;
-	format: CTextCharFormat;
+		/**
+	 * The start value.
+	 */
+start: number;
+		/**
+	 * The end value.
+	 */
+end: number;
+		/**
+	 * The format value.
+	 */
+format: CTextCharFormat;
 };
 
+/**
+ * Stores plain text together with character-format ranges.
+ */
 export class CTextDocument {
 	#m_text = "";
 	#m_ranges: CMutableTextFormatRange[] = [];
 
-	constructor(text = "") {
+		/**
+	 * Creates a new CTextDocument instance.
+	 *
+	 * @param text Text.
+	 */
+constructor(text = "") {
 		this.setPlainText(text);
 	}
 
-	toPlainText(): string {
+		/**
+	 * Returns the document contents as plain text.
+	 *
+	 * @returns The resulting value.
+	 */
+toPlainText(): string {
 		return this.#m_text;
 	}
 
-	length(): number {
+		/**
+	 * Returns the number of characters in the document.
+	 *
+	 * @returns The resulting value.
+	 */
+length(): number {
 		return this.#m_text.length;
 	}
 
-	clone(): CTextDocument {
+		/**
+	 * Creates an independent copy of this object.
+	 *
+	 * @returns The resulting value.
+	 */
+clone(): CTextDocument {
 		const document = new CTextDocument();
 
 		document.#m_text = this.#m_text;
@@ -39,7 +83,12 @@ export class CTextDocument {
 		return document;
 	}
 
-	setPlainText(text: string): void {
+		/**
+	 * Replaces the document contents with plain text.
+	 *
+	 * @param text Text.
+	 */
+setPlainText(text: string): void {
 		this.#m_text = text;
 		this.#m_ranges = text.length === 0
 			? []
@@ -50,12 +99,20 @@ export class CTextDocument {
 			}];
 	}
 
-	clear(): void {
+		/**
+	 * Clears the current contents.
+	 */
+clear(): void {
 		this.#m_text = "";
 		this.#m_ranges = [];
 	}
 
-	formatRanges(): readonly CTextFormatRange[] {
+		/**
+	 * Returns the character-format ranges in the document.
+	 *
+	 * @returns The resulting value.
+	 */
+formatRanges(): readonly CTextFormatRange[] {
 		return this.#m_ranges.map(range => ({
 			start: range.start,
 			length: range.end - range.start,
@@ -63,7 +120,14 @@ export class CTextDocument {
 		}));
 	}
 
-	charFormatAt(position: number): CTextCharFormat {
+		/**
+	 * Returns the character format at the specified position.
+	 *
+	 * @param position Position.
+	 *
+	 * @returns The resulting value.
+	 */
+charFormatAt(position: number): CTextCharFormat {
 		if (position < 0 || position > this.#m_text.length)
 			throw new RangeError("Text position is out of range.");
 
@@ -80,7 +144,14 @@ export class CTextDocument {
 		return range?.format.clone() ?? new CTextCharFormat();
 	}
 
-	insert(
+		/**
+	 * Inserts text at the specified position.
+	 *
+	 * @param position Position.
+	 * @param text Text.
+	 * @param format Format.
+	 */
+insert(
 		position: number,
 		text: string,
 		format: CTextCharFormat | null = null
@@ -136,7 +207,13 @@ export class CTextDocument {
 		this.#m_ranges = this.#normalize(ranges);
 	}
 
-	remove(start: number, length: number): void {
+		/**
+	 * Removes a range of text from the document.
+	 *
+	 * @param start Start.
+	 * @param length Length.
+	 */
+remove(start: number, length: number): void {
 		this.#checkRange(start, length);
 
 		if (length === 0)
@@ -183,7 +260,14 @@ export class CTextDocument {
 		this.#m_ranges = this.#normalize(ranges);
 	}
 
-	setCharFormat(
+		/**
+	 * Applies a character format to a range of text.
+	 *
+	 * @param start Start.
+	 * @param length Length.
+	 * @param format Format.
+	 */
+setCharFormat(
 		start: number,
 		length: number,
 		format: CTextCharFormat

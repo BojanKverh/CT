@@ -9,6 +9,9 @@ import {
 	CStandardButton
 } from "./CDialogButtonBox.js";
 
+/**
+ * Dialog that displays progress for a long-running operation and optionally allows cancellation.
+ */
 export class CProgressDialog extends CDialog
 {
 	static readonly DefaultWidth = 360;
@@ -16,6 +19,9 @@ export class CProgressDialog extends CDialog
 	static readonly Margin = 12;
 	static readonly Spacing = 6;
 
+/**
+ * Emitted when the operation is canceled.
+ */
 	readonly canceled = new CSignal<[]>();
 
 	#m_label: CLabel;
@@ -25,6 +31,15 @@ export class CProgressDialog extends CDialog
 	#m_autoClose = true;
     #m_wasCanceled = false;
 
+/**
+ * Creates a progress dialog.
+ *
+ * @param labelText Text describing the operation.
+ * @param cancelButton Whether to show a Cancel button.
+ * @param minimum Minimum progress value.
+ * @param maximum Maximum progress value.
+ * @param parent Optional parent widget.
+ */
 	constructor(labelText = "", cancelButton = true, minimum = 0, maximum = 100,
 		parent: CWidget | null = null)
 	{
@@ -76,46 +91,92 @@ export class CProgressDialog extends CDialog
                 
 	}
 
+/**
+ * Returns the operation label text.
+ *
+ * @returns Current label text.
+ */
 	labelText(): string
 	{
 		return this.#m_label.text();
 	}
 
+/**
+ * Sets the operation label text.
+ *
+ * @param text New label text.
+ */
 	setLabelText(text: string): void
 	{
 		this.#m_label.setText(text);
 	}
 
+/**
+ * Returns the minimum progress value.
+ *
+ * @returns Minimum value.
+ */
 	minimum(): number
 	{
 		return this.#m_progressBar.minimum();
 	}
 
+/**
+ * Sets the minimum progress value.
+ *
+ * @param minimum Minimum value.
+ */
 	setMinimum(minimum: number): void
 	{
 		this.#m_progressBar.setMinimum(minimum);
 	}
 
+/**
+ * Returns the maximum progress value.
+ *
+ * @returns Maximum value.
+ */
 	maximum(): number
 	{
 		return this.#m_progressBar.maximum();
 	}
 
+/**
+ * Sets the maximum progress value.
+ *
+ * @param maximum Maximum value.
+ */
 	setMaximum(maximum: number): void
 	{
 		this.#m_progressBar.setMaximum(maximum);
 	}
 
+/**
+ * Sets the progress range.
+ *
+ * @param minimum Minimum value.
+ * @param maximum Maximum value.
+ */
 	setRange(minimum: number, maximum: number): void
 	{
 		this.#m_progressBar.setRange(minimum, maximum);
 	}
 
+/**
+ * Returns the current progress value.
+ *
+ * @returns Current value.
+ */
 	value(): number
 	{
 		return this.#m_progressBar.value();
 	}
 
+/**
+ * Sets the current progress value.
+ *
+ * @param value New progress value.
+ */
 	setValue(value: number): void
 	{
 		this.#m_progressBar.setValue(value);
@@ -130,21 +191,39 @@ export class CProgressDialog extends CDialog
         }
 	}
 
+/**
+ * Returns whether completion automatically accepts and closes the dialog.
+ *
+ * @returns `true` when auto-close is enabled.
+ */
 	autoClose(): boolean
 	{
 		return this.#m_autoClose;
 	}
 
+/**
+ * Enables or disables automatic closing on completion.
+ *
+ * @param autoClose `true` to close automatically at the maximum value.
+ */
 	setAutoClose(autoClose: boolean): void
 	{
 		this.#m_autoClose = autoClose;
 	}
 
+/**
+ * Returns whether the user canceled the operation.
+ *
+ * @returns `true` if cancellation was requested.
+ */
 	wasCanceled(): boolean
 	{
 		return this.#m_wasCanceled;
 	}
 
+/**
+ * Marks the operation as canceled, emits `canceled`, and rejects the dialog.
+ */
 	cancel(): void
 	{
 		if (this.#m_wasCanceled)

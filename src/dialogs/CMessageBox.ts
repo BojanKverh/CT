@@ -5,14 +5,35 @@ import { CWidget } from "../widgets/CWidget.js";
 import { CDialog } from "./CDialog.js";
 import { CDialogButtonBox, CStandardButton } from "./CDialogButtonBox.js";
 
+/**
+ * Defines the semantic icon type of a message box.
+ */
 export enum CMessageBoxIcon {
+/**
+ * No icon.
+ */
 	NoIcon,
+/**
+ * Informational message.
+ */
 	Information,
+/**
+ * Warning message.
+ */
 	Warning,
+/**
+ * Critical/error message.
+ */
 	Critical,
+/**
+ * Question message.
+ */
 	Question
 }
 
+/**
+ * Dialog for displaying short messages with standard response buttons.
+ */
 export class CMessageBox extends CDialog
 {
 	static readonly DefaultWidth = 360;
@@ -29,9 +50,17 @@ export class CMessageBox extends CDialog
 	#m_informativeLabel: CLabel;
 	#m_buttonBox: CDialogButtonBox;
 
+/**
+ * Emitted when a standard button is clicked.
+ */
 	readonly buttonClicked =
 		new CSignal<[CStandardButton]>();
 
+/**
+ * Creates a message box.
+ *
+ * @param parent Optional parent widget.
+ */
 	constructor(parent: CWidget | null = null)
 	{
 		super(parent);
@@ -78,11 +107,21 @@ export class CMessageBox extends CDialog
 		);
 	}
 
+/**
+ * Returns the primary message text.
+ *
+ * @returns Primary message text.
+ */
 	text(): string
 	{
 		return this.#m_text;
 	}
 
+/**
+ * Sets the primary message text.
+ *
+ * @param text Message text.
+ */
 	setText(text: string): void
 	{
 		if (this.#m_text === text)
@@ -93,11 +132,21 @@ export class CMessageBox extends CDialog
 		this.update();
 	}
 
+/**
+ * Returns the additional informative text.
+ *
+ * @returns Informative text.
+ */
 	informativeText(): string
 	{
 		return this.#m_informativeText;
 	}
 
+/**
+ * Sets the additional informative text.
+ *
+ * @param text Informative text; an empty string hides it.
+ */
 	setInformativeText(text: string): void
 	{
 		if (this.#m_informativeText === text)
@@ -109,11 +158,21 @@ export class CMessageBox extends CDialog
 		this.update();
 	}
 
+/**
+ * Returns the message icon type.
+ *
+ * @returns Current icon type.
+ */
 	icon(): CMessageBoxIcon
 	{
 		return this.#m_icon;
 	}
 
+/**
+ * Sets the message icon type.
+ *
+ * @param icon Icon type to display.
+ */
 	setIcon(icon: CMessageBoxIcon): void
 	{
 		if (this.#m_icon === icon)
@@ -123,11 +182,21 @@ export class CMessageBox extends CDialog
 		this.update();
 	}
 
+/**
+ * Returns the configured standard buttons.
+ *
+ * @returns Bitwise combination of standard buttons.
+ */
 	standardButtons(): CStandardButton
 	{
 		return this.#m_buttonBox.standardButtons();
 	}
 
+/**
+ * Sets the standard response buttons.
+ *
+ * @param buttons Bitwise combination of buttons.
+ */
 	setStandardButtons(buttons: CStandardButton): void
 	{
 		if (this.#m_buttonBox.standardButtons() === buttons)
@@ -137,11 +206,25 @@ export class CMessageBox extends CDialog
 		this.#m_buttonBox.setStandardButtons(buttons);
 	}
 
+/**
+ * Returns the last activated standard button.
+ *
+ * @returns Last clicked button, or `NoButton` if none.
+ */
 	clickedButton(): CStandardButton
 	{
 		return this.#m_clickedButton;
 	}
 
+/**
+ * Shows an informational message box.
+ *
+ * @param parent Optional parent widget.
+ * @param title Dialog title.
+ * @param text Message text.
+ * @param buttons Bitwise combination of response buttons.
+ * @returns The opened message box instance.
+ */
 	static information(parent: CWidget | null, title: string, text: string,
 		buttons = CStandardButton.Ok): CMessageBox
 	{
@@ -149,6 +232,15 @@ export class CMessageBox extends CDialog
 			CMessageBoxIcon.Information, buttons);
 	}
 
+/**
+ * Shows a warning message box.
+ *
+ * @param parent Optional parent widget.
+ * @param title Dialog title.
+ * @param text Message text.
+ * @param buttons Bitwise combination of response buttons.
+ * @returns The opened message box instance.
+ */
 	static warning(parent: CWidget | null, title: string, text: string,
 		buttons = CStandardButton.Ok): CMessageBox
 	{
@@ -156,6 +248,15 @@ export class CMessageBox extends CDialog
 			CMessageBoxIcon.Warning, buttons);
 	}
 
+/**
+ * Shows a critical-error message box.
+ *
+ * @param parent Optional parent widget.
+ * @param title Dialog title.
+ * @param text Message text.
+ * @param buttons Bitwise combination of response buttons.
+ * @returns The opened message box instance.
+ */
 	static critical(parent: CWidget | null, title: string, text: string,
 		buttons = CStandardButton.Ok): CMessageBox
 	{
@@ -163,6 +264,15 @@ export class CMessageBox extends CDialog
 			CMessageBoxIcon.Critical, buttons);
 	}
 
+/**
+ * Shows a question message box.
+ *
+ * @param parent Optional parent widget.
+ * @param title Dialog title.
+ * @param text Message text.
+ * @param buttons Bitwise combination of response buttons.
+ * @returns The opened message box instance.
+ */
 	static question(parent: CWidget | null, title: string, text: string,
 		buttons = CStandardButton.Yes |
 			CStandardButton.No): CMessageBox
@@ -171,6 +281,9 @@ export class CMessageBox extends CDialog
 			CMessageBoxIcon.Question, buttons);
 	}
 
+/**
+ * Opens the message box and resets the clicked-button state.
+ */
 	override open(): void
 	{
 		this.#m_clickedButton = CStandardButton.NoButton;

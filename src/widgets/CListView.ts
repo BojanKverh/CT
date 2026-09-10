@@ -27,6 +27,7 @@ class CListViewContentWidget extends CWidget {
 	}
 }
 
+/** Implements the list view widget. */
 export class CListView extends CScrollArea {
 	static readonly ItemHeight = 24;
 
@@ -37,7 +38,9 @@ export class CListView extends CScrollArea {
 	#m_disconnectDataChanged: (() => void) | null = null;
 	#m_disconnectModelReset: (() => void) | null = null;
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
+		/** Provides super behavior. */
 		super(parent);
 
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
@@ -48,11 +51,14 @@ export class CListView extends CScrollArea {
 		this.#updateContentGeometry();
 	}
 
+	/** Provides model behavior. */
 	model(): CAbstractItemModel | null {
 		return this.#m_model;
 	}
 
+	/** Sets the model. */
 	setModel(model: CAbstractItemModel | null): void {
+		/** Provides if behavior. */
 		if (this.#m_model === model)
 			return;
 
@@ -64,6 +70,7 @@ export class CListView extends CScrollArea {
 			? new CItemSelectionModel(model, this)
 			: null;
 
+		/** Provides if behavior. */
 		if (model !== null) {
 			this.#m_disconnectDataChanged =
 				model.dataChanged.connect(() => {
@@ -82,16 +89,20 @@ export class CListView extends CScrollArea {
 		this.update();
 	}
 
+	/** Provides selection model behavior. */
 	selectionModel(): CItemSelectionModel | null {
 		return this.#m_selectionModel;
 	}
 
+	/** Returns the current index. */
 	currentIndex(): CModelIndex {
 		return this.#m_selectionModel?.currentIndex()
 			?? new CModelIndex();
 	}
 
+	/** Sets the current index. */
 	setCurrentIndex(index: CModelIndex): void {
+		/** Provides if behavior. */
 		if (index.isValid() && index.model() !== this.#m_model)
 			return;
 
@@ -99,11 +110,14 @@ export class CListView extends CScrollArea {
 		this.#m_contentWidget.update();
 	}
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
 		return new CSize(200, 160);
 	}
 
+	/** Provides paint items behavior. */
 	paintItems(painter: CPainter): void {
+		/** Provides if behavior. */
 		if (this.#m_model === null)
 			return;
 
@@ -116,11 +130,13 @@ export class CListView extends CScrollArea {
 		painter.setPen(base);
 		painter.drawRect(0, 0, this.#m_contentWidget.width(), this.#m_contentWidget.height());
 
+		/** Provides for behavior. */
 		for (let row = 0; row < this.#m_model.rowCount(); row++) {
 			const index = this.#m_model.index(row, 0);
 			const y = row * CListView.ItemHeight;
 			const selected = this.#m_selectionModel?.isSelected(index) ?? false;
 
+			/** Provides if behavior. */
 			if (selected) {
 				const highlight = palette.color(CPaletteColorRole.Highlight).toCss();
 
@@ -142,7 +158,9 @@ export class CListView extends CScrollArea {
 		}
 	}
 
+	/** Handles the content mouse press event. */
 	contentMousePressEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.type() !== CEventType.MousePress
 			|| event.button() !== CMouseButton.LeftButton
 			|| this.#m_model === null)
@@ -152,6 +170,7 @@ export class CListView extends CScrollArea {
 			event.pos().y() / CListView.ItemHeight
 		);
 
+		/** Provides if behavior. */
 		if (row < 0 || row >= this.#m_model.rowCount())
 			return;
 

@@ -6,6 +6,7 @@ import { CKeyEvent } from "../events/CKeyEvent";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CStyleOptionSlider } from "../gui/CStyleOptionSlider.js";
 
+/** Implements the slider widget. */
 export class CSlider extends CWidget {
 	#m_minimum = 0;
 	#m_maximum = 100;
@@ -14,31 +15,39 @@ export class CSlider extends CWidget {
     #m_singleStep = 1;
     #m_pageStep = 10;
 
+    /** Signal emitted when value changes. */
     readonly valueChanged = new CSignal<[number]>();
 
+    /** Creates a new instance. */
     constructor(parent: CWidget | null = null) {
+	    /** Provides super behavior. */
 	    super(parent);
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
     }
 
+	/** Returns the minimum . */
 	minimum(): number {
 		return this.#m_minimum;
 	}
 
+	/** Returns the maximum . */
 	maximum(): number {
 		return this.#m_maximum;
 	}
 
+	/** Provides value behavior. */
 	value(): number {
 		return this.#m_value;
 	}
 
+	/** Sets the value. */
 	setValue(value: number): void {
 		const clamped = Math.max(
 			this.#m_minimum,
 			Math.min(value, this.#m_maximum)
 		);
 
+		/** Provides if behavior. */
 		if (this.#m_value === clamped)
 			return;
 
@@ -47,10 +56,13 @@ export class CSlider extends CWidget {
 		this.update();
 	}
 
+	/** Sets the range. */
 	setRange(minimum: number, maximum: number): void {
+		/** Provides if behavior. */
 		if (minimum > maximum)
 			maximum = minimum;
 
+		/** Provides if behavior. */
 		if (
 			this.#m_minimum === minimum &&
 			this.#m_maximum === maximum
@@ -64,30 +76,37 @@ export class CSlider extends CWidget {
 		this.update();
 	}
 
+    /** Sets the minimum. */
     setMinimum(minimum: number): void {
 	    this.setRange(minimum, this.#m_maximum);
     }
 
+    /** Sets the maximum. */
     setMaximum(maximum: number): void {
 	    this.setRange(this.#m_minimum, maximum);
     }
 
+    /** Provides single step behavior. */
     singleStep(): number {
 	    return this.#m_singleStep;
     }
 
+    /** Sets the single step. */
     setSingleStep(step: number): void {
 	    this.#m_singleStep = Math.max(0, step);
     }
 
+    /** Provides page step behavior. */
     pageStep(): number {
 	    return this.#m_pageStep;
     }
 
+    /** Sets the page step. */
     setPageStep(step: number): void {
 	    this.#m_pageStep = Math.max(0, step);
     }
 
+    /** Handles the paint event. */
     protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionSlider();
 		option.initFromSlider(this);
@@ -95,7 +114,9 @@ export class CSlider extends CWidget {
 		this.style().drawSlider(painter, option);
 	}
 
+	/** Handles the mouse press event. */
 	protected override mousePressEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -107,7 +128,9 @@ export class CSlider extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the mouse move event. */
 	protected override mouseMoveEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (!this.#m_dragging) {
 			event.ignore();
 			return;
@@ -118,7 +141,9 @@ export class CSlider extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the mouse release event. */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (
 			event.button() !== CMouseButton.LeftButton
 			|| !this.#m_dragging
@@ -133,7 +158,9 @@ export class CSlider extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the key press event. */
 	protected override keyPressEvent(event: CKeyEvent): void {
+		/** Provides switch behavior. */
 		switch (event.key()) {
 		case "ArrowLeft":
         case "ArrowUp":
@@ -176,6 +203,7 @@ export class CSlider extends CWidget {
 		const start = handleSize / 2;
 		const length = Math.max(0, this.width() - handleSize);
 
+		/** Provides if behavior. */
 		if (length === 0)
 			return this.#m_minimum;
 

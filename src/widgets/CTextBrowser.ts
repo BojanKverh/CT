@@ -14,7 +14,9 @@ import {
  * painting and formatted hit testing.  CTextBrowser adds only permanent
  * read-only behaviour and hyperlink interaction.
  */
+/** Implements the text browser widget. */
 export class CTextBrowser extends CTextEdit {
+	/** Public anchor clicked member. */
 	readonly anchorClicked = new CSignal<[string]>();
 
 	#m_htmlMode = false;
@@ -23,27 +25,34 @@ export class CTextBrowser extends CTextEdit {
 	#m_pressedAnchor: string | null = null;
 	#m_hoveredAnchor: string | null = null;
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
+		/** Provides super behavior. */
 		super(parent);
 		super.setReadOnly(true);
 
 		this.textChanged.connect(() => {
+			/** Provides if behavior. */
 			if (this.#m_htmlMode)
 				this.#m_htmlSource = null;
 		});
 	}
 
+	/** Sets the read only. */
 	override setReadOnly(_readOnly: boolean = true): void {
 		super.setReadOnly(true);
 	}
 
+	/** Provides cursor behavior. */
 	override cursor(): CCursorShape {
+		/** Provides if behavior. */
 		if (this.#m_hoveredAnchor !== null)
 			return CCursorShape.PointingHand;
 
 		return super.cursor();
 	}
 
+	/** Sets the plain text. */
 	override setPlainText(text: string): void {
 		this.#m_htmlMode = false;
 		this.#m_htmlSource = null;
@@ -53,6 +62,7 @@ export class CTextBrowser extends CTextEdit {
 		this.setCursorPosition(0);
 	}
 
+	/** Sets the html. */
 	override setHtml(html: string): void {
 		this.#m_htmlMode = false;
 		this.#m_htmlSource = null;
@@ -65,13 +75,16 @@ export class CTextBrowser extends CTextEdit {
 		this.setCursorPosition(0);
 	}
 
+	/** Provides to html behavior. */
 	override toHtml(): string {
+		/** Provides if behavior. */
 		if (!this.#m_htmlMode)
 			return "";
 
 		return this.#m_htmlSource ?? super.toHtml();
 	}
 
+	/** Clears the current contents. */
 	override clear(): void {
 		this.#m_htmlMode = false;
 		this.#m_htmlSource = null;
@@ -79,23 +92,29 @@ export class CTextBrowser extends CTextEdit {
 		super.clear();
 	}
 
+	/** Returns whether undo is currently possible. */
 	override canUndo(): boolean {
 		return false;
 	}
 
+	/** Returns whether redo is currently possible. */
 	override canRedo(): boolean {
 		return false;
 	}
 
+	/** Provides undo behavior. */
 	override undo(): void {
 		// CTextBrowser is not user-editable.
 	}
 
+	/** Provides redo behavior. */
 	override redo(): void {
 		// CTextBrowser is not user-editable.
 	}
 
+	/** Provides handle mouse press behavior. */
 	override handleMousePress(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.button() === CMouseButton.LeftButton) {
 			this.#m_mousePressed = true;
 			this.#m_pressedAnchor = this.#anchorAt(
@@ -107,17 +126,20 @@ export class CTextBrowser extends CTextEdit {
 		super.handleMousePress(event);
 	}
 
+	/** Provides handle mouse move behavior. */
 	override handleMouseMove(event: CMouseEvent): void {
 		const hoveredAnchor = this.#anchorAt(
 			event.x(),
 			event.y()
 		);
 
+		/** Provides if behavior. */
 		if (hoveredAnchor !== this.#m_hoveredAnchor) {
 			this.#m_hoveredAnchor = hoveredAnchor;
 			this.widget()?.update();
 		}
 
+		/** Provides if behavior. */
 		if (this.#m_mousePressed) {
 			super.handleMouseMove(event);
 			return;
@@ -126,7 +148,9 @@ export class CTextBrowser extends CTextEdit {
 		event.accept();
 	}
 
+	/** Provides handle mouse release behavior. */
 	override handleMouseRelease(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			super.handleMouseRelease(event);
 			return;
@@ -140,6 +164,7 @@ export class CTextBrowser extends CTextEdit {
 		this.#m_mousePressed = false;
 		this.#m_pressedAnchor = null;
 
+		/** Provides if behavior. */
 		if (!wasPressed || pressedAnchor === null)
 			return;
 
@@ -148,6 +173,7 @@ export class CTextBrowser extends CTextEdit {
 			event.y()
 		);
 
+		/** Provides if behavior. */
 		if (releasedAnchor === pressedAnchor && !this.hasSelection())
 			this.anchorClicked.emit(pressedAnchor);
 	}

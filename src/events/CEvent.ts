@@ -1,42 +1,41 @@
+/** Defines the event types delivered by Canvas Toolkit. */
 export enum CEventType {
-    MousePress,
-    MouseRelease,
-    MouseMove,
-    MouseEnter,
-    MouseLeave,
-    FocusIn,
-    FocusOut,
-    KeyPress,
-    KeyRelease,
-    Wheel,
-    ContextMenu,
-    Drop,
-    DragEnter,
-    DragMove,
-    DragLeave
+    /** Mouse button press event. */ MousePress,
+    /** Mouse button release event. */ MouseRelease,
+    /** Mouse movement event. */ MouseMove,
+    /** Pointer entered a widget. */ MouseEnter,
+    /** Pointer left a widget. */ MouseLeave,
+    /** Widget gained keyboard focus. */ FocusIn,
+    /** Widget lost keyboard focus. */ FocusOut,
+    /** Keyboard key press event. */ KeyPress,
+    /** Keyboard key release event. */ KeyRelease,
+    /** Mouse wheel or trackpad scrolling event. */ Wheel,
+    /** Context-menu request event. */ ContextMenu,
+    /** Drag-and-drop drop event. */ Drop,
+    /** Drag entered a widget. */ DragEnter,
+    /** Drag moved within a widget. */ DragMove,
+    /** Drag left a widget. */ DragLeave
 }
 
+/** Base class for all Canvas Toolkit events. */
 export class CEvent {
     #m_type: CEventType;
     #m_accepted = true;
 
-    constructor(type: CEventType) {
-        this.#m_type = type;
-    }
+    /** Creates an event of the specified type.
+     * @param type Event type.
+     */
+    constructor(type: CEventType) { this.#m_type = type; }
 
-    type(): CEventType {
-        return this.#m_type;
-    }
+    /** Returns the event type. */
+    type(): CEventType { return this.#m_type; }
 
-    isAccepted(): boolean {
-        return this.#m_accepted;
-    }
+    /** Returns whether the event is accepted. */
+    isAccepted(): boolean { return this.#m_accepted; }
 
-    accept(): void {
-        this.#m_accepted = true;
-    }
+    /** Marks the event as accepted. */
+    accept(): void { this.#m_accepted = true; }
 
-    ignore(): void {
-        this.#m_accepted = false;
-    }
+    /** Marks the event as ignored. */
+    ignore(): void { this.#m_accepted = false; }
 }

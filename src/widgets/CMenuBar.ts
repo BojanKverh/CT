@@ -12,6 +12,7 @@ type CMenuBarItem =
 	| { type: "menu"; text: string; menu: CMenu }
 	| { type: "separator" };
 
+/** Implements the menu bar widget. */
 export class CMenuBar extends CWidget
 {
 	static readonly DefaultHeight = 28;
@@ -22,19 +23,23 @@ export class CMenuBar extends CWidget
 	#m_hoveredIndex = -1;
 	#m_openMenu: CMenu | null = null;
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null)
 	{
+		/** Provides super behavior. */
 		super(parent);
 
 		this.resize(this.width(), CMenuBar.DefaultHeight);
 	}
 
+	/** Adds menu. */
 	addMenu(text: string, menu: CMenu): CMenu
 	{
 		menu.setMenuBar(this);
 		this.#m_items.push({type: "menu", text, menu});
 
 		menu.closed.connect(() => {
+			/** Provides if behavior. */
 			if (this.#m_openMenu !== menu)
 				return;
 
@@ -46,14 +51,17 @@ export class CMenuBar extends CWidget
 		return menu;
 	}
 
+	/** Adds separator. */
 	addSeparator(): void
 	{
 		this.#m_items.push({ type: "separator" });
 		this.update();
 	}
 
+	/** Clears the current contents. */
 	clear(): void
 	{
+		/** Provides if behavior. */
 		if (this.#m_openMenu !== null) {
 			this.#m_openMenu.close();
 			this.#m_openMenu = null;
@@ -65,30 +73,36 @@ export class CMenuBar extends CWidget
 		this.update();
 	}
 
+	/** Provides count behavior. */
 	count(): number
 	{
 		return this.#m_items.length;
 	}
 
+	/** Provides menu at behavior. */
 	menuAt(index: number): CMenu | null
 	{
 		const item = this.#m_items[index];
 
+		/** Provides if behavior. */
 		if (item === undefined || item.type !== "menu")
 			return null;
 
 		return item.menu;
 	}
 
+	/** Provides select menu behavior. */
 	selectMenu(direction: 1 | -1): void
 	{
 		this.#selectMenu(direction);
 	}
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
 		return new CSize(0, CMenuBar.DefaultHeight);
 	}
 
+    /** Handles the mouse move event. */
     protected override mouseMoveEvent(event: CMouseEvent): void
 	{
 		const index = this.#itemIndexAt(event.x(), event.y());
@@ -98,8 +112,10 @@ export class CMenuBar extends CWidget
 		event.accept();
 	}
 
+	/** Handles the mouse leave event. */
 	protected override mouseLeaveEvent(event: CMouseEvent): void
 	{
+		/** Provides if behavior. */
 		if (this.#m_openMenu === null) {
 			this.#m_hoveredIndex = -1;
 			this.update();
@@ -108,10 +124,12 @@ export class CMenuBar extends CWidget
 		event.accept();
 	}
 
+	/** Handles the mouse press event. */
 	protected override mousePressEvent(event: CMouseEvent): void
 	{
 		const index = this.#itemIndexAt(event.x(), event.y());
 
+		/** Provides if behavior. */
 		if (index === -1) {
 			event.ignore();
 			return;
@@ -119,6 +137,7 @@ export class CMenuBar extends CWidget
 
 		const item = this.#m_items[index]!;
 
+		/** Provides if behavior. */
 		if (item.type !== "menu") {
 			event.ignore();
 			return;
@@ -126,11 +145,13 @@ export class CMenuBar extends CWidget
 
 		const rect = this.#itemRect(index);
 
+		/** Provides if behavior. */
 		if (rect === null) {
 			event.ignore();
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (this.#m_openMenu === item.menu) {
 			item.menu.close();
 			this.#m_openMenu = null;
@@ -139,6 +160,7 @@ export class CMenuBar extends CWidget
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (this.#m_openMenu !== null)
 			this.#m_openMenu.close();
 
@@ -155,8 +177,10 @@ export class CMenuBar extends CWidget
 		event.accept();
 	}
 
+	/** Handles the key press event. */
 	protected override keyPressEvent(event: CKeyEvent): void
 	{
+		/** Provides switch behavior. */
 		switch (event.key()) {
 			case "ArrowRight":
 				this.#selectMenu(1);
@@ -179,23 +203,28 @@ export class CMenuBar extends CWidget
 		}
 	}
 
+	/** Handles the paint event. */
 	protected override paintEvent(painter: CPainter): void
 	{
 		painter.setBrush(this.palette().color(CPaletteColorRole.Base).toCss());
 		painter.fillRect(new CRect(0, 0, this.width(), this.height()));
 		painter.setFont(this.font());
 
+		/** Provides for behavior. */
 		for (let i = 0; i < this.#m_items.length; ++i) {
 			const item = this.#m_items[i]!;
 
+			/** Provides if behavior. */
 			if (item.type === "separator")
 				continue;
 
 			const rect = this.#itemRect(i);
 
+			/** Provides if behavior. */
 			if (rect === null)
 				continue;
 
+			/** Provides if behavior. */
 			if (i === this.#m_hoveredIndex) {
 				painter.setBrush(this.palette().color(CPaletteColorRole.Highlight).toCss());
 				painter.fillRect(rect);
@@ -214,19 +243,23 @@ export class CMenuBar extends CWidget
 
 	#selectMenu(direction: 1 | -1): void
 	{
+		/** Provides if behavior. */
 		if (this.#m_items.length === 0)
 			return;
 
 		let index = this.#m_hoveredIndex;
 
+		/** Provides if behavior. */
 		if (index === -1 && direction === -1)
 			index = 0;
 
+		/** Provides for behavior. */
 		for (let i = 0; i < this.#m_items.length; ++i) {
 			index = (
 				index + direction + this.#m_items.length
 			) % this.#m_items.length;
 
+			/** Provides if behavior. */
 			if (this.#m_items[index]?.type === "menu") {
 				this.#setCurrentIndex(index);
 				return;
@@ -236,6 +269,7 @@ export class CMenuBar extends CWidget
 
 	#itemWidth(item: CMenuBarItem): number
 	{
+		/** Provides if behavior. */
 		if (item.type === "separator")
 			return 0;
 
@@ -249,16 +283,19 @@ export class CMenuBar extends CWidget
 
 	#itemRect(index: number): CRect | null
 	{
+		/** Provides if behavior. */
 		if (index < 0 || index >= this.#m_items.length)
 			return null;
 
 		const item = this.#m_items[index]!;
 
+		/** Provides if behavior. */
 		if (item.type === "separator")
 			return null;
 
 		const separatorIndex = this.#separatorIndex();
 
+		/** Provides if behavior. */
 		if (separatorIndex === -1 || index < separatorIndex)
 			return this.#leftItemRect(index);
 
@@ -269,9 +306,11 @@ export class CMenuBar extends CWidget
 	{
 		let x = 0;
 
+		/** Provides for behavior. */
 		for (let i = 0; i < index; ++i) {
 			const item = this.#m_items[i]!;
 
+			/** Provides if behavior. */
 			if (item.type !== "menu")
 				continue;
 
@@ -287,14 +326,17 @@ export class CMenuBar extends CWidget
 	{
 		let x = this.width();
 
+		/** Provides for behavior. */
 		for (let i = this.#m_items.length - 1; i >= index; --i) {
 			const item = this.#m_items[i]!;
 
+			/** Provides if behavior. */
 			if (item.type !== "menu")
 				continue;
 
 			x -= this.#itemWidth(item);
 
+			/** Provides if behavior. */
 			if (i !== index)
 				x -= CMenuBar.ItemSpacing;
 		}
@@ -306,14 +348,17 @@ export class CMenuBar extends CWidget
 
 	#itemIndexAt(x: number, y: number): number
 	{
+		/** Provides if behavior. */
 		if (y < 0 || y >= this.height())
 			return -1;
 
 		const point = new CPoint(x, y);
 
+		/** Provides for behavior. */
 		for (let i = 0; i < this.#m_items.length; ++i) {
 			const rect = this.#itemRect(i);
 
+			/** Provides if behavior. */
 			if (rect !== null && rect.contains(point))
 				return i;
 		}
@@ -326,6 +371,7 @@ export class CMenuBar extends CWidget
 	    let x = this.x() + rect.x();
 	    const right = x + menu.width();
 	    const menuBarRight = this.x() + this.width();
+	    /** Provides if behavior. */
 	    if (right > menuBarRight)
 		    x = menuBarRight - menu.width();
 	    return x;
@@ -333,11 +379,13 @@ export class CMenuBar extends CWidget
 
 	#setCurrentIndex(index: number): void
 	{
+		/** Provides if behavior. */
 		if (index === this.#m_hoveredIndex)
 			return;
 
 		this.#m_hoveredIndex = index;
 
+		/** Provides if behavior. */
 		if (this.#m_openMenu !== null)
 			this.#switchOpenMenu(index);
 
@@ -347,11 +395,14 @@ export class CMenuBar extends CWidget
 	#openCurrentMenu(): void
 	{
 		const item = this.#m_items[this.#m_hoveredIndex];
+		/** Provides if behavior. */
 		if (item === undefined || item.type !== "menu")
 			return;
 
+		/** Provides if behavior. */
 		if (!item.menu.isOpen()) {
 			const rect = this.#itemRect(this.#m_hoveredIndex);
+			/** Provides if behavior. */
 			if (rect === null)
 				return;
 
@@ -361,6 +412,7 @@ export class CMenuBar extends CWidget
 			this.#m_openMenu = item.menu;
 		}
 
+		/** Provides if behavior. */
 		if (!item.menu.focusOpenSubMenu())
 			item.menu.setFocus();
 	}
@@ -369,11 +421,13 @@ export class CMenuBar extends CWidget
 	{
 		const item = this.#m_items[index];
 
+		/** Provides if behavior. */
 		if (item === undefined || item.type !== "menu")
 			return;
 
 		const rect = this.#itemRect(index);
 
+		/** Provides if behavior. */
 		if (rect === null)
 			return;
 
@@ -385,6 +439,7 @@ export class CMenuBar extends CWidget
 		item.menu.open();
 
 		this.#m_openMenu = item.menu;
+		/** Provides if behavior. */
 		if (!item.menu.focusOpenSubMenu())
 			item.menu.setFocus();
 	}

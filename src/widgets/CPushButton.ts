@@ -8,29 +8,37 @@ import { CFontMetrics } from "../gui/CFontMetrics.js";
 import { CSize } from "../geometry/CSize.js";
 import { CStyleOptionPushButton } from "../gui/CStyleOptionPushButton.js";
 
+/** Implements the push button widget. */
 export class CPushButton extends CAbstractButton {
 	#m_down = false;
 	#m_hovered = false;
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
+		/** Provides super behavior. */
 		super(parent);
 		this.setCheckable(false);
 	}
 
+	/** Returns whether the down condition is active. */
 	isDown(): boolean {
 		return this.#m_down;
 	}
 
+	/** Returns whether the hovered condition is active. */
 	isHovered(): boolean {
 		return this.#m_hovered;
 	}
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
 		const fm = new CFontMetrics(this.font());
 		return new CSize(Math.max(80, fm.textWidth(this.text()) + 24), 30);
 	}
 
+	/** Handles the mouse press event. */
 	protected override mousePressEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -40,11 +48,14 @@ export class CPushButton extends CAbstractButton {
 		event.accept();
 		this.update();
 
+		/** Provides if behavior. */
 		if (this.isAutoRepeat())
 			this.startAutoRepeat();
 	}
 
+	/** Handles the mouse release event. */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -57,13 +68,16 @@ export class CPushButton extends CAbstractButton {
 		event.accept();
 		this.update();
 
+		/** Provides if behavior. */
 		if (wasDown && inside)
 			this.clicked.emit();
 
+		/** Provides if behavior. */
 		if (this.isAutoRepeat())
 			this.stopAutoRepeat();
 	}
 
+	/** Handles the paint event. */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionPushButton();
 		option.initFromPushButton(this);
@@ -71,19 +85,23 @@ export class CPushButton extends CAbstractButton {
 		this.style().drawPushButton(painter, option);
 	}
 
+	/** Handles the mouse enter event. */
 	protected override mouseEnterEvent(event: CMouseEvent): void {
 		this.#m_hovered = true;
 		event.accept();
 		this.update();
 	}
 
+	/** Handles the mouse leave event. */
 	protected override mouseLeaveEvent(event: CMouseEvent): void {
 		this.#m_hovered = false;
 		event.accept();
 		this.update();
 	}
 
+	/** Handles the key press event. */
 	protected override keyPressEvent(event: CKeyEvent): void {
+		/** Provides if behavior. */
 		if (event.key() === " ") {
 			this.#m_down = true;
 			event.accept();
@@ -91,6 +109,7 @@ export class CPushButton extends CAbstractButton {
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (event.key() === "Enter") {
 			event.accept();
 			this.clicked.emit();
@@ -100,7 +119,9 @@ export class CPushButton extends CAbstractButton {
 		event.ignore();
 	}
 
+	/** Handles the key release event. */
 	protected override keyReleaseEvent(event: CKeyEvent): void {
+		/** Provides if behavior. */
 		if (event.key() !== " ") {
 			event.ignore();
 			return;
@@ -112,6 +133,7 @@ export class CPushButton extends CAbstractButton {
 		event.accept();
 		this.update();
 
+		/** Provides if behavior. */
 		if (wasDown)
 			this.clicked.emit();
 	}

@@ -1,17 +1,33 @@
+/**
+ * Represents an RGBA color value.
+ */
 export class CColor {
 	#m_red: number;
 	#m_green: number;
 	#m_blue: number;
 	#m_alpha: number;
 
-	constructor(red: number = 0, green: number = 0, blue: number = 0, alpha = 255) {
+		/**
+	 * Creates a new CColor instance.
+	 *
+	 * @param red Red.
+	 * @param green Green.
+	 * @param blue Blue.
+	 * @param alpha Alpha.
+	 */
+constructor(red: number = 0, green: number = 0, blue: number = 0, alpha = 255) {
 		this.#m_red = CColor.#clamp(red);
 		this.#m_green = CColor.#clamp(green);
 		this.#m_blue = CColor.#clamp(blue);
 		this.#m_alpha = CColor.#clamp(alpha);
 	}
 
-	setColor(color: string): void {
+		/**
+	 * Assigns a color to the specified palette role.
+	 *
+	 * @param color Color.
+	 */
+setColor(color: string): void {
 		if (!/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(color))
 			return;
 
@@ -22,39 +38,81 @@ export class CColor {
 			this.#m_alpha = parseInt(color.slice(7, 9), 16);
 	}
 
-	setAlpha(alpha: number)
+		/**
+	 * Sets the alpha.
+	 *
+	 * @param alpha Alpha.
+	 */
+setAlpha(alpha: number)
 	{
 		this.#m_alpha = alpha;
 	}
 
-	red(): number {
+		/**
+	 * Returns or updates the red value.
+	 *
+	 * @returns The resulting value.
+	 */
+red(): number {
 		return this.#m_red;
 	}
 
-	green(): number {
+		/**
+	 * Returns or updates the green value.
+	 *
+	 * @returns The resulting value.
+	 */
+green(): number {
 		return this.#m_green;
 	}
 
-	blue(): number {
+		/**
+	 * Returns or updates the blue value.
+	 *
+	 * @returns The resulting value.
+	 */
+blue(): number {
 		return this.#m_blue;
 	}
 
-	alpha(): number {
+		/**
+	 * Returns or updates the alpha value.
+	 *
+	 * @returns The resulting value.
+	 */
+alpha(): number {
 		return this.#m_alpha;
 	}
 
-	equals(other: CColor): boolean {
+		/**
+	 * Returns whether this object is equal to another object.
+	 *
+	 * @param other Other.
+	 *
+	 * @returns The resulting value.
+	 */
+equals(other: CColor): boolean {
 		return this.#m_red === other.#m_red
 			&& this.#m_green === other.#m_green
 			&& this.#m_blue === other.#m_blue
 			&& this.#m_alpha === other.#m_alpha;
 	}
 
-	toCss(): string {
+		/**
+	 * Returns the color as a CSS color string.
+	 *
+	 * @returns The resulting value.
+	 */
+toCss(): string {
 		return `rgba(${this.#m_red}, ${this.#m_green}, ${this.#m_blue}, ${this.#m_alpha / 255})`;
 	}
 
-	toHex(): string {
+		/**
+	 * Returns the color as a hexadecimal RGB string.
+	 *
+	 * @returns The resulting value.
+	 */
+toHex(): string {
 		const hex = (value: number) => value.toString(16).padStart(2, "0");
 		return `#${hex(this.#m_red)}${hex(this.#m_green)}` + `${hex(this.#m_blue)}`;
 	}

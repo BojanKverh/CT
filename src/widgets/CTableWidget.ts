@@ -155,13 +155,17 @@ class CTableWidgetModel extends CAbstractItemModel {
 	}
 }
 
+/** Implements the table widget widget. */
 export class CTableWidget extends CTableView {
 	#m_tableModel: CTableWidgetModel;
 
+	/** Signal emitted when current item changes. */
 	readonly currentItemChanged =
 		new CSignal<[CTableWidgetItem | null, CTableWidgetItem | null]>();
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
+		/** Provides super behavior. */
 		super(parent);
 
 		this.#m_tableModel = new CTableWidgetModel(this);
@@ -177,48 +181,60 @@ export class CTableWidget extends CTableView {
 		);
 	}
 
+	/** Provides row count behavior. */
 	rowCount(): number {
 		return this.#m_tableModel.rowCount();
 	}
 
+	/** Sets the row count. */
 	setRowCount(count: number): void {
 		this.#m_tableModel.setRowCount(count);
 	}
 
+	/** Provides column count behavior. */
 	columnCount(): number {
 		return this.#m_tableModel.columnCount();
 	}
 
+	/** Sets the column count. */
 	setColumnCount(count: number): void {
 		this.#m_tableModel.setColumnCount(count);
 	}
 
+	/** Provides item behavior. */
 	item(row: number, column: number): CTableWidgetItem | null {
 		return this.#m_tableModel.item(row, column);
 	}
 
+	/** Sets the item. */
 	setItem(row: number, column: number,
 		item: CTableWidgetItem): void {
 		this.#m_tableModel.setItem(row, column, item);
 	}
 
+	/** Removes and returns item. */
 	takeItem(row: number, column: number): CTableWidgetItem | null {
 		return this.#m_tableModel.takeItem(row, column);
 	}
 
+	/** Sets the horizontal header labels. */
 	setHorizontalHeaderLabels(labels: string[]): void {
 		this.#m_tableModel.setHorizontalHeaderLabels(labels);
 	}
 
+	/** Sets the vertical header labels. */
 	setVerticalHeaderLabels(labels: string[]): void {
 		this.#m_tableModel.setVerticalHeaderLabels(labels);
 	}
 
+	/** Returns the current item. */
 	currentItem(): CTableWidgetItem | null {
 		return this.#m_tableModel.itemFromIndex(this.currentIndex());
 	}
 
+	/** Sets the current item. */
 	setCurrentItem(item: CTableWidgetItem | null): void {
+		/** Provides if behavior. */
 		if (item === null) {
 			this.setCurrentIndex(new CModelIndex());
 			return;
@@ -226,21 +242,26 @@ export class CTableWidget extends CTableView {
 
 		const index = this.#m_tableModel.indexFromItem(item);
 
+		/** Provides if behavior. */
 		if (index.isValid())
 			this.setCurrentIndex(index);
 	}
 
+	/** Returns the selected items. */
 	selectedItems(): CTableWidgetItem[] {
 		const selectionModel = this.selectionModel();
 
+		/** Provides if behavior. */
 		if (selectionModel === null)
 			return [];
 
 		const result: CTableWidgetItem[] = [];
 
+		/** Provides for behavior. */
 		for (const index of selectionModel.selectedIndexes()) {
 			const item = this.#m_tableModel.itemFromIndex(index);
 
+			/** Provides if behavior. */
 			if (item !== null && !result.includes(item))
 				result.push(item);
 		}
@@ -248,10 +269,12 @@ export class CTableWidget extends CTableView {
 		return result;
 	}
 
+	/** Provides item from index behavior. */
 	itemFromIndex(index: CModelIndex): CTableWidgetItem | null {
 		return this.#m_tableModel.itemFromIndex(index);
 	}
 
+	/** Provides index from item behavior. */
 	indexFromItem(item: CTableWidgetItem): CModelIndex {
 		return this.#m_tableModel.indexFromItem(item);
 	}

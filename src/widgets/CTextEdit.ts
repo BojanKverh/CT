@@ -81,8 +81,11 @@ class CTextEditContentWidget extends CWidget {
 	}
 }
 
+/** Implements the text edit widget. */
 export class CTextEdit extends CScrollArea {
+	/** Signal emitted when text changes. */
 	readonly textChanged = new CSignal<[]>();
+	/** Signal emitted when selection changes. */
 	readonly selectionChanged = new CSignal<[]>();
 
 	#m_document = new CTextDocument();
@@ -104,7 +107,9 @@ export class CTextEdit extends CScrollArea {
 	static readonly #TEXT_MARGIN = 5;
 	static readonly #LINE_HEIGHT = 18;
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
+		/** Provides super behavior. */
 		super(parent);
 
 		this.#m_contentWidget = new CTextEditContentWidget(this);
@@ -128,23 +133,28 @@ export class CTextEdit extends CScrollArea {
         this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
+	/** Provides to plain text behavior. */
 	toPlainText(): string {
 		return this.#m_document.toPlainText();
 	}
 
+	/** Provides to html behavior. */
 	toHtml(): string {
 		const text = this.#m_document.toPlainText();
 
+		/** Provides if behavior. */
 		if (text.length === 0)
 			return "";
 
 		let html = "";
 
+		/** Provides for behavior. */
 		for (const range of this.#m_document.formatRanges()) {
 			const start = range.start;
 			const end = range.start + range.length;
 			const fragment = text.slice(start, end);
 
+			/** Provides if behavior. */
 			if (fragment.length === 0)
 				continue;
 
@@ -157,6 +167,7 @@ export class CTextEdit extends CScrollArea {
 		return html;
 	}
 
+	/** Sets the html. */
 	setHtml(html: string): void {
 		const parsed = this.#parseHtml(html);
 		const hadSelection = this.hasSelection();
@@ -167,7 +178,9 @@ export class CTextEdit extends CScrollArea {
 
 		this.#m_document.setPlainText(parsed.plainText);
 
+		/** Provides for behavior. */
 		for (const range of parsed.ranges) {
+			/** Provides if behavior. */
 			if (range.length <= 0)
 				continue;
 
@@ -184,6 +197,7 @@ export class CTextEdit extends CScrollArea {
 
 		this.textChanged.emit();
 
+		/** Provides if behavior. */
 		if (hadSelection)
 			this.selectionChanged.emit();
 
@@ -193,7 +207,9 @@ export class CTextEdit extends CScrollArea {
 		this.#m_contentWidget.update();
 	}
 
+	/** Sets the plain text. */
 	setPlainText(text: string): void {
+		/** Provides if behavior. */
 		if (this.#m_document.toPlainText() === text)
 			return;
 
@@ -210,6 +226,7 @@ export class CTextEdit extends CScrollArea {
 
 		this.textChanged.emit();
 
+		/** Provides if behavior. */
 		if (hadSelection)
 			this.selectionChanged.emit();
 
@@ -219,7 +236,9 @@ export class CTextEdit extends CScrollArea {
 		this.#m_contentWidget.update();
 	}
 
+	/** Clears the current contents. */
 	clear(): void {
+		/** Provides if behavior. */
 		if (this.#m_document.length() === 0)
 			return;
 
@@ -234,6 +253,7 @@ export class CTextEdit extends CScrollArea {
 
 		this.textChanged.emit();
 
+		/** Provides if behavior. */
 		if (hadSelection)
 			this.selectionChanged.emit();
 
@@ -243,11 +263,14 @@ export class CTextEdit extends CScrollArea {
 		this.#m_contentWidget.update();
 	}
 
+	/** Returns whether the read only condition is active. */
 	isReadOnly(): boolean {
 		return this.#m_readOnly;
 	}
 
+	/** Sets the read only. */
 	setReadOnly(readOnly: boolean = true): void {
+		/** Provides if behavior. */
 		if (this.#m_readOnly === readOnly)
 			return;
 
@@ -255,24 +278,29 @@ export class CTextEdit extends CScrollArea {
 		this.#m_contentWidget.update();
 	}
 
+	/** Provides cursor behavior. */
 	override cursor(): CCursorShape {
 		return this.isEnabled()
 			? CCursorShape.IBeam
 			: CCursorShape.Disabled;
 	}
 
+	/** Provides cursor position behavior. */
 	cursorPosition(): number {
 		return this.#m_cursorPosition;
 	}
 
+	/** Sets the cursor position. */
 	setCursorPosition(position: number): void {
 		this.#moveCursor(position, false);
 	}
 
+	/** Provides cursor visible behavior. */
 	cursorVisible(): boolean {
 		return this.#m_cursorVisible;
 	}
 
+	/** Provides selection start behavior. */
 	selectionStart(): number {
 		return Math.min(
 			this.#m_selectionAnchor,
@@ -280,6 +308,7 @@ export class CTextEdit extends CScrollArea {
 		);
 	}
 
+	/** Provides selection end behavior. */
 	selectionEnd(): number {
 		return Math.max(
 			this.#m_selectionAnchor,
@@ -287,11 +316,14 @@ export class CTextEdit extends CScrollArea {
 		);
 	}
 
+	/** Returns whether this object has selection. */
 	hasSelection(): boolean {
 		return this.#m_selectionAnchor !== this.#m_cursorPosition;
 	}
 
+	/** Returns the selected text. */
 	selectedText(): string {
+		/** Provides if behavior. */
 		if (!this.hasSelection())
 			return "";
 
@@ -301,6 +333,7 @@ export class CTextEdit extends CScrollArea {
 		);
 	}
 
+	/** Sets the selection. */
 	setSelection(anchor: number, position: number): void {
 		this.#breakUndoGroup();
 		const length = this.#m_document.length();
@@ -315,6 +348,7 @@ export class CTextEdit extends CScrollArea {
 			0, Math.min(position, length)
 		);
 
+		/** Provides if behavior. */
 		if (oldAnchor === this.#m_selectionAnchor
 			&& oldPosition === this.#m_cursorPosition)
 			return;
@@ -325,7 +359,9 @@ export class CTextEdit extends CScrollArea {
 		this.#m_contentWidget.update();
 	}
 
+	/** Clears selection. */
 	clearSelection(): void {
+		/** Provides if behavior. */
 		if (!this.hasSelection())
 			return;
 
@@ -336,26 +372,33 @@ export class CTextEdit extends CScrollArea {
 		this.#m_contentWidget.update();
 	}
 
+	/** Provides select all behavior. */
 	selectAll(): void {
 		this.setSelection(0, this.#m_document.length());
 	}
 
+	/** Inserts . */
 	insert(text: string): void {
 		this.#insert(text, null);
 	}
 	
+	/** Handles text document behavior. */
 	protected textDocument(): CTextDocument {
 		return this.#m_document;
 	}
 
+	/** Returns the current char format. */
 	currentCharFormat(): CTextCharFormat {
+		/** Provides if behavior. */
 		if (this.hasSelection() && this.#m_document.length() > 0)
 			return this.#m_document.charFormatAt(this.selectionStart());
 
 		return this.#m_currentCharFormat.clone();
 	}
 
+	/** Sets the current char format. */
 	setCurrentCharFormat(format: CTextCharFormat): void {
+		/** Provides if behavior. */
 		if (this.hasSelection()) {
 			this.#pushUndoState();
 			this.#m_document.setCharFormat(
@@ -373,54 +416,64 @@ export class CTextEdit extends CScrollArea {
 		this.#m_currentCharFormat = format.clone();
 	}
 
+	/** Sets the font bold. */
 	setFontBold(bold: boolean): void {
 		this.#modifyCurrentFormats(format => {
 			format.setFontBold(bold);
 		});
 	}
 
+	/** Sets the font italic. */
 	setFontItalic(italic: boolean): void {
 		this.#modifyCurrentFormats(format => {
 			format.setFontItalic(italic);
 		});
 	}
 
+	/** Sets the font underline. */
 	setFontUnderline(underline: boolean): void {
 		this.#modifyCurrentFormats(format => {
 			format.setFontUnderline(underline);
 		});
 	}
 
+	/** Sets the text color. */
 	setTextColor(color: string | null): void {
 		this.#modifyCurrentFormats(format => {
 			format.setForeground(color);
 		});
 	}
 
+	/** Sets the font family. */
 	setFontFamily(family: string | null): void {
 		this.#modifyCurrentFormats(format => {
 			format.setFontFamily(family);
 		});
 	}
 
+	/** Sets the font size. */
 	setFontSize(size: number | null): void {
 		this.#modifyCurrentFormats(format => {
 			format.setFontSize(size);
 		});
 	}
 
+	/** Returns whether undo is currently possible. */
 	canUndo(): boolean {
 		return this.#m_undoStack.length > 0;
 	}
 
+	/** Returns whether redo is currently possible. */
 	canRedo(): boolean {
 		return this.#m_redoStack.length > 0;
 	}
 
+	/** Provides undo behavior. */
 	undo(): void {
 		this.#breakUndoGroup();
 		const state = this.#m_undoStack.pop();
 
+		/** Provides if behavior. */
 		if (state === undefined)
 			return;
 
@@ -428,10 +481,12 @@ export class CTextEdit extends CScrollArea {
 		this.#restoreState(state);
 	}
 
+	/** Provides redo behavior. */
 	redo(): void {
 		this.#breakUndoGroup();
 		const state = this.#m_redoStack.pop();
 
+		/** Provides if behavior. */
 		if (state === undefined)
 			return;
 
@@ -439,41 +494,51 @@ export class CTextEdit extends CScrollArea {
 		this.#restoreState(state);
 	}
 
+	/** Provides copy behavior. */
 	copy(): void {
+		/** Provides if behavior. */
 		if (!this.hasSelection())
 			return;
 
 		CClipboard.instance().setText(this.selectedText());
 	}
 
+	/** Provides cut behavior. */
 	cut(): void {
+		/** Provides if behavior. */
 		if (!this.hasSelection())
 			return;
 
 		CClipboard.instance().setText(this.selectedText());
 
+		/** Provides if behavior. */
 		if (this.isReadOnly())
 			return;
 
 		this.#deleteSelection();
 	}
 
+	/** Provides paste behavior. */
 	paste(): void {
+		/** Provides if behavior. */
 		if (this.isReadOnly())
 			return;
 
 		const text = CClipboard.instance().text();
 
+		/** Provides if behavior. */
 		if (text.length === 0)
 			return;
 
 		this.insert(text);
 	}
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
 		return new CSize(240, 120);
 	}
 
+	/** Sets the geometry. */
 	override setGeometry(
 		x: number,
 		y: number,
@@ -484,15 +549,18 @@ export class CTextEdit extends CScrollArea {
 		this.#updateContentGeometry();
 	}
 
+	/** Provides resize behavior. */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 		this.#updateContentGeometry();
 	}
 
+	/** Handles text position at behavior. */
 	protected textPositionAt(x: number, y: number): number {
 		return this.#cursorPositionAt(x, y);
 	}
 
+	/** Handles text char format at behavior. */
 	protected textCharFormatAt(
 		x: number,
 		y: number
@@ -500,18 +568,23 @@ export class CTextEdit extends CScrollArea {
 		const layouts = this.#lineLayouts();
 		const margin = CTextEdit.#TEXT_MARGIN;
 
+		/** Provides for behavior. */
 		for (const line of layouts) {
+			/** Provides if behavior. */
 			if (y < line.y || y >= line.y + line.height)
 				continue;
 
 			const textX = x - margin;
 
+			/** Provides if behavior. */
 			if (textX < 0 || line.text.length === 0)
 				return null;
 
+			/** Provides for behavior. */
 			for (let i = 1; i <= line.text.length; ++i) {
 				const width = this.#textWidth(line.start, i);
 
+				/** Provides if behavior. */
 				if (textX < width)
 					return this.#m_document.charFormatAt(
 						line.start + i - 1
@@ -524,6 +597,7 @@ export class CTextEdit extends CScrollArea {
 		return null;
 	}
 
+	/** Provides paint text behavior. */
 	paintText(painter: CPainter): void {
 		const palette = this.palette();
 		const margin = CTextEdit.#TEXT_MARGIN;
@@ -540,6 +614,7 @@ export class CTextEdit extends CScrollArea {
 
 		const layouts = this.#lineLayouts();
 
+		/** Provides for behavior. */
 		for (const line of layouts) {
 			this.#paintFormattedLine(
 				painter,
@@ -552,6 +627,7 @@ export class CTextEdit extends CScrollArea {
 			);
 		}
 
+		/** Provides if behavior. */
 		if (this.hasFocus() && this.#m_cursorVisible) {
 			const position = this.#lineColumnAt(
 				this.#m_cursorPosition
@@ -577,7 +653,9 @@ export class CTextEdit extends CScrollArea {
 		}
 	}
 
+	/** Provides handle mouse press behavior. */
 	handleMousePress(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -602,7 +680,9 @@ export class CTextEdit extends CScrollArea {
 		this.#m_contentWidget.update();
 	}
 
+	/** Provides handle mouse move behavior. */
 	handleMouseMove(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (!this.#m_selectingWithMouse) {
 			event.ignore();
 			return;
@@ -617,12 +697,15 @@ export class CTextEdit extends CScrollArea {
 		event.accept();
 	}
 
+	/** Provides handle mouse release behavior. */
 	handleMouseRelease(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (!this.#m_selectingWithMouse) {
 			event.ignore();
 			return;
@@ -639,8 +722,11 @@ export class CTextEdit extends CScrollArea {
 		event.accept();
 	}
 
+	/** Handles the key press event. */
 	protected override keyPressEvent(event: CKeyEvent): void {
+		/** Provides if behavior. */
 		if (event.ctrl()) {
+			/** Provides switch behavior. */
 			switch (event.key().toLowerCase()) {
 			case "a":
 				this.selectAll();
@@ -663,6 +749,7 @@ export class CTextEdit extends CScrollArea {
 				return;
 
             case 'z':
+                /** Provides if behavior. */
                 if (event.shift())
 				    this.redo();
 			    else
@@ -678,6 +765,7 @@ export class CTextEdit extends CScrollArea {
 			}
 		}
 
+		/** Provides switch behavior. */
 		switch (event.key()) {
 		case "ArrowLeft":
 			this.#moveCursor(
@@ -737,6 +825,7 @@ export class CTextEdit extends CScrollArea {
 			return;
 
 		case "Enter":
+			/** Provides if behavior. */
 			if (!this.isReadOnly()) {
 				this.#breakUndoGroup();
 				this.insert("\n");
@@ -746,15 +835,18 @@ export class CTextEdit extends CScrollArea {
 			return;
 
 		case "Backspace":
+			/** Provides if behavior. */
 			if (this.isReadOnly()) {
 				event.accept();
 				return;
 			}
 
+			/** Provides if behavior. */
 			if (this.#deleteSelection()) {
 				event.accept();
 				return;
 			}
+			/** Provides if behavior. */
 			if (this.#m_cursorPosition > 0) {
                 this.#pushUndoState("backspace");
 				this.#m_document.remove(this.#m_cursorPosition - 1, 1);
@@ -774,16 +866,19 @@ export class CTextEdit extends CScrollArea {
 			return;
 
 		case "Delete":
+			/** Provides if behavior. */
 			if (this.isReadOnly()) {
 				event.accept();
 				return;
 			}
 
+			/** Provides if behavior. */
 			if (this.#deleteSelection()) {
 				event.accept();
 				return;
 			}
 
+			/** Provides if behavior. */
 			if (this.#m_cursorPosition < this.#m_document.length()) {
                 this.#pushUndoState("delete");
 				this.#m_document.remove(this.#m_cursorPosition, 1);
@@ -802,6 +897,7 @@ export class CTextEdit extends CScrollArea {
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (event.key().length === 1 && !event.ctrl()) {
 			this.#insert(event.key(), "insert");
 			event.accept();
@@ -811,12 +907,14 @@ export class CTextEdit extends CScrollArea {
 		event.ignore();
 	}
 
+	/** Handles the focus in event. */
 	protected override focusInEvent(event: CFocusEvent): void {
 		this.#startCursorBlink();
 		event.accept();
 		this.#m_contentWidget.update();
 	}
 
+	/** Handles the focus out event. */
 	protected override focusOutEvent(
 		event: CFocusEvent
 	): void {
@@ -835,6 +933,7 @@ export class CTextEdit extends CScrollArea {
 		lineHeight: number,
 		textRole: CPaletteColorRole
 	): void {
+		/** Provides if behavior. */
 		if (text.length === 0)
 			return;
 
@@ -842,6 +941,7 @@ export class CTextEdit extends CScrollArea {
 		const lineEnd = lineStart + text.length;
 		let currentX = x;
 
+		/** Provides for behavior. */
 		for (const range of this.#m_document.formatRanges()) {
 			const start = Math.max(lineStart, range.start);
 			const end = Math.min(
@@ -849,6 +949,7 @@ export class CTextEdit extends CScrollArea {
 				range.start + range.length
 			);
 
+			/** Provides if behavior. */
 			if (start >= end)
 				continue;
 
@@ -877,11 +978,13 @@ export class CTextEdit extends CScrollArea {
 				this.selectionEnd()
 			);
 
+			/** Provides if behavior. */
 			if (!this.hasSelection()
 				|| selectionStart >= selectionEnd) {
 				painter.setPen(normalColor);
 				painter.drawText(segment, currentX, y);
 
+				/** Provides if behavior. */
 				if (range.format.fontUnderline()) {
 					painter.drawLine(
 						currentX,
@@ -913,9 +1016,11 @@ export class CTextEdit extends CScrollArea {
 			const beforeWidth = metrics.textWidth(before);
 			const selectedWidth = metrics.textWidth(selected);
 
+			/** Provides if behavior. */
 			if (before.length > 0) {
 				painter.setPen(normalColor);
 				painter.drawText(before, currentX, y);
+				/** Provides if behavior. */
 				if (range.format.fontUnderline()) {
 					painter.drawLine(
 						currentX,
@@ -951,6 +1056,7 @@ export class CTextEdit extends CScrollArea {
 				y
 			);
 
+			/** Provides if behavior. */
 			if (after.length > 0) {
 				painter.setPen(normalColor);
 				painter.drawText(
@@ -959,6 +1065,7 @@ export class CTextEdit extends CScrollArea {
 					y
 				);
 
+				/** Provides if behavior. */
 				if (range.format.fontUnderline()) {
 					const afterX = currentX + beforeWidth + selectedWidth;
 					painter.drawLine(
@@ -983,6 +1090,7 @@ export class CTextEdit extends CScrollArea {
 		const lines = this.#m_document.toPlainText().split("\n");
 		let start = 0;
 
+		/** Provides for behavior. */
 		for (const text of lines) {
 			result.push({
 				text,
@@ -1001,6 +1109,7 @@ export class CTextEdit extends CScrollArea {
 		const result: CTextEditLineLayout[] = [];
 		let y = CTextEdit.#TEXT_MARGIN;
 
+		/** Provides for behavior. */
 		for (const line of lines) {
 			const height = this.#lineHeight(
 				line.start,
@@ -1023,11 +1132,13 @@ export class CTextEdit extends CScrollArea {
 	#lineHeight(start: number, length: number): number {
 		let height = CTextEdit.#LINE_HEIGHT;
 
+		/** Provides if behavior. */
 		if (length === 0)
 			return height;
 
 		const end = start + length;
 
+		/** Provides for behavior. */
 		for (const range of this.#m_document.formatRanges()) {
 			const rangeStart = Math.max(start, range.start);
 			const rangeEnd = Math.min(
@@ -1035,6 +1146,7 @@ export class CTextEdit extends CScrollArea {
 				range.start + range.length
 			);
 
+			/** Provides if behavior. */
 			if (rangeStart >= rangeEnd)
 				continue;
 
@@ -1048,6 +1160,7 @@ export class CTextEdit extends CScrollArea {
 			 */
 			const size = range.format.fontSize();
 
+			/** Provides if behavior. */
 			if (size === null)
 				continue;
 
@@ -1067,11 +1180,13 @@ export class CTextEdit extends CScrollArea {
 	} {
 		const lines = this.#lines();
 
+		/** Provides for behavior. */
 		for (let i = 0; i < lines.length; ++i) {
 			const line = lines[i]!;
 			const end =
 				line.start + line.text.length;
 
+			/** Provides if behavior. */
 			if (position <= end) {
 				return {
 					line: i,
@@ -1108,6 +1223,7 @@ export class CTextEdit extends CScrollArea {
 		);
 
 		const targetLine = Math.max(0, Math.min(current.line + direction, lines.length - 1));
+		/** Provides if behavior. */
 		if (targetLine === current.line)
 			return;
 
@@ -1124,15 +1240,18 @@ export class CTextEdit extends CScrollArea {
 
 		let lineIndex = 0;
 
+		/** Provides if behavior. */
 		if (y <= margin) {
 			lineIndex = 0;
 		}
 		else {
 			lineIndex = layouts.length - 1;
 
+			/** Provides for behavior. */
 			for (let i = 0; i < layouts.length; ++i) {
 				const line = layouts[i]!;
 
+				/** Provides if behavior. */
 				if (y < line.y + line.height) {
 					lineIndex = i;
 					break;
@@ -1143,15 +1262,18 @@ export class CTextEdit extends CScrollArea {
 		const line = layouts[lineIndex]!;
 		const textX = x - margin;
 
+		/** Provides if behavior. */
 		if (textX <= 0)
 			return line.start;
 
 		let previousWidth = 0;
 
+		/** Provides for behavior. */
 		for (let i = 1; i <= line.text.length; ++i) {
 			const width = this.#textWidth(line.start, i);
 			const middle = (previousWidth + width) / 2;
 
+			/** Provides if behavior. */
 			if (textX < middle)
 				return line.start + i - 1;
 
@@ -1168,6 +1290,7 @@ export class CTextEdit extends CScrollArea {
 		this.#breakUndoGroup();
 		const clamped = Math.max(0, Math.min(position, this.#m_document.length()));
 
+		/** Provides if behavior. */
 		if (this.#m_cursorPosition === clamped && (keepAnchor || this.#m_selectionAnchor === clamped))
 			return;
 
@@ -1176,11 +1299,13 @@ export class CTextEdit extends CScrollArea {
 
 		this.#m_cursorPosition = clamped;
 
+		/** Provides if behavior. */
 		if (!keepAnchor) {
 			this.#m_selectionAnchor = clamped;
 			this.#syncCurrentCharFormatFromCursor();
 		}
 
+		/** Provides if behavior. */
 		if (oldAnchor !== this.#m_selectionAnchor || oldPosition !== this.#m_cursorPosition)
 			this.selectionChanged.emit();
 
@@ -1190,6 +1315,7 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	#deleteSelection(): boolean {
+		/** Provides if behavior. */
 		if (!this.hasSelection() || this.isReadOnly())
 			return false;
 
@@ -1217,6 +1343,7 @@ export class CTextEdit extends CScrollArea {
 	#contentWidth(): number {
 		let width = 0;
 
+		/** Provides for behavior. */
 		for (const line of this.#lines()) {
 			width = Math.max(
 				width,
@@ -1233,6 +1360,7 @@ export class CTextEdit extends CScrollArea {
 	#contentHeight(): number {
 		const layouts = this.#lineLayouts();
 
+		/** Provides if behavior. */
 		if (layouts.length === 0)
 			return 2 * CTextEdit.#TEXT_MARGIN;
 
@@ -1242,6 +1370,7 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	#updateContentGeometry(): void {
+		/** Provides if behavior. */
 		if (this.#m_contentWidget === undefined)
 			return;
 
@@ -1283,6 +1412,7 @@ export class CTextEdit extends CScrollArea {
 		let scrollX = this.scrollX();
 		let scrollY = this.scrollY();
 
+		/** Provides if behavior. */
 		if (cursorX < scrollX + CTextEdit.#TEXT_MARGIN)
 			scrollX = Math.max(
 				0,
@@ -1300,6 +1430,7 @@ export class CTextEdit extends CScrollArea {
 					+ CTextEdit.#TEXT_MARGIN;
 		}
 
+		/** Provides if behavior. */
 		if (cursorY < scrollY + CTextEdit.#TEXT_MARGIN)
 			scrollY = Math.max(
 				0,
@@ -1334,6 +1465,7 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	#resetCursorBlink(): void {
+		/** Provides if behavior. */
 		if (!this.hasFocus())
 			return;
 
@@ -1341,6 +1473,7 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	#textWidth(start: number, length: number): number {
+		/** Provides if behavior. */
 		if (length <= 0)
 			return 0;
 
@@ -1348,6 +1481,7 @@ export class CTextEdit extends CScrollArea {
 		const text = this.#m_document.toPlainText();
 		let width = 0;
 
+		/** Provides for behavior. */
 		for (const range of this.#m_document.formatRanges()) {
 			const rangeStart = Math.max(start, range.start);
 			const rangeEnd = Math.min(
@@ -1355,6 +1489,7 @@ export class CTextEdit extends CScrollArea {
 				range.start + range.length
 			);
 
+			/** Provides if behavior. */
 			if (rangeStart >= rangeEnd)
 				continue;
 
@@ -1372,6 +1507,7 @@ export class CTextEdit extends CScrollArea {
 	#fontForFormat(format: CTextCharFormat): string {
 		let font = this.font();
 
+		/** Provides if behavior. */
 		if (format.fontSize() !== null) {
 			font = font.replace(
 				/(\d+(?:\.\d+)?)px/,
@@ -1379,6 +1515,7 @@ export class CTextEdit extends CScrollArea {
 			);
 		}
 
+		/** Provides if behavior. */
 		if (format.fontFamily() !== null) {
 			const family = format.fontFamily()!;
 			font = font.replace(
@@ -1390,9 +1527,11 @@ export class CTextEdit extends CScrollArea {
 
 		const prefixes: string[] = [];
 
+		/** Provides if behavior. */
 		if (format.fontItalic())
 			prefixes.push("italic");
 
+		/** Provides if behavior. */
 		if (format.fontBold())
 			prefixes.push("bold");
 
@@ -1405,34 +1544,45 @@ export class CTextEdit extends CScrollArea {
 		const parts = text.split("\n");
 		let html = "";
 
+		/** Provides for behavior. */
 		for (let i = 0; i < parts.length; ++i) {
+			/** Provides if behavior. */
 			if (i > 0)
 				html += "<br>";
 
 			const part = parts[i]!;
 
+			/** Provides if behavior. */
 			if (part.length === 0)
 				continue;
 
 			let content = this.#encodeHtmlEntities(part);
 			const styles: string[] = [];
 
+			/** Provides if behavior. */
 			if (format.foreground() !== null)
 				styles.push(`color: ${format.foreground()}`);
+			/** Provides if behavior. */
 			if (format.fontSize() !== null)
 				styles.push(`font-size: ${format.fontSize()}px`);
+			/** Provides if behavior. */
 			if (format.fontFamily() !== null) {
 				styles.push(`font-family: ${this.#escapeHtmlStyleValue(format.fontFamily()!)}`);
 			}
+			/** Provides if behavior. */
 			if (format.fontUnderline())
 				styles.push("text-decoration: underline");
 
+			/** Provides if behavior. */
 			if (styles.length > 0)
 				content = `<span style="${styles.join("; ")}">${content}</span>`;
+			/** Provides if behavior. */
 			if (format.fontItalic())
 				content = `<i>${content}</i>`;
+			/** Provides if behavior. */
 			if (format.fontBold())
 				content = `<b>${content}</b>`;
+			/** Provides if behavior. */
 			if (format.anchorHref() !== null) {
 				content = `<a href="${this.#encodeHtmlAttribute(format.anchorHref()!)}">${content}</a>`;
 			}
@@ -1470,15 +1620,18 @@ export class CTextEdit extends CScrollArea {
 			let text = this.#decodeHtmlEntities(rawText);
 			text = text.replace(/\s+/g, " ");
 
+			/** Provides if behavior. */
 			if (text.length === 0)
 				return;
 
+			/** Provides if behavior. */
 			if (
 				(plainText.length === 0 || plainText.endsWith("\n")) &&
 				text.startsWith(" ")
 			)
 				text = text.slice(1);
 
+			/** Provides if behavior. */
 			if (text.length === 0)
 				return;
 
@@ -1493,6 +1646,7 @@ export class CTextEdit extends CScrollArea {
 		};
 
 		const appendNewLine = (): void => {
+			/** Provides if behavior. */
 			if (plainText.length === 0 || plainText.endsWith("\n"))
 				return;
 
@@ -1510,19 +1664,24 @@ export class CTextEdit extends CScrollArea {
 			modifier: (format: CTextCharFormat) => void
 		): void => {
 			const format = currentFormat();
+			/** Provides modifier behavior. */
 			modifier(format);
 			formatStack.push(format);
 		};
 
 		const popFormat = (): void => {
+			/** Provides if behavior. */
 			if (formatStack.length > 1)
 				formatStack.pop();
 		};
 
 		const tokens = html.match(/<[^>]*>|[^<]+/g) ?? [];
 
+		/** Provides for behavior. */
 		for (const token of tokens) {
+			/** Provides if behavior. */
 			if (!token.startsWith("<")) {
+				/** Provides append text behavior. */
 				appendText(token);
 				continue;
 			}
@@ -1530,6 +1689,7 @@ export class CTextEdit extends CScrollArea {
 			const match =
 				/^<\s*(\/?)\s*([a-zA-Z0-9]+)([^>]*)>$/.exec(token);
 
+			/** Provides if behavior. */
 			if (match === null)
 				continue;
 
@@ -1537,8 +1697,11 @@ export class CTextEdit extends CScrollArea {
 			const tag = match[2]!.toLowerCase();
 			const attributes = match[3] ?? "";
 
+			/** Provides if behavior. */
 			if (tag === "a") {
+				/** Provides if behavior. */
 				if (closing) {
+					/** Provides pop format behavior. */
 					popFormat();
 				}
 				else {
@@ -1550,6 +1713,7 @@ export class CTextEdit extends CScrollArea {
 							hrefMatch[1] ?? hrefMatch[2] ?? hrefMatch[3] ?? ""
 						);
 
+					/** Provides push modified format behavior. */
 					pushModifiedFormat(format => {
 						format.setAnchorHref(href);
 						format.setFontUnderline(true);
@@ -1558,53 +1722,77 @@ export class CTextEdit extends CScrollArea {
 				continue;
 			}
 
+			/** Provides if behavior. */
 			if (tag === "u") {
+				/** Provides if behavior. */
 				if (closing)
+					/** Provides pop format behavior. */
 					popFormat();
 				else
+					/** Provides push modified format behavior. */
 					pushModifiedFormat(format => format.setFontUnderline(true));
 				continue;
 			}
 
+			/** Provides if behavior. */
 			if (tag === "br") {
+				/** Provides append new line behavior. */
 				appendNewLine();
 				continue;
 			}
 
+			/** Provides if behavior. */
 			if (tag === "p" || tag === "div") {
+				/** Provides if behavior. */
 				if (closing)
+					/** Provides append new line behavior. */
 					appendNewLine();
 				else if (plainText.length > 0 && !plainText.endsWith("\n"))
+					/** Provides append new line behavior. */
 					appendNewLine();
 
 				continue;
 			}
 
+			/** Provides if behavior. */
 			if (tag === "b" || tag === "strong") {
+				/** Provides if behavior. */
 				if (closing)
+					/** Provides pop format behavior. */
 					popFormat();
 				else
+					/** Provides push modified format behavior. */
 					pushModifiedFormat(format => format.setFontBold(true));
 				continue;
 			}
 
+			/** Provides if behavior. */
 			if (tag === "i" || tag === "em") {
+				/** Provides if behavior. */
 				if (closing)
+					/** Provides pop format behavior. */
 					popFormat();
 				else
+					/** Provides push modified format behavior. */
 					pushModifiedFormat(format => format.setFontItalic(true));
 				continue;
 			}
 
 			const headingMatch = /^h([1-3])$/.exec(tag);
 
+			/** Provides if behavior. */
 			if (headingMatch !== null) {
+				/** Provides if behavior. */
 				if (closing) {
+					/** Provides pop format behavior. */
 					popFormat();
+					/** Provides append new line behavior. */
 					appendNewLine();
 				}
 				else {
+					/** Provides if behavior. */
 					if (plainText.length > 0 && !plainText.endsWith("\n"))
+						/** Provides append new line behavior. */
 						appendNewLine();
 
 					const heading = Number(headingMatch[1]);
@@ -1614,6 +1802,7 @@ export class CTextEdit extends CScrollArea {
 							? 1.5
 							: 1.25;
 
+					/** Provides push modified format behavior. */
 					pushModifiedFormat(format => {
 						format.setFontBold(true);
 						format.setFontSize(
@@ -1624,27 +1813,35 @@ export class CTextEdit extends CScrollArea {
 				continue;
 			}
 
+			/** Provides if behavior. */
 			if (tag === "span") {
+				/** Provides if behavior. */
 				if (closing) {
+					/** Provides pop format behavior. */
 					popFormat();
 					continue;
 				}
 
+				/** Provides push modified format behavior. */
 				pushModifiedFormat(format => {
 					this.#applyInlineStyle(format, attributes);
 				});
 			}
 		}
 
+		/** Provides while behavior. */
 		while (plainText.endsWith("\n")) {
 			plainText = plainText.slice(0, -1);
 
 			const last = ranges[ranges.length - 1];
+			/** Provides if behavior. */
 			if (last === undefined)
 				break;
 
+			/** Provides if behavior. */
 			if (last.start + last.length > plainText.length) {
 				const newLength = plainText.length - last.start;
+				/** Provides if behavior. */
 				if (newLength <= 0)
 					ranges.pop();
 				else
@@ -1665,31 +1862,38 @@ export class CTextEdit extends CScrollArea {
 		const styleMatch =
 			/\bstyle\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(attributes);
 
+		/** Provides if behavior. */
 		if (styleMatch === null)
 			return;
 
 		const style = styleMatch[1] ?? styleMatch[2] ?? "";
 
+		/** Provides for behavior. */
 		for (const declaration of style.split(";")) {
 			const colon = declaration.indexOf(":");
+			/** Provides if behavior. */
 			if (colon < 0)
 				continue;
 
 			const property = declaration.slice(0, colon).trim().toLowerCase();
 			const value = declaration.slice(colon + 1).trim();
 
+			/** Provides if behavior. */
 			if (property === "color" && value.length > 0) {
 				format.setForeground(value);
 				continue;
 			}
 
+			/** Provides if behavior. */
 			if (property === "font-size") {
 				const sizeMatch = /^(\d+(?:\.\d+)?)px$/i.exec(value);
+				/** Provides if behavior. */
 				if (sizeMatch !== null)
 					format.setFontSize(Number(sizeMatch[1]));
 				continue;
 			}
 
+			/** Provides if behavior. */
 			if (property === "font-family" && value.length > 0) {
 				format.setFontFamily(
 					value.replace(/^['"]|['"]$/g, "")
@@ -1697,6 +1901,7 @@ export class CTextEdit extends CScrollArea {
 				continue;
 			}
 
+			/** Provides if behavior. */
 			if (property === "font-weight") {
 				const numericWeight = Number(value);
 				format.setFontBold(
@@ -1706,11 +1911,13 @@ export class CTextEdit extends CScrollArea {
 				continue;
 			}
 
+			/** Provides if behavior. */
 			if (property === "font-style") {
 				format.setFontItalic(value.toLowerCase() === "italic");
 				continue;
 			}
 
+			/** Provides if behavior. */
 			if (property === "text-decoration") {
 				format.setFontUnderline(
 					value.toLowerCase().split(/\s+/).includes("underline")
@@ -1737,6 +1944,7 @@ export class CTextEdit extends CScrollArea {
 		return text.replace(
 			/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);/g,
 			(match, entity: string) => {
+				/** Provides if behavior. */
 				if (entity.startsWith("#x")) {
 					const code = Number.parseInt(entity.slice(2), 16);
 					return Number.isFinite(code)
@@ -1744,6 +1952,7 @@ export class CTextEdit extends CScrollArea {
 						: match;
 				}
 
+				/** Provides if behavior. */
 				if (entity.startsWith("#")) {
 					const code = Number.parseInt(entity.slice(1), 10);
 					return Number.isFinite(code)
@@ -1759,8 +1968,10 @@ export class CTextEdit extends CScrollArea {
 	#modifyCurrentFormats(
 		modify: (format: CTextCharFormat) => void
 	): void {
+		/** Provides if behavior. */
 		if (!this.hasSelection()) {
 			const format = this.#m_currentCharFormat.clone();
+			/** Provides modify behavior. */
 			modify(format);
 			this.#m_currentCharFormat = format;
 			return;
@@ -1771,6 +1982,7 @@ export class CTextEdit extends CScrollArea {
 		const start = this.selectionStart();
 		const end = this.selectionEnd();
 
+		/** Provides for behavior. */
 		for (const range of this.#m_document.formatRanges()) {
 			const rangeStart = Math.max(start, range.start);
 			const rangeEnd = Math.min(
@@ -1778,10 +1990,12 @@ export class CTextEdit extends CScrollArea {
 				range.start + range.length
 			);
 
+			/** Provides if behavior. */
 			if (rangeStart >= rangeEnd)
 				continue;
 
 			const format = range.format.clone();
+			/** Provides modify behavior. */
 			modify(format);
 
 			this.#m_document.setCharFormat(
@@ -1800,6 +2014,7 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	#syncCurrentCharFormatFromCursor(): void {
+		/** Provides if behavior. */
 		if (this.#m_document.length() === 0) {
 			this.#m_currentCharFormat = new CTextCharFormat();
 			return;
@@ -1823,9 +2038,11 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	#pushUndoState(group: CTextEditUndoGroup = null): void {
+		/** Provides if behavior. */
 		if (this.#m_restoringHistory)
 			return;
 
+		/** Provides if behavior. */
 		if (group === null || group !== this.#m_undoGroup)
 			this.#m_undoStack.push(this.#currentState());
 
@@ -1853,9 +2070,11 @@ export class CTextEdit extends CScrollArea {
 		this.#ensureCursorVisible();
 		this.viewport().update();
 
+		/** Provides if behavior. */
 		if (textChanged)
 			this.textChanged.emit();
 
+		/** Provides if behavior. */
 		if (hadSelection !== this.hasSelection() || this.hasSelection())
 			this.selectionChanged.emit();
 
@@ -1863,6 +2082,7 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	#insert(text: string, group: CTextEditUndoGroup): void {
+		/** Provides if behavior. */
 		if (text.length === 0 || this.isReadOnly())
 			return;
 
@@ -1872,6 +2092,7 @@ export class CTextEdit extends CScrollArea {
 		const start = hadSelection? this.selectionStart() : this.#m_cursorPosition;
 		const end = hadSelection? this.selectionEnd() : this.#m_cursorPosition;
 
+		/** Provides if behavior. */
 		if (hadSelection)
 			this.#m_document.remove(start, end - start);
 
@@ -1884,6 +2105,7 @@ export class CTextEdit extends CScrollArea {
 		this.#m_selectionAnchor = this.#m_cursorPosition;
 		this.textChanged.emit();
 
+		/** Provides if behavior. */
 		if (hadSelection)
 			this.selectionChanged.emit();
 

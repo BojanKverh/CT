@@ -12,7 +12,9 @@ import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CClipboard } from "../core/CClipboard.js";
 import { CStyleOptionLineEdit } from "../gui/CStyleOptionLineEdit.js";
 
+/** Implements the line edit widget. */
 export class CLineEdit extends CWidget {
+	/** Signal emitted when text changes. */
 	readonly textChanged = new CSignal<[string]>();
 	
 	#m_text = "";
@@ -24,9 +26,12 @@ export class CLineEdit extends CWidget {
 	#m_validator: ((text: string) => boolean) | null = null;
 	#m_readOnly = false;
 
+	/** Public editing finished member. */
 	readonly editingFinished = new CSignal();
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
+		/** Provides super behavior. */
 		super(parent);
 
 		this.#m_cursorTimer.setInterval(500);
@@ -38,11 +43,14 @@ export class CLineEdit extends CWidget {
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
+	/** Provides text behavior. */
 	text(): string {
 		return this.#m_text;
 	}
 
+	/** Sets the text. */
 	setText(text: string): void {
+		/** Provides if behavior. */
 		if (this.#m_text === text)
 			return;
 
@@ -54,39 +62,49 @@ export class CLineEdit extends CWidget {
 		this.update();
 	}
 
+	/** Sets the read only. */
 	setReadOnly(readOnly: boolean = true): void {
+		/** Provides if behavior. */
 		if (readOnly !== this.#m_readOnly) {
 			this.#m_readOnly = readOnly;
 			this.update();
 		}
 	}
 
+	/** Returns whether the read only condition is active. */
 	isReadOnly(): boolean
 	{
 		return this.#m_readOnly;
 	}
 
+	/** Sets the validator. */
 	setValidator(validator: ((text: string) => boolean) | null): void {
 		this.#m_validator = validator;
 	}
 
+	/** Provides cursor behavior. */
 	override cursor(): CCursorShape {
 		return this.isEnabled()? CCursorShape.IBeam : CCursorShape.Disabled;
 	}
 
+	/** Provides cursor position behavior. */
 	cursorPosition(): number {
 		return this.#m_cursorPosition;
 	}
 
+    /** Sets the cursor position. */
     setCursorPosition(position: number): void {
 	    this.#moveCursor(position, false);
     }
 
+	/** Provides cursor visible behavior. */
 	cursorVisible(): boolean {
 		return this.#m_cursorVisible;
 	}
 
+	/** Inserts . */
 	insert(text: string): void {
+		/** Provides if behavior. */
 		if (text.length === 0 || this.isReadOnly())
 			return;
 		const start = this.hasSelection()? this.selectionStart() : this.#m_cursorPosition;
@@ -94,6 +112,7 @@ export class CLineEdit extends CWidget {
 		const newText = this.#m_text.slice(0, start) + text
 			+ this.#m_text.slice(end);
 
+		/** Provides if behavior. */
 		if (this.#m_validator !== null && !this.#m_validator(newText))
 			return;
 
@@ -105,25 +124,31 @@ export class CLineEdit extends CWidget {
 		this.update();
 	}
 
+    /** Provides selection start behavior. */
     selectionStart(): number {
 	    return Math.min(this.#m_selectionAnchor, this.#m_cursorPosition);
     }
 
+    /** Provides selection end behavior. */
     selectionEnd(): number {
 	    return Math.max(this.#m_selectionAnchor, this.#m_cursorPosition);
     }
 
+    /** Returns whether this object has selection. */
     hasSelection(): boolean {
 	    return this.#m_selectionAnchor !== this.#m_cursorPosition;
     }
 
+    /** Returns the selected text. */
     selectedText(): string {
+	    /** Provides if behavior. */
 	    if (!this.hasSelection())
 		    return "";
 
 	    return this.#m_text.slice(this.selectionStart(), this.selectionEnd());
     }
 
+    /** Sets the selection. */
     setSelection(anchor: number, position: number): void {
 	    const length = this.#m_text.length;
     	this.#m_selectionAnchor = Math.max(0, Math.min(anchor, length));
@@ -131,45 +156,56 @@ export class CLineEdit extends CWidget {
 	    this.update();
     }
 
+    /** Clears selection. */
     clearSelection(): void {
 	    this.#m_selectionAnchor = this.#m_cursorPosition;
     }
 
+	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
 		return new CSize(160, 28);
 	}
 
+	/** Provides copy behavior. */
 	copy(): void {
+		/** Provides if behavior. */
 		if (!this.hasSelection())
 			return;
 
 		CClipboard.instance().setText(this.selectedText());
 	}
 
+	/** Provides cut behavior. */
 	cut(): void {
+		/** Provides if behavior. */
 		if (!this.hasSelection())
 			return;
 
 		CClipboard.instance().setText(this.selectedText());
 
+		/** Provides if behavior. */
 		if (this.isReadOnly())
 			return;
 
 		this.#deleteSelection();
 	}
 
+	/** Provides paste behavior. */
 	paste(): void {
+		/** Provides if behavior. */
 		if (this.isReadOnly())
 			return;
 
 		const text = CClipboard.instance().text();
 
+		/** Provides if behavior. */
 		if (text.length === 0)
 			return;
 
 		this.insert(text);
 	}
 	
+	/** Handles the paint event. */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionLineEdit();
 		option.initFromLineEdit(this);
@@ -177,8 +213,11 @@ export class CLineEdit extends CWidget {
 		this.style().drawLineEdit(painter, option);
 	}
 
+    /** Handles the key press event. */
     protected override keyPressEvent(event: CKeyEvent): void {
+		/** Provides if behavior. */
 		if (event.ctrl()) {
+			/** Provides switch behavior. */
 			switch (event.key().toLowerCase()) {
 			case "c":
 				void this.copy();
@@ -197,6 +236,7 @@ export class CLineEdit extends CWidget {
 			}
 		}
 
+	    /** Provides switch behavior. */
 	    switch (event.key()) {
         case "ArrowLeft":
 	        this.#moveCursor(this.#m_cursorPosition - 1, event.shift());
@@ -209,15 +249,18 @@ export class CLineEdit extends CWidget {
 	        return;
 
         case "Backspace":
+			/** Provides if behavior. */
 			if (this.isReadOnly()) {
 				event.accept();
 				return;
 			}
+	        /** Provides if behavior. */
 	        if (this.#deleteSelection()) {
 		        event.accept();
 		        return;
 	        }
 
+	        /** Provides if behavior. */
 	        if (this.#m_cursorPosition > 0) {
 		        this.#m_text = this.#m_text.slice(0, this.#m_cursorPosition - 1)
 			        + this.#m_text.slice(this.#m_cursorPosition);
@@ -232,15 +275,18 @@ export class CLineEdit extends CWidget {
 	        return;
 
         case "Delete":
+			/** Provides if behavior. */
 			if (this.isReadOnly()) {
 				event.accept();
 				return;
 			}
+	        /** Provides if behavior. */
 	        if (this.#deleteSelection()) {
 		        event.accept();
 		        return;
 	        }
             
+        	/** Provides if behavior. */
         	if (this.#m_cursorPosition < this.#m_text.length) {
 		        this.#m_text = this.#m_text.slice(0, this.#m_cursorPosition)
 			        + this.#m_text.slice(this.#m_cursorPosition + 1);
@@ -264,6 +310,7 @@ export class CLineEdit extends CWidget {
 			return;
 	    }			
 
+	    /** Provides if behavior. */
 	    if (event.key().length === 1) {
 		    this.insert(event.key());
 		    event.accept();
@@ -272,7 +319,9 @@ export class CLineEdit extends CWidget {
     	event.ignore();
     }
 
+    /** Handles the mouse press event. */
     protected override mousePressEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -287,7 +336,9 @@ export class CLineEdit extends CWidget {
 		this.update();
 	}
 
+	/** Handles the mouse move event. */
 	protected override mouseMoveEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (!this.#m_selectingWithMouse) {
 			event.ignore();
 			return;
@@ -299,12 +350,15 @@ export class CLineEdit extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the mouse release event. */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
+		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
 		}
 
+		/** Provides if behavior. */
 		if (!this.#m_selectingWithMouse) {
 			event.ignore();
 			return;
@@ -317,12 +371,14 @@ export class CLineEdit extends CWidget {
 		event.accept();
 	}
 
+	/** Handles the focus in event. */
 	protected override focusInEvent(event: CFocusEvent): void {
 		this.#startCursorBlink();
 		event.accept();
 		this.update();
 	}
 
+	/** Handles the focus out event. */
 	protected override focusOutEvent(event: CFocusEvent): void {
 		this.#m_selectingWithMouse = false;
 		this.#stopCursorBlink();
@@ -333,12 +389,15 @@ export class CLineEdit extends CWidget {
     private cursorPositionAt(x: number): number {
 	    const fm = new CFontMetrics(this.font());
 	    const textX = x - 5;
+	    /** Provides if behavior. */
 	    if (textX <= 0)
 		    return 0;
+    	/** Provides for behavior. */
     	for (let i = 1; i <= this.#m_text.length; ++i) {
 	    	const previousWidth = fm.textWidth(this.#m_text.slice(0, i - 1));
     		const width = fm.textWidth(this.#m_text.slice(0, i));
     		const middle = (previousWidth + width) / 2;
+    		/** Provides if behavior. */
     		if (textX < middle)
 	    		return i - 1;
 	    }
@@ -348,9 +407,11 @@ export class CLineEdit extends CWidget {
 
     #moveCursor(position: number, keepAnchor: boolean): void {
 	    const clamped = Math.max(0, Math.min(position, this.#m_text.length));
+    	/** Provides if behavior. */
     	if (this.#m_cursorPosition === clamped && (keepAnchor || this.#m_selectionAnchor === clamped))
 		    return;
     	this.#m_cursorPosition = clamped;
+    	/** Provides if behavior. */
     	if (!keepAnchor)
 	    	this.#m_selectionAnchor = clamped;
 		this.#resetCursorBlink();
@@ -358,6 +419,7 @@ export class CLineEdit extends CWidget {
     }
 
     #deleteSelection(): boolean {
+		/** Provides if behavior. */
 		if (!this.hasSelection() || this.isReadOnly())
 		    return false;
     	const start = this.selectionStart();
@@ -383,6 +445,7 @@ export class CLineEdit extends CWidget {
 	}
 
 	#resetCursorBlink(): void {
+		/** Provides if behavior. */
 		if (!this.hasFocus())
 			return;
 		this.#startCursorBlink();

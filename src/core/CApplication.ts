@@ -27,6 +27,10 @@ import { CDropEvent } from "../events/CDropEvent.js";
 import { CDropAction } from "../events/CDropAction.js";
 import { CClipboard } from "./CClipboard.js";
 
+/**
+ * Central Canvas Toolkit application object that owns the canvas integration, event dispatch, focus, popups, drag-and-drop and repaint scheduling.
+ * Only one CApplication instance may exist at a time.
+ */
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
 
@@ -108,6 +112,11 @@ export class CApplication extends CObject {
 		this.#dispatchContextMenuEvent(event);
 	}
 
+/**
+ * Creates the application for an HTML canvas element.
+ * @param canvas Canvas used for rendering and pointer input.
+ * @throws Error if another CApplication instance already exists.
+ */
 	constructor(canvas: HTMLCanvasElement) {
 		super();
 
@@ -134,6 +143,9 @@ export class CApplication extends CObject {
         }
 	}
 
+/**
+ * Destroys the application, removes browser event listeners and clears application-managed state.
+ */
     override destroy(): void {
 		if (CApplication.#m_instance !== this)
 			return;
@@ -173,6 +185,11 @@ export class CApplication extends CObject {
 
 	}
 
+/**
+ * Returns the current application instance.
+ * @returns Current application instance.
+ * @throws Error if no CApplication has been created.
+ */
 	static instance(): CApplication {
 		if (CApplication.#m_instance === null)
 			throw new Error("CApplication has not been created.");
@@ -180,26 +197,50 @@ export class CApplication extends CObject {
 		return CApplication.#m_instance;
 	}
 
+/**
+ * Checks whether an application instance exists.
+ * @returns `true` if a CApplication currently exists.
+ */
 	static exists(): boolean {
 		return CApplication.#m_instance !== null;
 	}
 
+/**
+ * Returns the HTML canvas used by the application.
+ * @returns Application canvas element.
+ */
 	canvas(): HTMLCanvasElement {
 		return this.#m_paintDevice.canvas();
 	}
 
+/**
+ * Returns the paint device associated with the application canvas.
+ * @returns Application paint device.
+ */
 	paintDevice(): CPaintDevice {
 		return this.#m_paintDevice;
 	}
 
+/**
+ * Returns the registered top-level widgets.
+ * @returns Snapshot of the top-level widget list.
+ */
 	topLevelWidgets(): readonly CWidget[] {
 		return [...this.#m_topLevelWidgets];
 	}
 
+/**
+ * Returns the application default font.
+ * @returns CSS canvas font string.
+ */
 	font(): string {
 		return this.#m_font;
 	}
 
+/**
+ * Sets the application default font and schedules a repaint.
+ * @param font CSS canvas font string.
+ */
 	setFont(font: string): void {
 		if (this.#m_font === font)
 			return;
@@ -208,10 +249,18 @@ export class CApplication extends CObject {
 		this.requestRepaint();
 	}
 
+/**
+ * Returns the application palette.
+ * @returns Current application palette.
+ */
     palette(): CPalette {
 	    return this.#m_palette;
     }
 
+/**
+ * Sets the application palette and schedules a repaint.
+ * @param palette Palette to use.
+ */
     setPalette(palette: CPalette): void {
 	    if (this.#m_palette === palette)
 		    return;
@@ -220,10 +269,18 @@ export class CApplication extends CObject {
 	    this.requestRepaint();
     }
 
+/**
+ * Returns the application style.
+ * @returns Current application style.
+ */
     style(): CStyle {
 	    return this.#m_style;
     }
 
+/**
+ * Sets the application style and schedules a repaint.
+ * @param style Style to use.
+ */
     setStyle(style: CStyle): void {
 	    if (this.#m_style === style)
 		    return;
@@ -232,6 +289,11 @@ export class CApplication extends CObject {
 	    this.requestRepaint();
     }
 
+/**
+ * Registers a top-level widget.
+ * @param widget Parentless widget to register.
+ * @throws Error if the widget has a parent.
+ */
 	registerTopLevelWidget(widget: CWidget): void {
 		if (widget.parent() !== null)
 			throw new Error("A top-level widget cannot have a parent.");
@@ -239,18 +301,34 @@ export class CApplication extends CObject {
 		this.#m_topLevelWidgets.add(widget);
 	}
 
+/**
+ * Unregisters a top-level widget.
+ * @param widget Widget to unregister.
+ */
 	unregisterTopLevelWidget(widget: CWidget): void {
 		this.#m_topLevelWidgets.delete(widget);
 	}
 
+/**
+ * Returns whether repaint updates are enabled.
+ * @returns `true` if updates are enabled.
+ */
 	updatesEnabled(): boolean {
 		return this.#m_updatesEnabled;
 	}
 
+/**
+ * Returns the widget that currently owns keyboard focus.
+ * @returns Focus widget, or `null` if none.
+ */
 	focusWidget(): CWidget | null {
 		return this.#m_focusWidget;
 	}
 
+/**
+ * Changes the keyboard focus widget and dispatches focus-out/focus-in events.
+ * @param widget Widget to focus, or `null` to clear focus.
+ */
     setFocusWidget(widget: CWidget | null): void {
 	    if (this.#m_focusWidget === widget)
 		    return;
@@ -269,6 +347,9 @@ export class CApplication extends CObject {
 	    }
     }
 
+/**
+ * Enables repaint updates and requests a repaint.
+ */
 	startUpdates(): void {
 		if (this.#m_updatesEnabled)
 			return;
@@ -277,6 +358,9 @@ export class CApplication extends CObject {
 		this.requestRepaint();
 	}
 
+/**
+ * Disables repaint updates and cancels any pending animation frame.
+ */
 	stopUpdates(): void {
 		if (!this.#m_updatesEnabled)
 			return;
@@ -289,6 +373,9 @@ export class CApplication extends CObject {
 		}
 	}
 
+/**
+ * Schedules a repaint on the next animation frame when updates are enabled.
+ */
 	requestRepaint(): void {
 		if (!this.#m_updatesEnabled)
 			return;
@@ -302,22 +389,40 @@ export class CApplication extends CObject {
 		});
 	}
 
+/**
+ * Routes subsequent mouse events to a specific widget.
+ * @param widget Widget that should grab mouse input.
+ */
 	grabMouse(widget: CWidget): void {
 		this.#m_mouseGrabber = widget;
 	}
 
+/**
+ * Releases the current mouse grab.
+ */
 	releaseMouse(): void {
 		this.#m_mouseGrabber = null;
 	}
 
+/**
+ * Returns the widget currently grabbing mouse input.
+ * @returns Mouse grabber, or `null`.
+ */
 	mouseGrabber(): CWidget | null {
 		return this.#m_mouseGrabber;
 	}
 
+/**
+ * Returns the widget currently under the pointer.
+ * @returns Hovered widget, or `null`.
+ */
 	hoverWidget(): CWidget | null {
 		return this.#m_hoverWidget;
 	}
 
+/**
+ * Closes all currently registered popup widgets.
+ */
 	closeAllPopups(): void
 	{
 		const popups = [...this.#m_popupWidgets];
@@ -326,10 +431,18 @@ export class CApplication extends CObject {
 			popups[i]!.close();
 	}
 
+/**
+ * Returns the registered popup widgets in stacking order.
+ * @returns Snapshot of the popup widget list.
+ */
 	popupWidgets(): readonly CPopupWidget[] {
 		return [...this.#m_popupWidgets];
 	}
 
+/**
+ * Registers a popup widget and moves it to the top of the popup stack.
+ * @param widget Popup widget to register.
+ */
 	registerPopupWidget(widget: CPopupWidget): void {
 		const index = this.#m_popupWidgets.indexOf(widget);
 
@@ -340,6 +453,10 @@ export class CApplication extends CObject {
 		this.requestRepaint();
 	}
 
+/**
+ * Unregisters a popup widget.
+ * @param widget Popup widget to unregister.
+ */
 	unregisterPopupWidget(widget: CPopupWidget): void {
 		const index = this.#m_popupWidgets.indexOf(widget);
 
@@ -350,6 +467,10 @@ export class CApplication extends CObject {
 		this.requestRepaint();
 	}
 
+/**
+ * Registers a window widget and moves it to the top of the window stack.
+ * @param widget Window widget to register.
+ */
 	registerWindowWidget(widget: CWidget): void {
 		const index = this.#m_windowWidgets.indexOf(widget);
 
@@ -360,6 +481,10 @@ export class CApplication extends CObject {
 		this.requestRepaint();
 	}
 
+/**
+ * Unregisters a window widget.
+ * @param widget Window widget to unregister.
+ */
 	unregisterWindowWidget(widget: CWidget): void {
 		const index = this.#m_windowWidgets.indexOf(widget);
 
@@ -370,10 +495,19 @@ export class CApplication extends CObject {
 		this.requestRepaint();
 	}
 
+/**
+ * Checks whether a widget is registered as a window.
+ * @param widget Widget to test.
+ * @returns `true` if the widget is a registered window.
+ */
 	isWindowWidget(widget: CWidget): boolean {
 		return this.#m_windowWidgets.includes(widget);
 	}
 
+/**
+ * Registers a modal widget after closing open popups.
+ * @param widget Modal widget to register.
+ */
 	registerModalWidget(widget: CWidget): void
 	{
 		this.closeAllPopups();
@@ -385,6 +519,10 @@ export class CApplication extends CObject {
 		this.#m_modalWidgets.push(widget);
 	}
 
+/**
+ * Unregisters a modal widget.
+ * @param widget Modal widget to unregister.
+ */
 	unregisterModalWidget(widget: CWidget): void
 	{
 		const index = this.#m_modalWidgets.indexOf(widget);
@@ -395,11 +533,19 @@ export class CApplication extends CObject {
 		this.#m_modalWidgets.splice(index, 1);
 	}
 
+/**
+ * Returns the registered modal widgets.
+ * @returns Snapshot of the modal widget stack.
+ */
 	modalWidgets(): readonly CWidget[]
 	{
 		return [...this.#m_modalWidgets];
 	}
 
+/**
+ * Returns the topmost modal widget.
+ * @returns Top modal widget, or `null` when no modal widget is registered.
+ */
 	topModalWidget(): CWidget | null
 	{
 		if (this.#m_modalWidgets.length === 0)
@@ -408,11 +554,20 @@ export class CApplication extends CObject {
 		return this.#m_modalWidgets[this.#m_modalWidgets.length - 1]!;
 	}
 
+/**
+ * Returns whether a tooltip is currently visible.
+ * @returns `true` if a tooltip is visible.
+ */
 	toolTipVisible(): boolean
 	{
 		return this.#m_toolTipWidget?.isVisible() ?? false;
 	}
 
+/**
+ * Moves keyboard focus to the next or previous focusable widget.
+ * @param forward `true` to move forward; `false` to move backward.
+ * @returns `true` if focus was moved.
+ */
 	focusNextWidget(forward = true): boolean {
 		const widgets = this.#focusableWidgets();
 
@@ -432,14 +587,26 @@ export class CApplication extends CObject {
 		return true;
 	}
 
+/**
+ * Returns the active drag operation.
+ * @returns Active drag, or `null`.
+ */
 	activeDrag(): CDrag | null {
 		return this.#m_activeDrag;
 	}
 
+/**
+ * Returns the current drag target widget.
+ * @returns Drag target, or `null`.
+ */
 	dragTarget(): CWidget | null {
 		return this.#m_dragTarget;
 	}
 
+/**
+ * Registers an already active drag operation with the application.
+ * @param drag Active drag operation to manage.
+ */
 	startDrag(drag: CDrag): void {
 		if (!drag.isActive())
 			return;
@@ -452,6 +619,9 @@ export class CApplication extends CObject {
 		this.#dismissToolTip();
 	}
 
+/**
+ * Cancels the active drag operation and notifies the current drag target.
+ */
 	cancelDrag(): void {
 		if (this.#m_activeDrag === null)
 			return;
@@ -467,6 +637,10 @@ export class CApplication extends CObject {
 		this.#m_dragTarget = null;
 	}
 
+/**
+ * Returns the application clipboard.
+ * @returns Application clipboard instance.
+ */
 	clipboard(): CClipboard {
 		return this.#m_clipboard;
 	}

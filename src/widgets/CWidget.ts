@@ -21,6 +21,7 @@ import { CDragMoveEvent } from "../events/CDragMoveEvent.js";
 import { CDragLeaveEvent } from "../events/CDragLeaveEvent.js";
 import { CDropEvent } from "../events/CDropEvent.js";
 
+/** Implements the widget widget. */
 export class CWidget extends CObject {
     #m_geometry = new CRect();
 
@@ -37,9 +38,12 @@ export class CWidget extends CObject {
     #m_focusPolicy = CFocusPolicy.NoFocus;
     #m_acceptDrops = false;
 
+	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
+        /** Provides super behavior. */
         super(null);
 
+        /** Provides if behavior. */
         if (parent !== null) {
             super.setParent(parent);
             this.#m_font = parent.font();
@@ -53,17 +57,21 @@ export class CWidget extends CObject {
         this.#m_fontMetrics = new CFontMetrics(this.#m_font);
     }
 
+    /** Provides parent behavior. */
     override parent(): CWidget | null {
         return super.parent() as CWidget | null;
     }
 
+    /** Provides children behavior. */
     override children(): readonly CWidget[] {
         return super.children() as readonly CWidget[];
     }
 
+    /** Sets the parent. */
     override setParent(parent: CWidget | null): void {
         const oldParent = this.parent();
 
+        /** Provides if behavior. */
         if (oldParent === parent)
             return;
 
@@ -71,38 +79,48 @@ export class CWidget extends CObject {
 
         const app = CApplication.instance();
 
+        /** Provides if behavior. */
         if (oldParent === null)
             app.unregisterTopLevelWidget(this);
 
+        /** Provides if behavior. */
         if (parent === null)
             app.registerTopLevelWidget(this);
     }
 
+    /** Provides geometry behavior. */
     geometry(): CRect {
         return new CRect(this.x(), this.y(), this.width(), this.height());
     }
 
+    /** Provides rect behavior. */
     rect(): CRect {
         return new CRect(0, 0, this.width(), this.height());
     }
 
+    /** Provides x behavior. */
     x(): number {
         return this.#m_geometry.x();
     }
 
+    /** Provides y behavior. */
     y(): number {
         return this.#m_geometry.y();
     }
 
+    /** Provides width behavior. */
     width(): number {
         return this.#m_geometry.width();
     }
 
+    /** Provides height behavior. */
     height(): number {
         return this.#m_geometry.height();
     }
 
+    /** Sets the geometry. */
     setGeometry(x: number, y: number, width: number, height: number): void {
+        /** Provides if behavior. */
         if (x === this.x() && y === this.y() && width === this.width()
             && height === this.height())
             return;
@@ -112,26 +130,33 @@ export class CWidget extends CObject {
         this.update();
     }
 
+    /** Provides move behavior. */
     move(x: number, y: number): void {
         this.setGeometry(x, y, this.width(), this.height());
     }
 
+    /** Provides resize behavior. */
     resize(width: number, height: number): void {
         this.setGeometry(this.x(), this.y(), width, height);
     }
 
+    /** Sets the visible. */
     setVisible(visible: boolean): void {
+	    /** Provides if behavior. */
 	    if (this.#m_visible === visible)
 		    return;
 
 	    this.#m_visible = visible;
 	    const parent = this.parent();
+	    /** Provides if behavior. */
 	    if (parent !== null)
 		    parent.childVisibilityChanged(this);
 	    this.update();
     }
 
+    /** Sets the enabled. */
     setEnabled(enabled: boolean): void {
+        /** Provides if behavior. */
         if (this.#m_enabled === enabled)
             return;
 
@@ -139,111 +164,142 @@ export class CWidget extends CObject {
         this.update();
     }
 
+    /** Returns whether the visible condition is active. */
     isVisible(): boolean {
         return this.#m_visible;
     }
 
+	/** Provides font behavior. */
 	font(): string {
 		return this.#m_font;
 	}
 
+    /** Provides font metrics behavior. */
     fontMetrics() : CFontMetrics {
         return this.#m_fontMetrics;
     }
 
+	/** Sets the font. */
 	setFont(font: string, propagate = false): void {
 		const changed = this.#m_font !== font;
 
+		/** Provides if behavior. */
 		if (changed)
 			this.#m_font = font;
 
         this.#m_fontMetrics = new CFontMetrics(this.#m_font);
 
+		/** Provides if behavior. */
 		if (propagate) {
+			/** Provides for behavior. */
 			for (const child of this.children())
 				child.setFont(font, true);
 		}
 
+		/** Provides if behavior. */
 		if (changed)
 			this.update();
 	}
 
+    /** Provides palette behavior. */
     palette() : CPalette {
         return new CPalette(this.#m_palette);
     }
 
+    /** Sets the palette. */
     setPalette(palette: CPalette, propagate = false): void {
         const changed = !this.#m_palette.isEqual(palette);
+        /** Provides if behavior. */
         if (changed)
 	        this.#m_palette = new CPalette(palette);
 
+	    /** Provides if behavior. */
 	    if (propagate) {
+		    /** Provides for behavior. */
 		    for (const child of this.children())
 			    child.setPalette(palette, true);
 	    }
 
+        /** Provides if behavior. */
         if (changed)
 	        this.update();
     }
 
+    /** Provides style behavior. */
     style(): CStyle {
 	    return CApplication.instance().style();
     }
 
+	/** Sets the cursor. */
 	setCursor(cursor: CCursorShape): void
 	{
 		this.#m_cursor = cursor;
 	}
 
+	/** Provides cursor behavior. */
 	cursor(): CCursorShape
 	{
 		return this.#m_cursor;
 	}
 
+    /** Shows the widget. */
     show(): void {
         this.setVisible(true);
     }
 
+    /** Hides the widget. */
     hide(): void {
         this.setVisible(false);
     }
 
+    /** Provides accepts click focus behavior. */
     acceptsClickFocus(): boolean {
+		/** Provides return behavior. */
 		return (this.#m_focusPolicy
 			& CFocusPolicy.ClickFocus) !== 0;
 	}
 
+	/** Provides accepts tab focus behavior. */
 	acceptsTabFocus(): boolean {
+		/** Provides return behavior. */
 		return (this.#m_focusPolicy
 			& CFocusPolicy.TabFocus) !== 0;
 	}
 
+    /** Provides focus policy behavior. */
     focusPolicy(): CFocusPolicy {
 		return this.#m_focusPolicy;
 	}
 
+	/** Sets the focus policy. */
 	setFocusPolicy(policy: CFocusPolicy): void {
+		/** Provides if behavior. */
 		if (this.#m_focusPolicy === policy)
 			return;
 
 		this.#m_focusPolicy = policy;
 
+		/** Provides if behavior. */
 		if (policy === CFocusPolicy.NoFocus
 			&& this.hasFocus())
 			this.clearFocus();
 	}
 
+	/** Releases resources owned by the widget. */
 	override destroy(): void
 	{
         super.destroy();
 		const app = CApplication.instance();
 
+		/** Provides if behavior. */
 		if (this.hasFocus())
 			this.clearFocus();
 
+		/** Provides if behavior. */
 		if (app.mouseGrabber() === this)
 			app.releaseMouse();
 
+		/** Provides if behavior. */
 		if (this.parent() === null)
 			app.unregisterTopLevelWidget(this);
 		else
@@ -252,27 +308,35 @@ export class CWidget extends CObject {
 		this.hide();
 	}
 
+    /** Returns whether the enabled condition is active. */
     isEnabled(): boolean {
         return this.#m_enabled;
     }
 
+	/** Returns whether this object has focus. */
 	hasFocus(): boolean {
 		return CApplication.instance().focusWidget() === this;
 	}
 
+    /** Sets the focus. */
     setFocus(): void {
+		/** Provides if behavior. */
 		if (!this.isEnabled() || this.#m_focusPolicy === CFocusPolicy.NoFocus)
 			return;
 
 		CApplication.instance().setFocusWidget(this);
 	}
 
+	/** Clears focus. */
 	clearFocus(): void {
+		/** Provides if behavior. */
 		if (this.hasFocus())
 			CApplication.instance().setFocusWidget(null);
 	}
 
+	/** Renders the widget. */
 	render(painter: CPainter): void {
+		/** Provides if behavior. */
 		if (!this.isVisible())
 			return;
 
@@ -288,6 +352,7 @@ export class CWidget extends CObject {
 			const hasChildOffset =
 				childOffset.x() !== 0 || childOffset.y() !== 0;
 
+			/** Provides if behavior. */
 			if (hasChildOffset) {
 				painter.translate(
 					childOffset.x(),
@@ -295,16 +360,20 @@ export class CWidget extends CObject {
 				);
 			}
 
+			/** Provides for behavior. */
 			for (const child of this.children()) {
+				/** Provides if behavior. */
 				if (!(child instanceof CWidget))
 					continue;
 
+				/** Provides if behavior. */
 				if (CApplication.instance().isWindowWidget(child))
 					continue;
 
 				child.render(painter);
 			}
 
+			/** Provides if behavior. */
 			if (hasChildOffset) {
 				painter.translate(
 					-childOffset.x(),
@@ -316,30 +385,38 @@ export class CWidget extends CObject {
 		}
 	}
 
+    /** Returns the widget's contents rectangle. */
     contentsRect(): CRect {
 	    return this.rect();
     }
 
+	/** Handles child offset behavior. */
 	protected childOffset(): CPoint {
 		return new CPoint(0, 0);
 	}
 
+    /** Provides widget at behavior. */
     widgetAt(x: number, y: number): CWidget | null {
+        /** Provides if behavior. */
         if (!this.isVisible())
             return null;
 
+        /** Provides if behavior. */
         if (!this.rect().contains(new CPoint(x, y)))
             return null;
 
         const children = this.children();
         const childOffset = this.childOffset();
 
+        /** Provides for behavior. */
         for (let i = children.length - 1; i >= 0; --i) {
             const child = children[i]!;
 
+            /** Provides if behavior. */
             if (!(child instanceof CWidget))
                 continue;
 
+            /** Provides if behavior. */
             if (CApplication.instance().isWindowWidget(child))
                 continue;
 
@@ -348,6 +425,7 @@ export class CWidget extends CObject {
                 y - childOffset.y() - child.y()
             );
 
+            /** Provides if behavior. */
             if (widget !== null)
                 return widget;
         }
@@ -355,11 +433,14 @@ export class CWidget extends CObject {
         return this;
     }
 
+    /** Provides layout behavior. */
     layout(): CLayout | null {
 	    return this.#m_layout;
     }
 
+    /** Sets the layout. */
     setLayout(layout: CLayout): void {
+	    /** Provides if behavior. */
 	    if (this.#m_layout === layout)
 		    return;
 
@@ -368,60 +449,75 @@ export class CWidget extends CObject {
 	    layout.update();
     }
 
+    /** Returns the minimum size. */
     minimumSize(): CSize {
 	    return new CSize(this.#m_minimumSize.width(), this.#m_minimumSize.height());
     }
 
+    /** Returns the minimum width. */
     minimumWidth(): number {
         return this.#m_minimumSize.width();
     }
 
+    /** Returns the maximum width. */
     maximumWidth(): number {
         return this.#m_maximumSize.width();
     }
 
+    /** Returns the minimum height. */
     minimumHeight(): number {
         return this.#m_minimumSize.height();
     }
 
+    /** Returns the maximum height. */
     maximumHeight(): number {
         return this.#m_maximumSize.height();
     }
 
+    /** Returns the maximum size. */
     maximumSize(): CSize {
 	    return new CSize(this.#m_maximumSize.width(), this.#m_maximumSize.height());
     }
 
+    /** Sets the minimum size. */
     setMinimumSize(width: number, height: number): void {
         width = Math.max(0, width);
 	    height = Math.max(0, height);
 
+    	/** Provides if behavior. */
     	if (this.#m_minimumSize.width() === width && this.#m_minimumSize.height() === height)
 		    return;
+        /** Provides if behavior. */
         if (width > this.#m_maximumSize.width() || height > this.#m_maximumSize.height())
             return;
 
 	    this.#m_minimumSize.resize(width, height);
     	const parent = this.parent();
+    	/** Provides if behavior. */
     	if (parent instanceof CWidget)
 	    	parent.layout()?.update();
     }
 
+    /** Sets the maximum size. */
     setMaximumSize(width: number, height: number): void {
         width = Math.max(0, width);
 	    height = Math.max(0, height);
 
+    	/** Provides if behavior. */
     	if (this.#m_maximumSize.width() === width && this.#m_maximumSize.height() === height)
 		    return;
+        /** Provides if behavior. */
         if (width < this.#m_minimumSize.width() || height < this.#m_minimumSize.height())
             return;
 
 	    this.#m_maximumSize.resize(width, height);
     	const parent = this.parent();
+    	/** Provides if behavior. */
     	if (parent instanceof CWidget)
 	    	parent.layout()?.update();
     }
 
+    /** Sets the fixed size. */
     setFixedSize(width: number, height: number): void {
         this.setMinimumSize(width, height);
         this.setMaximumSize(width, height);
@@ -429,41 +525,51 @@ export class CWidget extends CObject {
         this.resize(width, height);
     }
 
+    /** Returns the preferred size of the widget. */
     sizeHint(): CSize {
+        /** Provides if behavior. */
         if (this.#m_layout !== null)
 		    return this.#m_layout.sizeHint();
         else
 	        return new CSize(0, 0);
     }
 
+    /** Sets the tool tip. */
     setToolTip(toolTip: string): void
 	{
 		this.#m_toolTip = toolTip;
 	}
 
+	/** Provides tool tip behavior. */
 	toolTip(): string
 	{
 		return this.#m_toolTip;
 	}
 
+    /** Provides accept drops behavior. */
     acceptDrops(): boolean {
 		return this.#m_acceptDrops;
 	}
 
+	/** Sets the accept drops. */
 	setAcceptDrops(accept: boolean): void {
 		this.#m_acceptDrops = accept;
 	}
 
+    /** Provides update behavior. */
     update(): void {
         CApplication.instance().requestRepaint();
     }
 
+    /** Provides event behavior. */
     event(event: CEvent): boolean {
+        /** Provides if behavior. */
         if (!this.isEnabled()) {
 			event.ignore();
 			return false;
 		}
 
+		/** Provides switch behavior. */
 		switch (event.type()) {
 		case CEventType.MousePress:
 			this.mousePressEvent(event as CMouseEvent);
@@ -529,17 +635,20 @@ export class CWidget extends CObject {
 		return false;
 	}
 
+    /** Provides map from canvas behavior. */
     mapFromCanvas(x: number, y: number): CPoint {
         let widget: CWidget | null = this;
         let localX = x;
         let localY = y;
 
+        /** Provides while behavior. */
         while (widget !== null) {
             localX -= widget.x();
             localY -= widget.y();
 
             const parent = widget.parent();
 
+            /** Provides if behavior. */
             if (parent !== null) {
                 const childOffset = parent.childOffset();
 
@@ -553,16 +662,19 @@ export class CWidget extends CObject {
         return new CPoint(localX, localY);
     }
 
+    /** Provides map to canvas behavior. */
     mapToCanvas(x: number, y: number): CPoint {
 	    let widget: CWidget | null = this;
 	    let canvasX = x;
 	    let canvasY = y;
 
+	    /** Provides while behavior. */
 	    while (widget !== null) {
 		    canvasX += widget.x();
 		    canvasY += widget.y();
 
 		    const parent = widget.parent();
+		    /** Provides if behavior. */
 		    if (parent !== null) {
 			    const childOffset = parent.childOffset();
 			    canvasX += childOffset.x();
@@ -573,72 +685,89 @@ export class CWidget extends CObject {
 	    return new CPoint(canvasX, canvasY);
     }
 
+    /** Handles the paint event. */
     protected paintEvent(_painter: CPainter): void {
     }
 
+    /** Handles the mouse press event. */
     protected mousePressEvent(event: CMouseEvent): void {
         event.ignore();
     }
 
+    /** Handles the mouse release event. */
     protected mouseReleaseEvent(event: CMouseEvent): void {
         event.ignore();
     }
 
+    /** Handles the mouse move event. */
     protected mouseMoveEvent(event: CMouseEvent): void {
         event.ignore();
     }
 
+    /** Handles the mouse enter event. */
     protected mouseEnterEvent(event: CMouseEvent): void {
         event.ignore();
     }
 
+    /** Handles the mouse leave event. */
     protected mouseLeaveEvent(event: CMouseEvent): void {
         event.ignore();
     }
 
+    /** Handles the focus in event. */
     protected focusInEvent(event: CFocusEvent): void {
 	    event.accept();
 	    this.update();
     }
 
+    /** Handles the focus out event. */
     protected focusOutEvent(event: CFocusEvent): void {
         event.accept();
 	    this.update();
     }
 
+    /** Handles the key press event. */
     protected keyPressEvent(event: CKeyEvent): void {
         event.ignore();
     }
 
+    /** Handles the key release event. */
     protected keyReleaseEvent(event: CKeyEvent): void {
         event.ignore();
     }
 
+    /** Handles the wheel event. */
     protected wheelEvent(event: CWheelEvent): void {
 	    event.ignore();
     }
 
+    /** Handles the context menu event. */
     protected contextMenuEvent(event: CContextMenuEvent): void {
         event.ignore();
     }
 
+    /** Handles child visibility changed behavior. */
     protected childVisibilityChanged(_child: CWidget): void {
 	    this.#m_layout?.update();
 	    this.update();
     }
 
+	/** Handles the drag enter event. */
 	protected dragEnterEvent(event: CDragEnterEvent): void {
 		event.ignore();
 	}
 
+	/** Handles the drag move event. */
 	protected dragMoveEvent(event: CDragMoveEvent): void {
 		event.ignore();
 	}
 
+	/** Handles the drag leave event. */
 	protected dragLeaveEvent(event: CDragLeaveEvent): void {
 		event.ignore();
 	}
 
+	/** Handles the drop event. */
 	protected dropEvent(event: CDropEvent): void {
 		event.ignore();
 	}

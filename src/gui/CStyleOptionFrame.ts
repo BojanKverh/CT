@@ -2,13 +2,33 @@ import { CStyleOption } from "./CStyleOption.js";
 import { CFrameShape, CFrameShadow } from "./CFrameStyle.js";
 import type { CFrame } from "../widgets/CFrame.js";
 
+/**
+ * Contains style information used to render a frame.
+ */
 export class CStyleOptionFrame extends CStyleOption {
-	frameShape = CFrameShape.NoFrame;
-	frameShadow = CFrameShadow.Plain;
-	lineWidth = 1;
-	midLineWidth = 0;
+		/**
+	 * Returns or updates the frame shape value.
+	 */
+frameShape = CFrameShape.NoFrame;
+		/**
+	 * Returns or updates the frame shadow value.
+	 */
+frameShadow = CFrameShadow.Plain;
+		/**
+	 * Returns the line width used by the style.
+	 */
+lineWidth = 1;
+		/**
+	 * Returns the mid line width used by the style.
+	 */
+midLineWidth = 0;
 
-	constructor(other: CStyleOptionFrame | null = null) {
+		/**
+	 * Creates a new CStyleOptionFrame instance.
+	 *
+	 * @param other Other.
+	 */
+constructor(other: CStyleOptionFrame | null = null) {
 		super(other);
 
 		if (other) {
@@ -19,7 +39,12 @@ export class CStyleOptionFrame extends CStyleOption {
 		}
 	}
 
-	initFromFrame(frame: CFrame): void {
+		/**
+	 * Initializes this style option from the specified frame.
+	 *
+	 * @param frame Frame.
+	 */
+initFromFrame(frame: CFrame): void {
 		this.initFrom(frame);
 
 		this.frameShape = frame.frameShape();
