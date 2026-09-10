@@ -132,6 +132,31 @@ export class CTextEdit extends CScrollArea {
 		return this.#m_document.toPlainText();
 	}
 
+	toHtml(): string {
+		const text = this.#m_document.toPlainText();
+
+		if (text.length === 0)
+			return "";
+
+		let html = "";
+
+		for (const range of this.#m_document.formatRanges()) {
+			const start = range.start;
+			const end = range.start + range.length;
+			const fragment = text.slice(start, end);
+
+			if (fragment.length === 0)
+				continue;
+
+			html += this.#formatHtmlFragment(
+				fragment,
+				range.format
+			);
+		}
+
+		return html;
+	}
+
 	setHtml(html: string): void {
 		const parsed = this.#parseHtml(html);
 		const hadSelection = this.hasSelection();
@@ -1309,6 +1334,52 @@ export class CTextEdit extends CScrollArea {
 		return prefixes.length > 0
 			? `${prefixes.join(" ")} ${font}`
 			: font;
+	}
+
+	#formatHtmlFragment(text: string, format: CTextCharFormat): string {
+		const parts = text.split("\n");
+		let html = "";
+
+		for (let i = 0; i < parts.length; ++i) {
+			if (i > 0)
+				html += "<br>";
+
+			const part = parts[i]!;
+
+			if (part.length === 0)
+				continue;
+
+			let content = this.#encodeHtmlEntities(part);
+			const styles: string[] = [];
+
+			if (format.foreground() !== null)
+				styles.push(`color: ${format.foreground()}`);
+			if (format.fontSize() !== null)
+				styles.push(`font-size: ${format.fontSize()}px`);
+			if (format.fontFamily() !== null) {
+				styles.push(`font-family: ${this.#escapeHtmlStyleValue(format.fontFamily()!)}`);
+			}
+
+			if (styles.length > 0)
+				content = `<span style="${styles.join("; ")}">${content}</span>`;
+			if (format.fontItalic())
+				content = `<i>${content}</i>`;
+			if (format.fontBold())
+				content = `<b>${content}</b>`;
+			html += content;
+		}
+
+		return html;
+	}
+
+	#encodeHtmlEntities(text: string): string {
+		return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+	}
+
+	#escapeHtmlStyleValue(value: string): string {
+		return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;");
 	}
 
 	#parseHtml(html: string): CParsedHtml {

@@ -2424,4 +2424,98 @@ test("imports plain text from basic HTML", () => {
 		expect(edit.toPlainText()).toBe("Hello");
 		expect(edit.currentCharFormat().fontBold()).toBe(false);
 	});
+
+test("exports plain text as HTML-safe text", () => {
+		const edit = new CTextEdit();
+		edit.setPlainText(`A < B & "quoted"`);
+
+		expect(edit.toHtml()).toBe(
+			"A &lt; B &amp; &quot;quoted&quot;"
+		);
+	});
+
+	test("exports newlines as br elements", () => {
+		const edit = new CTextEdit();
+		edit.setPlainText("one\ntwo\nthree");
+
+		expect(edit.toHtml()).toBe("one<br>two<br>three");
+	});
+
+	test("exports bold and italic formatting", () => {
+		const edit = new CTextEdit();
+		edit.setPlainText("bold italic");
+
+		edit.setSelection(0, 4);
+		edit.setFontBold(true);
+
+		edit.setSelection(5, 11);
+		edit.setFontItalic(true);
+
+		expect(edit.toHtml()).toContain("<b>bold</b>");
+		expect(edit.toHtml()).toContain("<i>italic</i>");
+	});
+
+	test("exports color, font size and font family", () => {
+		const edit = new CTextEdit();
+		edit.setPlainText("styled");
+		edit.selectAll();
+
+		edit.setTextColor("#ff0000");
+		edit.setFontSize(30);
+		edit.setFontFamily("serif");
+
+		const html = edit.toHtml();
+
+		expect(html).toContain("color: #ff0000");
+		expect(html).toContain("font-size: 30px");
+		expect(html).toContain("font-family: serif");
+		expect(html).toContain(">styled</span>");
+	});
+
+	test("setHtml toHtml setHtml preserves plain text and formatting", () => {
+		const source = new CTextEdit();
+
+		source.setHtml(
+			`Normal <b>bold</b> <i>italic</i> ` +
+			`<span style="color: #ff0000; font-size: 30px">BIG RED</span>`
+		);
+
+		const html = source.toHtml();
+
+		const copy = new CTextEdit();
+		copy.setHtml(html);
+
+		expect(copy.toPlainText()).toBe(source.toPlainText());
+
+		copy.setCursorPosition(copy.toPlainText().indexOf("bold") + 1);
+		expect(copy.currentCharFormat().fontBold()).toBe(true);
+
+		copy.setCursorPosition(copy.toPlainText().indexOf("italic") + 1);
+		expect(copy.currentCharFormat().fontItalic()).toBe(true);
+
+		copy.setCursorPosition(copy.toPlainText().indexOf("BIG RED") + 1);
+		expect(copy.currentCharFormat().foreground()).toBe("#ff0000");
+		expect(copy.currentCharFormat().fontSize()).toBe(30);
+	});
+
+	test("HTML export reflects formatting changes made after import", () => {
+		const edit = new CTextEdit();
+		edit.setHtml("Hello world");
+
+		edit.setSelection(6, 11);
+		edit.setFontBold(true);
+		edit.setTextColor("#123456");
+
+		const html = edit.toHtml();
+
+		expect(html).toContain("<b>");
+		expect(html).toContain("color: #123456");
+
+		const copy = new CTextEdit();
+		copy.setHtml(html);
+
+		copy.setCursorPosition(7);
+		expect(copy.currentCharFormat().fontBold()).toBe(true);
+		expect(copy.currentCharFormat().foreground()).toBe("#123456");
+	});
 });

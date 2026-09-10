@@ -91,7 +91,7 @@ export class CTextBrowser extends CTextEdit {
 		this.setCursorPosition(0);
 	}
 
-	setHtml(html: string): void {
+	override setHtml(html: string): void {
 		const parsed = this.#parseHtml(html);
 
 		this.#m_html = html;
@@ -105,7 +105,7 @@ export class CTextBrowser extends CTextEdit {
 		this.widget()?.update();
 	}
 
-	toHtml(): string {
+	override toHtml(): string {
 		return this.#m_htmlMode ? this.#m_html : "";
 	}
 
