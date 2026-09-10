@@ -290,6 +290,48 @@ export class CDefaultStyle extends CStyle {
 		painter.setFillStyle(
 			option.palette.color(CPaletteColorRole.Highlight).toCss());
 		painter.fillEllipse(centerX, centerY, centerRadius, centerRadius);
+		const tickCount = 11;
+		const tickOuterRadius = radius - 5;
+		const tickInnerRadius = radius - 11;
+
+		painter.setStrokeStyle(option.palette.color(CPaletteColorRole.WindowText).toCss());
+		painter.setLineWidth(1);
+
+		for (let i = 0; i < tickCount; ++i) {
+			const ratio = i / (tickCount - 1);
+			const angleDegrees = 135 + 270 * ratio;
+			const angle = angleDegrees * Math.PI / 180;
+
+			const x1 = centerX + Math.cos(angle) * tickInnerRadius;
+			const y1 = centerY + Math.sin(angle) * tickInnerRadius;
+
+			const x2 = centerX + Math.cos(angle) * tickOuterRadius;
+			const y2 = centerY + Math.sin(angle) * tickOuterRadius;
+
+			painter.drawLine(x1, y1, x2, y2);
+		}
+		const labels = [{ ratio: 0, value: option.minimum },
+			{ ratio: 0.5, value: (option.minimum + option.maximum) / 2},
+			{ ratio: 1, value: option.maximum }
+		];
+
+		painter.setFillStyle(option.palette.color(CPaletteColorRole.WindowText).toCss());
+
+		painter.setFont("11px sans-serif");
+		painter.setTextAlign("center");
+		painter.setTextBaseline("middle");
+
+		const labelRadius = radius - 21;
+
+		for (const label of labels) {
+			const angleDegrees = 135 + 270 * label.ratio;
+			const angle = angleDegrees * Math.PI / 180;
+
+			const x = centerX + Math.cos(angle) * labelRadius;
+			const y = centerY + Math.sin(angle) * labelRadius;
+
+			painter.drawText(String(label.value),x, y);
+		}
 	}
 
 	override drawProgressBar(painter: CPainter, option: CStyleOptionProgressBar): void {

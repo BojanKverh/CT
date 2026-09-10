@@ -1160,8 +1160,8 @@ floatButton.clicked.connect(() => {
 	);
 });
 
-const dial = new CDial(mainWindow); // oziroma tvoj root widget
-dial.setGeometry(520, 250, 120, 120);
+const dial = new CDial(parent); // oziroma tvoj root widget
+dial.setGeometry(420, 250, 120, 120);
 dial.setRange(0, 200);
 dial.setValue(50);
 
