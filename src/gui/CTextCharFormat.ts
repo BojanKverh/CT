@@ -6,6 +6,8 @@ export class CTextCharFormat {
 	#m_foreground: string | null = null;
 	#m_fontFamily: string | null = null;
 	#m_fontSize: number | null = null;
+	#m_underline = false;
+	#m_anchorHref: string | null = null;
 
 	constructor(other: CTextCharFormat | null = null) {
 		if (other === null)
@@ -16,6 +18,8 @@ export class CTextCharFormat {
 		this.#m_foreground = other.foreground();
 		this.#m_fontFamily = other.fontFamily();
 		this.#m_fontSize = other.fontSize();
+		this.#m_underline = other.fontUnderline();
+		this.#m_anchorHref = other.anchorHref();
 	}
 
 	clone(): CTextCharFormat {
@@ -73,11 +77,29 @@ export class CTextCharFormat {
 		this.#m_fontSize = size;
 	}
 
+	fontUnderline(): boolean {
+		return this.#m_underline;
+	}
+
+	setFontUnderline(underline: boolean): void {
+		this.#m_underline = underline;
+	}
+
+	anchorHref(): string | null {
+		return this.#m_anchorHref;
+	}
+
+	setAnchorHref(href: string | null): void {
+		this.#m_anchorHref = href;
+	}
+
 	equals(other: CTextCharFormat): boolean {
 		return this.#m_fontWeight === other.#m_fontWeight
 			&& this.#m_italic === other.#m_italic
 			&& this.#m_foreground === other.#m_foreground
 			&& this.#m_fontFamily === other.#m_fontFamily
-			&& this.#m_fontSize === other.#m_fontSize;
+			&& this.#m_fontSize === other.#m_fontSize
+			&& this.#m_underline === other.#m_underline
+			&& this.#m_anchorHref === other.#m_anchorHref;
 	}
 }

@@ -2518,4 +2518,61 @@ test("exports plain text as HTML-safe text", () => {
 		expect(copy.currentCharFormat().fontBold()).toBe(true);
 		expect(copy.currentCharFormat().foreground()).toBe("#123456");
 	});
+
+test("imports anchor href into the character format", () => {
+		const edit = new CTextEdit();
+		edit.setHtml('Visit <a href="https://example.com">Example</a>.');
+
+		edit.setCursorPosition(7);
+		const format = edit.currentCharFormat();
+
+		expect(format.anchorHref()).toBe("https://example.com");
+		expect(format.fontUnderline()).toBe(true);
+	});
+
+	test("decodes HTML entities in href", () => {
+		const edit = new CTextEdit();
+		edit.setHtml('<a href="search?q=canvas&amp;page=2">Search</a>');
+
+		edit.setCursorPosition(2);
+		expect(edit.currentCharFormat().anchorHref()).toBe(
+			"search?q=canvas&page=2"
+		);
+	});
+
+	test("exports anchors and safely encodes href", () => {
+		const edit = new CTextEdit();
+		edit.setHtml('<a href="search?q=canvas&amp;page=2">Search</a>');
+
+		const html = edit.toHtml();
+
+		expect(html).toContain(
+			'<a href="search?q=canvas&amp;page=2">'
+		);
+		expect(html).toContain("Search");
+	});
+
+	test("setHtml toHtml setHtml preserves anchor metadata", () => {
+		const source = new CTextEdit();
+		source.setHtml(
+			'Go to <a href="/documentation"><b>Documentation</b></a> now'
+		);
+
+		const copy = new CTextEdit();
+		copy.setHtml(source.toHtml());
+		copy.setCursorPosition(copy.toPlainText().indexOf("Documentation") + 1);
+
+		const format = copy.currentCharFormat();
+		expect(format.anchorHref()).toBe("/documentation");
+		expect(format.fontUnderline()).toBe(true);
+		expect(format.fontBold()).toBe(true);
+	});
+
+	test("imports explicit underline formatting", () => {
+		const edit = new CTextEdit();
+		edit.setHtml("normal <u>underlined</u>");
+
+		edit.setCursorPosition(9);
+		expect(edit.currentCharFormat().fontUnderline()).toBe(true);
+	});
 });

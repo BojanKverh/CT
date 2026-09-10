@@ -385,6 +385,12 @@ export class CTextEdit extends CScrollArea {
 		});
 	}
 
+	setFontUnderline(underline: boolean): void {
+		this.#modifyCurrentFormats(format => {
+			format.setFontUnderline(underline);
+		});
+	}
+
 	setTextColor(color: string | null): void {
 		this.#modifyCurrentFormats(format => {
 			format.setForeground(color);
@@ -481,6 +487,41 @@ export class CTextEdit extends CScrollArea {
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 		this.#updateContentGeometry();
+	}
+
+	protected textPositionAt(x: number, y: number): number {
+		return this.#cursorPositionAt(x, y);
+	}
+
+	protected textCharFormatAt(
+		x: number,
+		y: number
+	): CTextCharFormat | null {
+		const layouts = this.#lineLayouts();
+		const margin = CTextEdit.#TEXT_MARGIN;
+
+		for (const line of layouts) {
+			if (y < line.y || y >= line.y + line.height)
+				continue;
+
+			const textX = x - margin;
+
+			if (textX < 0 || line.text.length === 0)
+				return null;
+
+			for (let i = 1; i <= line.text.length; ++i) {
+				const width = this.#textWidth(line.start, i);
+
+				if (textX < width)
+					return this.#m_document.charFormatAt(
+						line.start + i - 1
+					);
+			}
+
+			return null;
+		}
+
+		return null;
 	}
 
 	paintText(painter: CPainter): void {
@@ -822,6 +863,11 @@ export class CTextEdit extends CScrollArea {
 
 			painter.setFont(font);
 
+			const normalColor = range.format.foreground()
+				?? (range.format.anchorHref() !== null
+					? palette.color(CPaletteColorRole.Link).toCss()
+					: palette.color(textRole).toCss());
+
 			const selectionStart = Math.max(
 				start,
 				this.selectionStart()
@@ -833,11 +879,18 @@ export class CTextEdit extends CScrollArea {
 
 			if (!this.hasSelection()
 				|| selectionStart >= selectionEnd) {
-				painter.setPen(
-					range.format.foreground()
-						?? palette.color(textRole).toCss()
-				);
+				painter.setPen(normalColor);
 				painter.drawText(segment, currentX, y);
+
+				if (range.format.fontUnderline()) {
+					painter.drawLine(
+						currentX,
+						y + lineHeight - 3,
+						currentX + segmentWidth,
+						y + lineHeight - 3
+					);
+				}
+
 				currentX += segmentWidth;
 				continue;
 			}
@@ -861,11 +914,16 @@ export class CTextEdit extends CScrollArea {
 			const selectedWidth = metrics.textWidth(selected);
 
 			if (before.length > 0) {
-				painter.setPen(
-					range.format.foreground()
-						?? palette.color(textRole).toCss()
-				);
+				painter.setPen(normalColor);
 				painter.drawText(before, currentX, y);
+				if (range.format.fontUnderline()) {
+					painter.drawLine(
+						currentX,
+						y + lineHeight - 3,
+						currentX + beforeWidth,
+						y + lineHeight - 3
+					);
+				}
 			}
 
 			painter.setBrush(
@@ -894,15 +952,22 @@ export class CTextEdit extends CScrollArea {
 			);
 
 			if (after.length > 0) {
-				painter.setPen(
-					range.format.foreground()
-						?? palette.color(textRole).toCss()
-				);
+				painter.setPen(normalColor);
 				painter.drawText(
 					after,
 					currentX + beforeWidth + selectedWidth,
 					y
 				);
+
+				if (range.format.fontUnderline()) {
+					const afterX = currentX + beforeWidth + selectedWidth;
+					painter.drawLine(
+						afterX,
+						y + lineHeight - 3,
+						afterX + metrics.textWidth(after),
+						y + lineHeight - 3
+					);
+				}
 			}
 
 			currentX += segmentWidth;
@@ -1359,6 +1424,8 @@ export class CTextEdit extends CScrollArea {
 			if (format.fontFamily() !== null) {
 				styles.push(`font-family: ${this.#escapeHtmlStyleValue(format.fontFamily()!)}`);
 			}
+			if (format.fontUnderline())
+				styles.push("text-decoration: underline");
 
 			if (styles.length > 0)
 				content = `<span style="${styles.join("; ")}">${content}</span>`;
@@ -1366,6 +1433,9 @@ export class CTextEdit extends CScrollArea {
 				content = `<i>${content}</i>`;
 			if (format.fontBold())
 				content = `<b>${content}</b>`;
+			if (format.anchorHref() !== null) {
+				content = `<a href="${this.#encodeHtmlAttribute(format.anchorHref()!)}">${content}</a>`;
+			}
 			html += content;
 		}
 
@@ -1380,6 +1450,10 @@ export class CTextEdit extends CScrollArea {
 	#escapeHtmlStyleValue(value: string): string {
 		return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;")
 			.replace(/>/g, "&gt;");
+	}
+
+	#encodeHtmlAttribute(value: string): string {
+		return this.#encodeHtmlEntities(value);
 	}
 
 	#parseHtml(html: string): CParsedHtml {
@@ -1462,6 +1536,35 @@ export class CTextEdit extends CScrollArea {
 			const closing = match[1] === "/";
 			const tag = match[2]!.toLowerCase();
 			const attributes = match[3] ?? "";
+
+			if (tag === "a") {
+				if (closing) {
+					popFormat();
+				}
+				else {
+					const hrefMatch =
+						/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(attributes);
+					const href = hrefMatch === null
+						? null
+						: this.#decodeHtmlEntities(
+							hrefMatch[1] ?? hrefMatch[2] ?? hrefMatch[3] ?? ""
+						);
+
+					pushModifiedFormat(format => {
+						format.setAnchorHref(href);
+						format.setFontUnderline(true);
+					});
+				}
+				continue;
+			}
+
+			if (tag === "u") {
+				if (closing)
+					popFormat();
+				else
+					pushModifiedFormat(format => format.setFontUnderline(true));
+				continue;
+			}
 
 			if (tag === "br") {
 				appendNewLine();
@@ -1605,6 +1708,13 @@ export class CTextEdit extends CScrollArea {
 
 			if (property === "font-style") {
 				format.setFontItalic(value.toLowerCase() === "italic");
+				continue;
+			}
+
+			if (property === "text-decoration") {
+				format.setFontUnderline(
+					value.toLowerCase().split(/\s+/).includes("underline")
+				);
 			}
 		}
 	}
