@@ -1,9 +1,16 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
+import { CEventType } from "../../src/events/CEvent.js";
+import { CKeyEvent } from "../../src/events/CKeyEvent.js";
+import { CRect } from "../../src/geometry/CRect.js";
+import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
+import { CAbstractItemModel } from "../../src/models/CAbstractItemModel.js";
 import { CAbstractListModel } from "../../src/models/CAbstractListModel.js";
 import { CModelIndex } from "../../src/models/CModelIndex.js";
+import { CAbstractItemDelegate } from "../../src/widgets/CAbstractItemDelegate.js";
+import { CItemDelegate } from "../../src/widgets/CItemDelegate.js";
 import { CListView } from "../../src/widgets/CListView.js";
-import { TestPaintDevice } from "../helpers/createTestPaintEngine.js";
+import { CWidget } from "../../src/widgets/CWidget.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 
 class TestListModel extends CAbstractListModel {
@@ -38,6 +45,67 @@ class TestListModel extends CAbstractListModel {
 	setItems(items: string[]): void {
 		this.#m_items = items;
 		this.resetModel();
+	}
+}
+
+class EditableListModel extends TestListModel {
+	#m_editable = true;
+
+	setEditable(editable: boolean): void {
+		this.#m_editable = editable;
+	}
+
+	override isEditable(_index: CModelIndex): boolean {
+		return this.#m_editable;
+	}
+
+	override setItemData(index: CModelIndex, value: unknown): boolean {
+		if (!index.isValid())
+			return false;
+
+		this.setItem(index.row(), String(value));
+		return true;
+	}
+}
+
+class TestItemDelegate extends CAbstractItemDelegate {
+	createEditorCalls: Array<{ parent: CWidget; index: CModelIndex }> = [];
+	setEditorDataCalls: Array<{ editor: CWidget; index: CModelIndex }> = [];
+	setModelDataCalls: Array<{
+		editor: CWidget;
+		model: CAbstractItemModel;
+		index: CModelIndex;
+	}> = [];
+	updateEditorGeometryCalls: Array<{ editor: CWidget; rect: CRect }> = [];
+	lastEditor: CWidget | null = null;
+	createEditorResult = true;
+
+	override createEditor(parent: CWidget, index: CModelIndex): CWidget | null {
+		this.createEditorCalls.push({ parent, index });
+
+		if (!this.createEditorResult)
+			return null;
+
+		this.lastEditor = new CWidget(parent);
+		this.lastEditor.setFocusPolicy(CFocusPolicy.StrongFocus);
+		return this.lastEditor;
+	}
+
+	override setEditorData(editor: CWidget, index: CModelIndex): void {
+		this.setEditorDataCalls.push({ editor, index });
+	}
+
+	override setModelData(
+		editor: CWidget,
+		model: CAbstractItemModel,
+		index: CModelIndex
+	): void {
+		this.setModelDataCalls.push({ editor, model, index });
+	}
+
+	override updateEditorGeometry(editor: CWidget, rect: CRect): void {
+		this.updateEditorGeometryCalls.push({ editor, rect });
+		super.updateEditorGeometry(editor, rect);
 	}
 }
 
@@ -311,5 +379,361 @@ describe("CListView", () => {
 		expect(view.widget()!.height())
 			.toBe(10 * CListView.ItemHeight);
 		expect(view.verticalScrollBar().isVisible()).toBe(true);
+	});
+
+	test("visual rectangle matches the item row", () => {
+		const view = new CListView();
+		const model = new TestListModel();
+
+		view.resize(200, 160);
+		view.setModel(model);
+
+		const rect = view.visualRect(model.index(2, 0));
+
+		expect(rect.x()).toBe(0);
+		expect(rect.y()).toBe(2 * CListView.ItemHeight);
+		expect(rect.width()).toBe(view.widget().width());
+		expect(rect.height()).toBe(CListView.ItemHeight);
+	});
+
+	test("visual rectangle is empty for an invalid index", () => {
+		const view = new CListView();
+		const rect = view.visualRect(new CModelIndex());
+
+		expect(rect.width()).toBe(0);
+		expect(rect.height()).toBe(0);
+	});
+
+	test("first navigation key selects the first item", () => {
+		const view = new CListView();
+		const model = new TestListModel();
+
+		view.setModel(model);
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "ArrowDown")
+		);
+
+		expect(view.currentIndex().row()).toBe(0);
+		expect(view.selectionModel()?.isSelected(view.currentIndex())).toBe(true);
+	});
+
+	test("arrow down moves to the next item", () => {
+		const view = new CListView();
+		const model = new TestListModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(0, 0));
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "ArrowDown")
+		);
+
+		expect(view.currentIndex().row()).toBe(1);
+	});
+
+	test("arrow up moves to the previous item", () => {
+		const view = new CListView();
+		const model = new TestListModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(2, 0));
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "ArrowUp")
+		);
+
+		expect(view.currentIndex().row()).toBe(1);
+	});
+
+	test("arrow navigation stops at list boundaries", () => {
+		const view = new CListView();
+		const model = new TestListModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(0, 0));
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "ArrowUp")
+		);
+		expect(view.currentIndex().row()).toBe(0);
+
+		view.setCurrentIndex(model.index(2, 0));
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "ArrowDown")
+		);
+		expect(view.currentIndex().row()).toBe(2);
+	});
+
+	test("home and end move to the first and last item", () => {
+		const view = new CListView();
+		const model = new TestListModel();
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(1, 0));
+		view.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress, "End"));
+		expect(view.currentIndex().row()).toBe(2);
+
+		view.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress, "Home"));
+		expect(view.currentIndex().row()).toBe(0);
+	});
+
+	test("page down and page up move by a visible page", () => {
+		const view = new CListView();
+		const model = new TestListModel(
+			Array.from({ length: 20 }, (_, row) => `Row ${row}`)
+		);
+
+		view.resize(200, 120);
+		view.setModel(model);
+		view.setCurrentIndex(model.index(0, 0));
+
+		const pageItems = Math.floor(
+			view.viewport().height() / CListView.ItemHeight
+		);
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "PageDown")
+		);
+		expect(view.currentIndex().row()).toBe(pageItems);
+
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "PageUp")
+		);
+		expect(view.currentIndex().row()).toBe(0);
+	});
+
+	test("navigation selects only the new current item", () => {
+		const view = new CListView();
+		const model = new TestListModel();
+		const oldIndex = model.index(0, 0);
+
+		view.setModel(model);
+		view.selectionModel()?.select(oldIndex);
+		view.setCurrentIndex(oldIndex);
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "ArrowDown")
+		);
+
+		const newIndex = model.index(1, 0);
+		expect(view.selectionModel()?.isSelected(oldIndex)).toBe(false);
+		expect(view.selectionModel()?.isSelected(newIndex)).toBe(true);
+	});
+
+	test("navigation scrolls to the current item", () => {
+		const view = new CListView();
+		const model = new TestListModel(
+			Array.from({ length: 20 }, (_, row) => `Row ${row}`)
+		);
+
+		view.resize(200, 100);
+		view.setModel(model);
+		view.setCurrentIndex(model.index(0, 0));
+
+		for (let row = 1; row < 20; row++) {
+			view.contentKeyPressEvent(
+				new CKeyEvent(CEventType.KeyPress, "ArrowDown")
+			);
+		}
+
+		expect(view.currentIndex().row()).toBe(19);
+		expect(view.scrollY()).toBeGreaterThan(0);
+	});
+
+	test("setting a current index scrolls it into view", () => {
+		const view = new CListView();
+		const model = new TestListModel(
+			Array.from({ length: 20 }, (_, row) => `Row ${row}`)
+		);
+
+		view.resize(200, 100);
+		view.setModel(model);
+		view.setCurrentIndex(model.index(19, 0));
+
+		expect(view.scrollY()).toBeGreaterThan(0);
+	});
+
+	test("unhandled key is ignored", () => {
+		const view = new CListView();
+		const model = new TestListModel();
+		const event = new CKeyEvent(CEventType.KeyPress, "A");
+
+		view.setModel(model);
+		view.setCurrentIndex(model.index(1, 0));
+		view.contentKeyPressEvent(event);
+
+		expect(event.isAccepted()).toBe(false);
+		expect(view.currentIndex().row()).toBe(1);
+	});
+
+	test("has a default item delegate", () => {
+		const view = new CListView();
+
+		expect(view.itemDelegate()).toBeInstanceOf(CItemDelegate);
+	});
+
+	test("sets and resolves row and column delegates", () => {
+		const view = new CListView();
+		const model = new EditableListModel();
+		const defaultDelegate = new TestItemDelegate();
+		const rowDelegate = new TestItemDelegate();
+		const columnDelegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(defaultDelegate);
+		view.setItemDelegateForColumn(0, columnDelegate);
+		view.setItemDelegateForRow(1, rowDelegate);
+
+		expect(view.itemDelegateForIndex(model.index(0, 0)))
+			.toBe(columnDelegate);
+		expect(view.itemDelegateForIndex(model.index(1, 0)))
+			.toBe(rowDelegate);
+
+		view.setItemDelegateForRow(1, null);
+		expect(view.itemDelegateForIndex(model.index(1, 0)))
+			.toBe(columnDelegate);
+
+		view.setItemDelegateForColumn(0, null);
+		expect(view.itemDelegateForIndex(model.index(1, 0)))
+			.toBe(defaultDelegate);
+	});
+
+	test("cannot edit an invalid, foreign, or non-editable index", () => {
+		const view = new CListView();
+		const model = new EditableListModel();
+		const otherModel = new EditableListModel();
+
+		view.setModel(model);
+		expect(view.edit(new CModelIndex())).toBe(false);
+		expect(view.edit(otherModel.index(0, 0))).toBe(false);
+
+		model.setEditable(false);
+		expect(view.edit(model.index(0, 0))).toBe(false);
+	});
+
+	test("edit creates, populates, positions, shows and focuses an editor", () => {
+		const view = new CListView();
+		const model = new EditableListModel();
+		const delegate = new TestItemDelegate();
+		const index = model.index(1, 0);
+
+		view.resize(200, 160);
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+
+		expect(view.edit(index)).toBe(true);
+		expect(delegate.createEditorCalls).toHaveLength(1);
+		expect(delegate.createEditorCalls[0]?.parent).toBe(view.widget());
+		expect(delegate.setEditorDataCalls).toHaveLength(1);
+		expect(delegate.updateEditorGeometryCalls).toHaveLength(1);
+		expect(delegate.lastEditor?.y()).toBe(CListView.ItemHeight);
+		expect(delegate.lastEditor?.height()).toBe(CListView.ItemHeight);
+		expect(delegate.lastEditor?.isVisible()).toBe(true);
+		expect(delegate.lastEditor?.hasFocus()).toBe(true);
+	});
+
+	test("edit fails when delegate creates no editor", () => {
+		const view = new CListView();
+		const model = new EditableListModel();
+		const delegate = new TestItemDelegate();
+
+		delegate.createEditorResult = false;
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+
+		expect(view.edit(model.index(0, 0))).toBe(false);
+		expect(delegate.createEditorCalls).toHaveLength(1);
+	});
+
+	test("editing the same item reuses its editor", () => {
+		const view = new CListView();
+		const model = new EditableListModel();
+		const delegate = new TestItemDelegate();
+		const index = model.index(0, 0);
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(index);
+		view.edit(index);
+
+		expect(delegate.createEditorCalls).toHaveLength(1);
+	});
+
+	test("editing another item commits and replaces the editor", () => {
+		const view = new CListView();
+		const model = new EditableListModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+		const firstEditor = delegate.lastEditor;
+		view.edit(model.index(1, 0));
+
+		expect(delegate.setModelDataCalls).toHaveLength(1);
+		expect(delegate.setModelDataCalls[0]?.editor).toBe(firstEditor);
+		expect(delegate.createEditorCalls).toHaveLength(2);
+		expect(delegate.lastEditor).not.toBe(firstEditor);
+	});
+
+	test("delegate commit signal writes editor data to model", () => {
+		const view = new CListView();
+		const model = new EditableListModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(1, 0));
+		delegate.commitData.emit(delegate.lastEditor!);
+
+		expect(delegate.setModelDataCalls).toHaveLength(1);
+		expect(delegate.setModelDataCalls[0]?.model).toBe(model);
+		expect(delegate.setModelDataCalls[0]?.index.row()).toBe(1);
+	});
+
+	test("delegate close signal destroys the editor", () => {
+		const view = new CListView();
+		const model = new EditableListModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+		const editor = delegate.lastEditor!;
+		delegate.closeEditor.emit(editor);
+
+		expect(editor.parent()).toBeNull();
+		expect(editor.isVisible()).toBe(false);
+	});
+
+	test("changing model closes the active editor", () => {
+		const view = new CListView();
+		const model = new EditableListModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+		const editor = delegate.lastEditor!;
+		view.setModel(new EditableListModel());
+
+		expect(editor.parent()).toBeNull();
+		expect(editor.isVisible()).toBe(false);
+	});
+
+	test("F2 and Enter start editing the current item", () => {
+		for (const key of ["F2", "Enter"]) {
+			const view = new CListView();
+			const model = new EditableListModel();
+			const delegate = new TestItemDelegate();
+
+			view.setModel(model);
+			view.setItemDelegate(delegate);
+			view.setCurrentIndex(model.index(1, 0));
+
+			const event = new CKeyEvent(CEventType.KeyPress, key);
+			view.contentKeyPressEvent(event);
+
+			expect(delegate.createEditorCalls).toHaveLength(1);
+			expect(delegate.createEditorCalls[0]?.index.row()).toBe(1);
+			expect(event.isAccepted()).toBe(true);
+			view.destroy();
+		}
 	});
 });

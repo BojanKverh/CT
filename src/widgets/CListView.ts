@@ -79,6 +79,11 @@ export class CListView extends CAbstractItemView {
 		return this.#m_scrollArea.viewport();
 	}
 
+	/** Returns the list content widget. */
+	widget(): CWidget {
+		return this.#m_contentWidget;
+	}
+
 	/** Returns the horizontal scroll bar. */
 	horizontalScrollBar(): CScrollBar {
 		return this.#m_scrollArea.horizontalScrollBar();
