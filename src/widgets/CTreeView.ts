@@ -7,9 +7,9 @@ import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 import { CAbstractItemModel } from "../models/CAbstractItemModel.js";
-import { CItemSelectionModel } from "../models/CItemSelectionModel.js";
 import { CModelIndex } from "../models/CModelIndex.js";
 import { CPainter } from "../painting/CPainter.js";
+import { CAbstractItemView } from "./CAbstractItemView.js";
 import { CHeaderView } from "./CHeaderView.js";
 import { CScrollArea } from "./CScrollArea.js";
 import { CScrollBar } from "./CScrollBar.js";
@@ -53,12 +53,9 @@ class CTreeViewContentWidget extends CWidget {
 }
 
 /** Implements the tree view widget. */
-export class CTreeView extends CWidget {
+export class CTreeView extends CAbstractItemView {
 	static readonly RowHeight = 24;
 	static readonly IndentWidth = 20;
-
-	#m_model: CAbstractItemModel | null = null;
-	#m_selectionModel: CItemSelectionModel | null = null;
 
 	#m_header: CHeaderView;
 	#m_scrollArea: CTreeScrollArea;
@@ -66,9 +63,6 @@ export class CTreeView extends CWidget {
 
 	#m_rows: CTreeViewRow[] = [];
 	#m_expandedIndexes: CModelIndex[] = [];
-
-	#m_disconnectDataChanged: (() => void) | null = null;
-	#m_disconnectModelReset: (() => void) | null = null;
 
 	/** Public expanded member. */
 	readonly expanded = new CSignal<[CModelIndex]>();
@@ -98,88 +92,27 @@ export class CTreeView extends CWidget {
 
     	this.#m_header.sectionResized.connect(() => {
 			this.#updateContentGeometry();
+			this.updateEditorGeometry();
 			this.#m_contentWidget.update();
 		});
 	}
 
-	/** Provides model behavior. */
-	model(): CAbstractItemModel | null {
-		return this.#m_model;
-	}
+	/** Returns the item rectangle in content-widget coordinates. */
+	visualRect(index: CModelIndex): CRect {
+		if (!index.isValid() || index.model() !== this.model())
+			return new CRect();
 
-	/** Sets the model. */
-	setModel(model: CAbstractItemModel | null): void {
-		/** Provides if behavior. */
-		if (this.#m_model === model)
-			return;
+		const row = this.#visibleRowForIndex(index);
 
-		this.#disconnectModel();
+		if (row < 0)
+			return new CRect();
 
-		this.#m_selectionModel?.destroy();
-		this.#m_selectionModel = null;
-
-		this.#m_model = model;
-		this.#m_expandedIndexes = [];
-
-		this.#m_header.setModel(model);
-
-		/** Provides if behavior. */
-		if (model !== null) {
-			this.#m_selectionModel =
-				new CItemSelectionModel(model, this);
-
-			this.#m_disconnectDataChanged =
-				model.dataChanged.connect(() => {
-					this.#rebuildRows();
-					this.#updateContentGeometry();
-					this.#m_contentWidget.update();
-					this.#m_header.update();
-				});
-
-			this.#m_disconnectModelReset =
-				model.modelReset.connect(() => {
-					this.#m_expandedIndexes = [];
-					this.#m_selectionModel?.clear();
-
-					this.#rebuildRows();
-					this.#updateContentGeometry();
-
-					this.#m_contentWidget.update();
-					this.#m_header.update();
-				});
-		}
-
-		this.#rebuildRows();
-		this.#updateContentGeometry();
-
-		this.#m_contentWidget.update();
-		this.#m_header.update();
-	}
-
-	/** Provides selection model behavior. */
-	selectionModel(): CItemSelectionModel | null {
-		return this.#m_selectionModel;
-	}
-
-	/** Returns the current index. */
-	currentIndex(): CModelIndex {
-		return this.#m_selectionModel?.currentIndex()
-			?? new CModelIndex();
-	}
-
-	/** Sets the current index. */
-	setCurrentIndex(index: CModelIndex): void {
-		/** Provides if behavior. */
-		if (index.isValid() && index.model() !== this.#m_model)
-			return;
-
-		this.#m_selectionModel?.setCurrentIndex(index);
-
-		/** Provides if behavior. */
-		if (index.isValid())
-			this.#ensureIndexVisible(index);
-
-		this.#m_contentWidget.update();
+		return new CRect(
+			this.#m_header.sectionPosition(index.column()),
+			row * CTreeView.RowHeight,
+			this.#m_header.sectionSize(index.column()),
+			CTreeView.RowHeight
+		);
 	}
 
 	/** Provides header behavior. */
@@ -190,6 +123,11 @@ export class CTreeView extends CWidget {
 	/** Provides viewport behavior. */
 	viewport(): CWidget {
 		return this.#m_scrollArea.viewport();
+	}
+
+	/** Returns the tree content widget. */
+	widget(): CWidget {
+		return this.#m_contentWidget;
 	}
 
 	/** Provides horizontal scroll bar behavior. */
@@ -236,13 +174,15 @@ export class CTreeView extends CWidget {
 
 	/** Sets the expanded. */
 	setExpanded(index: CModelIndex, expanded: boolean): void {
+		const model = this.model();
+
 		/** Provides if behavior. */
 		if (!index.isValid() ||
-			index.model() !== this.#m_model)
+			index.model() !== model)
 			return;
 
 		/** Provides if behavior. */
-		if (this.#m_model?.rowCount(index) === 0)
+		if (model?.rowCount(index) === 0)
 			return;
 
 		const currentlyExpanded = this.isExpanded(index);
@@ -309,12 +249,14 @@ export class CTreeView extends CWidget {
 
 	/** Provides paint rows behavior. */
 	paintRows(painter: CPainter): void {
+		const model = this.model();
+
 		/** Provides if behavior. */
-		if (this.#m_model === null)
+		if (model === null)
 			return;
 
 		const palette = this.palette();
-		const columns = this.#m_model.columnCount();
+		const columns = model.columnCount();
 
 		const base =
 			palette.color(CPaletteColorRole.Base).toCss();
@@ -364,7 +306,7 @@ export class CTreeView extends CWidget {
 				);
 
 				const selected =
-					this.#m_selectionModel?.isSelected(index) ?? false;
+					this.selectionModel()?.isSelected(index) ?? false;
 
 				/** Provides if behavior. */
 				if (selected) {
@@ -416,7 +358,7 @@ export class CTreeView extends CWidget {
 
 				painter.drawText(
 					/** Provides string behavior. */
-					String(this.#m_model.data(index) ?? ""),
+					String(model.data(index) ?? ""),
 					textX,
 					y + CTreeView.RowHeight / 2
 				);
@@ -428,11 +370,14 @@ export class CTreeView extends CWidget {
     
     /** Handles the content mouse press event. */
     contentMousePressEvent(event: CMouseEvent): void {
+		const model = this.model();
+		const selectionModel = this.selectionModel();
+
 		/** Provides if behavior. */
 		if (event.type() !== CEventType.MousePress ||
 			event.button() !== CMouseButton.LeftButton ||
-			this.#m_model === null ||
-			this.#m_selectionModel === null) {
+			model === null ||
+			selectionModel === null) {
 			event.ignore();
 			return;
 		}
@@ -467,7 +412,7 @@ export class CTreeView extends CWidget {
 
 		/** Provides if behavior. */
 		if (column < 0 ||
-			column >= this.#m_model.columnCount()) {
+			column >= model.columnCount()) {
 			event.ignore();
 			return;
 		}
@@ -480,9 +425,9 @@ export class CTreeView extends CWidget {
 			return;
 		}
 
-		this.#m_selectionModel.clearSelection();
-		this.#m_selectionModel.select(index);
-		this.#m_selectionModel.setCurrentIndex(index);
+		selectionModel.clearSelection();
+		selectionModel.select(index);
+		selectionModel.setCurrentIndex(index);
 
 		this.#m_contentWidget.update();
 
@@ -491,15 +436,25 @@ export class CTreeView extends CWidget {
 
 	/** Handles the content key press event. */
 	contentKeyPressEvent(event: CKeyEvent): void {
+		const model = this.model();
+		const selectionModel = this.selectionModel();
+
 		/** Provides if behavior. */
-		if (this.#m_model === null ||
-			this.#m_selectionModel === null ||
+		if (model === null ||
+			selectionModel === null ||
 			this.#m_rows.length === 0) {
 			event.ignore();
 			return;
 		}
 
-		let current = this.currentIndex();
+		const current = this.currentIndex();
+
+		if (event.key() === "F2" || event.key() === "Enter") {
+			if (this.edit(current)) {
+				event.accept();
+				return;
+			}
+		}
 
 		/** Provides if behavior. */
 		if (!current.isValid()) {
@@ -563,7 +518,7 @@ export class CTreeView extends CWidget {
 				if (!this.isExpanded(treeRow.index)) {
 					this.expand(treeRow.index);
 				} else {
-					const child = this.#m_model.index(
+					const child = model.index(
 						0,
 						current.column(),
 						treeRow.index
@@ -592,15 +547,15 @@ export class CTreeView extends CWidget {
 				}
 
 				const parent =
-					this.#m_model.parentIndex(current);
+					model.parentIndex(current);
 
 				/** Provides if behavior. */
 				if (parent.isValid()) {
 					const parentColumn =
-						this.#m_model.index(
+						model.index(
 							parent.row(),
 							current.column(),
-							this.#m_model.parentIndex(parent)
+							model.parentIndex(parent)
 						);
 
 					target = parentColumn.isValid()
@@ -659,13 +614,15 @@ export class CTreeView extends CWidget {
 	}
 
 	#selectIndex(index: CModelIndex): void {
+		const selectionModel = this.selectionModel();
+
 		/** Provides if behavior. */
-		if (this.#m_selectionModel === null)
+		if (selectionModel === null)
 			return;
 
-		this.#m_selectionModel.clearSelection();
-		this.#m_selectionModel.select(index);
-		this.#m_selectionModel.setCurrentIndex(index);
+		selectionModel.clearSelection();
+		selectionModel.select(index);
+		selectionModel.setCurrentIndex(index);
 
 		this.#ensureIndexVisible(index);
 		this.#m_contentWidget.update();
@@ -675,15 +632,17 @@ export class CTreeView extends CWidget {
 		row: CTreeViewRow,
 		column: number
 	): CModelIndex {
+		const model = this.model();
+
 		/** Provides if behavior. */
-		if (this.#m_model === null)
+		if (model === null)
 			return new CModelIndex();
 
 		/** Provides if behavior. */
 		if (column === 0)
 			return row.index;
 
-		return this.#m_model.index(
+		return model.index(
 			row.index.row(),
 			column,
 			row.parent
@@ -711,11 +670,13 @@ export class CTreeView extends CWidget {
 	}
 
 	#visibleRowForIndex(index: CModelIndex): number {
+		const model = this.model();
+
 		/** Provides if behavior. */
-		if (this.#m_model === null)
+		if (model === null)
 			return -1;
 
-		const parent = this.#m_model.parentIndex(index);
+		const parent = model.parentIndex(index);
 
 		return this.#m_rows.findIndex(row =>
 			row.index.row() === index.row() &&
@@ -727,7 +688,7 @@ export class CTreeView extends CWidget {
 		this.#m_rows = [];
 
 		/** Provides if behavior. */
-		if (this.#m_model === null)
+		if (this.model() === null)
 			return;
 
 		this.#appendChildren(
@@ -740,23 +701,25 @@ export class CTreeView extends CWidget {
 		parent: CModelIndex,
 		depth: number
 	): void {
+		const model = this.model();
+
 		/** Provides if behavior. */
-		if (this.#m_model === null)
+		if (model === null)
 			return;
 
-		const count = this.#m_model.rowCount(parent);
+		const count = model.rowCount(parent);
 
 		/** Provides for behavior. */
 		for (let row = 0; row < count; row++) {
 			const index =
-				this.#m_model.index(row, 0, parent);
+				model.index(row, 0, parent);
 
 			/** Provides if behavior. */
 			if (!index.isValid())
 				continue;
 
 			const hasChildren =
-				this.#m_model.rowCount(index) > 0;
+				model.rowCount(index) > 0;
 
 			this.#m_rows.push({
 				index,
@@ -889,6 +852,55 @@ export class CTreeView extends CWidget {
 		);
 	}
 
+	/** Returns the widget used as editor parent. */
+	protected override editorParent(): CWidget {
+		return this.#m_contentWidget;
+	}
+
+	/** Updates tree state after the model changes. */
+	protected override modelChanged(
+		_oldModel: CAbstractItemModel | null,
+		newModel: CAbstractItemModel | null
+	): void {
+		this.#m_expandedIndexes = [];
+		this.#m_header.setModel(newModel);
+		this.#rebuildRows();
+		this.#updateContentGeometry();
+		this.#m_contentWidget.update();
+		this.#m_header.update();
+	}
+
+	/** Rebuilds visible rows after model data changes. */
+	protected override modelDataChanged(): void {
+		this.#rebuildRows();
+		this.#updateContentGeometry();
+		this.#m_contentWidget.update();
+		this.#m_header.update();
+	}
+
+	/** Clears expansion and rebuilds rows after a model reset. */
+	protected override modelReset(): void {
+		this.#m_expandedIndexes = [];
+		this.#rebuildRows();
+		this.#updateContentGeometry();
+		this.#m_contentWidget.update();
+		this.#m_header.update();
+	}
+
+	/** Scrolls to and repaints a newly selected current index. */
+	protected override currentIndexChanged(index: CModelIndex): void {
+		if (index.isValid())
+			this.#ensureIndexVisible(index);
+
+		this.#m_contentWidget.update();
+	}
+
+	/** Restores focus to the tree content after editing. */
+	protected override editorClosed(): void {
+		this.#m_contentWidget.setFocus();
+		this.#m_contentWidget.update();
+	}
+
 	#updateGeometry(): void {
 		const headerHeight =
 			this.#m_header.sizeHint().height();
@@ -926,13 +938,8 @@ export class CTreeView extends CWidget {
 
 		this.#m_header.setGeometry(0, 0, this.viewport().width(),
 			this.#m_header.sizeHint().height());
+
+		this.updateEditorGeometry();
 	}
 
-	#disconnectModel(): void {
-		this.#m_disconnectDataChanged?.();
-		this.#m_disconnectModelReset?.();
-
-		this.#m_disconnectDataChanged = null;
-		this.#m_disconnectModelReset = null;
-	}
 }

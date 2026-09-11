@@ -8,11 +8,18 @@ import {
 	CMouseButton, CMouseEvent
 } from "../../src/events/CMouseEvent.js";
 import { COrientation } from "../../src/gui/COrientation.js";
+import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
+import { CRect } from "../../src/geometry/CRect.js";
 import {
 	CAbstractItemModel
 } from "../../src/models/CAbstractItemModel.js";
 import { CModelIndex } from "../../src/models/CModelIndex.js";
+import {
+	CAbstractItemDelegate
+} from "../../src/widgets/CAbstractItemDelegate.js";
+import { CItemDelegate } from "../../src/widgets/CItemDelegate.js";
 import { CTreeView } from "../../src/widgets/CTreeView.js";
+import { CWidget } from "../../src/widgets/CWidget.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 
 type TreeNode = {
@@ -147,6 +154,67 @@ class TestTreeModel extends CAbstractItemModel {
 
 		for (const child of node.children)
 			this.#setParents(child, node);
+	}
+}
+
+class EditableTreeModel extends TestTreeModel {
+	#m_editable = true;
+
+	setEditable(editable: boolean): void {
+		this.#m_editable = editable;
+	}
+
+	override isEditable(_index: CModelIndex): boolean {
+		return this.#m_editable;
+	}
+
+	override setItemData(index: CModelIndex, value: unknown): boolean {
+		if (!index.isValid())
+			return false;
+
+		this.setValue(index, String(value));
+		return true;
+	}
+}
+
+class TestItemDelegate extends CAbstractItemDelegate {
+	createEditorCalls: Array<{ parent: CWidget; index: CModelIndex }> = [];
+	setEditorDataCalls: Array<{ editor: CWidget; index: CModelIndex }> = [];
+	setModelDataCalls: Array<{
+		editor: CWidget;
+		model: CAbstractItemModel;
+		index: CModelIndex;
+	}> = [];
+	updateEditorGeometryCalls: Array<{ editor: CWidget; rect: CRect }> = [];
+	lastEditor: CWidget | null = null;
+	createEditorResult = true;
+
+	override createEditor(parent: CWidget, index: CModelIndex): CWidget | null {
+		this.createEditorCalls.push({ parent, index });
+
+		if (!this.createEditorResult)
+			return null;
+
+		this.lastEditor = new CWidget(parent);
+		this.lastEditor.setFocusPolicy(CFocusPolicy.StrongFocus);
+		return this.lastEditor;
+	}
+
+	override setEditorData(editor: CWidget, index: CModelIndex): void {
+		this.setEditorDataCalls.push({ editor, index });
+	}
+
+	override setModelData(
+		editor: CWidget,
+		model: CAbstractItemModel,
+		index: CModelIndex
+	): void {
+		this.setModelDataCalls.push({ editor, model, index });
+	}
+
+	override updateEditorGeometry(editor: CWidget, rect: CRect): void {
+		this.updateEditorGeometryCalls.push({ editor, rect });
+		super.updateEditorGeometry(editor, rect);
 	}
 }
 
@@ -874,5 +942,273 @@ describe("CTreeView", () => {
 		view.contentKeyPressEvent(key("ArrowDown"));
 
 		expect(view.currentIndex().equals(grandChildIndex)).toBe(true);
+	});
+
+	test("visualRect returns the rectangle of a visible root cell", () => {
+		const view = new CTreeView();
+		const model = new TestTreeModel();
+
+		view.resize(400, 240);
+		view.setModel(model);
+
+		const index = model.index(1, 2);
+		const rect = view.visualRect(index);
+
+		expect(rect.x()).toBe(view.header().sectionPosition(2));
+		expect(rect.y()).toBe(CTreeView.RowHeight);
+		expect(rect.width()).toBe(view.header().sectionSize(2));
+		expect(rect.height()).toBe(CTreeView.RowHeight);
+	});
+
+	test("visualRect accounts for expanded rows", () => {
+		const view = new CTreeView();
+		const model = new TestTreeModel();
+		const animals = model.index(0, 0);
+		const plants = model.index(1, 0);
+
+		view.setModel(model);
+		view.expand(animals);
+
+		expect(view.visualRect(plants).y()).toBe(3 * CTreeView.RowHeight);
+	});
+
+	test("visualRect is empty for a hidden child", () => {
+		const view = new CTreeView();
+		const model = new TestTreeModel();
+		const animals = model.index(0, 0);
+		const cat = model.index(0, 0, animals);
+
+		view.setModel(model);
+
+		const rect = view.visualRect(cat);
+		expect(rect.width()).toBe(0);
+		expect(rect.height()).toBe(0);
+	});
+
+	test("has a default item delegate", () => {
+		const view = new CTreeView();
+
+		expect(view.itemDelegate()).toBeInstanceOf(CItemDelegate);
+	});
+
+	test("sets the default item delegate", () => {
+		const view = new CTreeView();
+		const delegate = new TestItemDelegate();
+
+		view.setItemDelegate(delegate);
+
+		expect(view.itemDelegate()).toBe(delegate);
+	});
+
+	test("row delegate has priority over column delegate", () => {
+		const view = new CTreeView();
+		const model = new EditableTreeModel();
+		const rowDelegate = new TestItemDelegate();
+		const columnDelegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegateForRow(1, rowDelegate);
+		view.setItemDelegateForColumn(2, columnDelegate);
+
+		expect(view.itemDelegateForIndex(model.index(1, 2)))
+			.toBe(rowDelegate);
+		expect(view.itemDelegateForIndex(model.index(0, 2)))
+			.toBe(columnDelegate);
+	});
+
+	test("removing specialized delegates restores the default delegate", () => {
+		const view = new CTreeView();
+		const model = new EditableTreeModel();
+		const defaultDelegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(defaultDelegate);
+		view.setItemDelegateForRow(1, new TestItemDelegate());
+		view.setItemDelegateForColumn(2, new TestItemDelegate());
+		view.setItemDelegateForRow(1, null);
+		view.setItemDelegateForColumn(2, null);
+
+		expect(view.itemDelegateForIndex(model.index(1, 2)))
+			.toBe(defaultDelegate);
+	});
+
+	test("cannot edit invalid, foreign, or non-editable indexes", () => {
+		const view = new CTreeView();
+		const model = new EditableTreeModel();
+		const otherModel = new EditableTreeModel();
+
+		view.setModel(model);
+		expect(view.edit(new CModelIndex())).toBe(false);
+		expect(view.edit(otherModel.index(0, 0))).toBe(false);
+
+		model.setEditable(false);
+		expect(view.edit(model.index(0, 0))).toBe(false);
+	});
+
+	test("edit creates and initializes an editor in the tree content", () => {
+		const view = new CTreeView();
+		const model = new EditableTreeModel();
+		const delegate = new TestItemDelegate();
+		const index = model.index(1, 2);
+
+		view.resize(400, 240);
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+
+		expect(view.edit(index)).toBe(true);
+		expect(delegate.createEditorCalls).toHaveLength(1);
+		expect(delegate.createEditorCalls[0]?.parent).toBe(view.widget());
+		expect(delegate.setEditorDataCalls).toHaveLength(1);
+		expect(delegate.updateEditorGeometryCalls).toHaveLength(1);
+		expect(delegate.lastEditor?.x())
+			.toBe(view.header().sectionPosition(2));
+		expect(delegate.lastEditor?.y()).toBe(CTreeView.RowHeight);
+		expect(delegate.lastEditor?.height()).toBe(CTreeView.RowHeight);
+		expect(delegate.lastEditor?.isVisible()).toBe(true);
+		expect(delegate.lastEditor?.hasFocus()).toBe(true);
+	});
+
+	test("edit uses a delegate selected for a child row", () => {
+		const view = new CTreeView();
+		const model = new EditableTreeModel();
+		const delegate = new TestItemDelegate();
+		const animals = model.index(0, 0);
+		const cat = model.index(0, 0, animals);
+
+		view.setModel(model);
+		view.expand(animals);
+		view.setItemDelegateForRow(0, delegate);
+		view.edit(cat);
+
+		expect(delegate.createEditorCalls).toHaveLength(1);
+		expect(delegate.createEditorCalls[0]?.index.equals(cat)).toBe(true);
+	});
+
+	test("edit fails when the delegate creates no editor", () => {
+		const view = new CTreeView();
+		const model = new EditableTreeModel();
+		const delegate = new TestItemDelegate();
+
+		delegate.createEditorResult = false;
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+
+		expect(view.edit(model.index(0, 0))).toBe(false);
+		expect(delegate.createEditorCalls).toHaveLength(1);
+	});
+
+	test("editing the same index reuses the current editor", () => {
+		const view = new CTreeView();
+		const model = new EditableTreeModel();
+		const delegate = new TestItemDelegate();
+		const index = model.index(0, 0);
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(index);
+		view.edit(index);
+
+		expect(delegate.createEditorCalls).toHaveLength(1);
+	});
+
+	test("editing another index commits and replaces the editor", () => {
+		const view = new CTreeView();
+		const model = new EditableTreeModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+		const firstEditor = delegate.lastEditor;
+		view.edit(model.index(1, 0));
+
+		expect(delegate.setModelDataCalls).toHaveLength(1);
+		expect(delegate.setModelDataCalls[0]?.editor).toBe(firstEditor);
+		expect(delegate.createEditorCalls).toHaveLength(2);
+		expect(delegate.lastEditor).not.toBe(firstEditor);
+	});
+
+	test("delegate commit signal writes editor data", () => {
+		const view = new CTreeView();
+		const model = new EditableTreeModel();
+		const delegate = new TestItemDelegate();
+		const index = model.index(1, 0);
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(index);
+		delegate.commitData.emit(delegate.lastEditor!);
+
+		expect(delegate.setModelDataCalls).toHaveLength(1);
+		expect(delegate.setModelDataCalls[0]?.model).toBe(model);
+		expect(delegate.setModelDataCalls[0]?.index.equals(index)).toBe(true);
+	});
+
+	test("delegate close signal closes the active editor", () => {
+		const view = new CTreeView();
+		const model = new EditableTreeModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+		const editor = delegate.lastEditor!;
+		delegate.closeEditor.emit(editor);
+
+		expect(editor.parent()).toBeNull();
+		expect(editor.isVisible()).toBe(false);
+	});
+
+	test("changing model closes the active editor", () => {
+		const view = new CTreeView();
+		const model = new EditableTreeModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+		const editor = delegate.lastEditor!;
+		view.setModel(new EditableTreeModel());
+
+		expect(editor.parent()).toBeNull();
+		expect(editor.isVisible()).toBe(false);
+	});
+
+	test("F2 and Enter start editing the current index", () => {
+		for (const keyName of ["F2", "Enter"]) {
+			const view = new CTreeView();
+			const model = new EditableTreeModel();
+			const delegate = new TestItemDelegate();
+			const index = model.index(1, 1);
+
+			view.setModel(model);
+			view.setItemDelegate(delegate);
+			view.setCurrentIndex(index);
+
+			const event = key(keyName);
+			view.contentKeyPressEvent(event);
+
+			expect(delegate.createEditorCalls).toHaveLength(1);
+			expect(delegate.createEditorCalls[0]?.index.equals(index)).toBe(true);
+			expect(event.isAccepted()).toBe(true);
+			view.destroy();
+		}
+	});
+
+	test("resizing a header section updates editor geometry", () => {
+		const view = new CTreeView();
+		const model = new EditableTreeModel();
+		const delegate = new TestItemDelegate();
+		const index = model.index(0, 0);
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(index);
+		const callsBeforeResize = delegate.updateEditorGeometryCalls.length;
+		view.header().resizeSection(0, 180);
+
+		expect(delegate.updateEditorGeometryCalls.length)
+			.toBeGreaterThan(callsBeforeResize);
+		expect(delegate.lastEditor?.width()).toBe(180);
 	});
 });
