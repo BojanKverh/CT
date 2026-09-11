@@ -33,6 +33,26 @@ export abstract class CAbstractItemModel extends CObject {
 	abstract data(index: CModelIndex): unknown;
 
 	/**
+	 * Sets the data associated with an index.
+	 *
+	 * The base implementation does not modify the model.
+	 *
+	 * @returns `true` when the value was accepted.
+	 */
+	setItemData(_index: CModelIndex, _value: unknown): boolean {
+		return false;
+	}
+
+	/**
+	 * Returns whether the item at an index can be edited.
+	 *
+	 * The base implementation returns `false`.
+	 */
+	isEditable(_index: CModelIndex): boolean {
+		return false;
+	}
+
+	/**
 	 * Creates an index for an existing row and column.
 	 *
 	 * Returns an invalid index when the coordinates are outside the model.

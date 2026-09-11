@@ -14,6 +14,8 @@ import { CScrollBar } from "./CScrollBar.js";
 import { CWidget } from "./CWidget.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CRect } from "../geometry/CRect.js";
+import { CAbstractItemDelegate } from "./CAbstractItemDelegate.js";
+import { CItemDelegate } from "./CItemDelegate.js";
 
 class CTableScrollArea extends CScrollArea {
 	updateTableScrollBars(): void {
@@ -59,6 +61,15 @@ export class CTableView extends CWidget {
 	#m_scrollArea: CTableScrollArea;
 	#m_contentWidget: CTableViewContentWidget;
 
+	#m_itemDelegate: CAbstractItemDelegate;
+	#m_rowDelegates = new Map<number, CAbstractItemDelegate>();
+	#m_columnDelegates = new Map<number, CAbstractItemDelegate>();
+	#m_connectedDelegates = new Set<CAbstractItemDelegate>();
+
+	#m_editor: CWidget | null = null;
+	#m_editorIndex = new CModelIndex();
+	#m_editorDelegate: CAbstractItemDelegate | null = null;
+
 	#m_disconnectDataChanged: (() => void) | null = null;
 	#m_disconnectModelReset: (() => void) | null = null;
 
@@ -81,6 +92,9 @@ export class CTableView extends CWidget {
 		this.#m_contentWidget =
 			new CTableViewContentWidget(this);
 
+		this.#m_itemDelegate = new CItemDelegate(this);
+		this.#connectDelegate(this.#m_itemDelegate);
+
 		this.#m_scrollArea.setWidget(this.#m_contentWidget);
 
 		this.#m_scrollArea.horizontalScrollBar()
@@ -97,6 +111,7 @@ export class CTableView extends CWidget {
 
 		this.#m_horizontalHeader.sectionResized.connect(() => {
 			this.#updateContentGeometry();
+			this.#updateEditorGeometry();
 			this.#m_contentWidget.update();
 		});
 	}
@@ -112,6 +127,7 @@ export class CTableView extends CWidget {
 		if (this.#m_model === model)
 			return;
 
+		this.#closeEditor();
 		this.#disconnectModel();
 
 		/** Provides if behavior. */
@@ -137,6 +153,7 @@ export class CTableView extends CWidget {
 
 			this.#m_disconnectModelReset =
 				model.modelReset.connect(() => {
+					this.#closeEditor();
 					this.#m_selectionModel?.clear();
 					this.#updateContentGeometry();
 					this.#m_contentWidget.update();
@@ -152,6 +169,121 @@ export class CTableView extends CWidget {
 	/** Provides selection model behavior. */
 	selectionModel(): CItemSelectionModel | null {
 		return this.#m_selectionModel;
+	}
+
+	/** Returns the default item delegate. */
+	itemDelegate(): CAbstractItemDelegate {
+		return this.#m_itemDelegate;
+	}
+
+	/** Sets the default item delegate. */
+	setItemDelegate(delegate: CAbstractItemDelegate): void {
+		if (this.#m_itemDelegate === delegate)
+			return;
+
+		this.#closeEditor();
+		this.#m_itemDelegate = delegate;
+		this.#connectDelegate(delegate);
+	}
+
+	/** Sets the delegate used for a row. */
+	setItemDelegateForRow(
+		row: number,
+		delegate: CAbstractItemDelegate | null
+	): void {
+		this.#closeEditor();
+
+		if (delegate === null) {
+			this.#m_rowDelegates.delete(row);
+			return;
+		}
+
+		this.#m_rowDelegates.set(row, delegate);
+		this.#connectDelegate(delegate);
+	}
+
+	/** Sets the delegate used for a column. */
+	setItemDelegateForColumn(
+		column: number,
+		delegate: CAbstractItemDelegate | null
+	): void {
+		this.#closeEditor();
+
+		if (delegate === null) {
+			this.#m_columnDelegates.delete(column);
+			return;
+		}
+
+		this.#m_columnDelegates.set(column, delegate);
+		this.#connectDelegate(delegate);
+	}
+
+	/** Returns the delegate used for an index. */
+	itemDelegateForIndex(index: CModelIndex): CAbstractItemDelegate {
+		return this.#m_rowDelegates.get(index.row())
+			?? this.#m_columnDelegates.get(index.column())
+			?? this.#m_itemDelegate;
+	}
+
+	/**
+	 * Returns the item rectangle in content-widget coordinates.
+	 */
+	visualRect(index: CModelIndex): CRect {
+		if (!index.isValid() || index.model() !== this.#m_model)
+			return new CRect();
+
+		const column = index.column();
+
+		return new CRect(
+			this.#m_horizontalHeader.sectionPosition(column),
+			index.row() * CTableView.RowHeight,
+			this.#m_horizontalHeader.sectionSize(column),
+			CTableView.RowHeight
+		);
+	}
+
+	/**
+	 * Starts editing an item through its delegate.
+	 *
+	 * @returns `true` when an editor was created.
+	 */
+	edit(index: CModelIndex): boolean {
+		const model = this.#m_model;
+
+		if (model === null
+			|| !index.isValid()
+			|| index.model() !== model
+			|| !model.isEditable(index)) {
+			return false;
+		}
+
+		if (this.#m_editor !== null) {
+			if (this.#m_editorIndex.equals(index))
+				return true;
+
+			this.#commitEditor(this.#m_editor);
+			this.#closeEditor();
+		}
+
+		const delegate = this.itemDelegateForIndex(index);
+		const editor = delegate.createEditor(
+			this.#m_contentWidget,
+			index
+		);
+
+		if (editor === null)
+			return false;
+
+		this.#m_editor = editor;
+		this.#m_editorIndex = index;
+		this.#m_editorDelegate = delegate;
+
+		delegate.setEditorData(editor, index);
+		delegate.updateEditorGeometry(editor, this.visualRect(index));
+		editor.show();
+		editor.setFocus();
+
+		return true;
 	}
 
 	/** Returns the current index. */
@@ -363,6 +495,13 @@ export class CTableView extends CWidget {
 			return;
 		}
 
+		if (event.key() === "F2" || event.key() === "Enter") {
+			if (this.edit(this.currentIndex())) {
+				event.accept();
+				return;
+			}
+		}
+
 		const rows = this.#m_model.rowCount();
 		const columns = this.#m_model.columnCount();
 
@@ -550,6 +689,65 @@ export class CTableView extends CWidget {
 			scrollY = bottom - viewportHeight;
 
 		this.#m_scrollArea.scrollTo(scrollX, scrollY);
+	}
+
+	#connectDelegate(delegate: CAbstractItemDelegate): void {
+		if (this.#m_connectedDelegates.has(delegate))
+			return;
+
+		this.#m_connectedDelegates.add(delegate);
+
+		delegate.commitData.connect(editor => {
+			this.#commitEditor(editor);
+		});
+
+		delegate.closeEditor.connect(editor => {
+			if (editor === this.#m_editor)
+				this.#closeEditor();
+		});
+	}
+
+	#commitEditor(editor: CWidget): void {
+		if (editor !== this.#m_editor
+			|| this.#m_model === null
+			|| this.#m_editorDelegate === null
+			|| !this.#m_editorIndex.isValid()) {
+			return;
+		}
+
+		this.#m_editorDelegate.setModelData(
+			editor,
+			this.#m_model,
+			this.#m_editorIndex
+		);
+	}
+
+	#closeEditor(): void {
+		const editor = this.#m_editor;
+
+		if (editor === null)
+			return;
+
+		this.#m_editor = null;
+		this.#m_editorIndex = new CModelIndex();
+		this.#m_editorDelegate = null;
+
+		editor.destroy();
+		this.#m_contentWidget.setFocus();
+		this.#m_contentWidget.update();
+	}
+
+	#updateEditorGeometry(): void {
+		if (this.#m_editor === null
+			|| this.#m_editorDelegate === null
+			|| !this.#m_editorIndex.isValid()) {
+			return;
+		}
+
+		this.#m_editorDelegate.updateEditorGeometry(
+			this.#m_editor,
+			this.visualRect(this.#m_editorIndex)
+		);
 	}
 
 	#pageRowCount(): number {

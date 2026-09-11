@@ -27,6 +27,34 @@ class CTableWidgetModel extends CAbstractItemModel {
 		return this.item(index.row(), index.column())?.text() ?? null;
 	}
 
+	override setItemData(index: CModelIndex, value: unknown): boolean {
+		if (!index.isValid() || index.model() !== this)
+			return false;
+
+		const item = this.item(index.row(), index.column());
+
+		if (item === null || !item.isEditable())
+			return false;
+
+		const text = value === null || value === undefined
+			? ""
+			: String(value);
+
+		if (item.text() !== text) {
+			item.setText(text);
+			this.emitDataChanged(index, index);
+		}
+
+		return true;
+	}
+
+	override isEditable(index: CModelIndex): boolean {
+		if (!index.isValid() || index.model() !== this)
+			return false;
+
+		return this.item(index.row(), index.column())?.isEditable() ?? false;
+	}
+
 	override headerData(section: number,
 		orientation: COrientation): string | number | null {
 		if (orientation === COrientation.Horizontal)

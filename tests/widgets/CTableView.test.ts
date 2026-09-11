@@ -7,6 +7,12 @@ import { CTableView } from "../../src/widgets/CTableView.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { CEventType } from "../../src/events/CEvent.js";
 import { CKeyEvent } from "../../src/events/CKeyEvent.js";
+import { CAbstractItemModel } from "../../src/models/CAbstractItemModel.js";
+import { CRect } from "../../src/geometry/CRect.js";
+import { CAbstractItemDelegate } from "../../src/widgets/CAbstractItemDelegate.js";
+import { CItemDelegate } from "../../src/widgets/CItemDelegate.js";
+import { CWidget } from "../../src/widgets/CWidget.js";
+import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
 
 class TestTableModel extends CAbstractTableModel {
 	#m_data: string[][];
@@ -61,6 +67,67 @@ class TestTableModel extends CAbstractTableModel {
 	setTable(data: string[][]): void {
 		this.#m_data = data;
 		this.resetModel();
+	}
+}
+
+class EditableTableModel extends TestTableModel {
+	#m_editable = true;
+
+	setEditable(editable: boolean): void {
+		this.#m_editable = editable;
+	}
+
+	override isEditable(_index: CModelIndex): boolean {
+		return this.#m_editable;
+	}
+
+	override setItemData(index: CModelIndex, value: unknown): boolean {
+		if (!index.isValid())
+			return false;
+
+		this.setData(index.row(), index.column(), String(value));
+		return true;
+	}
+}
+
+class TestItemDelegate extends CAbstractItemDelegate {
+	createEditorCalls: Array<{ parent: CWidget; index: CModelIndex }> = [];
+	setEditorDataCalls: Array<{ editor: CWidget; index: CModelIndex }> = [];
+	setModelDataCalls: Array<{
+		editor: CWidget;
+		model: CAbstractItemModel;
+		index: CModelIndex;
+	}> = [];
+	updateEditorGeometryCalls: Array<{ editor: CWidget; rect: CRect }> = [];
+	lastEditor: CWidget | null = null;
+	createEditorResult = true;
+
+	override createEditor(parent: CWidget, index: CModelIndex): CWidget | null {
+		this.createEditorCalls.push({ parent, index });
+
+		if (!this.createEditorResult)
+			return null;
+
+		this.lastEditor = new CWidget(parent);
+		this.lastEditor.setFocusPolicy(CFocusPolicy.StrongFocus);
+		return this.lastEditor;
+	}
+
+	override setEditorData(editor: CWidget, index: CModelIndex): void {
+		this.setEditorDataCalls.push({ editor, index });
+	}
+
+	override setModelData(
+		editor: CWidget,
+		model: CAbstractItemModel,
+		index: CModelIndex
+	): void {
+		this.setModelDataCalls.push({ editor, model, index });
+	}
+
+	override updateEditorGeometry(editor: CWidget, rect: CRect): void {
+		this.updateEditorGeometryCalls.push({ editor, rect });
+		super.updateEditorGeometry(editor, rect);
 	}
 }
 
@@ -977,5 +1044,500 @@ describe("CTableView", () => {
 		);
 
 		expect(view.currentIndex().row()).toBe(0);
+	});
+
+	test("has a default item delegate", () => {
+		const view = new CTableView();
+
+		expect(view.itemDelegate()).toBeInstanceOf(CItemDelegate);
+	});
+
+	test("sets the default item delegate", () => {
+		const view = new CTableView();
+		const delegate = new TestItemDelegate();
+
+		view.setItemDelegate(delegate);
+
+		expect(view.itemDelegate()).toBe(delegate);
+	});
+
+	test("setting the same default delegate keeps it", () => {
+		const view = new CTableView();
+		const delegate = new TestItemDelegate();
+
+		view.setItemDelegate(delegate);
+		view.setItemDelegate(delegate);
+
+		expect(view.itemDelegate()).toBe(delegate);
+	});
+
+	test("uses a row delegate for an index in that row", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegateForRow(1, delegate);
+
+		expect(view.itemDelegateForIndex(model.index(1, 2))).toBe(delegate);
+	});
+
+	test("uses a column delegate for an index in that column", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(2, delegate);
+
+		expect(view.itemDelegateForIndex(model.index(1, 2))).toBe(delegate);
+	});
+
+	test("row delegate has priority over column delegate", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const rowDelegate = new TestItemDelegate();
+		const columnDelegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegateForRow(1, rowDelegate);
+		view.setItemDelegateForColumn(2, columnDelegate);
+
+		expect(view.itemDelegateForIndex(model.index(1, 2)))
+			.toBe(rowDelegate);
+	});
+
+	test("removing a row delegate reveals the column delegate", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const rowDelegate = new TestItemDelegate();
+		const columnDelegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegateForRow(1, rowDelegate);
+		view.setItemDelegateForColumn(2, columnDelegate);
+		view.setItemDelegateForRow(1, null);
+
+		expect(view.itemDelegateForIndex(model.index(1, 2)))
+			.toBe(columnDelegate);
+	});
+
+	test("removing a column delegate restores the default delegate", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const defaultDelegate = new TestItemDelegate();
+		const columnDelegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(defaultDelegate);
+		view.setItemDelegateForColumn(2, columnDelegate);
+		view.setItemDelegateForColumn(2, null);
+
+		expect(view.itemDelegateForIndex(model.index(1, 2)))
+			.toBe(defaultDelegate);
+	});
+
+	test("row delegate does not affect another row", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const defaultDelegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(defaultDelegate);
+		view.setItemDelegateForRow(1, new TestItemDelegate());
+
+		expect(view.itemDelegateForIndex(model.index(0, 2)))
+			.toBe(defaultDelegate);
+	});
+
+	test("column delegate does not affect another column", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const defaultDelegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(defaultDelegate);
+		view.setItemDelegateForColumn(2, new TestItemDelegate());
+
+		expect(view.itemDelegateForIndex(model.index(1, 1)))
+			.toBe(defaultDelegate);
+	});
+
+	test("cannot edit without a model", () => {
+		const view = new CTableView();
+
+		expect(view.edit(new CModelIndex())).toBe(false);
+	});
+
+	test("cannot edit an invalid index", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+
+		view.setModel(model);
+
+		expect(view.edit(new CModelIndex())).toBe(false);
+	});
+
+	test("cannot edit an index from another model", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const otherModel = new EditableTableModel();
+
+		view.setModel(model);
+
+		expect(view.edit(otherModel.index(0, 0))).toBe(false);
+	});
+
+	test("cannot edit a non-editable index", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		model.setEditable(false);
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+
+		expect(view.edit(model.index(0, 0))).toBe(false);
+		expect(delegate.createEditorCalls).toHaveLength(0);
+	});
+
+	test("edit fails when the delegate creates no editor", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		delegate.createEditorResult = false;
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+
+		expect(view.edit(model.index(0, 0))).toBe(false);
+		expect(delegate.createEditorCalls).toHaveLength(1);
+	});
+
+	test("edit asks the selected delegate to create an editor", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+		const index = model.index(1, 2);
+
+		view.setModel(model);
+		view.setItemDelegateForRow(1, delegate);
+		view.edit(index);
+
+		expect(delegate.createEditorCalls).toHaveLength(1);
+		expect(delegate.createEditorCalls[0]?.index.equals(index)).toBe(true);
+	});
+
+	test("editor is parented to the table content widget", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+
+		expect(delegate.lastEditor?.parent()).not.toBeNull();
+		expect(delegate.lastEditor?.parent()?.parent()).toBe(view.viewport());
+	});
+
+	test("edit asks the delegate to populate the editor", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+		const index = model.index(1, 1);
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(index);
+
+		expect(delegate.setEditorDataCalls).toHaveLength(1);
+		expect(delegate.setEditorDataCalls[0]?.editor).toBe(delegate.lastEditor);
+		expect(delegate.setEditorDataCalls[0]?.index.equals(index)).toBe(true);
+	});
+
+	test("edit sets editor geometry to the visual rectangle", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+		const index = model.index(1, 2);
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(index);
+
+		const editor = delegate.lastEditor;
+		const rect = view.visualRect(index);
+
+		expect(editor?.x()).toBe(rect.x());
+		expect(editor?.y()).toBe(rect.y());
+		expect(editor?.width()).toBe(rect.width());
+		expect(editor?.height()).toBe(rect.height());
+	});
+
+	test("edit shows the editor", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+
+		expect(delegate.lastEditor?.isVisible()).toBe(true);
+	});
+
+	test("edit gives focus to the editor", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+
+		expect(delegate.lastEditor?.hasFocus()).toBe(true);
+	});
+
+	test("editing the same index reuses the current editor", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+		const index = model.index(0, 0);
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(index);
+		view.edit(index);
+
+		expect(delegate.createEditorCalls).toHaveLength(1);
+	});
+
+	test("editing another index commits and replaces the editor", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+
+		const firstEditor = delegate.lastEditor;
+
+		view.edit(model.index(1, 1));
+
+		expect(delegate.setModelDataCalls).toHaveLength(1);
+		expect(firstEditor?.parent()).toBeNull();
+		expect(delegate.createEditorCalls).toHaveLength(2);
+		expect(delegate.lastEditor).not.toBe(firstEditor);
+	});
+
+	test("delegate commitData writes editor data to the model", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+		const index = model.index(1, 1);
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(index);
+
+		const editor = delegate.lastEditor!;
+		delegate.commitData.emit(editor);
+
+		expect(delegate.setModelDataCalls).toHaveLength(1);
+		expect(delegate.setModelDataCalls[0]?.editor).toBe(editor);
+		expect(delegate.setModelDataCalls[0]?.model).toBe(model);
+		expect(delegate.setModelDataCalls[0]?.index.equals(index)).toBe(true);
+	});
+
+	test("delegate closeEditor destroys the current editor", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+
+		const editor = delegate.lastEditor!;
+		delegate.closeEditor.emit(editor);
+
+		expect(editor.parent()).toBeNull();
+		expect(editor.isVisible()).toBe(false);
+	});
+
+	test("model reset closes the current editor", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+
+		const editor = delegate.lastEditor!;
+		model.setTable([["Changed"]]);
+
+		expect(editor.parent()).toBeNull();
+		expect(editor.isVisible()).toBe(false);
+	});
+
+	test("changing the default delegate closes the current editor", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+
+		const editor = delegate.lastEditor!;
+		view.setItemDelegate(new TestItemDelegate());
+
+		expect(editor.parent()).toBeNull();
+		expect(editor.isVisible()).toBe(false);
+	});
+
+	test("commitData from another editor is ignored", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+		const otherEditor = new CWidget();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+		delegate.commitData.emit(otherEditor);
+
+		expect(delegate.setModelDataCalls).toHaveLength(0);
+	});
+
+	test("closeEditor from another editor is ignored", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+		const otherEditor = new CWidget();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+
+		const editor = delegate.lastEditor!;
+		delegate.closeEditor.emit(otherEditor);
+
+		expect(editor.parent()).not.toBeNull();
+		expect(editor.isVisible()).toBe(true);
+	});
+
+	test("changing model closes the current editor", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+
+		const editor = delegate.lastEditor!;
+		view.setModel(new EditableTableModel());
+
+		expect(editor.parent()).toBeNull();
+		expect(editor.isVisible()).toBe(false);
+	});
+
+	test("setting null model closes the current editor", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+
+		const editor = delegate.lastEditor!;
+		view.setModel(null);
+
+		expect(editor.parent()).toBeNull();
+		expect(editor.isVisible()).toBe(false);
+	});
+
+	test("changing a row delegate closes the current editor", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+
+		const editor = delegate.lastEditor!;
+		view.setItemDelegateForRow(1, new TestItemDelegate());
+
+		expect(editor.parent()).toBeNull();
+	});
+
+	test("changing a column delegate closes the current editor", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+
+		const editor = delegate.lastEditor!;
+		view.setItemDelegateForColumn(1, new TestItemDelegate());
+
+		expect(editor.parent()).toBeNull();
+	});
+
+	test("resizing a section updates current editor geometry", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+		const index = model.index(0, 1);
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(index);
+
+		const callsBeforeResize = delegate.updateEditorGeometryCalls.length;
+		view.horizontalHeader().resizeSection(1, 175);
+
+		expect(delegate.updateEditorGeometryCalls)
+			.toHaveLength(callsBeforeResize + 1);
+		expect(delegate.lastEditor?.width()).toBe(175);
+	});
+
+	test("commitData after editor was closed is ignored", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.edit(model.index(0, 0));
+
+		const editor = delegate.lastEditor!;
+		delegate.closeEditor.emit(editor);
+		delegate.commitData.emit(editor);
+
+		expect(delegate.setModelDataCalls).toHaveLength(0);
+	});
+
+	test("delegate signals are connected only once", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.setItemDelegateForRow(0, delegate);
+		view.setItemDelegateForColumn(0, delegate);
+		view.edit(model.index(0, 0));
+		delegate.commitData.emit(delegate.lastEditor!);
+
+		expect(delegate.setModelDataCalls).toHaveLength(1);
 	});
 });
