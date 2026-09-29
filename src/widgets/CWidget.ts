@@ -579,6 +579,10 @@ export class CWidget extends CObject {
 			this.mouseReleaseEvent(event as CMouseEvent);
 			return event.isAccepted();
 
+		case CEventType.MouseDoubleClick:
+			this.mouseDoubleClickEvent(event as CMouseEvent);
+			return event.isAccepted();
+
 		case CEventType.MouseMove:
 			this.mouseMoveEvent(event as CMouseEvent);
 			return event.isAccepted();
@@ -696,6 +700,11 @@ export class CWidget extends CObject {
 
     /** Handles the mouse release event. */
     protected mouseReleaseEvent(event: CMouseEvent): void {
+        event.ignore();
+    }
+
+    /** Handles the mouse double-click event. */
+    protected mouseDoubleClickEvent(event: CMouseEvent): void {
         event.ignore();
     }
 

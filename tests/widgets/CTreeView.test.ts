@@ -227,6 +227,11 @@ function mousePress(x: number, y: number): CMouseEvent {
 		CMouseButton.LeftButton);
 }
 
+function mouseDoubleClick(x: number, y: number): CMouseEvent {
+	return new CMouseEvent(CEventType.MouseDoubleClick, x, y,
+		CMouseButton.LeftButton);
+}
+
 describe("CTreeView", () => {
 	beforeEach(() => {
 		new CApplication(createTestCanvas());
@@ -1210,5 +1215,55 @@ describe("CTreeView", () => {
 		expect(delegate.updateEditorGeometryCalls.length)
 			.toBeGreaterThan(callsBeforeResize);
 		expect(delegate.lastEditor?.width()).toBe(180);
+	});
+
+	test("double click selects and starts editing the tree cell", () => {
+		const view = new CTreeView();
+		const model = new EditableTreeModel();
+		const delegate = new TestItemDelegate();
+		const x = view.header().sectionPosition(1) + 10;
+		const y = CTreeView.RowHeight + 5;
+		const event = mouseDoubleClick(x, y);
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.contentMouseDoubleClickEvent(event);
+
+		const index = model.index(1, 1);
+		expect(view.currentIndex().equals(index)).toBe(true);
+		expect(view.selectionModel()?.isSelected(index)).toBe(true);
+		expect(delegate.createEditorCalls).toHaveLength(1);
+		expect(delegate.createEditorCalls[0]?.index.equals(index)).toBe(true);
+		expect(event.isAccepted()).toBe(true);
+	});
+
+	test("double click on an expansion indicator does not start editing", () => {
+		const view = new CTreeView();
+		const model = new EditableTreeModel();
+		const delegate = new TestItemDelegate();
+		const event = mouseDoubleClick(10, CTreeView.RowHeight / 2);
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.contentMouseDoubleClickEvent(event);
+
+		expect(delegate.createEditorCalls).toHaveLength(0);
+		expect(view.isExpanded(model.index(0, 0))).toBe(false);
+		expect(event.isAccepted()).toBe(true);
+	});
+
+	test("double click outside the visible tree rows is ignored", () => {
+		const view = new CTreeView();
+		const model = new EditableTreeModel();
+		const delegate = new TestItemDelegate();
+		const event = mouseDoubleClick(40, 20 * CTreeView.RowHeight);
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.contentMouseDoubleClickEvent(event);
+
+		expect(view.currentIndex().isValid()).toBe(false);
+		expect(delegate.createEditorCalls).toHaveLength(0);
+		expect(event.isAccepted()).toBe(false);
 	});
 });

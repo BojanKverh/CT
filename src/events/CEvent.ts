@@ -2,6 +2,7 @@
 export enum CEventType {
     /** Mouse button press event. */ MousePress,
     /** Mouse button release event. */ MouseRelease,
+    /** Mouse button double-click event. */ MouseDoubleClick,
     /** Mouse movement event. */ MouseMove,
     /** Pointer entered a widget. */ MouseEnter,
     /** Pointer left a widget. */ MouseLeave,

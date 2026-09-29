@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
 import { CEventType } from "../../src/events/CEvent.js";
 import { CKeyEvent } from "../../src/events/CKeyEvent.js";
+import { CMouseButton, CMouseEvent } from "../../src/events/CMouseEvent.js";
 import { CRect } from "../../src/geometry/CRect.js";
 import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
 import { CAbstractItemModel } from "../../src/models/CAbstractItemModel.js";
@@ -107,6 +108,11 @@ class TestItemDelegate extends CAbstractItemDelegate {
 		this.updateEditorGeometryCalls.push({ editor, rect });
 		super.updateEditorGeometry(editor, rect);
 	}
+}
+
+function mouseDoubleClick(x: number, y: number): CMouseEvent {
+	return new CMouseEvent(CEventType.MouseDoubleClick, x, y,
+		CMouseButton.LeftButton);
 }
 
 describe("CListView", () => {
@@ -735,5 +741,53 @@ describe("CListView", () => {
 			expect(event.isAccepted()).toBe(true);
 			view.destroy();
 		}
+	});
+
+	test("double click selects and starts editing the item", () => {
+		const view = new CListView();
+		const model = new EditableListModel();
+		const delegate = new TestItemDelegate();
+		const event = mouseDoubleClick(20, CListView.ItemHeight + 5);
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.contentMouseDoubleClickEvent(event);
+
+		expect(view.currentIndex().equals(model.index(1, 0))).toBe(true);
+		expect(view.selectionModel()?.isSelected(model.index(1, 0))).toBe(true);
+		expect(delegate.createEditorCalls).toHaveLength(1);
+		expect(delegate.createEditorCalls[0]?.index.equals(model.index(1, 0)))
+			.toBe(true);
+		expect(event.isAccepted()).toBe(true);
+	});
+
+	test("double click on a non-editable item selects it without an editor", () => {
+		const view = new CListView();
+		const model = new EditableListModel();
+		const delegate = new TestItemDelegate();
+
+		model.setEditable(false);
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.contentMouseDoubleClickEvent(
+			mouseDoubleClick(20, CListView.ItemHeight / 2));
+
+		expect(view.currentIndex().equals(model.index(0, 0))).toBe(true);
+		expect(delegate.createEditorCalls).toHaveLength(0);
+	});
+
+	test("double click outside the items is ignored", () => {
+		const view = new CListView();
+		const model = new EditableListModel();
+		const delegate = new TestItemDelegate();
+		const event = mouseDoubleClick(20, 20 * CListView.ItemHeight);
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.contentMouseDoubleClickEvent(event);
+
+		expect(view.currentIndex().isValid()).toBe(false);
+		expect(delegate.createEditorCalls).toHaveLength(0);
+		expect(event.isAccepted()).toBe(false);
 	});
 });

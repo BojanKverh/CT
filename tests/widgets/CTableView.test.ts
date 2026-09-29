@@ -7,6 +7,7 @@ import { CTableView } from "../../src/widgets/CTableView.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { CEventType } from "../../src/events/CEvent.js";
 import { CKeyEvent } from "../../src/events/CKeyEvent.js";
+import { CMouseButton, CMouseEvent } from "../../src/events/CMouseEvent.js";
 import { CAbstractItemModel } from "../../src/models/CAbstractItemModel.js";
 import { CRect } from "../../src/geometry/CRect.js";
 import { CAbstractItemDelegate } from "../../src/widgets/CAbstractItemDelegate.js";
@@ -129,6 +130,11 @@ class TestItemDelegate extends CAbstractItemDelegate {
 		this.updateEditorGeometryCalls.push({ editor, rect });
 		super.updateEditorGeometry(editor, rect);
 	}
+}
+
+function mouseDoubleClick(x: number, y: number): CMouseEvent {
+	return new CMouseEvent(CEventType.MouseDoubleClick, x, y,
+		CMouseButton.LeftButton);
 }
 
 describe("CTableView", () => {
@@ -1539,5 +1545,54 @@ describe("CTableView", () => {
 		delegate.commitData.emit(delegate.lastEditor!);
 
 		expect(delegate.setModelDataCalls).toHaveLength(1);
+	});
+
+	test("double click selects and starts editing the cell", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+		const x = view.horizontalHeader().sectionPosition(1) + 10;
+		const y = CTableView.RowHeight + 5;
+		const event = mouseDoubleClick(x, y);
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.contentMouseDoubleClickEvent(event);
+
+		const index = model.index(1, 1);
+		expect(view.currentIndex().equals(index)).toBe(true);
+		expect(view.selectionModel()?.isSelected(index)).toBe(true);
+		expect(delegate.createEditorCalls).toHaveLength(1);
+		expect(delegate.createEditorCalls[0]?.index.equals(index)).toBe(true);
+		expect(event.isAccepted()).toBe(true);
+	});
+
+	test("double click on a non-editable cell selects it without an editor", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+
+		model.setEditable(false);
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.contentMouseDoubleClickEvent(mouseDoubleClick(10, 10));
+
+		expect(view.currentIndex().equals(model.index(0, 0))).toBe(true);
+		expect(delegate.createEditorCalls).toHaveLength(0);
+	});
+
+	test("double click outside the table is ignored", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new TestItemDelegate();
+		const event = mouseDoubleClick(10, 20 * CTableView.RowHeight);
+
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		view.contentMouseDoubleClickEvent(event);
+
+		expect(view.currentIndex().isValid()).toBe(false);
+		expect(delegate.createEditorCalls).toHaveLength(0);
+		expect(event.isAccepted()).toBe(false);
 	});
 });

@@ -63,6 +63,10 @@ export class CApplication extends CObject {
 	#onPointerDown = (event: PointerEvent): void => {
 		this.#dispatchMouseEvent(CEventType.MousePress, event);
 	};
+
+	#onDoubleClick = (event: MouseEvent): void => {
+		this.#dispatchDoubleClick(event);
+	};
 	
 	#onPointerUp = (event: PointerEvent): void => {
 		this.#dismissToolTip();
@@ -131,6 +135,7 @@ export class CApplication extends CObject {
 		});
 
 		canvas.addEventListener("pointerdown", this.#onPointerDown);
+		canvas.addEventListener("dblclick", this.#onDoubleClick);
 		canvas.addEventListener("pointerup", this.#onPointerUp);
 		canvas.addEventListener("pointermove", this.#onPointerMove);
 		canvas.addEventListener("wheel", this.#onWheel);
@@ -154,6 +159,7 @@ export class CApplication extends CObject {
 
 		const canvas = this.#m_paintDevice.canvas();
 		canvas.removeEventListener("pointerdown", this.#onPointerDown);
+		canvas.removeEventListener("dblclick", this.#onDoubleClick);
 		canvas.removeEventListener("pointerup", this.#onPointerUp);
 		canvas.removeEventListener("pointermove", this.#onPointerMove);
 		canvas.removeEventListener("wheel", this.#onWheel);
@@ -661,7 +667,7 @@ export class CApplication extends CObject {
 		}
 	}
 
-	#canvasPosition(event: PointerEvent): CPoint {
+	#canvasPosition(event: MouseEvent): CPoint {
 		const canvas = this.#m_paintDevice.canvas();
 		const rect = canvas.getBoundingClientRect();
 
@@ -815,6 +821,20 @@ export class CApplication extends CObject {
 		}
 	}
 
+	#dispatchDoubleClick(mouseEvent: MouseEvent): void {
+		const position = this.#canvasPosition(mouseEvent);
+		let target = this.#widgetAt(position.x(), position.y());
+
+		while (target !== null) {
+			if (this.#sendMouseEvent(
+				target, CEventType.MouseDoubleClick, mouseEvent
+			))
+				break;
+
+			target = target.parent();
+		}
+	}
+
 	#dispatchWheelEvent(type: CEventType, wheelEvent: WheelEvent): void {
 		let target = this.#m_hoverWidget;
 		if (target === null)
@@ -895,14 +915,14 @@ export class CApplication extends CObject {
 			);
 	}
 
-	#sendMouseEvent(widget: CWidget, type: CEventType, pointerEvent: PointerEvent): boolean {
-		const position = this.#canvasPosition(pointerEvent);
+	#sendMouseEvent(widget: CWidget, type: CEventType, mouseEvent: MouseEvent): boolean {
+		const position = this.#canvasPosition(mouseEvent);
 		const localPosition = widget.mapFromCanvas(
 			position.x(), position.y()
 		);
 
 		const event = new CMouseEvent(type, localPosition.x(), localPosition.y(),
-				this.#mouseButton(pointerEvent.button), pointerEvent.shiftKey);
+				this.#mouseButton(mouseEvent.button), mouseEvent.shiftKey);
 
 		return widget.event(event);
 	}

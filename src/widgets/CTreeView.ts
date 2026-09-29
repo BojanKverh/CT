@@ -47,6 +47,10 @@ class CTreeViewContentWidget extends CWidget {
 		this.#m_view.contentMousePressEvent(event);
 	}
 
+	protected override mouseDoubleClickEvent(event: CMouseEvent): void {
+		this.#m_view.contentMouseDoubleClickEvent(event);
+	}
+
 	protected override keyPressEvent(event: CKeyEvent): void {
 		this.#m_view.contentKeyPressEvent(event);
 	}
@@ -433,6 +437,52 @@ export class CTreeView extends CAbstractItemView {
 
 		this.#m_contentWidget.update();
 
+		event.accept();
+	}
+
+	/** Starts editing the tree cell under a double click. */
+	contentMouseDoubleClickEvent(event: CMouseEvent): void {
+		const model = this.model();
+		const selectionModel = this.selectionModel();
+
+		if (event.type() !== CEventType.MouseDoubleClick
+			|| event.button() !== CMouseButton.LeftButton
+			|| model === null
+			|| selectionModel === null) {
+			event.ignore();
+			return;
+		}
+
+		const row = Math.floor(event.pos().y() / CTreeView.RowHeight);
+		const treeRow = this.#m_rows[row];
+
+		if (treeRow === undefined) {
+			event.ignore();
+			return;
+		}
+
+		if (this.#indicatorContains(treeRow, event.pos().x())) {
+			event.accept();
+			return;
+		}
+
+		const column = this.#m_header.sectionAt(event.pos().x());
+		if (column < 0 || column >= model.columnCount()) {
+			event.ignore();
+			return;
+		}
+
+		const index = this.#indexForColumn(treeRow, column);
+		if (!index.isValid()) {
+			event.ignore();
+			return;
+		}
+
+		selectionModel.clearSelection();
+		selectionModel.select(index);
+		selectionModel.setCurrentIndex(index);
+		this.#m_contentWidget.update();
+		this.edit(index);
 		event.accept();
 	}
 
