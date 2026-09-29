@@ -267,6 +267,8 @@ export class CTableView extends CAbstractItemView {
 			return;
 		}
 
+		this.#m_contentWidget.setFocus();
+
 		const column = this.#m_horizontalHeader.sectionAt(event.pos().x());
 
 		const row = Math.floor(

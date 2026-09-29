@@ -205,6 +205,8 @@ export class CListView extends CAbstractItemView {
 			return;
 		}
 
+		this.#m_contentWidget.setFocus();
+
 		const row = Math.floor(event.pos().y() / CListView.ItemHeight);
 		const index = model.index(row, 0);
 

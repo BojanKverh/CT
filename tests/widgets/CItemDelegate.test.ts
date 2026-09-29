@@ -223,6 +223,85 @@ describe("CItemDelegate", () => {
 		expect(closeCount).toBe(1);
 	});
 
+	test("Enter accepts the event before emitting delegate signals", () => {
+		const delegate = new CItemDelegate();
+		const parent = new CWidget();
+		const model = new TestTableModel();
+		const editor = delegate.createEditor(parent, model.index(0, 0));
+		const event = new CKeyEvent(CEventType.KeyPress, "Enter");
+
+		delegate.commitData.connect(() => {
+			expect(event.isAccepted()).toBe(true);
+		});
+		delegate.closeEditor.connect(() => {
+			expect(event.isAccepted()).toBe(true);
+		});
+
+		editor.event(event);
+	});
+
+	test("Escape accepts the event before emitting closeEditor", () => {
+		const delegate = new CItemDelegate();
+		const parent = new CWidget();
+		const model = new TestTableModel();
+		const editor = delegate.createEditor(parent, model.index(0, 0));
+		const event = new CKeyEvent(CEventType.KeyPress, "Escape");
+
+		delegate.closeEditor.connect(() => {
+			expect(event.isAccepted()).toBe(true);
+		});
+
+		editor.event(event);
+	});
+
+	test("ArrowUp is consumed without committing or closing", () => {
+		const delegate = new CItemDelegate();
+		const parent = new CWidget();
+		const model = new TestTableModel();
+		const editor = delegate.createEditor(
+			parent,
+			model.index(0, 0)
+		) as CLineEdit;
+		let commitCount = 0;
+		let closeCount = 0;
+
+		delegate.setEditorData(editor, model.index(0, 0));
+		delegate.commitData.connect(() => ++commitCount);
+		delegate.closeEditor.connect(() => ++closeCount);
+
+		const event = new CKeyEvent(CEventType.KeyPress, "ArrowUp");
+		editor.event(event);
+
+		expect(event.isAccepted()).toBe(true);
+		expect(editor.text()).toBe("Alice");
+		expect(commitCount).toBe(0);
+		expect(closeCount).toBe(0);
+	});
+
+	test("ArrowDown is consumed without committing or closing", () => {
+		const delegate = new CItemDelegate();
+		const parent = new CWidget();
+		const model = new TestTableModel();
+		const editor = delegate.createEditor(
+			parent,
+			model.index(0, 0)
+		) as CLineEdit;
+		let commitCount = 0;
+		let closeCount = 0;
+
+		delegate.setEditorData(editor, model.index(0, 0));
+		delegate.commitData.connect(() => ++commitCount);
+		delegate.closeEditor.connect(() => ++closeCount);
+
+		const event = new CKeyEvent(CEventType.KeyPress, "ArrowDown");
+		editor.event(event);
+
+		expect(event.isAccepted()).toBe(true);
+		expect(editor.text()).toBe("Alice");
+		expect(commitCount).toBe(0);
+		expect(closeCount).toBe(0);
+	});
+
 	test("ordinary keys are handled by the line edit", () => {
 		const delegate = new CItemDelegate();
 		const parent = new CWidget();

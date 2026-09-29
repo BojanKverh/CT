@@ -11,19 +11,24 @@ class CItemDelegateLineEdit extends CLineEdit {
 	readonly canceled = new CSignal<[]>();
 
 	protected override keyPressEvent(event: CKeyEvent): void {
-		if (event.key() === "Enter") {
-			this.accepted.emit();
-			event.accept();
-			return;
-		}
+    	if (event.key() === "Enter") {
+        	event.accept();
+        	this.accepted.emit();
+        	return;
+    	}
 
-		if (event.key() === "Escape") {
-			this.canceled.emit();
-			event.accept();
-			return;
-		}
+    	if (event.key() === "Escape") {
+        	event.accept();
+        	this.canceled.emit();
+        	return;
+    	}
 
-		super.keyPressEvent(event);
+    	if (event.key() === "ArrowUp" || event.key() === "ArrowDown") {
+        	event.accept();
+        	return;
+    	}
+
+    	super.keyPressEvent(event);
 	}
 }
 

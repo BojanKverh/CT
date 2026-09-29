@@ -382,6 +382,8 @@ export class CTreeView extends CAbstractItemView {
 			return;
 		}
 
+		this.#m_contentWidget.setFocus();
+
 		const row = Math.floor(
 			event.pos().y() / CTreeView.RowHeight
 		);

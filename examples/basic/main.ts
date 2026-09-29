@@ -161,6 +161,21 @@ class DemoTableModel extends CAbstractTableModel {
 		return this.#m_rows[0]?.length ?? 0;
 	}
 
+	override isEditable(_index: CModelIndex): boolean {
+    	return true;
+	}
+
+	override setItemData(index: CModelIndex, value: unknown): boolean
+	{
+		if (!index.isValid())
+        	return false;
+
+    	this.#m_rows[index.row()]![index.column()] = String(value);
+    	this.emitDataChanged(index, index);
+
+    return true;
+	}
+
 	override data(index: CModelIndex): unknown {
 		if (!index.isValid())
 			return null;

@@ -9,4 +9,10 @@ export abstract class CAbstractTableModel extends CAbstractItemModel {
 	override parentIndex(_index: CModelIndex): CModelIndex {
 		return new CModelIndex();
 	}
+
+	abstract override setItemData(index: CModelIndex, value: unknown): boolean;
+
+	override isEditable(_index: CModelIndex): boolean {
+        return false;
+    }
 }
