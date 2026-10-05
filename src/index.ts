@@ -24,6 +24,7 @@ export { CSlider } from "./widgets/CSlider.js";
 export { CProgressBar } from "./widgets/CProgressBar.js";
 export { CGroupBox } from "./widgets/CGroupBox.js";
 export { CSpinBox } from "./widgets/CSpinBox.js";
+export { CDoubleSpinBox } from "./widgets/CDoubleSpinBox.js";
 export { COrientation } from "./gui/COrientation.js";
 export { CScrollBar } from "./widgets/CScrollBar.js";
 export { CColor } from "./gui/CColor.js";

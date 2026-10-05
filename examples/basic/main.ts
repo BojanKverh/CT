@@ -9,7 +9,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget, CTableWidgetItem, CTableWidget, 
 	CContextMenuEvent, CDragEnterEvent, CDragMoveEvent, CDragLeaveEvent, CDropEvent,
 	CDrag, CMimeData, CDropAction, CIcon, CDockWidget, CDockWidgetArea,
-	CCursorShape, CDial, CTextBrowser
+	CCursorShape, CDial, CTextBrowser, CDoubleSpinBox
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -940,8 +940,15 @@ sbox.valueChanged.connect(value => {
 	console.log("spin value:", value);
 });
 
+const dbox = new CDoubleSpinBox(gb);
+dbox.setGeometry(5, 95, 80, 28);
+dbox.setValue(55.51);
+dbox.valueChanged.connect(value => {
+	console.log("double spin value:", value);
+});
+
 const sbar = new CScrollBar(COrientation.Horizontal, gb);
-sbar.setGeometry(5, 115, 200, 16);
+sbar.setGeometry(5, 125, 200, 16);
 
 const vbar = new CScrollBar(COrientation.Vertical, parent);
 vbar.setGeometry(220, 50, 16, 200);
