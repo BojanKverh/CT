@@ -18,7 +18,6 @@ import { CIntItemDelegate } from "../../src/widgets/CIntItemDelegate.js";
 import { CDoubleItemDelegate } from "../../src/widgets/CDoubleItemDelegate.js";
 import { CSpinBox } from "../../src/widgets/CSpinBox.js";
 import { CDoubleSpinBox } from "../../src/widgets/CDoubleSpinBox.js";
-import { CLineEdit } from "../../src/widgets/CLineEdit.js";
 
 class TestTableModel extends CAbstractTableModel {
 	#m_data: string[][];
@@ -1723,7 +1722,7 @@ describe("CTableView", () => {
 		expect(findEditor(view, CDoubleSpinBox)).toBeNull();
 	});
 
-	test("removing a numeric column delegate restores the line editor", () => {
+	test("removing a numeric column delegate restores automatic selection", () => {
 		const view = new CTableView();
 		const model = new NumericEditableTableModel();
 
@@ -1732,8 +1731,10 @@ describe("CTableView", () => {
 		view.setItemDelegateForColumn(1, null);
 		view.edit(model.index(0, 1));
 
-		expect(findEditor(view, CLineEdit)).not.toBeNull();
-		expect(findEditor(view, CSpinBox)).toBeNull();
+		expect(view.itemDelegateForIndex(model.index(0, 1)))
+			.toBe(view.itemDelegate());
+		expect(findEditor(view, CSpinBox)).not.toBeNull();
+		expect(findEditor(view, CDoubleSpinBox)).toBeNull();
 	});
 
 	test("double click selects and starts editing the cell", () => {

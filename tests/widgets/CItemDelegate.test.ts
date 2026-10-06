@@ -7,14 +7,16 @@ import { COrientation } from "../../src/gui/COrientation.js";
 import { CAbstractTableModel } from "../../src/models/CAbstractTableModel.js";
 import { CModelIndex } from "../../src/models/CModelIndex.js";
 import { CItemDelegate } from "../../src/widgets/CItemDelegate.js";
+import { CDoubleSpinBox } from "../../src/widgets/CDoubleSpinBox.js";
 import { CLineEdit } from "../../src/widgets/CLineEdit.js";
+import { CSpinBox } from "../../src/widgets/CSpinBox.js";
 import { CWidget } from "../../src/widgets/CWidget.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 
 class TestTableModel extends CAbstractTableModel {
 	#m_data: unknown[][];
 
-	constructor(data: unknown[][] = [["Alice", 42, null]]) {
+	constructor(data: unknown[][] = [["Alice", 42, null, 12.5]]) {
 		super();
 		this.#m_data = data;
 	}
@@ -110,7 +112,7 @@ describe("CItemDelegate", () => {
 		expect((editor as CLineEdit).text()).toBe("Alice");
 	});
 
-	test("converts numeric model data to text", () => {
+	test("creates a spin box for integer model data", () => {
 		const delegate = new CItemDelegate();
 		const parent = new CWidget();
 		const model = new TestTableModel();
@@ -119,7 +121,63 @@ describe("CItemDelegate", () => {
 
 		delegate.setEditorData(editor, index);
 
+		expect(editor).toBeInstanceOf(CSpinBox);
+		expect((editor as CSpinBox).value()).toBe(42);
+		expect(editor.hasFocus()).toBe(false);
+	});
+
+	test("creates a double spin box for decimal model data", () => {
+		const delegate = new CItemDelegate();
+		const parent = new CWidget();
+		const model = new TestTableModel();
+		const index = model.index(0, 3);
+		const editor = delegate.createEditor(parent, index);
+
+		delegate.setEditorData(editor, index);
+
+		expect(editor).toBeInstanceOf(CDoubleSpinBox);
+		expect((editor as CDoubleSpinBox).value()).toBe(12.5);
+	});
+
+	test("keeps numeric-looking strings in a line edit", () => {
+		const delegate = new CItemDelegate();
+		const model = new TestTableModel([["42"]]);
+		const index = model.index(0, 0);
+		const editor = delegate.createEditor(new CWidget(), index);
+
+		delegate.setEditorData(editor, index);
+
+		expect(editor).toBeInstanceOf(CLineEdit);
 		expect((editor as CLineEdit).text()).toBe("42");
+	});
+
+	test("integer editor supports values outside the spin box default range", () => {
+		const delegate = new CItemDelegate();
+		const model = new TestTableModel([[-1234]]);
+		const index = model.index(0, 0);
+		const editor = delegate.createEditor(
+			new CWidget(), index
+		) as CSpinBox;
+
+		delegate.setEditorData(editor, index);
+
+		expect(editor.minimum()).toBe(Number.MIN_SAFE_INTEGER);
+		expect(editor.maximum()).toBe(Number.MAX_SAFE_INTEGER);
+		expect(editor.value()).toBe(-1234);
+	});
+
+	test("double editor preserves the model value decimal places", () => {
+		const delegate = new CItemDelegate();
+		const model = new TestTableModel([[12.3456]]);
+		const index = model.index(0, 0);
+		const editor = delegate.createEditor(
+			new CWidget(), index
+		) as CDoubleSpinBox;
+
+		delegate.setEditorData(editor, index);
+
+		expect(editor.decimals()).toBe(4);
+		expect(editor.value()).toBe(12.3456);
 	});
 
 	test("converts null model data to empty text", () => {
@@ -155,6 +213,36 @@ describe("CItemDelegate", () => {
 		delegate.setModelData(editor, model, index);
 
 		expect(model.data(index)).toBe("Bob");
+	});
+
+	test("writes an integer editor value as a number", () => {
+		const delegate = new CItemDelegate();
+		const model = new TestTableModel();
+		const index = model.index(0, 1);
+		const editor = delegate.createEditor(
+			new CWidget(), index
+		) as CSpinBox;
+
+		editor.setValue(-123);
+		delegate.setModelData(editor, model, index);
+
+		expect(model.data(index)).toBe(-123);
+		expect(typeof model.data(index)).toBe("number");
+	});
+
+	test("writes a double editor value as a number", () => {
+		const delegate = new CItemDelegate();
+		const model = new TestTableModel();
+		const index = model.index(0, 3);
+		const editor = delegate.createEditor(
+			new CWidget(), index
+		) as CDoubleSpinBox;
+
+		editor.setValue(-45.75);
+		delegate.setModelData(editor, model, index);
+
+		expect(model.data(index)).toBe(-45.75);
+		expect(typeof model.data(index)).toBe("number");
 	});
 
 	test("setModelData ignores a non-line-edit widget", () => {
@@ -364,5 +452,22 @@ describe("CItemDelegate", () => {
 		editor2.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
 
 		expect(committedEditors).toEqual([editor1, editor2]);
+	});
+
+	test("Enter commits and closes an automatically selected numeric editor", () => {
+		const delegate = new CItemDelegate();
+		const model = new TestTableModel();
+		const editor = delegate.createEditor(
+			new CWidget(), model.index(0, 1)
+		);
+		const events: string[] = [];
+
+		delegate.commitData.connect(() => events.push("commit"));
+		delegate.closeEditor.connect(() => events.push("close"));
+		const event = new CKeyEvent(CEventType.KeyPress, "Enter");
+		editor.event(event);
+
+		expect(event.isAccepted()).toBe(true);
+		expect(events).toEqual(["commit", "close"]);
 	});
 });
