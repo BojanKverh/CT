@@ -11,6 +11,9 @@ import { CTimer } from "../core/CTimer.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CClipboard } from "../core/CClipboard.js";
 import { CStyleOptionLineEdit } from "../gui/CStyleOptionLineEdit.js";
+import { CValidator, CValidatorState } from "../util/CValidator.js";
+
+type CLineEditValidator = CValidator | ((text: string) => boolean);
 
 /** Implements the line edit widget. */
 export class CLineEdit extends CWidget {
@@ -23,7 +26,7 @@ export class CLineEdit extends CWidget {
 	#m_selectingWithMouse = false;
 	#m_cursorVisible = true;
 	#m_cursorTimer = new CTimer(this);
-	#m_validator: ((text: string) => boolean) | null = null;
+	#m_validator: CLineEditValidator | null = null;
 	#m_readOnly = false;
 
 	/** Public editing finished member. */
@@ -78,8 +81,13 @@ export class CLineEdit extends CWidget {
 	}
 
 	/** Sets the validator. */
-	setValidator(validator: ((text: string) => boolean) | null): void {
+	setValidator(validator: CLineEditValidator | null): void {
 		this.#m_validator = validator;
+	}
+
+	/** Returns the current validator. */
+	validator(): CLineEditValidator | null {
+		return this.#m_validator;
 	}
 
 	/** Provides cursor behavior. */
@@ -113,7 +121,7 @@ export class CLineEdit extends CWidget {
 			+ this.#m_text.slice(end);
 
 		/** Provides if behavior. */
-		if (this.#m_validator !== null && !this.#m_validator(newText))
+		if (!this.#isValidInput(newText))
 			return;
 
 		this.#m_text = newText;
@@ -122,6 +130,16 @@ export class CLineEdit extends CWidget {
 		this.textChanged.emit(this.#m_text);
 		this.#resetCursorBlink();
 		this.update();
+	}
+
+	#isValidInput(text: string): boolean {
+		if (this.#m_validator === null)
+			return true;
+
+		if (typeof this.#m_validator === "function")
+			return this.#m_validator(text);
+
+		return this.#m_validator.validate(text) !== CValidatorState.Invalid;
 	}
 
     /** Provides selection start behavior. */

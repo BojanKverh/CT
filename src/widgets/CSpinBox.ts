@@ -6,6 +6,7 @@ import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CWheelEvent } from "../../src/events/CWheelEvent.js";
 import { CSize } from "../geometry/CSize.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import { CIntValidator } from "../util/CIntValidator.js";
 
 /** Implements the spin box widget. */
 export class CSpinBox extends CWidget {
@@ -17,6 +18,7 @@ export class CSpinBox extends CWidget {
 	#m_maximum = 100;
 	#m_value = 0;
 	#m_singleStep = 1;
+	#m_validator = new CIntValidator(this.#m_minimum, this.#m_maximum);
 
 	/** Signal emitted when value changes. */
 	readonly valueChanged = new CSignal<[number]>();
@@ -26,9 +28,7 @@ export class CSpinBox extends CWidget {
 		/** Provides super behavior. */
 		super(parent);
 
-		this.#m_editor.setValidator(text => {
-			return /^-?\d*$/.test(text);
-		});
+		this.#m_editor.setValidator(this.#m_validator);
 		
         this.#m_upButton.clicked.connect(() => {
 			this.stepUp();
@@ -90,6 +90,7 @@ export class CSpinBox extends CWidget {
 
 		this.#m_minimum = minimum;
 		this.#m_maximum = maximum;
+		this.#m_validator.setRange(minimum, maximum);
 
 		this.setValue(this.#m_value);
 		this.update();

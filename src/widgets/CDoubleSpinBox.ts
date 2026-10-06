@@ -3,6 +3,7 @@ import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CWheelEvent } from "../events/CWheelEvent.js";
 import { CSize } from "../geometry/CSize.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import { CDoubleValidator } from "../util/CDoubleValidator.js";
 import { CLineEdit } from "./CLineEdit.js";
 import { CPushButton } from "./CPushButton.js";
 import { CWidget } from "./CWidget.js";
@@ -18,6 +19,11 @@ export class CDoubleSpinBox extends CWidget {
 	#m_value = 0;
 	#m_singleStep = 1;
 	#m_decimals = 2;
+	#m_validator = new CDoubleValidator(
+		this.#m_minimum,
+		this.#m_maximum,
+		this.#m_decimals
+	);
 
 	/** Signal emitted when the value changes. */
 	readonly valueChanged = new CSignal<[number]>();
@@ -26,7 +32,7 @@ export class CDoubleSpinBox extends CWidget {
 	constructor(parent: CWidget | null = null) {
 		super(parent);
 
-		this.#m_editor.setValidator(text => this.#isValidInput(text));
+		this.#m_editor.setValidator(this.#m_validator);
 
 		this.#m_upButton.clicked.connect(() => this.stepUp());
 		this.#m_downButton.clicked.connect(() => this.stepDown());
@@ -92,6 +98,7 @@ export class CDoubleSpinBox extends CWidget {
 
 		this.#m_minimum = minimum;
 		this.#m_maximum = maximum;
+		this.#updateValidator();
 		this.setValue(this.#m_value);
 		this.#updateEditorText();
 		this.update();
@@ -139,6 +146,7 @@ export class CDoubleSpinBox extends CWidget {
 		this.#m_maximum = this.#round(this.#m_maximum);
 		if (this.#m_minimum > this.#m_maximum)
 			this.#m_maximum = this.#m_minimum;
+		this.#updateValidator();
 
 		const oldValue = this.#m_value;
 		this.#m_value = Math.max(
@@ -258,23 +266,17 @@ export class CDoubleSpinBox extends CWidget {
 		this.#m_editor.setText(this.#format(this.#m_value));
 	}
 
-	#format(value: number): string {
-		return value.toFixed(this.#m_decimals);
+	#updateValidator(): void {
+		this.#m_validator = new CDoubleValidator(
+			this.#m_minimum,
+			this.#m_maximum,
+			this.#m_decimals
+		);
+		this.#m_editor.setValidator(this.#m_validator);
 	}
 
-	#isValidInput(text: string): boolean {
-		if (text === "" || text === "-")
-			return true;
-
-		if (this.#m_decimals === 0)
-			return /^-?\d+$/.test(text);
-
-		const pattern = new RegExp(
-			`^-?(?:\\d+(?:\\.\\d{0,${this.#m_decimals}})?|`
-			+ `\\.\\d{0,${this.#m_decimals}})$`
-		);
-
-		return pattern.test(text);
+	#format(value: number): string {
+		return value.toFixed(this.#m_decimals);
 	}
 
 	#round(value: number): number {

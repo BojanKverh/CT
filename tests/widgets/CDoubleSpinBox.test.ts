@@ -8,6 +8,8 @@ import { CDoubleSpinBox } from "../../src/widgets/CDoubleSpinBox.js";
 import { CWidget } from "../../src/widgets/CWidget.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { createTestWindow } from "../helpers/createTestWindow.js";
+import { CDoubleValidator } from "../../src/util/CDoubleValidator.js";
+import { CValidatorState } from "../../src/util/CValidator.js";
 
 describe("CDoubleSpinBox", () => {
 	beforeEach(() => {
@@ -339,8 +341,16 @@ describe("CDoubleSpinBox", () => {
 
 	test("line editor accepts intermediate negative decimal input", () => {
 		const spinBox = new CDoubleSpinBox();
+		spinBox.setRange(-100, 100);
+
 		const editor = spinBox.lineEdit();
 		editor.setText("");
+
+		const validator = editor.validator() as CDoubleValidator;
+
+		expect(validator.bottom()).toBe(-100);
+		expect(validator.top()).toBe(100);
+		expect(validator.validate("-")).toBe(CValidatorState.Intermediate);
 
 		editor.insert("-");
 		editor.insert(".");

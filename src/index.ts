@@ -96,3 +96,6 @@ export { CStyleOptionComboBox } from "./gui/CStyleOptionComboBox.js";
 export { CStyleOptionLineEdit } from "./gui/CStyleOptionLineEdit.js";
 export { CDial } from "./widgets/CDial.js";
 export { CTextBrowser } from "./widgets/CTextBrowser.js";
+export { CValidator } from "./util/CValidator.js"
+export { CIntValidator } from "./util/CIntValidator.js"
+export { CDoubleValidator } from "./util/CDoubleValidator.js"
