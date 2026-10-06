@@ -14,6 +14,11 @@ import { CAbstractItemDelegate } from "../../src/widgets/CAbstractItemDelegate.j
 import { CItemDelegate } from "../../src/widgets/CItemDelegate.js";
 import { CWidget } from "../../src/widgets/CWidget.js";
 import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
+import { CIntItemDelegate } from "../../src/widgets/CIntItemDelegate.js";
+import { CDoubleItemDelegate } from "../../src/widgets/CDoubleItemDelegate.js";
+import { CSpinBox } from "../../src/widgets/CSpinBox.js";
+import { CDoubleSpinBox } from "../../src/widgets/CDoubleSpinBox.js";
+import { CLineEdit } from "../../src/widgets/CLineEdit.js";
 
 class TestTableModel extends CAbstractTableModel {
 	#m_data: string[][];
@@ -91,6 +96,48 @@ class EditableTableModel extends TestTableModel {
 	}
 }
 
+class NumericEditableTableModel extends CAbstractTableModel {
+	#m_data: unknown[][] = [
+		["Alice", 30, 1250.5],
+		["Bob", 40, 980.25]
+	];
+
+	override rowCount(_parent = new CModelIndex()): number {
+		return this.#m_data.length;
+	}
+
+	override columnCount(_parent = new CModelIndex()): number {
+		return this.#m_data[0]?.length ?? 0;
+	}
+
+	override data(index: CModelIndex): unknown {
+		return index.isValid()
+			? this.#m_data[index.row()]?.[index.column()] ?? null
+			: null;
+	}
+
+	override headerData(
+		_section: number,
+		_orientation: COrientation
+	): null {
+		return null;
+	}
+
+	override isEditable(_index: CModelIndex): boolean {
+		return true;
+	}
+
+	override setItemData(index: CModelIndex, value: unknown): boolean {
+		const row = this.#m_data[index.row()];
+		if (!index.isValid() || row === undefined)
+			return false;
+
+		row[index.column()] = value;
+		this.emitDataChanged(index, index);
+		return true;
+	}
+}
+
 class TestItemDelegate extends CAbstractItemDelegate {
 	createEditorCalls: Array<{ parent: CWidget; index: CModelIndex }> = [];
 	setEditorDataCalls: Array<{ editor: CWidget; index: CModelIndex }> = [];
@@ -135,6 +182,25 @@ class TestItemDelegate extends CAbstractItemDelegate {
 function mouseDoubleClick(x: number, y: number): CMouseEvent {
 	return new CMouseEvent(CEventType.MouseDoubleClick, x, y,
 		CMouseButton.LeftButton);
+}
+
+function findEditor<T extends CWidget>(
+	root: CWidget,
+	editorType: new (...args: never[]) => T
+): T | null {
+	for (const child of root.children()) {
+		if (!(child instanceof CWidget))
+			continue;
+
+		if (child instanceof editorType)
+			return child;
+
+		const descendant = findEditor(child, editorType);
+		if (descendant !== null)
+			return descendant;
+	}
+
+	return null;
 }
 
 describe("CTableView", () => {
@@ -1545,6 +1611,129 @@ describe("CTableView", () => {
 		delegate.commitData.emit(delegate.lastEditor!);
 
 		expect(delegate.setModelDataCalls).toHaveLength(1);
+	});
+
+	test("F2 opens a spin box supplied by the column delegate", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+		const delegate = new CIntItemDelegate();
+		const index = model.index(0, 1);
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(1, delegate);
+		view.setCurrentIndex(index);
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "F2")
+		);
+
+		const editor = findEditor(view, CSpinBox);
+		expect(editor).not.toBeNull();
+		expect(editor?.value()).toBe(30);
+		expect(editor?.hasFocus()).toBe(true);
+	});
+
+	test("double click opens a double spin box for its column", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+		const delegate = new CDoubleItemDelegate();
+		delegate.setRange(0, 2000);
+		const x = view.horizontalHeader().sectionPosition(2) + 10;
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(2, delegate);
+		view.contentMouseDoubleClickEvent(mouseDoubleClick(x, 5));
+
+		const editor = findEditor(view, CDoubleSpinBox);
+		expect(editor).not.toBeNull();
+		expect(editor?.value()).toBe(1250.5);
+		expect(view.currentIndex().equals(model.index(0, 2))).toBe(true);
+	});
+
+	test("Enter commits an integer as a number and closes the editor", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+		const delegate = new CIntItemDelegate();
+		const index = model.index(0, 1);
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(1, delegate);
+		view.edit(index);
+
+		const editor = findEditor(view, CSpinBox)!;
+		editor.setValue(73);
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		expect(model.data(index)).toBe(73);
+		expect(typeof model.data(index)).toBe("number");
+		expect(editor.parent()).toBeNull();
+	});
+
+	test("Enter commits a double as a number and closes the editor", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+		const delegate = new CDoubleItemDelegate();
+		delegate.setRange(0, 2000);
+		const index = model.index(0, 2);
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(2, delegate);
+		view.edit(index);
+
+		const editor = findEditor(view, CDoubleSpinBox)!;
+		editor.setValue(1444.75);
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		expect(model.data(index)).toBe(1444.75);
+		expect(typeof model.data(index)).toBe("number");
+		expect(editor.parent()).toBeNull();
+	});
+
+	test("Escape closes a numeric editor without changing the model", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+		const delegate = new CIntItemDelegate();
+		const index = model.index(0, 1);
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(1, delegate);
+		view.edit(index);
+
+		const editor = findEditor(view, CSpinBox)!;
+		editor.setValue(73);
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Escape"));
+
+		expect(model.data(index)).toBe(30);
+		expect(editor.parent()).toBeNull();
+	});
+
+	test("a numeric row delegate takes priority over a column delegate", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+		const rowDelegate = new CIntItemDelegate();
+		const columnDelegate = new CDoubleItemDelegate();
+		rowDelegate.setRange(0, 2000);
+		columnDelegate.setRange(0, 2000);
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(2, columnDelegate);
+		view.setItemDelegateForRow(1, rowDelegate);
+		view.edit(model.index(1, 2));
+
+		expect(findEditor(view, CSpinBox)).not.toBeNull();
+		expect(findEditor(view, CDoubleSpinBox)).toBeNull();
+	});
+
+	test("removing a numeric column delegate restores the line editor", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(1, new CIntItemDelegate());
+		view.setItemDelegateForColumn(1, null);
+		view.edit(model.index(0, 1));
+
+		expect(findEditor(view, CLineEdit)).not.toBeNull();
+		expect(findEditor(view, CSpinBox)).toBeNull();
 	});
 
 	test("double click selects and starts editing the cell", () => {

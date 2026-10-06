@@ -1,5 +1,6 @@
 import { CSignal } from "../core/CSignal.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CAbstractItemModel } from "../models/CAbstractItemModel.js";
 import { CModelIndex } from "../models/CModelIndex.js";
 import { CAbstractItemDelegate } from "./CAbstractItemDelegate.js";
@@ -76,6 +77,7 @@ export class CIntItemDelegate extends CAbstractItemDelegate {
 		_index: CModelIndex
 	): CWidget {
 		const editor = new CIntItemDelegateSpinBox(parent);
+		editor.setFocusPolicy(CFocusPolicy.StrongFocus);
 		editor.setRange(this.#m_minimum, this.#m_maximum);
 		editor.setSingleStep(this.#m_singleStep);
 

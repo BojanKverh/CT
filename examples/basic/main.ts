@@ -9,7 +9,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget, CTableWidgetItem, CTableWidget, 
 	CContextMenuEvent, CDragEnterEvent, CDragMoveEvent, CDragLeaveEvent, CDropEvent,
 	CDrag, CMimeData, CDropAction, CIcon, CDockWidget, CDockWidgetArea,
-	CCursorShape, CDial, CTextBrowser, CDoubleSpinBox
+	CCursorShape, CDial, CTextBrowser, CDoubleSpinBox, CIntItemDelegate
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -673,6 +673,7 @@ but3.clicked.connect(() => {
 	tv.setGeometry(50, 20, 500, 330);
 	const model = new DemoTableModel();
 	tv.setModel(model);
+	tv.setItemDelegateForColumn(2, new CIntItemDelegate());
 
 	const bb = new CDialogButtonBox(CStandardButton.Ok, dlg);
 	bb.setGeometry(0, 360, 780, 30);
