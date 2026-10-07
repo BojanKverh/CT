@@ -18,6 +18,7 @@ import { CIntItemDelegate } from "../../src/widgets/CIntItemDelegate.js";
 import { CDoubleItemDelegate } from "../../src/widgets/CDoubleItemDelegate.js";
 import { CSpinBox } from "../../src/widgets/CSpinBox.js";
 import { CDoubleSpinBox } from "../../src/widgets/CDoubleSpinBox.js";
+import { CDateEdit } from "../../src/widgets/CDateEdit.js";
 
 class TestTableModel extends CAbstractTableModel {
 	#m_data: string[][];
@@ -97,8 +98,8 @@ class EditableTableModel extends TestTableModel {
 
 class NumericEditableTableModel extends CAbstractTableModel {
 	#m_data: unknown[][] = [
-		["Alice", 30, 1250.5],
-		["Bob", 40, 980.25]
+		["Alice", 30, 1250.5, true, new Date(2026, 9, 6)],
+		["Bob", 40, 980.25, false, new Date(2027, 2, 14)]
 	];
 
 	override rowCount(_parent = new CModelIndex()): number {
@@ -180,6 +181,11 @@ class TestItemDelegate extends CAbstractItemDelegate {
 
 function mouseDoubleClick(x: number, y: number): CMouseEvent {
 	return new CMouseEvent(CEventType.MouseDoubleClick, x, y,
+		CMouseButton.LeftButton);
+}
+
+function mousePress(x: number, y: number): CMouseEvent {
+	return new CMouseEvent(CEventType.MousePress, x, y,
 		CMouseButton.LeftButton);
 }
 
@@ -1735,6 +1741,100 @@ describe("CTableView", () => {
 			.toBe(view.itemDelegate());
 		expect(findEditor(view, CSpinBox)).not.toBeNull();
 		expect(findEditor(view, CDoubleSpinBox)).toBeNull();
+	});
+
+	test("F2 does not open an editor for boolean data", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+		const index = model.index(0, 3);
+
+		view.setModel(model);
+		view.setCurrentIndex(index);
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "F2")
+		);
+
+		expect(model.data(index)).toBe(true);
+	});
+
+	test("clicking a boolean indicator toggles its value", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+		const index = model.index(0, 3);
+
+		view.setModel(model);
+		view.contentMousePressEvent(mousePress(420, 12));
+
+		expect(model.data(index)).toBe(false);
+		expect(typeof model.data(index)).toBe("boolean");
+		expect(view.currentIndex().equals(index)).toBe(true);
+	});
+
+	test("Space toggles boolean data in the current cell", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+		const index = model.index(0, 3);
+
+		view.setModel(model);
+		view.setCurrentIndex(index);
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, " ")
+		);
+
+		expect(model.data(index)).toBe(false);
+	});
+
+	test("F2 automatically opens a date edit for Date data", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+		const index = model.index(0, 4);
+
+		view.setModel(model);
+		view.setCurrentIndex(index);
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "F2")
+		);
+
+		const editor = findEditor(view, CDateEdit);
+		expect(editor).not.toBeNull();
+		expect(editor?.date().getTime())
+			.toBe((model.data(index) as Date).getTime());
+		expect(editor?.lineEdit().hasFocus()).toBe(true);
+	});
+
+	test("Enter commits a Date and closes its automatic editor", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+		const index = model.index(0, 4);
+		const date = new Date(2028, 6, 21);
+
+		view.setModel(model);
+		view.edit(index);
+
+		const editor = findEditor(view, CDateEdit)!;
+		editor.setDate(date);
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		expect(model.data(index)).toBeInstanceOf(Date);
+		expect((model.data(index) as Date).getTime()).toBe(date.getTime());
+		expect(editor.parent()).toBeNull();
+	});
+
+	test("Escape closes a date editor without changing the model", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+		const index = model.index(0, 4);
+		const originalTime = (model.data(index) as Date).getTime();
+
+		view.setModel(model);
+		view.edit(index);
+
+		const editor = findEditor(view, CDateEdit)!;
+		editor.setDate(new Date(2030, 0, 1));
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Escape"));
+
+		expect((model.data(index) as Date).getTime()).toBe(originalTime);
+		expect(editor.parent()).toBeNull();
 	});
 
 	test("double click selects and starts editing the cell", () => {

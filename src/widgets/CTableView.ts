@@ -250,8 +250,26 @@ export class CTableView extends CAbstractItemView {
 
 				painter.save();
 				painter.clipRect(new CRect(x, y, width, CTableView.RowHeight));
-				painter.drawText(value === null || value === undefined? "" : String(value),
-					x + 5, y + CTableView.RowHeight / 2);
+				const rect = new CRect(x, y, width, CTableView.RowHeight);
+				const delegate = this.itemDelegateForIndex(index);
+
+				if (!delegate.paint(
+					painter,
+					rect,
+					index,
+					this.#m_contentWidget
+				)) {
+					const val = value instanceof Date
+						? this.#formatDate(value)
+						: value === null || value === undefined
+							? ""
+							: String(value);
+					painter.drawText(
+						val,
+						x + 5,
+						y + CTableView.RowHeight / 2
+					);
+				}
 				painter.restore();
 			}
 		}
@@ -273,7 +291,7 @@ export class CTableView extends CAbstractItemView {
 
 		this.#m_contentWidget.setFocus();
 
-		const column = this.#m_horizontalHeader.sectionAt(event.pos().x());
+		const column = this.#m_horizontalHeader.sectionAt(event.pos().x() - this.#m_scrollArea.scrollX());
 
 		const row = Math.floor(
 			event.pos().y()
@@ -291,7 +309,18 @@ export class CTableView extends CAbstractItemView {
 
 		selectionModel.clearSelection();
 		selectionModel.select(index);
-		selectionModel.setCurrentIndex(index);
+		this.setCurrentIndex(index);
+
+		if (this.itemDelegateForIndex(index).editorEvent(
+			event,
+			model,
+			index,
+			this.visualRect(index)
+		)) {
+			this.#m_contentWidget.update();
+			event.accept();
+			return;
+		}
 
 		this.#m_contentWidget.update();
 		event.accept();
@@ -310,7 +339,7 @@ export class CTableView extends CAbstractItemView {
 			return;
 		}
 
-		const column = this.#m_horizontalHeader.sectionAt(event.pos().x());
+		const column = this.#m_horizontalHeader.sectionAt(event.pos().x() - this.#m_scrollArea.scrollX());
 		const row = Math.floor(event.pos().y() / CTableView.RowHeight);
 		const index = model.index(row, column);
 
@@ -321,7 +350,7 @@ export class CTableView extends CAbstractItemView {
 
 		selectionModel.clearSelection();
 		selectionModel.select(index);
-		selectionModel.setCurrentIndex(index);
+		this.setCurrentIndex(index);
 		this.#m_contentWidget.update();
 		this.edit(index);
 		event.accept();
@@ -335,6 +364,18 @@ export class CTableView extends CAbstractItemView {
 		/** Provides if behavior. */
 		if (model === null || selectionModel === null) {
 			event.ignore();
+			return;
+		}
+
+		const currentIndex = this.currentIndex();
+		if (currentIndex.isValid()
+			&& this.itemDelegateForIndex(currentIndex).editorEvent(
+				event,
+				model,
+				currentIndex,
+				this.visualRect(currentIndex)
+			)) {
+			this.#m_contentWidget.update();
 			return;
 		}
 
@@ -415,7 +456,7 @@ export class CTableView extends CAbstractItemView {
 
 		selectionModel.clearSelection();
 		selectionModel.select(index);
-		selectionModel.setCurrentIndex(index);
+		this.setCurrentIndex(index);
 
 		this.#ensureIndexVisible(index);
 
@@ -520,6 +561,8 @@ export class CTableView extends CAbstractItemView {
 
 	/** Scrolls to and repaints a newly selected current index. */
 	protected override currentIndexChanged(index: CModelIndex): void {
+		super.currentIndexChanged(index);
+
 		if (index.isValid())
 			this.#ensureIndexVisible(index);
 
@@ -571,5 +614,12 @@ export class CTableView extends CAbstractItemView {
 					/ CTableView.RowHeight
 			)
 		);
+	}
+
+	#formatDate(date: Date): string {
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, "0");
+		const day = String(date.getDate()).padStart(2, "0");
+		return `${day}.${month}.${year}`;
 	}
 }

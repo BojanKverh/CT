@@ -130,27 +130,27 @@ class CStringListModel extends CAbstractListModel {
 }
 
 class DemoTableModel extends CAbstractTableModel {
-	#m_rows: string[][] = [
-		["Alice", "Slovenia", "30", "Ljubljana", "Developer"],
-		["Bob", "Austria", "42", "Vienna", "Designer"],
-		["Carol", "Italy", "35", "Milan", "Manager"],
-		["David", "Germany", "51", "Munich", "Engineer"],
-		["Emma", "France", "28", "Paris", "Developer"],
-		["Frank", "Croatia", "44", "Zagreb", "Architect"],
-		["Grace", "Hungary", "37", "Budapest", "Analyst"],
-		["Henry", "Czechia", "48", "Prague", "Manager"],
-		["Isabella", "Spain", "32", "Madrid", "Designer"],
-		["Jack", "Portugal", "39", "Lisbon", "Developer"],
-		["Klara", "Slovenia", "27", "Maribor", "Engineer"],
-		["Lukas", "Austria", "46", "Graz", "Manager"],
-		["Maria", "Italy", "41", "Rome", "Architect"],
-		["Nina", "Germany", "34", "Berlin", "Developer"],
-		["Oliver", "France", "53", "Lyon", "Analyst"],
-		["Peter", "Croatia", "38", "Split", "Engineer"],
-		["Sara", "Hungary", "29", "Szeged", "Designer"],
-		["Thomas", "Czechia", "45", "Brno", "Manager"],
-		["Eva", "Spain", "36", "Barcelona", "Developer"],
-		["William", "Portugal", "50", "Porto", "Architect"]
+	#m_rows: unknown[][] = [
+		["Alice", "Slovenia", "30", "Ljubljana", "Developer", new Date("2026-01-01"), false],
+		["Bob", "Austria", "42", "Vienna", "Designer", new Date("2025-01-01"), true],
+		["Carol", "Italy", "35", "Milan", "Manager", new Date("2025-02-01"), true],
+		["David", "Germany", "51", "Munich", "Engineer", new Date("2024-11-01"), true],
+		["Emma", "France", "28", "Paris", "Developer", new Date("2026-01-01"), true],
+		["Frank", "Croatia", "44", "Zagreb", "Architect", new Date("2024-01-01"), false],
+		["Grace", "Hungary", "37", "Budapest", "Analyst", new Date("2023-09-01"), false],
+		["Henry", "Czechia", "48", "Prague", "Manager", new Date("2026-03-01"), true],
+		["Isabella", "Spain", "32", "Madrid", "Designer", new Date("2022-07-01"), true],
+		["Jack", "Portugal", "39", "Lisbon", "Developer", new Date("2021-01-01"), true],
+		["Klara", "Slovenia", "27", "Maribor", "Engineer", new Date("2021-01-01"), true],
+		["Lukas", "Austria", "46", "Graz", "Manager", new Date("2021-03-01"), true],
+		["Maria", "Italy", "41", "Rome", "Architect", new Date("2021-05-01"), true],
+		["Nina", "Germany", "34", "Berlin", "Developer", new Date("2022-07-01"), true],
+		["Oliver", "France", "53", "Lyon", "Analyst", new Date("2024-04-01"), false],
+		["Peter", "Croatia", "38", "Split", "Engineer", new Date("2023-09-01"), true],
+		["Sara", "Hungary", "29", "Szeged", "Designer", new Date("2025-06-01"), true],
+		["Thomas", "Czechia", "45", "Brno", "Manager", new Date("2023-03-25"), true],
+		["Eva", "Spain", "36", "Barcelona", "Developer", new Date("2024-04-01"), true],
+		["William", "Portugal", "50", "Porto", "Architect", new Date("2021-10-01"), true]
 	];
 
 	override rowCount(_parent = new CModelIndex()): number {
@@ -165,15 +165,19 @@ class DemoTableModel extends CAbstractTableModel {
     	return true;
 	}
 
-	override setItemData(index: CModelIndex, value: unknown): boolean
-	{
+	override setItemData(index: CModelIndex, value: unknown): boolean {
 		if (!index.isValid())
-        	return false;
+			return false;
 
-    	this.#m_rows[index.row()]![index.column()] = String(value);
-    	this.emitDataChanged(index, index);
+		const row = this.#m_rows[index.row()];
 
-    return true;
+		if (row === undefined)
+			return false;
+
+		row[index.column()] = value;
+		this.emitDataChanged(index, index);
+
+		return true;
 	}
 
 	override data(index: CModelIndex): unknown {
@@ -193,7 +197,9 @@ class DemoTableModel extends CAbstractTableModel {
 				"Country",
 				"Age",
 				"City",
-				"Occupation"
+				"Occupation",
+				"Start date",
+				"Still here?"
 			][section] ?? null;
 		}
 

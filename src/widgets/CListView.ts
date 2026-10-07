@@ -354,6 +354,7 @@ export class CListView extends CAbstractItemView {
 
 	/** Scrolls to and repaints a newly selected current index. */
 	protected override currentIndexChanged(index: CModelIndex): void {
+		super.currentIndexChanged(index);
 		if (index.isValid())
 			this.#ensureIndexVisible(index);
 

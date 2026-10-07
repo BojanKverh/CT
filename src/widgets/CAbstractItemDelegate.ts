@@ -1,8 +1,10 @@
 import { CObject } from "../core/CObject.js";
 import { CSignal } from "../core/CSignal.js";
+import { CEvent } from "../events/CEvent.js";
 import { CRect } from "../geometry/CRect.js";
 import { CAbstractItemModel } from "../models/CAbstractItemModel.js";
 import { CModelIndex } from "../models/CModelIndex.js";
+import { CPainter } from "../painting/CPainter.js";
 import { CWidget } from "./CWidget.js";
 
 /**
@@ -14,6 +16,26 @@ export abstract class CAbstractItemDelegate extends CObject {
 
 	/** Emitted when an editor wants to be closed. */
 	readonly closeEditor = new CSignal<[CWidget]>();
+
+	/** Paints an item and returns whether the delegate handled it. */
+	paint(
+		_painter: CPainter,
+		_rect: CRect,
+		_index: CModelIndex,
+		_widget: CWidget
+	): boolean {
+		return false;
+	}
+
+	/** Handles an item event and returns whether it was consumed. */
+	editorEvent(
+		_event: CEvent,
+		_model: CAbstractItemModel,
+		_index: CModelIndex,
+		_rect: CRect
+	): boolean {
+		return false;
+	}
 
 	/**
 	 * Creates an editor for an item.

@@ -212,10 +212,13 @@ export abstract class CAbstractItemView extends CWidget {
 		this.update();
 	}
 
-	/** Called after the current index changes. */
-	protected currentIndexChanged(_index: CModelIndex): void {
-		this.update();
+	protected currentIndexChanged(index: CModelIndex): void {
+	if (this.#m_editor !== null && !this.#m_editorIndex.equals(index)) {
+		this.#commitEditor(this.#m_editor);
+		this.#closeEditor();
 	}
+	this.update();
+}
 
 	/** Called after the active editor is closed. */
 	protected editorClosed(): void {
