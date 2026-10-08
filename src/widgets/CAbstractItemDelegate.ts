@@ -65,6 +65,10 @@ export abstract class CAbstractItemDelegate extends CObject {
 		index: CModelIndex
 	): void;
 
+	/** Called after an editor has been positioned, shown and focused. */
+	editorShown(_editor: CWidget, _index: CModelIndex): void {
+	}
+
 	/**
 	 * Updates the editor geometry to match an item rectangle.
 	 */

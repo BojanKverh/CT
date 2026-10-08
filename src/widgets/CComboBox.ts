@@ -627,19 +627,35 @@ export class CComboBox extends CWidget {
 			this.#m_items.length, CComboBox.MaxVisibleItems
 		);
 
-		const frameWidth = this.#m_listWidget.frameWidth();
-		const height = rows * CListWidget.ItemHeight + 2 * frameWidth;
-		let popupWidth = this.width();
+		const listFrameWidth = this.#m_listWidget.frameWidth();
+		const popupFrameWidth = this.#m_popup.frameWidth();
+		const listHeight = rows * CListWidget.ItemHeight + 2 * listFrameWidth;
+		const popupHeight = listHeight + 2 * popupFrameWidth;
+		const scrollBarWidth = this.#m_items.length > rows
+			? CListWidget.ScrollBarExtent
+			: 0;
+		let popupWidth = 2 * CListWidget.HorizontalPadding
+			+ 2 * listFrameWidth
+			+ 2 * popupFrameWidth
+			+ scrollBarWidth;
 		/** Provides for behavior. */
 		for (const text of this.#m_items) {
 			const textWidth = this.fontMetrics().textWidth(text);
 
 			popupWidth = Math.max(popupWidth, Math.ceil(textWidth) +
-                2 * CListWidget.HorizontalPadding + 2 * frameWidth);
+				2 * CListWidget.HorizontalPadding + 2 * listFrameWidth
+				+ 2 * popupFrameWidth + scrollBarWidth);
 		}
 
 		const popupPosition = this.mapToCanvas(0, this.height());
-		this.#m_popup.setGeometry(popupPosition.x(), popupPosition.y(), popupWidth, height);
-		this.#m_listWidget.setGeometry(0, 0, popupWidth, height);
+		this.#m_popup.setGeometry(
+			popupPosition.x(), popupPosition.y(), popupWidth, popupHeight
+		);
+		this.#m_listWidget.setGeometry(
+			popupFrameWidth,
+			popupFrameWidth,
+			popupWidth - 2 * popupFrameWidth,
+			listHeight
+		);
 	}
 }

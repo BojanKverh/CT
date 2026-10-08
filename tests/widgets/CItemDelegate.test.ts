@@ -8,6 +8,7 @@ import { COrientation } from "../../src/gui/COrientation.js";
 import { CAbstractTableModel } from "../../src/models/CAbstractTableModel.js";
 import { CModelIndex } from "../../src/models/CModelIndex.js";
 import { CItemDelegate } from "../../src/widgets/CItemDelegate.js";
+import { CCheckBox } from "../../src/widgets/CCheckBox.js";
 import { CDateEdit } from "../../src/widgets/CDateEdit.js";
 import { CDoubleSpinBox } from "../../src/widgets/CDoubleSpinBox.js";
 import { CLineEdit } from "../../src/widgets/CLineEdit.js";
@@ -73,6 +74,18 @@ describe("CItemDelegate", () => {
 	afterEach(() => {
 		if (CApplication.exists())
 			CApplication.instance().destroy();
+	});
+
+	test("keeps its painting checkbox hidden", () => {
+		const delegate = new CItemDelegate();
+		const checkBoxes = CApplication.instance().topLevelWidgets()
+			.filter(widget => widget instanceof CCheckBox);
+
+		expect(checkBoxes).toHaveLength(1);
+		expect(checkBoxes[0]!.isVisible()).toBe(false);
+
+		delegate.destroy();
+		expect(CApplication.instance().topLevelWidgets()).not.toContain(checkBoxes[0]);
 	});
 
 	test("creates a line edit editor", () => {

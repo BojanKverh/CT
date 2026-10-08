@@ -103,6 +103,25 @@ export class CListWidget extends CScrollArea
 		this.#updateContentGeometry();
 	}
 
+	/** Sets the geometry and updates the scrollable item area. */
+	override setGeometry(
+		x: number,
+		y: number,
+		width: number,
+		height: number
+	): void
+	{
+		super.setGeometry(x, y, width, height);
+		this.#updateContentGeometry();
+	}
+
+	/** Resizes the widget and updates the scrollable item area. */
+	override resize(width: number, height: number): void
+	{
+		super.resize(width, height);
+		this.#updateContentGeometry();
+	}
+
 	/** Adds item. */
 	addItem(item: string | CListWidgetItem): void
 	{

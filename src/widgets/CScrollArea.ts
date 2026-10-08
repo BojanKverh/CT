@@ -7,6 +7,8 @@ import { CWheelEvent } from "../events/CWheelEvent.js";
 
 /** Implements the scroll area widget. */
 export class CScrollArea extends CFrame {
+	static readonly ScrollBarExtent = 16;
+
 	#m_viewport: CWidget;
 	#m_widget: CWidget | null = null;
 	#m_scrollX = 0;
@@ -178,7 +180,7 @@ export class CScrollArea extends CFrame {
 	}
 
 	#updateGeometry(): void {
-		const scrollBarSize = 16;
+		const scrollBarSize = CScrollArea.ScrollBarExtent;
 		const frameWidth = this.frameWidth();
 
 		const contentWidth = this.#m_widget?.width() ?? 0;

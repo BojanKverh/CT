@@ -599,15 +599,56 @@ describe("CComboBox", () => {
 		expect(combo.lineEdit().height()).toBe(40);
 	});
 
-	test("popup width follows combo width", () => {
+	test("popup width follows its longest item", () => {
 		const combo = new CComboBox();
 
 		combo.resize(240, 30);
-		combo.addItem("Slovenia");
+		combo.addItems(["Italy", "Slovenia", "UK"]);
 		combo.showPopup();
 
-		expect(combo.popup().width()).toBe(240);
-		expect(combo.listWidget().width()).toBe(240);
+		const expectedWidth = Math.ceil(
+			combo.fontMetrics().textWidth("Slovenia")
+		) + 2 * CListWidget.HorizontalPadding
+			+ 2 * combo.listWidget().frameWidth()
+			+ 2 * combo.popup().frameWidth();
+
+		expect(combo.popup().width()).toBe(expectedWidth);
+		expect(combo.popup().width()).toBeLessThan(combo.width());
+		expect(combo.listWidget().width()).toBe(
+			expectedWidth - 2 * combo.popup().frameWidth()
+		);
+	});
+
+	test("popup width reserves room for a vertical scrollbar", () => {
+		const combo = new CComboBox();
+
+		for (let i = 0; i <= CComboBox.MaxVisibleItems; ++i)
+			combo.addItem(i === 0 ? "Longest item" : `Item ${i}`);
+		combo.showPopup();
+
+		const expectedWidth = Math.ceil(
+			combo.fontMetrics().textWidth("Longest item")
+		) + 2 * CListWidget.HorizontalPadding
+			+ 2 * combo.listWidget().frameWidth()
+			+ 2 * combo.popup().frameWidth()
+			+ CListWidget.ScrollBarExtent;
+
+		expect(combo.popup().width()).toBe(expectedWidth);
+		expect(combo.listWidget().verticalScrollBar().isVisible()).toBe(true);
+	});
+
+	test("popup items expand to the popup viewport width", () => {
+		const combo = new CComboBox();
+
+		combo.resize(120, 30);
+		for (let i = 0; i < 12; ++i)
+			combo.addItem(`Item ${i}`);
+		combo.addItem("A considerably wider popup item");
+		combo.showPopup();
+
+		expect(combo.listWidget().widget()?.width())
+			.toBe(combo.listWidget().viewport().width());
+		expect(combo.listWidget().horizontalScrollBar().isVisible()).toBe(false);
 	});
 
 	test("popup height follows visible item count", () => {
@@ -619,9 +660,15 @@ describe("CComboBox", () => {
 
 		combo.showPopup();
 
-		const frameWidth = combo.listWidget().frameWidth();
+		const listFrameWidth = combo.listWidget().frameWidth();
+		const popupFrameWidth = combo.popup().frameWidth();
 
-		expect(combo.popup().height()).toBe(3 * CListWidget.ItemHeight + 2 * frameWidth);
+		expect(combo.popup().height()).toBe(
+			3 * CListWidget.ItemHeight
+			+ 2 * listFrameWidth
+			+ 2 * popupFrameWidth
+		);
+		expect(combo.listWidget().verticalScrollBar().isVisible()).toBe(false);
 	});
 
 	test("popup height is limited to maximum visible items", () => {
@@ -632,11 +679,15 @@ describe("CComboBox", () => {
 
 		combo.showPopup();
 
-		const frameWidth = combo.listWidget().frameWidth();
+		const listFrameWidth = combo.listWidget().frameWidth();
+		const popupFrameWidth = combo.popup().frameWidth();
 
 		expect(combo.popup().height()).toBe(
-			CComboBox.MaxVisibleItems * 28 + 2 * frameWidth
+			CComboBox.MaxVisibleItems * CListWidget.ItemHeight
+			+ 2 * listFrameWidth
+			+ 2 * popupFrameWidth
 		);
+		expect(combo.listWidget().verticalScrollBar().isVisible()).toBe(true);
 	});
 
 	test("sizeHint returns default combo size", () => {

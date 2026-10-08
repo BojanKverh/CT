@@ -1,15 +1,18 @@
 import { CApplication } from "../core/CApplication.js";
-import { CWidget } from "./CWidget.js";
+import { CFrameShape } from "../gui/CFrameStyle.js";
+import { CFrame } from "./CFrame.js";
+import { CPaletteColorRole } from "../gui/CPalette.js";
+import { CPainter } from "../painting/CPainter.js";
 
 /** Implements the popup widget widget. */
-export class CPopupWidget extends CWidget {
+export class CPopupWidget extends CFrame {
 	#m_open = false;
 
 	/** Creates a new instance. */
 	constructor() {
 		/** Provides super behavior. */
 		super();
-
+		this.setFrameShape(CFrameShape.Box);
 		this.hide();
 	}
 
@@ -42,4 +45,5 @@ export class CPopupWidget extends CWidget {
 		CApplication.instance().unregisterPopupWidget(this);
 		this.hide();
 	}
+
 }

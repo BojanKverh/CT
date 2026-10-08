@@ -1,4 +1,5 @@
 import { CSignal } from "../core/CSignal.js";
+import { CObject } from "../core/CObject.js";
 import { CEvent, CEventType } from "../events/CEvent.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
@@ -114,6 +115,16 @@ class CItemDelegateDateEdit extends CDateEdit {
  */
 export class CItemDelegate extends CAbstractItemDelegate {
 	#m_checkBox = new CCheckBox();
+
+	constructor(parent: CObject | null = null) {
+		super(parent);
+		this.#m_checkBox.hide();
+	}
+
+	override destroy(): void {
+		this.#m_checkBox.destroy();
+		super.destroy();
+	}
 
 	override paint(
 		painter: CPainter,

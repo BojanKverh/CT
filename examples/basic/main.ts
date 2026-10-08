@@ -9,7 +9,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget, CTableWidgetItem, CTableWidget, 
 	CContextMenuEvent, CDragEnterEvent, CDragMoveEvent, CDragLeaveEvent, CDropEvent,
 	CDrag, CMimeData, CDropAction, CIcon, CDockWidget, CDockWidgetArea,
-	CCursorShape, CDial, CTextBrowser, CDoubleSpinBox, CIntItemDelegate
+	CCursorShape, CDial, CTextBrowser, CDoubleSpinBox, CIntItemDelegate, CComboBoxItemDelegate
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -131,7 +131,7 @@ class CStringListModel extends CAbstractListModel {
 
 class DemoTableModel extends CAbstractTableModel {
 	#m_rows: unknown[][] = [
-		["Alice", "Slovenia", "30", "Ljubljana", "Developer", new Date("2026-01-01"), false],
+		["Alice", "Slovenia", "30", "Ljubljana", "Accountant", new Date("2026-01-01"), false],
 		["Bob", "Austria", "42", "Vienna", "Designer", new Date("2025-01-01"), true],
 		["Carol", "Italy", "35", "Milan", "Manager", new Date("2025-02-01"), true],
 		["David", "Germany", "51", "Munich", "Engineer", new Date("2024-11-01"), true],
@@ -680,6 +680,9 @@ but3.clicked.connect(() => {
 	const model = new DemoTableModel();
 	tv.setModel(model);
 	tv.setItemDelegateForColumn(2, new CIntItemDelegate());
+	const occupationDelegate = new CComboBoxItemDelegate(["Developer", "Designer",
+    	"Manager", "Engineer", "Architect", "Analyst" ]);
+	tv.setItemDelegateForColumn(4, occupationDelegate);
 
 	const bb = new CDialogButtonBox(CStandardButton.Ok, dlg);
 	bb.setGeometry(0, 360, 780, 30);

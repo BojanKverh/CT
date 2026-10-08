@@ -184,6 +184,7 @@ export abstract class CAbstractItemView extends CWidget {
 		delegate.updateEditorGeometry(editor, this.visualRect(index));
 		editor.show();
 		editor.setFocus();
+		delegate.editorShown(editor, index);
 
 		return true;
 	}
@@ -213,12 +214,14 @@ export abstract class CAbstractItemView extends CWidget {
 	}
 
 	protected currentIndexChanged(index: CModelIndex): void {
-	if (this.#m_editor !== null && !this.#m_editorIndex.equals(index)) {
-		this.#commitEditor(this.#m_editor);
-		this.#closeEditor();
+		if (this.#m_editor !== null
+			&& !this.#m_editorIndex.equals(index)) {
+			this.#commitEditor(this.#m_editor);
+			this.#closeEditor();
+		}
+
+		this.update();
 	}
-	this.update();
-}
 
 	/** Called after the active editor is closed. */
 	protected editorClosed(): void {

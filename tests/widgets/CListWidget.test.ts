@@ -765,4 +765,18 @@ describe("CListWidget", () =>
 
 		expect(list.horizontalScrollBar().isVisible()).toBe(false);
 	});
+
+	test("resizing the list expands item content to the viewport width", () =>
+	{
+		const list = new CListWidget();
+
+		list.resize(120, 100);
+		for (let i = 0; i < 10; ++i)
+			list.addItem(`Item ${i}`);
+
+		list.resize(240, 100);
+
+		expect(list.widget()?.width()).toBe(list.viewport().width());
+		expect(list.horizontalScrollBar().isVisible()).toBe(false);
+	});
 });

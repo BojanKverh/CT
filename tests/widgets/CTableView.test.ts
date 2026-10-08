@@ -19,6 +19,8 @@ import { CDoubleItemDelegate } from "../../src/widgets/CDoubleItemDelegate.js";
 import { CSpinBox } from "../../src/widgets/CSpinBox.js";
 import { CDoubleSpinBox } from "../../src/widgets/CDoubleSpinBox.js";
 import { CDateEdit } from "../../src/widgets/CDateEdit.js";
+import { CComboBox } from "../../src/widgets/CComboBox.js";
+import { CComboBoxItemDelegate } from "../../src/widgets/CComboBoxItemDelegate.js";
 
 class TestTableModel extends CAbstractTableModel {
 	#m_data: string[][];
@@ -1834,6 +1836,114 @@ describe("CTableView", () => {
 		editor.event(new CKeyEvent(CEventType.KeyPress, "Escape"));
 
 		expect((model.data(index) as Date).getTime()).toBe(originalTime);
+		expect(editor.parent()).toBeNull();
+	});
+
+	test("F2 opens a combo box supplied by the column delegate", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new CComboBoxItemDelegate([
+			"Slovenia",
+			"Austria",
+			"Italy"
+		]);
+		const index = model.index(1, 1);
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(1, delegate);
+		view.setCurrentIndex(index);
+		view.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "F2")
+		);
+
+		const editor = findEditor(view, CComboBox);
+		expect(editor).not.toBeNull();
+		expect(editor?.currentText()).toBe("Austria");
+		expect(editor?.popup().isOpen()).toBe(true);
+		expect(editor?.listWidget().hasFocus()).toBe(true);
+	});
+
+	test("a combo-box editor displays a missing value without adding it", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new CComboBoxItemDelegate(["Austria", "Italy"]);
+		const index = model.index(0, 1);
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(1, delegate);
+		view.edit(index);
+
+		const editor = findEditor(view, CComboBox)!;
+		expect(editor.currentText()).toBe("Slovenia");
+		expect(editor.findText("Slovenia")).toBe(-1);
+		expect(editor.count()).toBe(2);
+		expect(editor.popup().isOpen()).toBe(true);
+	});
+
+	test("Enter commits a combo-box value and closes the editor", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new CComboBoxItemDelegate([
+			"Slovenia",
+			"Austria",
+			"Italy"
+		]);
+		const index = model.index(0, 1);
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(1, delegate);
+		view.edit(index);
+
+		const editor = findEditor(view, CComboBox)!;
+		editor.setCurrentText("Italy");
+		editor.hidePopup();
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		expect(model.data(index)).toBe("Italy");
+		expect(editor.parent()).toBeNull();
+	});
+
+	test("Escape closes a combo-box editor without changing the model", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new CComboBoxItemDelegate([
+			"Slovenia",
+			"Austria",
+			"Italy"
+		]);
+		const index = model.index(0, 1);
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(1, delegate);
+		view.edit(index);
+
+		const editor = findEditor(view, CComboBox)!;
+		editor.setCurrentText("Italy");
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Escape"));
+
+		expect(model.data(index)).toBe("Slovenia");
+		expect(editor.parent()).toBeNull();
+	});
+
+	test("activating a combo-box item commits it immediately", () => {
+		const view = new CTableView();
+		const model = new EditableTableModel();
+		const delegate = new CComboBoxItemDelegate([
+			"Slovenia",
+			"Austria",
+			"Italy"
+		]);
+		const index = model.index(0, 1);
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(1, delegate);
+		view.edit(index);
+
+		const editor = findEditor(view, CComboBox)!;
+		editor.setCurrentIndex(2);
+		editor.activated.emit(2);
+
+		expect(model.data(index)).toBe("Italy");
 		expect(editor.parent()).toBeNull();
 	});
 
