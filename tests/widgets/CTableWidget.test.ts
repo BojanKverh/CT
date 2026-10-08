@@ -1,11 +1,40 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { CApplication } from "../../src/core/CApplication.js";
+import { CEventType } from "../../src/events/CEvent.js";
+import { CKeyEvent } from "../../src/events/CKeyEvent.js";
 import { COrientation } from "../../src/gui/COrientation.js";
 import { CModelIndex } from "../../src/models/CModelIndex.js";
+import { CComboBox } from "../../src/widgets/CComboBox.js";
+import { CComboBoxItemDelegate } from "../../src/widgets/CComboBoxItemDelegate.js";
+import { CDateEdit } from "../../src/widgets/CDateEdit.js";
+import { CDoubleSpinBox } from "../../src/widgets/CDoubleSpinBox.js";
+import { CIntItemDelegate } from "../../src/widgets/CIntItemDelegate.js";
+import { CLineEdit } from "../../src/widgets/CLineEdit.js";
+import { CSpinBox } from "../../src/widgets/CSpinBox.js";
 import { CTableWidget } from "../../src/widgets/CTableWidget.js";
 import { CTableWidgetItem } from "../../src/widgets/CTableWidgetItem.js";
+import { CWidget } from "../../src/widgets/CWidget.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
+
+function findEditor<T extends CWidget>(
+	root: CWidget,
+	editorType: new (...args: never[]) => T
+): T | null {
+	for (const child of root.children()) {
+		if (!(child instanceof CWidget))
+			continue;
+
+		if (child instanceof editorType)
+			return child;
+
+		const descendant = findEditor(child, editorType);
+		if (descendant !== null)
+			return descendant;
+	}
+
+	return null;
+}
 
 describe("CTableWidget", () => {
 	let app: CApplication;
@@ -318,6 +347,30 @@ describe("CTableWidget", () => {
 		expect(table.model()?.data(index)).toBe("Hello");
 	});
 
+	test("model exposes the typed item value", () => {
+		const table = new CTableWidget();
+		const item = new CTableWidgetItem(42.5);
+
+		table.setRowCount(1);
+		table.setColumnCount(1);
+		table.setItem(0, 0, item);
+
+		const value = table.model()?.data(table.indexFromItem(item));
+
+		expect(value).toBe(42.5);
+		expect(typeof value).toBe("number");
+		expect(item.text()).toBe("42.5");
+	});
+
+	test("setText changes typed item data to a string", () => {
+		const item = new CTableWidgetItem(42);
+
+		item.setText("forty-two");
+
+		expect(item.data()).toBe("forty-two");
+		expect(item.text()).toBe("forty-two");
+	});
+
 	test("model returns null for empty cell", () => {
 		const table = new CTableWidget();
 
@@ -503,5 +556,161 @@ describe("CTableWidget", () => {
 			table.selectionModel()?.select(emptyIndex);
 
 		expect(table.selectedItems()).toEqual([item]);
+	});
+
+	test("F2 opens a line edit for string data", () => {
+		const table = new CTableWidget();
+		const item = new CTableWidgetItem("Alice");
+
+		table.setRowCount(1);
+		table.setColumnCount(1);
+		table.setItem(0, 0, item);
+		table.setCurrentItem(item);
+		table.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, "F2")
+		);
+
+		const editor = findEditor(table, CLineEdit);
+		expect(editor).not.toBeNull();
+		expect(editor?.text()).toBe("Alice");
+	});
+
+	test("Enter commits text through the inherited editor lifecycle", () => {
+		const table = new CTableWidget();
+		const item = new CTableWidgetItem("Alice");
+
+		table.setRowCount(1);
+		table.setColumnCount(1);
+		table.setItem(0, 0, item);
+		table.edit(table.indexFromItem(item));
+
+		const editor = findEditor(table, CLineEdit)!;
+		editor.setText("Bob");
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		expect(item.data()).toBe("Bob");
+		expect(item.text()).toBe("Bob");
+		expect(editor.parent()).toBeNull();
+	});
+
+	test("automatically edits an integer with a spin box", () => {
+		const table = new CTableWidget();
+		const item = new CTableWidgetItem(30);
+
+		table.setRowCount(1);
+		table.setColumnCount(1);
+		table.setItem(0, 0, item);
+		table.edit(table.indexFromItem(item));
+
+		const editor = findEditor(table, CSpinBox)!;
+		expect(editor.value()).toBe(30);
+
+		editor.setValue(31);
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		expect(item.data()).toBe(31);
+		expect(typeof item.data()).toBe("number");
+		expect(item.text()).toBe("31");
+	});
+
+	test("automatically edits a decimal with a double spin box", () => {
+		const table = new CTableWidget();
+		const item = new CTableWidgetItem(12.5);
+
+		table.setRowCount(1);
+		table.setColumnCount(1);
+		table.setItem(0, 0, item);
+		table.edit(table.indexFromItem(item));
+
+		const editor = findEditor(table, CDoubleSpinBox)!;
+		expect(editor.value()).toBe(12.5);
+
+		editor.setValue(19.75);
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		expect(item.data()).toBe(19.75);
+		expect(typeof item.data()).toBe("number");
+	});
+
+	test("automatically edits a Date with a date edit", () => {
+		const table = new CTableWidget();
+		const original = new Date(2026, 9, 8);
+		const replacement = new Date(2027, 4, 17);
+		const item = new CTableWidgetItem(original);
+
+		table.setRowCount(1);
+		table.setColumnCount(1);
+		table.setItem(0, 0, item);
+		table.edit(table.indexFromItem(item));
+
+		const editor = findEditor(table, CDateEdit)!;
+		expect(editor.date().getTime()).toBe(original.getTime());
+
+		editor.setDate(replacement);
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		expect(item.data()).toBeInstanceOf(Date);
+		expect((item.data() as Date).getTime()).toBe(replacement.getTime());
+	});
+
+	test("Space toggles a boolean item without opening an editor", () => {
+		const table = new CTableWidget();
+		const item = new CTableWidgetItem(true);
+
+		table.setRowCount(1);
+		table.setColumnCount(1);
+		table.setItem(0, 0, item);
+		table.setCurrentItem(item);
+		table.contentKeyPressEvent(
+			new CKeyEvent(CEventType.KeyPress, " ")
+		);
+
+		expect(item.data()).toBe(false);
+		expect(typeof item.data()).toBe("boolean");
+		expect(findEditor(table, CLineEdit)).toBeNull();
+	});
+
+	test("an explicit integer delegate converts string data to a number", () => {
+		const table = new CTableWidget();
+		const item = new CTableWidgetItem("30");
+
+		table.setRowCount(1);
+		table.setColumnCount(1);
+		table.setItem(0, 0, item);
+		table.setItemDelegateForColumn(0, new CIntItemDelegate());
+		table.edit(table.indexFromItem(item));
+
+		const editor = findEditor(table, CSpinBox)!;
+		editor.setValue(45);
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		expect(item.data()).toBe(45);
+		expect(typeof item.data()).toBe("number");
+	});
+
+	test("a combo-box column delegate commits the selected text", () => {
+		const table = new CTableWidget();
+		const item = new CTableWidgetItem("Slovenia");
+		const delegate = new CComboBoxItemDelegate([
+			"Slovenia",
+			"Austria",
+			"Italy"
+		]);
+
+		table.setRowCount(1);
+		table.setColumnCount(1);
+		table.setItem(0, 0, item);
+		table.setItemDelegateForColumn(0, delegate);
+		table.edit(table.indexFromItem(item));
+
+		const editor = findEditor(table, CComboBox)!;
+		expect(editor.currentText()).toBe("Slovenia");
+		expect(editor.popup().isOpen()).toBe(true);
+
+		editor.setCurrentIndex(2);
+		editor.activated.emit(2);
+
+		expect(item.data()).toBe("Italy");
+		expect(editor.parent()).toBeNull();
 	});
 });

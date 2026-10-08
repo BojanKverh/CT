@@ -20,11 +20,12 @@ class CTableWidgetModel extends CAbstractItemModel {
 		return this.#m_columnCount;
 	}
 
-	data(index: CModelIndex): string | null {
+	data(index: CModelIndex): unknown {
 		if (!index.isValid() || index.model() !== this)
 			return null;
 
-		return this.item(index.row(), index.column())?.text() ?? null;
+		const item = this.item(index.row(), index.column());
+		return item === null ? null : item.data();
 	}
 
 	override setItemData(index: CModelIndex, value: unknown): boolean {
@@ -36,12 +37,8 @@ class CTableWidgetModel extends CAbstractItemModel {
 		if (item === null || !item.isEditable())
 			return false;
 
-		const text = value === null || value === undefined
-			? ""
-			: String(value);
-
-		if (item.text() !== text) {
-			item.setText(text);
+		if (!Object.is(item.data(), value)) {
+			item.setData(value);
 			this.emitDataChanged(index, index);
 		}
 

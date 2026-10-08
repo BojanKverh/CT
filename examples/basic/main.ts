@@ -852,22 +852,22 @@ but6.clicked.connect(() => {
 
 	//table.setVerticalHeaderLabels(["1", "2", "3", "4", "5", "6", "7", "8"]);
 
-	const data = [
-		["Bojan", "Programmer", "52", "Maribor"],
-		["Peter", "Engineer", "48", "Ljubljana"],
-		["Ana", "Designer", "35", "Celje"],
-		["Marko", "Architect", "41", "Koper"],
-		["Maja", "Accountant", "39", "Ptuj"],
-		["Luka", "Developer", "29", "Kranj"],
-		["Nina", "Project Manager", "44", "Nova Gorica"],
-		["Tomaž", "System Administrator", "37", "Velenje"],
-		["Žana", "Designer", "35", "Celje"],
-		["Darko", "Architect", "41", "Koper"],
-		["Kaja", "Accountant", "39", "Ptuj"],
-		["Ines", "Developer", "29", "Kranj"],
-		["Nika", "Project Manager", "44", "Nova Gorica"],
-		["Frančeškin", "System Administrator", "37", "Velenje"],
-		["Domagoj", "System Administrator", "37", "Velenje"]
+	const data: unknown[][] = [
+    	["Bojan", "Programmer", 52, "Maribor"],
+    	["Peter", "Engineer", 48, "Ljubljana"],
+    	["Ana", "Designer", 35, "Celje"],
+    	["Marko", "Architect", 41, "Koper"],
+    	["Maja", "Accountant", 39, "Ptuj"],
+    	["Luka", "Developer", 29, "Kranj"],
+    	["Nina", "Project Manager", 44, "Nova Gorica"],
+    	["Tomaž", "System Administrator", 37, "Velenje"],
+    	["Žana", "Designer", 35, "Celje"],
+    	["Darko", "Architect", 41, "Koper"],
+    	["Kaja", "Accountant", 39, "Ptuj"],
+    	["Ines", "Developer", 29, "Kranj"],
+    	["Nika", "Project Manager", 44, "Nova Gorica"],
+    	["Frančeškin", "System Administrator", 37, "Velenje"],
+    	["Domagoj", "System Administrator", 37, "Velenje"]
 	];
 
 	for (let row = 0; row < data.length; row++) {
