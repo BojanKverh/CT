@@ -10,7 +10,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CContextMenuEvent, CDragEnterEvent, CDragMoveEvent, CDragLeaveEvent, CDropEvent,
 	CDrag, CMimeData, CDropAction, CIcon, CDockWidget, CDockWidgetArea,
 	CCursorShape, CDial, CTextBrowser, CDoubleSpinBox, CIntItemDelegate, CComboBoxItemDelegate,
-	CSortOrder
+	CSortOrder, CSortFilterProxyModel
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -697,7 +697,12 @@ but3.clicked.connect(() => {
 	const tv = new CTableView(dlg);
 	tv.setGeometry(50, 20, 500, 330);
 	const model = new DemoTableModel();
-	tv.setModel(model);
+	const proxy = new CSortFilterProxyModel();
+	proxy.setSourceModel(model);
+
+	tv.setModel(proxy);
+	tv.setSortingEnabled(true);
+
 	tv.setSortingEnabled(true);
 	tv.setItemDelegateForColumn(2, new CIntItemDelegate());
 	const occupationDelegate = new CComboBoxItemDelegate(["Developer", "Designer",
