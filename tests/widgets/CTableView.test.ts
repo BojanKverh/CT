@@ -18,10 +18,12 @@ import { CIntItemDelegate } from "../../src/widgets/CIntItemDelegate.js";
 import { CDoubleItemDelegate } from "../../src/widgets/CDoubleItemDelegate.js";
 import { CSpinBox } from "../../src/widgets/CSpinBox.js";
 import { CDoubleSpinBox } from "../../src/widgets/CDoubleSpinBox.js";
+import { CLineEdit } from "../../src/widgets/CLineEdit.js";
 import { CDateEdit } from "../../src/widgets/CDateEdit.js";
 import { CComboBox } from "../../src/widgets/CComboBox.js";
 import { CComboBoxItemDelegate } from "../../src/widgets/CComboBoxItemDelegate.js";
 import { CSortOrder } from "../../src/gui/CSortOrder.js";
+import { CSortFilterProxyModel } from "../../src/models/CSortFilterProxyModel.js";
 
 class TestTableModel extends CAbstractTableModel {
 	#m_data: string[][];
@@ -383,6 +385,143 @@ describe("CTableView", () => {
 		view.sortByColumn(model.columnCount());
 
 		expect(model.sortCalls).toEqual([]);
+	});
+
+	test("header clicks sort a proxy without modifying its source model", () => {
+		const source = new TestTableModel([
+			["Carol", "Italy", "50"],
+			["Alice", "Slovenia", "30"],
+			["Bob", "Austria", "40"]
+		]);
+		const proxy = new CSortFilterProxyModel();
+		const view = new CTableView();
+		proxy.setSourceModel(source);
+		view.setModel(proxy);
+		view.setSortingEnabled(true);
+
+		clickHeaderSection(view, 0);
+
+		expect(proxy.data(proxy.index(0, 0))).toBe("Alice");
+		expect(proxy.data(proxy.index(1, 0))).toBe("Bob");
+		expect(proxy.data(proxy.index(2, 0))).toBe("Carol");
+		expect(source.data(source.index(0, 0))).toBe("Carol");
+		expect(source.data(source.index(1, 0))).toBe("Alice");
+		expect(source.data(source.index(2, 0))).toBe("Bob");
+	});
+
+	test("a second proxy header click reverses the displayed order", () => {
+		const source = new TestTableModel([
+			["Carol", "Italy", "50"],
+			["Alice", "Slovenia", "30"],
+			["Bob", "Austria", "40"]
+		]);
+		const proxy = new CSortFilterProxyModel();
+		const view = new CTableView();
+		proxy.setSourceModel(source);
+		view.setModel(proxy);
+		view.setSortingEnabled(true);
+
+		clickHeaderSection(view, 0);
+		clickHeaderSection(view, 0);
+
+		expect(proxy.data(proxy.index(0, 0))).toBe("Carol");
+		expect(proxy.data(proxy.index(1, 0))).toBe("Bob");
+		expect(proxy.data(proxy.index(2, 0))).toBe("Alice");
+		expect(view.horizontalHeader().sortIndicatorOrder())
+			.toBe(CSortOrder.DescendingOrder);
+	});
+
+	test("proxy filtering updates the table row geometry", () => {
+		const source = new TestTableModel();
+		const proxy = new CSortFilterProxyModel();
+		const view = new CTableView();
+		proxy.setSourceModel(source);
+		view.setModel(proxy);
+
+		proxy.setFilterKeyColumn(1);
+		proxy.setFilterFixedString("Slovenia");
+
+		expect(proxy.rowCount()).toBe(1);
+		expect(view.verticalHeader().length()).toBe(CTableView.RowHeight);
+		expect(proxy.data(proxy.index(0, 0))).toBe("Alice");
+	});
+
+	test("selection follows the same source item when a proxy is sorted", () => {
+		const source = new TestTableModel([
+			["Carol", "Italy", "50"],
+			["Alice", "Slovenia", "30"],
+			["Bob", "Austria", "40"]
+		]);
+		const proxy = new CSortFilterProxyModel();
+		const view = new CTableView();
+		proxy.setSourceModel(source);
+		view.setModel(proxy);
+		const oldIndex = proxy.index(1, 0);
+		view.selectionModel()?.select(oldIndex);
+		view.setCurrentIndex(oldIndex);
+
+		proxy.sort(0);
+
+		const newIndex = proxy.index(0, 0);
+		expect(proxy.data(newIndex)).toBe("Alice");
+		expect(view.currentIndex().equals(newIndex)).toBe(true);
+		expect(view.selectionModel()?.isSelected(newIndex)).toBe(true);
+	});
+
+	test("filtering preserves a selected item that remains visible", () => {
+		const source = new TestTableModel();
+		const proxy = new CSortFilterProxyModel();
+		const view = new CTableView();
+		proxy.setSourceModel(source);
+		view.setModel(proxy);
+		const oldIndex = proxy.index(0, 0);
+		view.selectionModel()?.select(oldIndex);
+		view.setCurrentIndex(oldIndex);
+
+		proxy.setFilterFixedString("Slovenia");
+
+		const newIndex = proxy.index(0, 0);
+		expect(proxy.data(newIndex)).toBe("Alice");
+		expect(view.currentIndex().equals(newIndex)).toBe(true);
+		expect(view.selectionModel()?.isSelected(newIndex)).toBe(true);
+	});
+
+	test("filtering clears selection when the selected item is hidden", () => {
+		const source = new TestTableModel();
+		const proxy = new CSortFilterProxyModel();
+		const view = new CTableView();
+		proxy.setSourceModel(source);
+		view.setModel(proxy);
+		const index = proxy.index(0, 0);
+		view.selectionModel()?.select(index);
+		view.setCurrentIndex(index);
+
+		proxy.setFilterFixedString("Austria");
+
+		expect(view.currentIndex().isValid()).toBe(false);
+		expect(view.selectionModel()?.hasSelection()).toBe(false);
+	});
+
+	test("editing a sorted proxy row commits to the mapped source row", () => {
+		const source = new EditableTableModel([
+			["Carol", "Italy", "50"],
+			["Alice", "Slovenia", "30"],
+			["Bob", "Austria", "40"]
+		]);
+		const proxy = new CSortFilterProxyModel();
+		const view = new CTableView();
+		proxy.setSourceModel(source);
+		proxy.sort(0);
+		view.setModel(proxy);
+
+		const aliceProxyIndex = proxy.index(0, 0);
+		expect(view.edit(aliceProxyIndex)).toBe(true);
+		const editor = findEditor(view, CLineEdit)!;
+		editor.setText("Alicia");
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		expect(source.data(source.index(1, 0))).toBe("Alicia");
+		expect(source.data(source.index(0, 0))).toBe("Carol");
 	});
 
 	test("has horizontal header", () => {

@@ -71,6 +71,7 @@ export { CKeySequenceEdit } from "./widgets/CKeySequenceEdit.js";
 export { CListView } from "./widgets/CListView.js";
 export { CModelIndex } from "./models/CModelIndex.js";
 export { CAbstractItemModel } from "./models/CAbstractItemModel.js";
+export { CAbstractProxyModel } from "./models/CAbstractProxyModel.js";
 export { CAbstractListModel } from "./models/CAbstractListModel.js";
 export { CAbstractTableModel } from "./models/CAbstractTableModel.js";
 export { CTableView } from "./widgets/CTableView.js";
@@ -103,3 +104,4 @@ export { CIntItemDelegate } from "./widgets/CIntItemDelegate.js"
 export { CDoubleItemDelegate } from "./widgets/CDoubleItemDelegate.js"
 export { CComboBoxItemDelegate } from "./widgets/CComboBoxItemDelegate.js";
 export { CSortOrder } from "./gui/CSortOrder.js"
+export { CSortFilterProxyModel } from "./models/CSortFilterProxyModel.js";

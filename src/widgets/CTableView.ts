@@ -603,6 +603,14 @@ export class CTableView extends CAbstractItemView {
 		this.#m_verticalHeader.update();
 	}
 
+	/** Updates table geometry after rows are rearranged or filtered. */
+	protected override modelLayoutChanged(): void {
+		this.#updateContentGeometry();
+		this.#m_contentWidget.update();
+		this.#m_horizontalHeader.update();
+		this.#m_verticalHeader.update();
+	}
+
 	/** Scrolls to and repaints a newly selected current index. */
 	protected override currentIndexChanged(index: CModelIndex): void {
 		super.currentIndexChanged(index);
