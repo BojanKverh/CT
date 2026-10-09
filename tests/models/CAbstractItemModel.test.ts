@@ -40,6 +40,14 @@ class TestModel extends CAbstractItemModel {
 	resetTestModel(): void {
 		this.resetModel();
 	}
+
+	changeTestLayout(
+		oldIndexes: CModelIndex[],
+		newIndexes: CModelIndex[]
+	): void {
+		this.beginLayoutChange();
+		this.endLayoutChange(oldIndexes, newIndexes);
+	}
 }
 
 describe("CAbstractItemModel", () => {
@@ -198,6 +206,45 @@ describe("CAbstractItemModel", () => {
 		model.resetTestModel();
 
 		expect(count).toBe(2);
+	});
+
+	test("layout change signals are emitted in order", () => {
+		const model = new TestModel();
+		const oldIndexes = [model.index(0, 0), model.index(1, 0)];
+		const newIndexes = [model.index(1, 0), model.index(0, 0)];
+		const events: string[] = [];
+		let emittedOld: CModelIndex[] = [];
+		let emittedNew: CModelIndex[] = [];
+
+		model.layoutAboutToBeChanged.connect(() => {
+			events.push("about");
+		});
+		model.layoutChanged.connect((oldValues, newValues) => {
+			events.push("changed");
+			emittedOld = oldValues;
+			emittedNew = newValues;
+		});
+
+		model.changeTestLayout(oldIndexes, newIndexes);
+
+		expect(events).toEqual(["about", "changed"]);
+		expect(emittedOld).toBe(oldIndexes);
+		expect(emittedNew).toBe(newIndexes);
+	});
+
+	test("layoutChanged rejects mapping lists of different lengths", () => {
+		const model = new TestModel();
+		let changedCount = 0;
+		model.layoutChanged.connect(() => {
+			changedCount++;
+		});
+
+		model.changeTestLayout(
+			[model.index(0, 0)],
+			[model.index(1, 0), model.index(2, 0)]
+		);
+
+		expect(changedCount).toBe(0);
 	});
 
 	test("invalid index returns no data in test model", () => {

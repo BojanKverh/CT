@@ -54,6 +54,14 @@ class TestModel extends CAbstractTableModel {
 	reset(): void {
 		this.resetModel();
 	}
+
+	changeLayout(
+		oldIndexes: CModelIndex[],
+		newIndexes: CModelIndex[]
+	): void {
+		this.beginLayoutChange();
+		this.endLayoutChange(oldIndexes, newIndexes);
+	}
 }
 
 class TestDelegate extends CAbstractItemDelegate {
@@ -105,6 +113,7 @@ class TestItemView extends CAbstractItemView {
 	}> = [];
 	modelDataChangedCalls = 0;
 	modelResetCalls = 0;
+	modelLayoutChangedCalls = 0;
 	currentIndexChangedCalls: CModelIndex[] = [];
 	editorClosedCalls = 0;
 
@@ -141,6 +150,10 @@ class TestItemView extends CAbstractItemView {
 
 	protected override modelReset(): void {
 		++this.modelResetCalls;
+	}
+
+	protected override modelLayoutChanged(): void {
+		++this.modelLayoutChangedCalls;
 	}
 
 	protected override currentIndexChanged(index: CModelIndex): void {
@@ -265,6 +278,79 @@ describe("CAbstractItemView", () => {
 		oldModel.reset();
 
 		expect(view.modelResetCalls).toBe(0);
+	});
+
+	test("model layout change remaps current index and selection", () => {
+		const view = new TestItemView();
+		const model = new TestModel();
+		view.setModel(model);
+		const oldCurrent = model.index(0, 0);
+		const oldSelected = model.index(1, 1);
+		const newCurrent = model.index(1, 0);
+		const newSelected = model.index(0, 1);
+		view.setCurrentIndex(oldCurrent);
+		view.selectionModel()?.select(oldSelected);
+
+		model.changeLayout(
+			[oldCurrent, oldSelected],
+			[newCurrent, newSelected]
+		);
+
+		expect(view.currentIndex().equals(newCurrent)).toBe(true);
+		expect(view.selectionModel()?.isSelected(newSelected)).toBe(true);
+		expect(view.modelLayoutChangedCalls).toBe(1);
+		expect(view.modelResetCalls).toBe(0);
+	});
+
+	test("old model layout change is disconnected", () => {
+		const view = new TestItemView();
+		const oldModel = new TestModel();
+		view.setModel(oldModel);
+		view.setModel(new TestModel());
+
+		oldModel.changeLayout(
+			[oldModel.index(0, 0)],
+			[oldModel.index(1, 0)]
+		);
+
+		expect(view.modelLayoutChangedCalls).toBe(0);
+	});
+
+	test("active editor follows its index after a layout change", () => {
+		const view = new TestItemView();
+		const model = new TestModel();
+		const delegate = new TestDelegate();
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		const oldIndex = model.index(0, 1);
+		const newIndex = model.index(1, 1);
+		view.edit(oldIndex);
+		const editor = delegate.lastEditor!;
+
+		model.changeLayout([oldIndex], [newIndex]);
+
+		expect(editor.parent()).toBe(view.host);
+		expect(editor.x()).toBe(100);
+		expect(editor.y()).toBe(25);
+		expect(editor.width()).toBe(100);
+		expect(editor.height()).toBe(25);
+		expect(delegate.updateGeometryCalls).toBe(2);
+	});
+
+	test("active editor closes if its index disappears", () => {
+		const view = new TestItemView();
+		const model = new TestModel();
+		const delegate = new TestDelegate();
+		view.setModel(model);
+		view.setItemDelegate(delegate);
+		const index = model.index(0, 0);
+		view.edit(index);
+		const editor = delegate.lastEditor!;
+
+		model.changeLayout([index], [new CModelIndex()]);
+
+		expect(editor.parent()).toBeNull();
+		expect(view.editorClosedCalls).toBe(1);
 	});
 
 	test("sets current index and calls hook", () => {

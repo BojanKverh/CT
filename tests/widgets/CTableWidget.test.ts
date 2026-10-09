@@ -249,6 +249,61 @@ describe("CTableWidget", () => {
 		expect(table.item(1, 0)?.text()).toBe("Bob");
 	});
 
+	test("current item follows its row when sorting", () => {
+		const table = new CTableWidget();
+		const bob = new CTableWidgetItem("Bob");
+		const alice = new CTableWidgetItem("Alice");
+		table.setRowCount(2);
+		table.setColumnCount(1);
+		table.setItem(0, 0, bob);
+		table.setItem(1, 0, alice);
+		table.setCurrentItem(bob);
+
+		table.sortByColumn(0);
+
+		expect(table.currentItem()).toBe(bob);
+		expect(table.currentIndex().row()).toBe(1);
+	});
+
+	test("selected items follow their rows when sorting", () => {
+		const table = new CTableWidget();
+		const carol = new CTableWidgetItem("Carol");
+		const alice = new CTableWidgetItem("Alice");
+		const bob = new CTableWidgetItem("Bob");
+		table.setRowCount(3);
+		table.setColumnCount(1);
+		table.setItem(0, 0, carol);
+		table.setItem(1, 0, alice);
+		table.setItem(2, 0, bob);
+		table.selectionModel()?.select(table.indexFromItem(carol));
+		table.selectionModel()?.select(table.indexFromItem(bob));
+
+		table.sortByColumn(0);
+
+		expect(table.selectedItems()).toEqual([carol, bob]);
+		expect(table.indexFromItem(carol).row()).toBe(2);
+		expect(table.indexFromItem(bob).row()).toBe(1);
+	});
+
+	test("sorting does not emit currentItemChanged for the same item", () => {
+		const table = new CTableWidget();
+		const bob = new CTableWidgetItem("Bob");
+		table.setRowCount(2);
+		table.setColumnCount(1);
+		table.setItem(0, 0, bob);
+		table.setItem(1, 0, new CTableWidgetItem("Alice"));
+		table.setCurrentItem(bob);
+		let changedCount = 0;
+		table.currentItemChanged.connect(() => {
+			changedCount++;
+		});
+
+		table.sortByColumn(0);
+
+		expect(table.currentItem()).toBe(bob);
+		expect(changedCount).toBe(0);
+	});
+
 	test("negative row count becomes zero", () => {
 		const table = new CTableWidget();
 

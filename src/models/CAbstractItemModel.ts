@@ -15,6 +15,13 @@ export abstract class CAbstractItemModel extends CObject {
 	/** Emitted when the model has been reset. */
 	readonly modelReset = new CSignal<[]>();
 
+	/** Emitted immediately before indexes are rearranged. */
+	readonly layoutAboutToBeChanged = new CSignal<[]>();
+
+	/** Emitted after indexes have been rearranged. */
+	readonly layoutChanged =
+		new CSignal<[CModelIndex[], CModelIndex[]]>();
+
 	/**
 	 * Creates an item model.
 	 *
@@ -123,5 +130,21 @@ export abstract class CAbstractItemModel extends CObject {
 	/** Resets the model and emits the modelReset signal. */
 	protected resetModel(): void {
 		this.modelReset.emit();
+	}
+
+	/** Announces that model indexes are about to be rearranged. */
+	protected beginLayoutChange(): void {
+		this.layoutAboutToBeChanged.emit();
+	}
+
+	/** Announces a completed index rearrangement. */
+	protected endLayoutChange(
+		oldIndexes: CModelIndex[],
+		newIndexes: CModelIndex[]
+	): void {
+		if (oldIndexes.length !== newIndexes.length)
+			return;
+
+		this.layoutChanged.emit(oldIndexes, newIndexes);
 	}
 }

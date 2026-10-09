@@ -119,8 +119,33 @@ class CTableWidgetModel extends CAbstractItemModel {
 				: directedComparison;
 		});
 
+		const oldRows = [...this.#m_items];
+		const oldIndexes: CModelIndex[] = [];
+
+		for (let row = 0; row < oldRows.length; row++) {
+			for (let currentColumn = 0;
+				currentColumn < this.#m_columnCount;
+				currentColumn++) {
+				oldIndexes.push(this.createIndex(row, currentColumn));
+			}
+		}
+
+		this.beginLayoutChange();
 		this.#m_items = rows.map(row => row.items);
-		this.resetModel();
+
+		const newIndexes: CModelIndex[] = [];
+
+		for (let oldRow = 0; oldRow < oldRows.length; oldRow++) {
+			const newRow = this.#m_items.indexOf(oldRows[oldRow]!);
+
+			for (let currentColumn = 0;
+				currentColumn < this.#m_columnCount;
+				currentColumn++) {
+				newIndexes.push(this.createIndex(newRow, currentColumn));
+			}
+		}
+
+		this.endLayoutChange(oldIndexes, newIndexes);
 	}
 
 	setRowCount(count: number): void {

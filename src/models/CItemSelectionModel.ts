@@ -105,4 +105,57 @@ export class CItemSelectionModel extends CObject {
 		this.clearSelection();
 		this.setCurrentIndex(new CModelIndex());
 	}
+
+	/** Remaps current and selected indexes after a model layout change. */
+	remapIndexes(
+		oldIndexes: CModelIndex[],
+		newIndexes: CModelIndex[]
+	): void {
+		if (oldIndexes.length !== newIndexes.length)
+			return;
+
+		this.#m_currentIndex = this.#remapIndex(
+			this.#m_currentIndex,
+			oldIndexes,
+			newIndexes
+		);
+
+		const remapped: CModelIndex[] = [];
+
+		for (const index of this.#m_selectedIndexes) {
+			const mapped = this.#remapIndex(
+				index,
+				oldIndexes,
+				newIndexes
+			);
+
+			if (mapped.isValid() && mapped.model() === this.#m_model &&
+				!remapped.some(existing => existing.equals(mapped)))
+				remapped.push(mapped);
+		}
+
+		this.#m_selectedIndexes = remapped;
+	}
+
+	#remapIndex(
+		index: CModelIndex,
+		oldIndexes: CModelIndex[],
+		newIndexes: CModelIndex[]
+	): CModelIndex {
+		if (!index.isValid())
+			return index;
+
+		const position = oldIndexes.findIndex(old => old.equals(index));
+
+		if (position < 0)
+			return index;
+
+		const mapped = newIndexes[position];
+
+		if (mapped === undefined ||
+			(mapped.isValid() && mapped.model() !== this.#m_model))
+			return new CModelIndex();
+
+		return mapped;
+	}
 }

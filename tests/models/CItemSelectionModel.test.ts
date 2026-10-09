@@ -302,4 +302,77 @@ describe("CItemSelectionModel", () => {
 
 		expect(index1.equals(index2)).toBe(false);
 	});
+
+	test("remaps the current index without emitting currentChanged", () => {
+		const model = new TestListModel();
+		const selection = new CItemSelectionModel(model);
+		const oldIndex = model.index(0, 0);
+		const newIndex = model.index(2, 0);
+		let changedCount = 0;
+		selection.setCurrentIndex(oldIndex);
+		selection.currentChanged.connect(() => {
+			changedCount++;
+		});
+
+		selection.remapIndexes([oldIndex], [newIndex]);
+
+		expect(selection.currentIndex().equals(newIndex)).toBe(true);
+		expect(changedCount).toBe(0);
+	});
+
+	test("remaps multiple selected indexes without selectionChanged", () => {
+		const model = new TestListModel();
+		const selection = new CItemSelectionModel(model);
+		const first = model.index(0, 0);
+		const second = model.index(1, 0);
+		const mappedFirst = model.index(2, 0);
+		const mappedSecond = model.index(0, 0);
+		let changedCount = 0;
+		selection.select(first);
+		selection.select(second);
+		selection.selectionChanged.connect(() => {
+			changedCount++;
+		});
+
+		selection.remapIndexes(
+			[first, second],
+			[mappedFirst, mappedSecond]
+		);
+
+		expect(selection.selectedIndexes()).toEqual([
+			mappedFirst,
+			mappedSecond
+		]);
+		expect(changedCount).toBe(0);
+	});
+
+	test("keeps indexes absent from a layout mapping", () => {
+		const model = new TestListModel();
+		const selection = new CItemSelectionModel(model);
+		const selected = model.index(1, 0);
+		selection.select(selected);
+
+		selection.remapIndexes(
+			[model.index(0, 0)],
+			[model.index(2, 0)]
+		);
+
+		expect(selection.selectedIndexes()).toEqual([selected]);
+	});
+
+	test("ignores remapping lists of different lengths", () => {
+		const model = new TestListModel();
+		const selection = new CItemSelectionModel(model);
+		const current = model.index(1, 0);
+		selection.setCurrentIndex(current);
+		selection.select(current);
+
+		selection.remapIndexes(
+			[current],
+			[model.index(0, 0), model.index(2, 0)]
+		);
+
+		expect(selection.currentIndex()).toBe(current);
+		expect(selection.selectedIndexes()).toEqual([current]);
+	});
 });

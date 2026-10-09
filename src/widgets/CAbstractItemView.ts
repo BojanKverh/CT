@@ -24,6 +24,7 @@ export abstract class CAbstractItemView extends CWidget {
 
 	#m_disconnectDataChanged: (() => void) | null = null;
 	#m_disconnectModelReset: (() => void) | null = null;
+	#m_disconnectLayoutChanged: (() => void) | null = null;
 
 	/** Creates a new item view. */
 	constructor(parent: CWidget | null = null) {
@@ -68,6 +69,29 @@ export abstract class CAbstractItemView extends CWidget {
 					this.#closeEditor();
 					this.#m_selectionModel?.clear();
 					this.modelReset();
+				});
+
+			this.#m_disconnectLayoutChanged =
+				model.layoutChanged.connect((oldIndexes, newIndexes) => {
+					this.#m_selectionModel?.remapIndexes(
+						oldIndexes,
+						newIndexes
+					);
+
+					if (this.#m_editor !== null) {
+						this.#m_editorIndex = this.#remapIndex(
+							this.#m_editorIndex,
+							oldIndexes,
+							newIndexes
+						);
+
+						if (this.#m_editorIndex.isValid())
+							this.updateEditorGeometry();
+						else
+							this.#closeEditor();
+					}
+
+					this.modelLayoutChanged();
 				});
 		}
 
@@ -213,6 +237,11 @@ export abstract class CAbstractItemView extends CWidget {
 		this.update();
 	}
 
+	/** Called after indexes in the current model are rearranged. */
+	protected modelLayoutChanged(): void {
+		this.update();
+	}
+
 	protected currentIndexChanged(index: CModelIndex): void {
 		if (this.#m_editor !== null
 			&& !this.#m_editorIndex.equals(index)) {
@@ -287,6 +316,18 @@ export abstract class CAbstractItemView extends CWidget {
 		this.editorClosed();
 	}
 
+	#remapIndex(
+		index: CModelIndex,
+		oldIndexes: CModelIndex[],
+		newIndexes: CModelIndex[]
+	): CModelIndex {
+		const position = oldIndexes.findIndex(old => old.equals(index));
+
+		return position >= 0
+			? newIndexes[position] ?? new CModelIndex()
+			: index;
+	}
+
 	#disconnectModel(): void {
 		if (this.#m_disconnectDataChanged !== null) {
 			this.#m_disconnectDataChanged();
@@ -296,6 +337,11 @@ export abstract class CAbstractItemView extends CWidget {
 		if (this.#m_disconnectModelReset !== null) {
 			this.#m_disconnectModelReset();
 			this.#m_disconnectModelReset = null;
+		}
+
+		if (this.#m_disconnectLayoutChanged !== null) {
+			this.#m_disconnectLayoutChanged();
+			this.#m_disconnectLayoutChanged = null;
 		}
 	}
 }
