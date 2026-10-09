@@ -2,6 +2,7 @@ import { CObject } from "../core/CObject.js";
 import { CSignal } from "../core/CSignal.js";
 import { CModelIndex } from "./CModelIndex.js";
 import { COrientation } from "../gui/COrientation.js";
+import { CSortOrder } from "../gui/CSortOrder.js";
 
 /**
  * Abstract base class for models that expose data to item views.
@@ -50,6 +51,17 @@ export abstract class CAbstractItemModel extends CObject {
 	 */
 	isEditable(_index: CModelIndex): boolean {
 		return false;
+	}
+
+	/**
+	 * Sorts the model by a column in the requested order.
+	 *
+	 * The base implementation does not modify the model.
+	 */
+	sort(
+		_column: number,
+		_order: CSortOrder = CSortOrder.AscendingOrder
+	): void {
 	}
 
 	/**

@@ -102,3 +102,4 @@ export { CDoubleValidator } from "./util/CDoubleValidator.js"
 export { CIntItemDelegate } from "./widgets/CIntItemDelegate.js"
 export { CDoubleItemDelegate } from "./widgets/CDoubleItemDelegate.js"
 export { CComboBoxItemDelegate } from "./widgets/CComboBoxItemDelegate.js";
+export { CSortOrder } from "./gui/CSortOrder.js"

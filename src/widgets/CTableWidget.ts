@@ -1,5 +1,6 @@
 import { CSignal } from "../core/CSignal.js";
 import { COrientation } from "../gui/COrientation.js";
+import { CSortOrder } from "../gui/CSortOrder.js";
 import { CAbstractItemModel } from "../models/CAbstractItemModel.js";
 import { CModelIndex } from "../models/CModelIndex.js";
 import { CTableView } from "./CTableView.js";
@@ -60,6 +61,66 @@ class CTableWidgetModel extends CAbstractItemModel {
 
 		return this.#m_verticalHeaderLabels[section] ??
 			super.headerData(section, orientation);
+	}
+
+	override sort(
+		column: number,
+		order: CSortOrder = CSortOrder.AscendingOrder
+	): void {
+		if (column < 0 || column >= this.#m_columnCount ||
+			this.#m_items.length < 2)
+			return;
+
+		const rows = this.#m_items.map((items, originalIndex) => ({
+			items,
+			originalIndex
+		}));
+
+		rows.sort((left, right) => {
+			const leftItem = left.items[column] ?? null;
+			const rightItem = right.items[column] ?? null;
+
+			if (leftItem === null && rightItem === null)
+				return left.originalIndex - right.originalIndex;
+
+			if (leftItem === null)
+				return 1;
+
+			if (rightItem === null)
+				return -1;
+
+			const leftValue = leftItem.data();
+			const rightValue = rightItem.data();
+			const leftValueEmpty = leftValue === null ||
+				leftValue === undefined;
+			const rightValueEmpty = rightValue === null ||
+				rightValue === undefined;
+
+			if (leftValueEmpty && rightValueEmpty)
+				return left.originalIndex - right.originalIndex;
+
+			if (leftValueEmpty)
+				return 1;
+
+			if (rightValueEmpty)
+				return -1;
+
+			const comparison = this.#compareValues(
+				leftValue,
+				rightValue
+			);
+			const directedComparison =
+				order === CSortOrder.DescendingOrder
+					? -comparison
+					: comparison;
+
+			return directedComparison === 0
+				? left.originalIndex - right.originalIndex
+				: directedComparison;
+		});
+
+		this.#m_items = rows.map(row => row.items);
+		this.resetModel();
 	}
 
 	setRowCount(count: number): void {
@@ -177,6 +238,42 @@ class CTableWidgetModel extends CAbstractItemModel {
 		}
 
 		return null;
+	}
+
+	#compareValues(left: unknown, right: unknown): number {
+		if (Object.is(left, right))
+			return 0;
+
+		if (left === null || left === undefined)
+			return 1;
+
+		if (right === null || right === undefined)
+			return -1;
+
+		if (typeof left === "number" && typeof right === "number") {
+			if (Number.isNaN(left))
+				return Number.isNaN(right) ? 0 : 1;
+
+			if (Number.isNaN(right))
+				return -1;
+
+			return left < right ? -1 : 1;
+		}
+
+		if (left instanceof Date && right instanceof Date) {
+			const leftTime = left.getTime();
+			const rightTime = right.getTime();
+
+			if (leftTime === rightTime)
+				return 0;
+
+			return leftTime < rightTime ? -1 : 1;
+		}
+
+		if (typeof left === "boolean" && typeof right === "boolean")
+			return left === right ? 0 : left ? 1 : -1;
+
+		return String(left).localeCompare(String(right));
 	}
 }
 

@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
 import { CEventType } from "../../src/events/CEvent.js";
 import { CKeyEvent } from "../../src/events/CKeyEvent.js";
+import { CMouseButton, CMouseEvent } from "../../src/events/CMouseEvent.js";
 import { COrientation } from "../../src/gui/COrientation.js";
+import { CSortOrder } from "../../src/gui/CSortOrder.js";
 import { CModelIndex } from "../../src/models/CModelIndex.js";
 import { CComboBox } from "../../src/widgets/CComboBox.js";
 import { CComboBoxItemDelegate } from "../../src/widgets/CComboBoxItemDelegate.js";
@@ -83,6 +85,168 @@ describe("CTableWidget", () => {
 
 		expect(table.rowCount()).toBe(3);
 		expect(table.columnCount()).toBe(4);
+	});
+
+	test("sorts text rows in ascending order", () => {
+		const table = new CTableWidget();
+		table.setRowCount(3);
+		table.setColumnCount(2);
+		table.setItem(0, 0, new CTableWidgetItem("Carol"));
+		table.setItem(0, 1, new CTableWidgetItem("third"));
+		table.setItem(1, 0, new CTableWidgetItem("Alice"));
+		table.setItem(1, 1, new CTableWidgetItem("first"));
+		table.setItem(2, 0, new CTableWidgetItem("Bob"));
+		table.setItem(2, 1, new CTableWidgetItem("second"));
+
+		table.sortByColumn(0, CSortOrder.AscendingOrder);
+
+		expect(table.item(0, 0)?.text()).toBe("Alice");
+		expect(table.item(1, 0)?.text()).toBe("Bob");
+		expect(table.item(2, 0)?.text()).toBe("Carol");
+		expect(table.item(0, 1)?.text()).toBe("first");
+		expect(table.item(1, 1)?.text()).toBe("second");
+		expect(table.item(2, 1)?.text()).toBe("third");
+	});
+
+	test("sorts text rows in descending order", () => {
+		const table = new CTableWidget();
+		table.setRowCount(3);
+		table.setColumnCount(1);
+		table.setItem(0, 0, new CTableWidgetItem("Alice"));
+		table.setItem(1, 0, new CTableWidgetItem("Carol"));
+		table.setItem(2, 0, new CTableWidgetItem("Bob"));
+
+		table.sortByColumn(0, CSortOrder.DescendingOrder);
+
+		expect([
+			table.item(0, 0)?.text(),
+			table.item(1, 0)?.text(),
+			table.item(2, 0)?.text()
+		]).toEqual(["Carol", "Bob", "Alice"]);
+	});
+
+	test("sorts numbers numerically instead of as text", () => {
+		const table = new CTableWidget();
+		table.setRowCount(3);
+		table.setColumnCount(1);
+		table.setItem(0, 0, new CTableWidgetItem(10));
+		table.setItem(1, 0, new CTableWidgetItem(2));
+		table.setItem(2, 0, new CTableWidgetItem(100));
+
+		table.sortByColumn(0);
+
+		expect([
+			table.item(0, 0)?.data(),
+			table.item(1, 0)?.data(),
+			table.item(2, 0)?.data()
+		]).toEqual([2, 10, 100]);
+	});
+
+	test("sorts dates chronologically", () => {
+		const table = new CTableWidget();
+		const earliest = new Date(2024, 0, 1);
+		const middle = new Date(2025, 0, 1);
+		const latest = new Date(2026, 0, 1);
+		table.setRowCount(3);
+		table.setColumnCount(1);
+		table.setItem(0, 0, new CTableWidgetItem(latest));
+		table.setItem(1, 0, new CTableWidgetItem(earliest));
+		table.setItem(2, 0, new CTableWidgetItem(middle));
+
+		table.sortByColumn(0);
+
+		expect([
+			table.item(0, 0)?.data(),
+			table.item(1, 0)?.data(),
+			table.item(2, 0)?.data()
+		]).toEqual([earliest, middle, latest]);
+	});
+
+	test("sorts false before true", () => {
+		const table = new CTableWidget();
+		table.setRowCount(3);
+		table.setColumnCount(1);
+		table.setItem(0, 0, new CTableWidgetItem(true));
+		table.setItem(1, 0, new CTableWidgetItem(false));
+		table.setItem(2, 0, new CTableWidgetItem(true));
+
+		table.sortByColumn(0);
+
+		expect([
+			table.item(0, 0)?.data(),
+			table.item(1, 0)?.data(),
+			table.item(2, 0)?.data()
+		]).toEqual([false, true, true]);
+	});
+
+	test("keeps empty cells at the end in both sort orders", () => {
+		const table = new CTableWidget();
+		table.setRowCount(3);
+		table.setColumnCount(1);
+		table.setItem(0, 0, new CTableWidgetItem("Bob"));
+		table.setItem(2, 0, new CTableWidgetItem("Alice"));
+
+		table.sortByColumn(0, CSortOrder.AscendingOrder);
+		expect(table.item(2, 0)).toBeNull();
+
+		table.sortByColumn(0, CSortOrder.DescendingOrder);
+		expect(table.item(0, 0)?.text()).toBe("Bob");
+		expect(table.item(1, 0)?.text()).toBe("Alice");
+		expect(table.item(2, 0)).toBeNull();
+	});
+
+	test("sorting equal values is stable", () => {
+		const table = new CTableWidget();
+		const first = new CTableWidgetItem("first");
+		const second = new CTableWidgetItem("second");
+		table.setRowCount(2);
+		table.setColumnCount(2);
+		table.setItem(0, 0, new CTableWidgetItem(10));
+		table.setItem(0, 1, first);
+		table.setItem(1, 0, new CTableWidgetItem(10));
+		table.setItem(1, 1, second);
+
+		table.sortByColumn(0, CSortOrder.DescendingOrder);
+
+		expect(table.item(0, 1)).toBe(first);
+		expect(table.item(1, 1)).toBe(second);
+	});
+
+	test("sorting preserves item identity and updates its index", () => {
+		const table = new CTableWidget();
+		const alice = new CTableWidgetItem("Alice");
+		const bob = new CTableWidgetItem("Bob");
+		table.setRowCount(2);
+		table.setColumnCount(1);
+		table.setItem(0, 0, bob);
+		table.setItem(1, 0, alice);
+
+		table.sortByColumn(0);
+
+		expect(table.item(0, 0)).toBe(alice);
+		expect(table.item(1, 0)).toBe(bob);
+		expect(table.indexFromItem(alice).row()).toBe(0);
+		expect(table.indexFromItem(bob).row()).toBe(1);
+	});
+
+	test("clicking the header sorts the table when enabled", () => {
+		const table = new CTableWidget();
+		table.setRowCount(2);
+		table.setColumnCount(1);
+		table.setItem(0, 0, new CTableWidgetItem("Bob"));
+		table.setItem(1, 0, new CTableWidgetItem("Alice"));
+		table.setSortingEnabled(true);
+
+		const header = table.horizontalHeader();
+		header.event(new CMouseEvent(
+			CEventType.MousePress, 10, 10, CMouseButton.LeftButton
+		));
+		header.event(new CMouseEvent(
+			CEventType.MouseRelease, 10, 10, CMouseButton.LeftButton
+		));
+
+		expect(table.item(0, 0)?.text()).toBe("Alice");
+		expect(table.item(1, 0)?.text()).toBe("Bob");
 	});
 
 	test("negative row count becomes zero", () => {

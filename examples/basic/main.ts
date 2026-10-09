@@ -9,7 +9,8 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget, CTableWidgetItem, CTableWidget, 
 	CContextMenuEvent, CDragEnterEvent, CDragMoveEvent, CDragLeaveEvent, CDropEvent,
 	CDrag, CMimeData, CDropAction, CIcon, CDockWidget, CDockWidgetArea,
-	CCursorShape, CDial, CTextBrowser, CDoubleSpinBox, CIntItemDelegate, CComboBoxItemDelegate
+	CCursorShape, CDial, CTextBrowser, CDoubleSpinBox, CIntItemDelegate, CComboBoxItemDelegate,
+	CSortOrder
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -204,6 +205,24 @@ class DemoTableModel extends CAbstractTableModel {
 		}
 
 		return section + 1;
+	}
+
+	override sort(column: number, order: CSortOrder = CSortOrder.AscendingOrder): void {
+    	const direction = order === CSortOrder.AscendingOrder ? 1 : -1;
+    	this.#m_rows.sort((left, right) => {
+			const a = left[column];
+        	const b = right[column];
+
+        	if (typeof a === "number" && typeof b === "number")
+            	return (a - b) * direction;
+
+        	if (a instanceof Date && b instanceof Date)
+            	return (a.getTime() - b.getTime()) * direction;
+
+        	return String(a).localeCompare(String(b)) * direction;
+    	});
+
+    	this.resetModel();
 	}
 }
 
@@ -679,6 +698,7 @@ but3.clicked.connect(() => {
 	tv.setGeometry(50, 20, 500, 330);
 	const model = new DemoTableModel();
 	tv.setModel(model);
+	tv.setSortingEnabled(true);
 	tv.setItemDelegateForColumn(2, new CIntItemDelegate());
 	const occupationDelegate = new CComboBoxItemDelegate(["Developer", "Designer",
     	"Manager", "Engineer", "Architect", "Analyst" ]);
@@ -847,6 +867,7 @@ but6.clicked.connect(() => {
 	table.setGeometry(20, 20, 650, 350);
 	table.setRowCount(15);
 	table.setColumnCount(4);
+	table.setSortingEnabled(true);
 
 	table.setHorizontalHeaderLabels(["Name", "Occupation", "Age", "City"]);
 

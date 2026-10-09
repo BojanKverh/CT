@@ -3,6 +3,7 @@ import { CObject } from "../../src/core/CObject.js";
 import { CAbstractItemModel } from "../../src/models/CAbstractItemModel.js";
 import { CModelIndex } from "../../src/models/CModelIndex.js";
 import { COrientation } from "../../src/gui/COrientation.js";
+import { CSortOrder } from "../../src/gui/CSortOrder.js";
 
 class TestModel extends CAbstractItemModel {
 	#m_data = [
@@ -266,5 +267,21 @@ describe("CAbstractItemModel", () => {
 		expect(
 			model.headerData(2, COrientation.Vertical)
 		).toBe(3);
+	});
+
+	test("sort does not modify or reset the model by default", () => {
+		const model = new TestModel();
+		let resetCount = 0;
+
+		model.modelReset.connect(() => {
+			resetCount++;
+		});
+
+		model.sort(0);
+		model.sort(1, CSortOrder.DescendingOrder);
+
+		expect(model.data(model.index(0, 0))).toBe("A");
+		expect(model.data(model.index(2, 1))).toBe("F");
+		expect(resetCount).toBe(0);
 	});
 });

@@ -4,6 +4,7 @@ import { CSize } from "../geometry/CSize.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
+import { CSortOrder } from "../gui/CSortOrder.js";
 import { CAbstractItemModel } from "../models/CAbstractItemModel.js";
 import { CModelIndex } from "../models/CModelIndex.js";
 import { CPainter } from "../painting/CPainter.js";
@@ -59,6 +60,7 @@ export class CTableView extends CAbstractItemView {
 	#m_verticalHeader: CHeaderView;
 	#m_scrollArea: CTableScrollArea;
 	#m_contentWidget: CTableViewContentWidget;
+	#m_sortingEnabled = false;
 
 	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
@@ -98,6 +100,20 @@ export class CTableView extends CAbstractItemView {
 			this.updateEditorGeometry();
 			this.#m_contentWidget.update();
 		});
+
+		this.#m_horizontalHeader.sectionClicked.connect(section => {
+			if (!this.#m_sortingEnabled)
+				return;
+
+			const order =
+				this.#m_horizontalHeader.sortIndicatorSection() === section
+					? this.#oppositeSortOrder(
+						this.#m_horizontalHeader.sortIndicatorOrder()
+					)
+					: CSortOrder.AscendingOrder;
+
+			this.sortByColumn(section, order);
+		});
 	}
 
 	/**
@@ -125,6 +141,34 @@ export class CTableView extends CAbstractItemView {
 	/** Provides vertical header behavior. */
 	verticalHeader(): CHeaderView {
 		return this.#m_verticalHeader;
+	}
+
+	/** Returns whether sorting by clicking the header is enabled. */
+	isSortingEnabled(): boolean {
+		return this.#m_sortingEnabled;
+	}
+
+	/** Enables or disables sorting by clicking the horizontal header. */
+	setSortingEnabled(enabled: boolean): void {
+		if (this.#m_sortingEnabled === enabled)
+			return;
+
+		this.#m_sortingEnabled = enabled;
+		this.#m_horizontalHeader.setSortIndicatorShown(enabled);
+	}
+
+	/** Sorts the model by the requested column and order. */
+	sortByColumn(
+		column: number,
+		order: CSortOrder = CSortOrder.AscendingOrder
+	): void {
+		const model = this.model();
+
+		if (model === null || column < 0 || column >= model.columnCount())
+			return;
+
+		this.#m_horizontalHeader.setSortIndicator(column, order);
+		model.sort(column, order);
 	}
 
 	/** Provides viewport behavior. */
@@ -614,6 +658,12 @@ export class CTableView extends CAbstractItemView {
 					/ CTableView.RowHeight
 			)
 		);
+	}
+
+	#oppositeSortOrder(order: CSortOrder): CSortOrder {
+		return order === CSortOrder.AscendingOrder
+			? CSortOrder.DescendingOrder
+			: CSortOrder.AscendingOrder;
 	}
 
 	#formatDate(date: Date): string {

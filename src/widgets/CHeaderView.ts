@@ -4,6 +4,7 @@ import { CSize } from "../geometry/CSize.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
+import { CSortOrder } from "../gui/CSortOrder.js";
 import { CAbstractItemModel } from "../models/CAbstractItemModel.js";
 import { CPainter } from "../painting/CPainter.js";
 import { CWidget } from "./CWidget.js";
@@ -20,6 +21,10 @@ export class CHeaderView extends CWidget {
 	#m_model: CAbstractItemModel | null = null;
 	#m_offset = 0;
 	#m_sectionSizes: number[] = [];
+	#m_pressedSection = -1;
+	#m_sortIndicatorSection = -1;
+	#m_sortIndicatorOrder = CSortOrder.AscendingOrder;
+	#m_sortIndicatorShown = false;
 
 	#m_resizeSection = -1;
 	#m_resizeStartPosition = 0;
@@ -29,6 +34,13 @@ export class CHeaderView extends CWidget {
 	/** Public section resized member. */
 	readonly sectionResized =
 		new CSignal<[number, number, number]>();
+
+	/** Emitted when a section is clicked. */
+	readonly sectionClicked = new CSignal<[number]>();
+
+	/** Emitted when the sort indicator changes. */
+	readonly sortIndicatorChanged =
+		new CSignal<[number, CSortOrder]>();
 
 	/** Creates a new instance. */
 	constructor(orientation: COrientation,
@@ -73,6 +85,45 @@ export class CHeaderView extends CWidget {
 			return;
 
 		this.#m_offset = offset;
+		this.update();
+	}
+
+	/** Returns the section displaying the sort indicator. */
+	sortIndicatorSection(): number {
+		return this.#m_sortIndicatorSection;
+	}
+
+	/** Returns the order displayed by the sort indicator. */
+	sortIndicatorOrder(): CSortOrder {
+		return this.#m_sortIndicatorOrder;
+	}
+
+	/** Sets the section and order displayed by the sort indicator. */
+	setSortIndicator(section: number, order: CSortOrder): void {
+		if (section < -1 || section >= this.#sectionCount())
+			return;
+
+		if (this.#m_sortIndicatorSection === section &&
+			this.#m_sortIndicatorOrder === order)
+			return;
+
+		this.#m_sortIndicatorSection = section;
+		this.#m_sortIndicatorOrder = order;
+		this.sortIndicatorChanged.emit(section, order);
+		this.update();
+	}
+
+	/** Returns whether the sort indicator is visible. */
+	isSortIndicatorShown(): boolean {
+		return this.#m_sortIndicatorShown;
+	}
+
+	/** Sets whether the sort indicator is visible. */
+	setSortIndicatorShown(shown: boolean): void {
+		if (this.#m_sortIndicatorShown === shown)
+			return;
+
+		this.#m_sortIndicatorShown = shown;
 		this.update();
 	}
 
@@ -226,6 +277,14 @@ export class CHeaderView extends CWidget {
 					position + 5,
 					this.height() / 2
 				);
+
+				if (this.#m_sortIndicatorShown &&
+					section === this.#m_sortIndicatorSection)
+					this.#drawSortIndicator(
+						painter,
+						position,
+						sectionSize
+					);
 			} else {
 				/** Provides if behavior. */
 				if (position + sectionSize < 0 ||
@@ -260,10 +319,19 @@ export class CHeaderView extends CWidget {
 
 		/** Provides if behavior. */
 		if (section < 0) {
+			const pressedSection = this.sectionAt(position);
+
+			if (pressedSection >= 0) {
+				this.#m_pressedSection = pressedSection;
+				event.accept();
+				return;
+			}
+
 			event.ignore();
 			return;
 		}
 
+		this.#m_pressedSection = -1;
 		this.#m_resizeSection = section;
 		this.#m_resizeStartPosition = position;
 		this.#m_resizeStartSize = this.sectionSize(section);
@@ -326,7 +394,19 @@ export class CHeaderView extends CWidget {
 
 		/** Provides if behavior. */
 		if (this.#m_resizeSection < 0) {
-			event.ignore();
+			if (this.#m_pressedSection < 0) {
+				event.ignore();
+				return;
+			}
+
+			const pressedSection = this.#m_pressedSection;
+			this.#m_pressedSection = -1;
+
+			if (this.sectionAt(this.#eventPosition(event)) ===
+				pressedSection)
+				this.sectionClicked.emit(pressedSection);
+
+			event.accept();
 			return;
 		}
 
@@ -414,5 +494,21 @@ export class CHeaderView extends CWidget {
 		return this.#m_orientation === COrientation.Horizontal
 			? CCursorShape.SplitH
 			: CCursorShape.SplitV;
+	}
+
+	#drawSortIndicator(
+		painter: CPainter,
+		position: number,
+		sectionSize: number
+	): void {
+		const centerX = position + sectionSize - 12;
+		const centerY = this.height() / 2;
+		const direction = this.#m_sortIndicatorOrder ===
+			CSortOrder.AscendingOrder ? -1 : 1;
+		const tipY = centerY + direction * 3;
+		const baseY = centerY - direction * 3;
+
+		painter.drawLine(centerX - 4, baseY, centerX, tipY);
+		painter.drawLine(centerX, tipY, centerX + 4, baseY);
 	}
 }

@@ -21,6 +21,7 @@ import { CDoubleSpinBox } from "../../src/widgets/CDoubleSpinBox.js";
 import { CDateEdit } from "../../src/widgets/CDateEdit.js";
 import { CComboBox } from "../../src/widgets/CComboBox.js";
 import { CComboBoxItemDelegate } from "../../src/widgets/CComboBoxItemDelegate.js";
+import { CSortOrder } from "../../src/gui/CSortOrder.js";
 
 class TestTableModel extends CAbstractTableModel {
 	#m_data: string[][];
@@ -95,6 +96,20 @@ class EditableTableModel extends TestTableModel {
 
 		this.setData(index.row(), index.column(), String(value));
 		return true;
+	}
+}
+
+class SortableTableModel extends TestTableModel {
+	readonly sortCalls: Array<{
+		column: number;
+		order: CSortOrder;
+	}> = [];
+
+	override sort(
+		column: number,
+		order: CSortOrder = CSortOrder.AscendingOrder
+	): void {
+		this.sortCalls.push({ column, order });
 	}
 }
 
@@ -191,6 +206,24 @@ function mousePress(x: number, y: number): CMouseEvent {
 		CMouseButton.LeftButton);
 }
 
+function clickHeaderSection(view: CTableView, section: number): void {
+	const x = view.horizontalHeader().sectionPosition(section) + 10;
+	const header = view.horizontalHeader();
+
+	header.event(new CMouseEvent(
+		CEventType.MousePress,
+		x,
+		10,
+		CMouseButton.LeftButton
+	));
+	header.event(new CMouseEvent(
+		CEventType.MouseRelease,
+		x,
+		10,
+		CMouseButton.LeftButton
+	));
+}
+
 function findEditor<T extends CWidget>(
 	root: CWidget,
 	editorType: new (...args: never[]) => T
@@ -234,6 +267,122 @@ describe("CTableView", () => {
 
 		expect(hint.width()).toBe(400);
 		expect(hint.height()).toBe(240);
+	});
+
+	test("sorting is disabled by default", () => {
+		const view = new CTableView();
+
+		expect(view.isSortingEnabled()).toBe(false);
+		expect(view.horizontalHeader().isSortIndicatorShown()).toBe(false);
+	});
+
+	test("enabling sorting shows the header sort indicator", () => {
+		const view = new CTableView();
+
+		view.setSortingEnabled(true);
+
+		expect(view.isSortingEnabled()).toBe(true);
+		expect(view.horizontalHeader().isSortIndicatorShown()).toBe(true);
+	});
+
+	test("disabling sorting hides the header sort indicator", () => {
+		const view = new CTableView();
+		view.setSortingEnabled(true);
+
+		view.setSortingEnabled(false);
+
+		expect(view.isSortingEnabled()).toBe(false);
+		expect(view.horizontalHeader().isSortIndicatorShown()).toBe(false);
+	});
+
+	test("a header click does not sort when sorting is disabled", () => {
+		const view = new CTableView();
+		const model = new SortableTableModel();
+		view.setModel(model);
+
+		clickHeaderSection(view, 1);
+
+		expect(model.sortCalls).toEqual([]);
+	});
+
+	test("first header click sorts the column in ascending order", () => {
+		const view = new CTableView();
+		const model = new SortableTableModel();
+		view.setModel(model);
+		view.setSortingEnabled(true);
+
+		clickHeaderSection(view, 1);
+
+		expect(model.sortCalls).toEqual([{
+			column: 1,
+			order: CSortOrder.AscendingOrder
+		}]);
+		expect(view.horizontalHeader().sortIndicatorSection()).toBe(1);
+		expect(view.horizontalHeader().sortIndicatorOrder())
+			.toBe(CSortOrder.AscendingOrder);
+	});
+
+	test("repeated header clicks toggle the sort order", () => {
+		const view = new CTableView();
+		const model = new SortableTableModel();
+		view.setModel(model);
+		view.setSortingEnabled(true);
+
+		clickHeaderSection(view, 1);
+		clickHeaderSection(view, 1);
+		clickHeaderSection(view, 1);
+
+		expect(model.sortCalls.map(call => call.order)).toEqual([
+			CSortOrder.AscendingOrder,
+			CSortOrder.DescendingOrder,
+			CSortOrder.AscendingOrder
+		]);
+	});
+
+	test("clicking another column starts with ascending order", () => {
+		const view = new CTableView();
+		const model = new SortableTableModel();
+		view.setModel(model);
+		view.setSortingEnabled(true);
+
+		clickHeaderSection(view, 1);
+		clickHeaderSection(view, 1);
+		clickHeaderSection(view, 2);
+
+		expect(model.sortCalls[2]).toEqual({
+			column: 2,
+			order: CSortOrder.AscendingOrder
+		});
+		expect(view.horizontalHeader().sortIndicatorSection()).toBe(2);
+	});
+
+	test("sortByColumn sorts directly and updates the indicator", () => {
+		const view = new CTableView();
+		const model = new SortableTableModel();
+		view.setModel(model);
+
+		view.sortByColumn(2, CSortOrder.DescendingOrder);
+
+		expect(model.sortCalls).toEqual([{
+			column: 2,
+			order: CSortOrder.DescendingOrder
+		}]);
+		expect(view.horizontalHeader().sortIndicatorSection()).toBe(2);
+		expect(view.horizontalHeader().sortIndicatorOrder())
+			.toBe(CSortOrder.DescendingOrder);
+	});
+
+	test("sortByColumn ignores invalid columns and a missing model", () => {
+		const view = new CTableView();
+
+		view.sortByColumn(0);
+
+		const model = new SortableTableModel();
+		view.setModel(model);
+		view.sortByColumn(-1);
+		view.sortByColumn(model.columnCount());
+
+		expect(model.sortCalls).toEqual([]);
 	});
 
 	test("has horizontal header", () => {
