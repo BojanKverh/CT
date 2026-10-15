@@ -62,6 +62,18 @@ class TestModel extends CAbstractTableModel {
 		this.beginLayoutChange();
 		this.endLayoutChange(oldIndexes, newIndexes);
 	}
+
+	insertRow(row: number, values: string[]): void {
+		this.beginInsertRows(new CModelIndex(), row, row);
+		this.#m_data.splice(row, 0, values);
+		this.endInsertRows();
+	}
+
+	removeRow(row: number): void {
+		this.beginRemoveRows(new CModelIndex(), row, row);
+		this.#m_data.splice(row, 1);
+		this.endRemoveRows();
+	}
 }
 
 class TestDelegate extends CAbstractItemDelegate {
@@ -114,6 +126,8 @@ class TestItemView extends CAbstractItemView {
 	modelDataChangedCalls = 0;
 	modelResetCalls = 0;
 	modelLayoutChangedCalls = 0;
+	modelRowsInsertedCalls = 0;
+	modelRowsRemovedCalls = 0;
 	currentIndexChangedCalls: CModelIndex[] = [];
 	editorClosedCalls = 0;
 
@@ -154,6 +168,14 @@ class TestItemView extends CAbstractItemView {
 
 	protected override modelLayoutChanged(): void {
 		++this.modelLayoutChangedCalls;
+	}
+
+	protected override modelRowsInserted(): void {
+		++this.modelRowsInsertedCalls;
+	}
+
+	protected override modelRowsRemoved(): void {
+		++this.modelRowsRemovedCalls;
 	}
 
 	protected override currentIndexChanged(index: CModelIndex): void {
@@ -314,6 +336,52 @@ describe("CAbstractItemView", () => {
 		);
 
 		expect(view.modelLayoutChangedCalls).toBe(0);
+	});
+
+	test("inserting rows remaps current and selected indexes", () => {
+		const model = new TestModel();
+		const view = new TestItemView();
+		view.setModel(model);
+		const oldIndex = model.index(1, 0);
+		view.setCurrentIndex(oldIndex);
+		view.selectionModel()!.select(oldIndex);
+
+		model.insertRow(0, ["X", "Y"]);
+
+		const newIndex = model.index(2, 0);
+		expect(view.currentIndex().equals(newIndex)).toBe(true);
+		expect(view.selectionModel()!.isSelected(newIndex)).toBe(true);
+		expect(view.modelRowsInsertedCalls).toBe(1);
+	});
+
+	test("removing preceding rows remaps current and selected indexes", () => {
+		const model = new TestModel();
+		const view = new TestItemView();
+		view.setModel(model);
+		const oldIndex = model.index(1, 1);
+		view.setCurrentIndex(oldIndex);
+		view.selectionModel()!.select(oldIndex);
+
+		model.removeRow(0);
+
+		const newIndex = model.index(0, 1);
+		expect(view.currentIndex().equals(newIndex)).toBe(true);
+		expect(view.selectionModel()!.isSelected(newIndex)).toBe(true);
+		expect(view.modelRowsRemovedCalls).toBe(1);
+	});
+
+	test("removing the current row clears current index and selection", () => {
+		const model = new TestModel();
+		const view = new TestItemView();
+		view.setModel(model);
+		const index = model.index(0, 0);
+		view.setCurrentIndex(index);
+		view.selectionModel()!.select(index);
+
+		model.removeRow(0);
+
+		expect(view.currentIndex().isValid()).toBe(false);
+		expect(view.selectionModel()!.hasSelection()).toBe(false);
 	});
 
 	test("active editor follows its index after a layout change", () => {

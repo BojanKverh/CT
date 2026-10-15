@@ -5,13 +5,9 @@ import { CSortOrder } from "../../src/gui/CSortOrder.js";
 import { CSqlEditStrategy } from "../../src/models/CSqlEditStrategy.js";
 import { CSqlError } from "../../src/models/CSqlError.js";
 import { CSqlFilterOperator } from "../../src/models/CSqlFilter.js";
-import {
-	CSqlTableAdapter,
-	type CSqlRow,
-	type CSqlSelectRequest,
-	type CSqlSelectResult
-} from "../../src/models/CSqlTableAdapter.js";
+import { CSqlTableAdapter, type CSqlRow, type CSqlSelectRequest, type CSqlSelectResult } from "../../src/models/CSqlTableAdapter.js";
 import { CSqlTableModel } from "../../src/models/CSqlTableModel.js";
+import { CModelIndex } from "../../src/models/CModelIndex.js";
 
 class TestSqlAdapter extends CSqlTableAdapter {
 	rows: CSqlRow[] = [
@@ -137,6 +133,24 @@ describe("CSqlTableModel", () => {
 		expect(model.data(model.index(2, 1))).toBe("Carol");
 		expect(model.canFetchMore()).toBe(false);
 		expect(await model.fetchMore()).toBe(false);
+	});
+
+	test("fetchMore emits inserted rows without resetting the model", async () => {
+		const adapter = new TestSqlAdapter();
+		adapter.rows.push({ id: 3, name: "Carol", age: 35 });
+		const model = createModel(adapter);
+		model.setFetchSize(2);
+		await model.select();
+		const inserted = vi.fn();
+		const reset = vi.fn();
+		model.rowsInserted.connect(inserted);
+		model.modelReset.connect(reset);
+
+		await model.fetchMore();
+
+		expect(inserted).toHaveBeenCalledWith(
+			expect.any(CModelIndex), 2, 2);
+		expect(reset).not.toHaveBeenCalled();
 	});
 
 	test("setFetchSize ignores invalid values", () => {
@@ -327,6 +341,25 @@ describe("CSqlTableModel", () => {
 		expect(model.data(model.index(2, 1))).toBe("Carol");
 	});
 
+	test("insertRecord emits row signals without resetting the model", async () => {
+		const model = createModel();
+		await model.select();
+		const aboutToInsert = vi.fn();
+		const inserted = vi.fn();
+		const reset = vi.fn();
+		model.rowsAboutToBeInserted.connect(aboutToInsert);
+		model.rowsInserted.connect(inserted);
+		model.modelReset.connect(reset);
+
+		await model.insertRecord({ name: "Carol", age: 35 });
+
+		expect(aboutToInsert).toHaveBeenCalledWith(
+			expect.any(CModelIndex), 2, 2);
+		expect(inserted).toHaveBeenCalledWith(
+			expect.any(CModelIndex), 2, 2);
+		expect(reset).not.toHaveBeenCalled();
+	});
+
 	test("removeRow removes a record by primary key", async () => {
 		const adapter = new TestSqlAdapter();
 		const model = createModel(adapter);
@@ -341,6 +374,25 @@ describe("CSqlTableModel", () => {
 		);
 		expect(model.rowCount()).toBe(1);
 		expect(model.data(model.index(0, 1))).toBe("Bob");
+	});
+
+	test("removeRow emits row signals without resetting the model", async () => {
+		const model = createModel();
+		await model.select();
+		const aboutToRemove = vi.fn();
+		const removed = vi.fn();
+		const reset = vi.fn();
+		model.rowsAboutToBeRemoved.connect(aboutToRemove);
+		model.rowsRemoved.connect(removed);
+		model.modelReset.connect(reset);
+
+		await model.removeRow(0);
+
+		expect(aboutToRemove).toHaveBeenCalledWith(
+			expect.any(CModelIndex), 0, 0);
+		expect(removed).toHaveBeenCalledWith(
+			expect.any(CModelIndex), 0, 0);
+		expect(reset).not.toHaveBeenCalled();
 	});
 
 	test("operations fail cleanly when no table was selected", async () => {

@@ -939,6 +939,22 @@ export class CTreeView extends CAbstractItemView {
 		this.#m_header.update();
 	}
 
+	/** Rebuilds visible tree rows after rows are inserted or removed. */
+	protected override modelRowsInserted(): void {
+		this.#updateRowsAfterStructureChange();
+	}
+
+	protected override modelRowsRemoved(): void {
+		this.#updateRowsAfterStructureChange();
+	}
+
+	#updateRowsAfterStructureChange(): void {
+		this.#rebuildRows();
+		this.#updateContentGeometry();
+		this.#m_contentWidget.update();
+		this.#m_header.update();
+	}
+
 	/** Scrolls to and repaints a newly selected current index. */
 	protected override currentIndexChanged(index: CModelIndex): void {
 		super.currentIndexChanged(index);

@@ -25,6 +25,8 @@ export abstract class CAbstractItemView extends CWidget {
 	#m_disconnectDataChanged: (() => void) | null = null;
 	#m_disconnectModelReset: (() => void) | null = null;
 	#m_disconnectLayoutChanged: (() => void) | null = null;
+	#m_disconnectRowsInserted: (() => void) | null = null;
+	#m_disconnectRowsRemoved: (() => void) | null = null;
 
 	/** Creates a new item view. */
 	constructor(parent: CWidget | null = null) {
@@ -92,6 +94,18 @@ export abstract class CAbstractItemView extends CWidget {
 					}
 
 					this.modelLayoutChanged();
+				});
+
+			this.#m_disconnectRowsInserted =
+				model.rowsInserted.connect((parent, first, last) => {
+					this.#remapRows(parent, first, last, true);
+					this.modelRowsInserted(parent, first, last);
+				});
+
+			this.#m_disconnectRowsRemoved =
+				model.rowsRemoved.connect((parent, first, last) => {
+					this.#remapRows(parent, first, last, false);
+					this.modelRowsRemoved(parent, first, last);
 				});
 		}
 
@@ -242,6 +256,24 @@ export abstract class CAbstractItemView extends CWidget {
 		this.update();
 	}
 
+	/** Called after rows are inserted into the current model. */
+	protected modelRowsInserted(
+		_parent: CModelIndex,
+		_first: number,
+		_last: number
+	): void {
+		this.update();
+	}
+
+	/** Called after rows are removed from the current model. */
+	protected modelRowsRemoved(
+		_parent: CModelIndex,
+		_first: number,
+		_last: number
+	): void {
+		this.update();
+	}
+
 	protected currentIndexChanged(index: CModelIndex): void {
 		if (this.#m_editor !== null
 			&& !this.#m_editorIndex.equals(index)) {
@@ -328,6 +360,82 @@ export abstract class CAbstractItemView extends CWidget {
 			: index;
 	}
 
+	#remapRows(
+		parent: CModelIndex,
+		first: number,
+		last: number,
+		inserting: boolean
+	): void {
+		if (this.#m_model === null)
+			return;
+
+		const count = last - first + 1;
+		const indexes = [
+			...(this.#m_selectionModel?.selectedIndexes() ?? []),
+			this.currentIndex(),
+			this.#m_editorIndex
+		];
+		const oldIndexes: CModelIndex[] = [];
+		const newIndexes: CModelIndex[] = [];
+
+		for (const index of indexes) {
+			if (!index.isValid() || index.model() !== this.#m_model
+				|| !this.#m_model.parentIndex(index).equals(parent)
+				|| oldIndexes.some(existing => existing.equals(index))) {
+				continue;
+			}
+
+			let newRow = index.row();
+			if (inserting) {
+				if (newRow < first)
+					continue;
+				newRow += count;
+			} else if (newRow >= first && newRow <= last) {
+				newRow = -1;
+			} else if (newRow > last) {
+				newRow -= count;
+			} else {
+				continue;
+			}
+
+			oldIndexes.push(index);
+			newIndexes.push(newRow < 0
+				? new CModelIndex()
+				: this.#m_model.index(newRow, index.column(), parent));
+		}
+
+		this.#m_selectionModel?.remapIndexes(oldIndexes, newIndexes);
+		if (this.#m_editor !== null) {
+			this.#m_editorIndex = this.#remapIndex(
+				this.#m_editorIndex,
+				oldIndexes,
+				newIndexes
+			);
+			if (this.#m_editorIndex.isValid())
+				this.updateEditorGeometry();
+			else
+				this.#closeEditor();
+		}
+
+		if (!parent.isValid())
+			this.#remapRowDelegates(first, last, inserting);
+	}
+
+	#remapRowDelegates(first: number, last: number, inserting: boolean): void {
+		const count = last - first + 1;
+		const remapped = new Map<number, CAbstractItemDelegate>();
+
+		for (const [row, delegate] of this.#m_rowDelegates) {
+			if (inserting)
+				remapped.set(row >= first ? row + count : row, delegate);
+			else if (row < first)
+				remapped.set(row, delegate);
+			else if (row > last)
+				remapped.set(row - count, delegate);
+		}
+		this.#m_rowDelegates = remapped;
+	}
+
 	#disconnectModel(): void {
 		if (this.#m_disconnectDataChanged !== null) {
 			this.#m_disconnectDataChanged();
@@ -342,6 +450,16 @@ export abstract class CAbstractItemView extends CWidget {
 		if (this.#m_disconnectLayoutChanged !== null) {
 			this.#m_disconnectLayoutChanged();
 			this.#m_disconnectLayoutChanged = null;
+		}
+
+		if (this.#m_disconnectRowsInserted !== null) {
+			this.#m_disconnectRowsInserted();
+			this.#m_disconnectRowsInserted = null;
+		}
+
+		if (this.#m_disconnectRowsRemoved !== null) {
+			this.#m_disconnectRowsRemoved();
+			this.#m_disconnectRowsRemoved = null;
 		}
 	}
 }

@@ -1005,6 +1005,32 @@ describe("CTableView", () => {
 		expect(model.canFetchMore()).toBe(true);
 	});
 
+	test("SQL row removal keeps selection on the same remaining item", async () => {
+		const adapter = new CMemorySqlTableAdapter({
+			employees: [
+				{ id: 1, name: "Alice" },
+				{ id: 2, name: "Bob" },
+				{ id: 3, name: "Carol" }
+			]
+		});
+		const model = new CSqlTableModel(adapter);
+		model.setTable("employees");
+		model.setColumns(["id", "name"]);
+		await model.select();
+		const view = new CTableView();
+		view.setModel(model);
+		const carol = model.index(2, 1);
+		view.setCurrentIndex(carol);
+		view.selectionModel()!.select(carol);
+
+		await model.removeRow(0);
+
+		const movedCarol = model.index(1, 1);
+		expect(model.data(movedCarol)).toBe("Carol");
+		expect(view.currentIndex().equals(movedCarol)).toBe(true);
+		expect(view.selectionModel()!.isSelected(movedCarol)).toBe(true);
+	});
+
 	test("horizontal scroll does not move vertical header", () => {
 		const view = new CTableView();
 

@@ -617,6 +617,31 @@ export class CTableView extends CAbstractItemView {
 		this.#m_verticalHeader.update();
 	}
 
+	/** Updates table geometry after rows are inserted. */
+	protected override modelRowsInserted(
+		_parent: CModelIndex,
+		_first: number,
+		_last: number
+	): void {
+		this.#updateRowsGeometry();
+	}
+
+	/** Updates table geometry after rows are removed. */
+	protected override modelRowsRemoved(
+		_parent: CModelIndex,
+		_first: number,
+		_last: number
+	): void {
+		this.#updateRowsGeometry();
+	}
+
+	#updateRowsGeometry(): void {
+		this.#updateContentGeometry();
+		this.#m_contentWidget.update();
+		this.#m_verticalHeader.update();
+		void this.#fetchMoreIfNeeded();
+	}
+
 	/** Scrolls to and repaints a newly selected current index. */
 	protected override currentIndexChanged(index: CModelIndex): void {
 		super.currentIndexChanged(index);

@@ -265,6 +265,9 @@ export class CSqlTableModel extends CAbstractTableModel {
 				return false;
 			}
 
+			const first = this.#m_rows.length;
+			const last = first + result.rows.length - 1;
+			this.beginInsertRows(new CModelIndex(), first, last);
 			this.#m_rows.push(...result.rows.map(row => ({ ...row })));
 			this.#m_committedRows.push(
 				...result.rows.map(row => ({ ...row }))
@@ -274,7 +277,7 @@ export class CSqlTableModel extends CAbstractTableModel {
 				this.#m_rows.length
 			);
 			this.#m_lastError = null;
-			this.resetModel();
+			this.endInsertRows();
 			return true;
 		} catch (error) {
 			this.#reportError("select", error);
@@ -294,13 +297,15 @@ export class CSqlTableModel extends CAbstractTableModel {
 				this.#m_table,
 				{ ...values }
 			);
+			const row = this.#m_rows.length;
+			this.beginInsertRows(new CModelIndex(), row, row);
 			this.#m_rows.push({ ...inserted });
 			this.#m_committedRows.push({ ...inserted });
 			++this.#m_totalRowCount;
 			if (this.#m_columns.length === 0)
 				this.#m_columns = Object.keys(inserted);
 			this.#m_lastError = null;
-			this.resetModel();
+			this.endInsertRows();
 			return true;
 		} catch (error) {
 			this.#reportError("insert", error);
@@ -329,13 +334,14 @@ export class CSqlTableModel extends CAbstractTableModel {
 				this.#m_primaryKey,
 				key
 			);
+			this.beginRemoveRows(new CModelIndex(), row, row);
 			this.#m_rows.splice(row, 1);
 			this.#m_committedRows.splice(row, 1);
 			this.#m_totalRowCount = Math.max(0, this.#m_totalRowCount - 1);
 			this.#reindexDirtyRowsAfterRemoval(row);
 			this.#m_activeRow = null;
 			this.#m_lastError = null;
-			this.resetModel();
+			this.endRemoveRows();
 			return true;
 		} catch (error) {
 			this.#reportError("remove", error);

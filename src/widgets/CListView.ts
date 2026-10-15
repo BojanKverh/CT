@@ -352,6 +352,17 @@ export class CListView extends CAbstractItemView {
 		this.#m_contentWidget.update();
 	}
 
+	/** Updates list geometry after rows are inserted or removed. */
+	protected override modelRowsInserted(): void {
+		this.#updateContentGeometry();
+		this.#m_contentWidget.update();
+	}
+
+	protected override modelRowsRemoved(): void {
+		this.#updateContentGeometry();
+		this.#m_contentWidget.update();
+	}
+
 	/** Scrolls to and repaints a newly selected current index. */
 	protected override currentIndexChanged(index: CModelIndex): void {
 		super.currentIndexChanged(index);

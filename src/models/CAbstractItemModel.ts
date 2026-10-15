@@ -22,6 +22,29 @@ export abstract class CAbstractItemModel extends CObject {
 	readonly layoutChanged =
 		new CSignal<[CModelIndex[], CModelIndex[]]>();
 
+	/** Emitted immediately before a contiguous range of rows is inserted. */
+	readonly rowsAboutToBeInserted =
+		new CSignal<[CModelIndex, number, number]>();
+
+	/** Emitted after a contiguous range of rows has been inserted. */
+	readonly rowsInserted =
+		new CSignal<[CModelIndex, number, number]>();
+
+	/** Emitted immediately before a contiguous range of rows is removed. */
+	readonly rowsAboutToBeRemoved =
+		new CSignal<[CModelIndex, number, number]>();
+
+	/** Emitted after a contiguous range of rows has been removed. */
+	readonly rowsRemoved =
+		new CSignal<[CModelIndex, number, number]>();
+
+	#m_pendingRowsChange: {
+		type: "insert" | "remove";
+		parent: CModelIndex;
+		first: number;
+		last: number;
+	} | null = null;
+
 	/**
 	 * Creates an item model.
 	 *
@@ -156,5 +179,73 @@ export abstract class CAbstractItemModel extends CObject {
 			return;
 
 		this.layoutChanged.emit(oldIndexes, newIndexes);
+	}
+
+	/** Announces that rows will be inserted before the model data changes. */
+	protected beginInsertRows(
+		parent: CModelIndex,
+		first: number,
+		last: number
+	): void {
+		this.#beginRowsChange("insert", parent, first, last);
+		this.rowsAboutToBeInserted.emit(parent, first, last);
+	}
+
+	/** Announces that the previously declared rows have been inserted. */
+	protected endInsertRows(): void {
+		const change = this.#takeRowsChange("insert");
+		this.rowsInserted.emit(change.parent, change.first, change.last);
+	}
+
+	/** Announces that rows will be removed before the model data changes. */
+	protected beginRemoveRows(
+		parent: CModelIndex,
+		first: number,
+		last: number
+	): void {
+		this.#beginRowsChange("remove", parent, first, last);
+		this.rowsAboutToBeRemoved.emit(parent, first, last);
+	}
+
+	/** Announces that the previously declared rows have been removed. */
+	protected endRemoveRows(): void {
+		const change = this.#takeRowsChange("remove");
+		this.rowsRemoved.emit(change.parent, change.first, change.last);
+	}
+
+	#beginRowsChange(
+		type: "insert" | "remove",
+		parent: CModelIndex,
+		first: number,
+		last: number
+	): void {
+		if (this.#m_pendingRowsChange !== null)
+			throw new Error("A model row change is already in progress.");
+		if (!Number.isInteger(first) || !Number.isInteger(last)
+			|| first < 0 || last < first) {
+			throw new RangeError("The model row range is invalid.");
+		}
+		if (parent.isValid() && parent.model() !== this)
+			throw new Error("The parent index belongs to another model.");
+		const rowCount = this.rowCount(parent);
+		if ((type === "insert" && first > rowCount)
+			|| (type === "remove" && last >= rowCount)) {
+			throw new RangeError("The model row range is outside the model.");
+		}
+
+		this.#m_pendingRowsChange = { type, parent, first, last };
+	}
+
+	#takeRowsChange(type: "insert" | "remove"): {
+		parent: CModelIndex;
+		first: number;
+		last: number;
+	} {
+		const change = this.#m_pendingRowsChange;
+		if (change === null || change.type !== type)
+			throw new Error(`No ${type} row change is in progress.`);
+
+		this.#m_pendingRowsChange = null;
+		return change;
 	}
 }

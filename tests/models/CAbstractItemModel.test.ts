@@ -48,6 +48,18 @@ class TestModel extends CAbstractItemModel {
 		this.beginLayoutChange();
 		this.endLayoutChange(oldIndexes, newIndexes);
 	}
+
+	insertRow(row: number, values: string[]): void {
+		this.beginInsertRows(new CModelIndex(), row, row);
+		this.#m_data.splice(row, 0, values);
+		this.endInsertRows();
+	}
+
+	removeRow(row: number): void {
+		this.beginRemoveRows(new CModelIndex(), row, row);
+		this.#m_data.splice(row, 1);
+		this.endRemoveRows();
+	}
 }
 
 describe("CAbstractItemModel", () => {
@@ -245,6 +257,41 @@ describe("CAbstractItemModel", () => {
 		);
 
 		expect(changedCount).toBe(0);
+	});
+
+	test("row insertion signals surround the data change", () => {
+		const model = new TestModel();
+		const events: string[] = [];
+		model.rowsAboutToBeInserted.connect((parent, first, last) => {
+			events.push(`before:${model.rowCount()}:${first}:${last}:${parent.isValid()}`);
+		});
+		model.rowsInserted.connect((parent, first, last) => {
+			events.push(`after:${model.rowCount()}:${first}:${last}:${parent.isValid()}`);
+		});
+
+		model.insertRow(1, ["X", "Y"]);
+
+		expect(events).toEqual([
+			"before:3:1:1:false",
+			"after:4:1:1:false"
+		]);
+		expect(model.data(model.index(1, 0))).toBe("X");
+	});
+
+	test("row removal signals surround the data change", () => {
+		const model = new TestModel();
+		const events: string[] = [];
+		model.rowsAboutToBeRemoved.connect((_parent, first, last) => {
+			events.push(`before:${model.rowCount()}:${first}:${last}`);
+		});
+		model.rowsRemoved.connect((_parent, first, last) => {
+			events.push(`after:${model.rowCount()}:${first}:${last}`);
+		});
+
+		model.removeRow(1);
+
+		expect(events).toEqual(["before:3:1:1", "after:2:1:1"]);
+		expect(model.data(model.index(1, 0))).toBe("E");
 	});
 
 	test("invalid index returns no data in test model", () => {
