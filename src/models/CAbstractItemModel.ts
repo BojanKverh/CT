@@ -119,6 +119,16 @@ export abstract class CAbstractItemModel extends CObject {
 		return new CModelIndex(row, column, data, this);
 	}
 
+	/** Returns whether another block of rows can be fetched. */
+	canFetchMore(_parent = new CModelIndex()): boolean {
+		return false;
+	}
+
+	/** Fetches another block of rows. The base implementation does nothing. */
+	async fetchMore(_parent = new CModelIndex()): Promise<boolean> {
+		return false;
+	}
+
 	/** Emits the dataChanged signal for the specified inclusive range. */
 	protected emitDataChanged(
 		topLeft: CModelIndex,

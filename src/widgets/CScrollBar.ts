@@ -31,7 +31,9 @@ export class CScrollBar extends CWidget {
         this.#m_orientation = orientation;
 
         this.#m_backwardButton.setText(this.#m_orientation === COrientation.Horizontal? "◀" : "▲");
+		this.#m_backwardButton.setRadius(0);
         this.#m_forwardButton.setText(this.#m_orientation === COrientation.Horizontal? "▶" : "▼");
+        this.#m_forwardButton.setRadius(0);
         this.#m_backwardButton.setAutoRepeat(400, 60);
         this.#m_forwardButton.setAutoRepeat(400, 60);
 

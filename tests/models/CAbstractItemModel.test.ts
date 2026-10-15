@@ -331,4 +331,20 @@ describe("CAbstractItemModel", () => {
 		expect(model.data(model.index(2, 1))).toBe("F");
 		expect(resetCount).toBe(0);
 	});
+
+	test("cannot fetch more data by default", () => {
+		const model = new TestModel();
+
+		expect(model.canFetchMore()).toBe(false);
+	});
+
+	test("fetchMore does nothing by default", async () => {
+		const model = new TestModel();
+		let resetCount = 0;
+		model.modelReset.connect(() => resetCount++);
+
+		expect(await model.fetchMore()).toBe(false);
+		expect(model.rowCount()).toBe(3);
+		expect(resetCount).toBe(0);
+	});
 });

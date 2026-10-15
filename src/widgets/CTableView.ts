@@ -61,6 +61,7 @@ export class CTableView extends CAbstractItemView {
 	#m_scrollArea: CTableScrollArea;
 	#m_contentWidget: CTableViewContentWidget;
 	#m_sortingEnabled = false;
+	#m_fetchingMore = false;
 
 	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
@@ -91,6 +92,7 @@ export class CTableView extends CAbstractItemView {
 		this.#m_scrollArea.verticalScrollBar()
 			.valueChanged.connect(value => {
 				this.#m_verticalHeader.setOffset(value);
+				void this.#fetchMoreIfNeeded(value);
 			});
 
 		this.#updateGeometry();
@@ -572,6 +574,8 @@ export class CTableView extends CAbstractItemView {
 			this.#m_scrollArea.scrollY()
 		);
 
+		void this.#fetchMoreIfNeeded();
+
 	}
 
 	/** Returns the widget used as editor parent. */
@@ -588,6 +592,7 @@ export class CTableView extends CAbstractItemView {
 		this.#m_verticalHeader.setModel(newModel);
 		this.#updateContentGeometry();
 		this.update();
+		void this.#fetchMoreIfNeeded();
 	}
 
 	/** Repaints table cells after model data changes. */
@@ -601,6 +606,7 @@ export class CTableView extends CAbstractItemView {
 		this.#m_contentWidget.update();
 		this.#m_horizontalHeader.update();
 		this.#m_verticalHeader.update();
+		void this.#fetchMoreIfNeeded();
 	}
 
 	/** Updates table geometry after rows are rearranged or filtered. */
@@ -666,6 +672,39 @@ export class CTableView extends CAbstractItemView {
 					/ CTableView.RowHeight
 			)
 		);
+	}
+
+	async #fetchMoreIfNeeded(scrollY = this.scrollY()): Promise<void> {
+		const model = this.model();
+		if (model === null || this.#m_fetchingMore || !model.canFetchMore())
+			return;
+
+		const visibleBottom = scrollY + this.viewport().height();
+		const contentBottom = model.rowCount() * CTableView.RowHeight;
+		const threshold = 2 * CTableView.RowHeight;
+
+		if (visibleBottom < contentBottom - threshold)
+			return;
+
+		const previousRowCount = model.rowCount();
+		this.#m_fetchingMore = true;
+
+		let fetched = false;
+		try {
+			fetched = await model.fetchMore();
+		} catch {
+			fetched = false;
+		} finally {
+			this.#m_fetchingMore = false;
+		}
+
+		if (this.model() !== model) {
+			void this.#fetchMoreIfNeeded();
+			return;
+		}
+
+		if (fetched && model.rowCount() > previousRowCount)
+			void this.#fetchMoreIfNeeded();
 	}
 
 	#oppositeSortOrder(order: CSortOrder): CSortOrder {

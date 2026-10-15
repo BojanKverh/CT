@@ -10,7 +10,8 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CContextMenuEvent, CDragEnterEvent, CDragMoveEvent, CDragLeaveEvent, CDropEvent,
 	CDrag, CMimeData, CDropAction, CIcon, CDockWidget, CDockWidgetArea,
 	CCursorShape, CDial, CTextBrowser, CDoubleSpinBox, CIntItemDelegate, CComboBoxItemDelegate,
-	CSortOrder, CSortFilterProxyModel, CFont
+	CSortOrder, CSortFilterProxyModel, CFont, CSqlTableModel, CMemorySqlTableAdapter,
+	CSqlEditStrategy
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -477,6 +478,32 @@ class DropTargetWidget extends CWidget {
 	}
 }
 
+const sqlCountries = [
+	"Slovenia", "Austria", "Italy", "Germany", "France", "Croatia",
+	"Hungary", "Czechia", "Spain", "Portugal"
+];
+
+const sqlOccupations = [
+	"Developer", "Designer", "Manager", "Engineer", "Architect", "Analyst"
+];
+
+function createSqlEmployees(): Array<Record<string, unknown>> {
+	const names = [
+		"Alice", "Bob", "Carol", "David", "Emma", "Frank", "Grace", "Henry",
+		"Isabella", "Jack", "Klara", "Lukas", "Maria", "Nina", "Oliver",
+		"Peter", "Sara", "Thomas", "Eva", "William"
+	];
+
+	return Array.from({ length: 200 }, (_, index) => ({
+		id: index + 1,
+		name: `${names[index % names.length]} ${Math.floor(index / names.length) + 1}`,
+		country: sqlCountries[index % sqlCountries.length],
+		age: 21 + (index * 7) % 45,
+		occupation: sqlOccupations[index % sqlOccupations.length],
+		active: index % 4 !== 0
+	}));
+}
+
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas");
 
 if (canvas === null)
@@ -915,6 +942,117 @@ but6.clicked.connect(() => {
 	bb.accepted.connect(() => {
 		dlg.accept();
 	});
+	dlg.exec();
+});
+
+const sqlButton = new CPushButton(parent);
+sqlButton.setText("SQL model");
+sqlButton.setGeometry(270, 700, 100, 30);
+sqlButton.clicked.connect(async () => {
+	const dlg = new CDialog(parent);
+	dlg.setGeometry(50, 80, 900, 500);
+	dlg.setWindowTitle("SQL table model");
+
+	const adapter = new CMemorySqlTableAdapter({
+		employees: createSqlEmployees()
+	});
+	const model = new CSqlTableModel(adapter);
+	model.setTable("employees");
+	model.setPrimaryKey("id");
+	model.setColumns(["id", "name", "country", "age", "occupation", "active"]);
+	model.setColumnHeader("id", "ID");
+	model.setColumnHeader("name", "Name");
+	model.setColumnHeader("country", "Country");
+	model.setColumnHeader("age", "Age");
+	model.setColumnHeader("occupation", "Occupation");
+	model.setColumnHeader("active", "Active");
+	model.setFetchSize(20);
+
+	const status = new CLabel(dlg);
+	status.setGeometry(20, 15, 250, 28);
+
+	const strategyLabel = new CLabel(dlg);
+	strategyLabel.setText("Edit strategy:");
+	strategyLabel.setGeometry(360, 15, 90, 28);
+
+	const strategy = new CComboBox(dlg);
+	strategy.setGeometry(450, 15, 180, 28);
+	strategy.addItems(["On field change", "On row change", "Manual submit"]);
+	strategy.currentIndexChanged.connect(index => {
+		model.setEditStrategy([
+			CSqlEditStrategy.OnFieldChange,
+			CSqlEditStrategy.OnRowChange,
+			CSqlEditStrategy.OnManualSubmit
+		][index] ?? CSqlEditStrategy.OnFieldChange);
+	});
+
+	const tv = new CTableView(dlg);
+	tv.setGeometry(20, 55, 860, 345);
+	tv.setModel(model);
+
+	const ageDelegate = new CIntItemDelegate();
+	ageDelegate.setRange(18, 100);
+	tv.setItemDelegateForColumn(2, new CComboBoxItemDelegate(sqlCountries));
+	tv.setItemDelegateForColumn(3, ageDelegate);
+	tv.setItemDelegateForColumn(4, new CComboBoxItemDelegate(sqlOccupations));
+
+	const updateStatus = (): void => {
+		status.setText(model.isLoading()
+			? "Loading..."
+			: `${model.rowCount()} / ${model.totalRowCount()} rows loaded`);
+	};
+	model.modelReset.connect(updateStatus);
+	model.loadingChanged.connect(updateStatus);
+	model.dataSubmitted.connect(() => status.setText("Changes saved"));
+	model.errorOccurred.connect(error => status.setText(`Error: ${error.message}`));
+
+	const addButton = new CPushButton(dlg);
+	addButton.setText("Add row");
+	addButton.setGeometry(20, 415, 100, 30);
+	addButton.clicked.connect(async () => {
+		await model.insertRecord({
+			name: "New employee",
+			country: "Slovenia",
+			age: 30,
+			occupation: "Developer",
+			active: true
+		});
+		updateStatus();
+	});
+
+	const deleteButton = new CPushButton(dlg);
+	deleteButton.setText("Delete row");
+	deleteButton.setGeometry(130, 415, 100, 30);
+	deleteButton.clicked.connect(async () => {
+		const row = tv.currentIndex().row();
+		if (row >= 0)
+			await model.removeRow(row);
+		updateStatus();
+	});
+
+	const saveButton = new CPushButton(dlg);
+	saveButton.setText("Submit all");
+	saveButton.setGeometry(240, 415, 100, 30);
+	saveButton.clicked.connect(async () => {
+		await model.submitAll();
+		updateStatus();
+	});
+
+	const revertButton = new CPushButton(dlg);
+	revertButton.setText("Revert");
+	revertButton.setGeometry(350, 415, 100, 30);
+	revertButton.clicked.connect(() => {
+		model.revertAll();
+		updateStatus();
+	});
+
+	const closeButton = new CPushButton(dlg);
+	closeButton.setText("Close");
+	closeButton.setGeometry(780, 415, 100, 30);
+	closeButton.clicked.connect(() => dlg.accept());
+
+	await model.select();
+	updateStatus();
 	dlg.exec();
 });
 

@@ -24,6 +24,8 @@ import { CComboBox } from "../../src/widgets/CComboBox.js";
 import { CComboBoxItemDelegate } from "../../src/widgets/CComboBoxItemDelegate.js";
 import { CSortOrder } from "../../src/gui/CSortOrder.js";
 import { CSortFilterProxyModel } from "../../src/models/CSortFilterProxyModel.js";
+import { CMemorySqlTableAdapter } from "../../src/models/CMemorySqlTableAdapter.js";
+import { CSqlTableModel } from "../../src/models/CSqlTableModel.js";
 
 class TestTableModel extends CAbstractTableModel {
 	#m_data: string[][];
@@ -112,6 +114,56 @@ class SortableTableModel extends TestTableModel {
 		order: CSortOrder = CSortOrder.AscendingOrder
 	): void {
 		this.sortCalls.push({ column, order });
+	}
+}
+
+class FetchMoreTableModel extends TestTableModel {
+	fetchCalls = 0;
+	#m_remainingRows: string[][];
+
+	constructor(initialRows: string[][], remainingRows: string[][]) {
+		super(initialRows);
+		this.#m_remainingRows = remainingRows;
+	}
+
+	override canFetchMore(): boolean {
+		return this.#m_remainingRows.length > 0;
+	}
+
+	override async fetchMore(): Promise<boolean> {
+		++this.fetchCalls;
+		if (this.#m_remainingRows.length === 0)
+			return false;
+
+		const current = Array.from(
+			{ length: this.rowCount() },
+			(_, row) => [String(this.data(this.index(row, 0)))]
+		);
+		current.push(this.#m_remainingRows.shift()!);
+		this.setTable(current);
+		return true;
+	}
+}
+
+class PendingFetchTableModel extends TestTableModel {
+	fetchCalls = 0;
+	#m_resolve: (() => void) | null = null;
+
+	override canFetchMore(): boolean {
+		return true;
+	}
+
+	override async fetchMore(): Promise<boolean> {
+		++this.fetchCalls;
+		await new Promise<void>(resolve => {
+			this.#m_resolve = resolve;
+		});
+		return false;
+	}
+
+	finishFetch(): void {
+		this.#m_resolve?.();
+		this.#m_resolve = null;
 	}
 }
 
@@ -853,6 +905,80 @@ describe("CTableView", () => {
 
 		expect(view.scrollY()).toBe(50);
 		expect(view.verticalHeader().offset()).toBe(50);
+	});
+
+	test("scrolling near the bottom fetches more rows", () => {
+		const view = new CTableView();
+		const model = new FetchMoreTableModel(
+			Array.from({ length: 10 }, (_, row) => [`Row ${row}`]),
+			[["Fetched row"]]
+		);
+
+		view.resize(400, 120);
+		view.setModel(model);
+		view.setScrollY(1000);
+
+		expect(model.fetchCalls).toBe(1);
+		expect(model.rowCount()).toBe(11);
+		expect(model.data(model.index(10, 0))).toBe("Fetched row");
+	});
+
+	test("scrolling away from the bottom does not fetch rows", () => {
+		const view = new CTableView();
+		const model = new FetchMoreTableModel(
+			Array.from({ length: 20 }, (_, row) => [`Row ${row}`]),
+			[["Fetched row"]]
+		);
+
+		view.resize(400, 120);
+		view.setModel(model);
+		view.setScrollY(10);
+
+		expect(model.fetchCalls).toBe(0);
+		expect(model.rowCount()).toBe(20);
+	});
+
+	test("does not start duplicate fetches while one is pending", async () => {
+		const view = new CTableView();
+		const model = new PendingFetchTableModel(
+			Array.from({ length: 10 }, (_, row) => [`Row ${row}`])
+		);
+
+		view.resize(400, 120);
+		view.setModel(model);
+		view.setScrollY(1000);
+		view.setScrollY(0);
+		view.setScrollY(1000);
+
+		expect(model.fetchCalls).toBe(1);
+
+		model.finishFetch();
+		await Promise.resolve();
+	});
+
+	test("table view fetches another SQL model page near the bottom", async () => {
+		const rows = Array.from({ length: 12 }, (_, index) => ({
+			id: index + 1,
+			name: `Employee ${index + 1}`
+		}));
+		const adapter = new CMemorySqlTableAdapter({ employees: rows });
+		const model = new CSqlTableModel(adapter);
+		model.setTable("employees");
+		model.setColumns(["id", "name"]);
+		model.setFetchSize(4);
+		await model.select();
+
+		const view = new CTableView();
+		view.resize(400, 90);
+		view.setModel(model);
+		view.setScrollY(1000);
+
+		for (let i = 0; i < 4; ++i)
+			await Promise.resolve();
+
+		expect(model.rowCount()).toBe(8);
+		expect(model.data(model.index(7, 1))).toBe("Employee 8");
+		expect(model.canFetchMore()).toBe(true);
 	});
 
 	test("horizontal scroll does not move vertical header", () => {

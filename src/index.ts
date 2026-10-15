@@ -112,3 +112,9 @@ export { CDoubleItemDelegate } from "./widgets/CDoubleItemDelegate.js"
 export { CComboBoxItemDelegate } from "./widgets/CComboBoxItemDelegate.js";
 export { CSortOrder } from "./gui/CSortOrder.js"
 export { CSortFilterProxyModel } from "./models/CSortFilterProxyModel.js";
+export { CSqlTableModel } from "./models/CSqlTableModel.js";
+export { CSqlTableAdapter, type CSqlRow, type CSqlSelectRequest, type CSqlSelectResult } from "./models/CSqlTableAdapter.js";
+export { CSqlEditStrategy } from "./models/CSqlEditStrategy.js";
+export { CSqlError, type CSqlOperation } from "./models/CSqlError.js";
+export { CMemorySqlTableAdapter } from "./models/CMemorySqlTableAdapter.js";
+export { CFetchSqlTableAdapter, CFetchSqlError, type CFetchSqlTableAdapterOptions, type CSqlFetch } from "./models/CFetchSqlTableAdapter.js";
