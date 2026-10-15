@@ -9,6 +9,7 @@ import { CEventType } from "../../src/events/CEvent.js";
 import { CKeyEvent } from "../../src/index.js";
 import { CFontMetrics } from "../../src/gui/CFontMetrics.js";
 import { CClipboard } from "../../src/core/CClipboard.js";
+import { CIntValidator } from "../../src/util/CIntValidator.js";
 
 describe("CLineEdit", () => {
 	beforeEach(() => {
@@ -1141,5 +1142,67 @@ describe("CLineEdit", () => {
 		);
 
 		expect(lineEdit.text()).toBe("HelloX");
+	});
+
+	test("Enter emits returnPressed and editingFinished", () => {
+		const edit = new CLineEdit();
+		const returnPressed = vi.fn();
+		const editingFinished = vi.fn();
+		edit.returnPressed.connect(returnPressed);
+		edit.editingFinished.connect(editingFinished);
+		const event = new CKeyEvent(CEventType.KeyPress, "Enter");
+
+		edit.event(event);
+
+		expect(returnPressed).toHaveBeenCalledOnce();
+		expect(editingFinished).toHaveBeenCalledOnce();
+		expect(event.isAccepted()).toBe(true);
+	});
+
+	test("Return emits returnPressed and editingFinished", () => {
+		const edit = new CLineEdit();
+		const returnPressed = vi.fn();
+		const editingFinished = vi.fn();
+		edit.returnPressed.connect(returnPressed);
+		edit.editingFinished.connect(editingFinished);
+
+		edit.event(new CKeyEvent(CEventType.KeyPress, "Return"));
+
+		expect(returnPressed).toHaveBeenCalledOnce();
+		expect(editingFinished).toHaveBeenCalledOnce();
+	});
+
+	test("Enter does not finish input rejected by a function validator", () => {
+		const edit = new CLineEdit();
+		const returnPressed = vi.fn();
+		const editingFinished = vi.fn();
+		edit.setText("bad");
+		edit.setValidator(text => text !== "bad");
+		edit.returnPressed.connect(returnPressed);
+		edit.editingFinished.connect(editingFinished);
+		const event = new CKeyEvent(CEventType.KeyPress, "Enter");
+
+		edit.event(event);
+
+		expect(returnPressed).not.toHaveBeenCalled();
+		expect(editingFinished).not.toHaveBeenCalled();
+		expect(event.isAccepted()).toBe(false);
+	});
+
+	test("Enter does not finish intermediate object-validator input", () => {
+		const edit = new CLineEdit();
+		const returnPressed = vi.fn();
+		const editingFinished = vi.fn();
+		edit.setValidator(new CIntValidator(-100, 100));
+		edit.insert("-");
+		edit.returnPressed.connect(returnPressed);
+		edit.editingFinished.connect(editingFinished);
+		const event = new CKeyEvent(CEventType.KeyPress, "Enter");
+
+		edit.event(event);
+
+		expect(returnPressed).not.toHaveBeenCalled();
+		expect(editingFinished).not.toHaveBeenCalled();
+		expect(event.isAccepted()).toBe(false);
 	});
 });

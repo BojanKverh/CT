@@ -3,6 +3,8 @@ import { describe, expect, test } from "vitest";
 import { CMemorySqlTableAdapter } from
 	"../../src/models/CMemorySqlTableAdapter.js";
 import { CSqlTableModel } from "../../src/models/CSqlTableModel.js";
+import { CSortOrder } from "../../src/gui/CSortOrder.js";
+import { CSqlFilterOperator } from "../../src/models/CSqlFilter.js";
 
 function createAdapter(): CMemorySqlTableAdapter {
 	const adapter = new CMemorySqlTableAdapter({
@@ -181,5 +183,70 @@ describe("CMemorySqlTableAdapter", () => {
 			"employee_id",
 			999
 		)).rejects.toThrow("Record '999' was not found");
+	});
+
+	test("filters rows before pagination and reports the filtered total", async () => {
+		const adapter = createAdapter();
+
+		const result = await adapter.select({
+			table: "employees",
+			columns: [],
+			offset: 0,
+			limit: 10,
+			filters: [{
+				column: "age",
+				operator: CSqlFilterOperator.GreaterThan,
+				value: 30
+			}]
+		});
+
+		expect(result.totalRowCount).toBe(2);
+		expect(result.rows.map(row => row.name)).toEqual(["Bob", "Carol"]);
+	});
+
+	test("supports case-insensitive and case-sensitive text filters", async () => {
+		const adapter = createAdapter();
+		const insensitive = await adapter.select({
+			table: "employees",
+			columns: [],
+			offset: 0,
+			limit: 10,
+			filters: [{
+				column: "name",
+				operator: CSqlFilterOperator.StartsWith,
+				value: "a"
+			}]
+		});
+		const sensitive = await adapter.select({
+			table: "employees",
+			columns: [],
+			offset: 0,
+			limit: 10,
+			filters: [{
+				column: "name",
+				operator: CSqlFilterOperator.StartsWith,
+				value: "a",
+				caseSensitive: true
+			}]
+		});
+
+		expect(insensitive.totalRowCount).toBe(1);
+		expect(sensitive.totalRowCount).toBe(0);
+	});
+
+	test("sorts the complete filtered result before pagination", async () => {
+		const adapter = createAdapter();
+
+		const result = await adapter.select({
+			table: "employees",
+			columns: ["name", "age"],
+			offset: 1,
+			limit: 1,
+			sortColumn: "age",
+			sortOrder: CSortOrder.DescendingOrder
+		});
+
+		expect(result.totalRowCount).toBe(3);
+		expect(result.rows).toEqual([{ name: "Carol", age: 35 }]);
 	});
 });

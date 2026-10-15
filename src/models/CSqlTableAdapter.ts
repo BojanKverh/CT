@@ -1,3 +1,6 @@
+import { CSortOrder } from "../gui/CSortOrder.js";
+import type { CSqlFilter } from "./CSqlFilter.js";
+
 /** A row returned by an SQL table adapter. */
 export type CSqlRow = Record<string, unknown>;
 
@@ -7,6 +10,9 @@ export interface CSqlSelectRequest {
 	columns: readonly string[];
 	offset: number;
 	limit: number;
+	sortColumn?: string;
+	sortOrder?: CSortOrder;
+	filters?: readonly CSqlFilter[];
 }
 
 /** One page of rows and the complete unpaged row count. */

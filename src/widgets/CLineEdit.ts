@@ -19,6 +19,9 @@ type CLineEditValidator = CValidator | ((text: string) => boolean);
 export class CLineEdit extends CWidget {
 	/** Signal emitted when text changes. */
 	readonly textChanged = new CSignal<[string]>();
+
+	/** Signal emitted when Enter or Return confirms acceptable input. */
+	readonly returnPressed = new CSignal();
 	
 	#m_text = "";
 	#m_cursorPosition = 0;
@@ -142,6 +145,16 @@ export class CLineEdit extends CWidget {
 		return this.#m_validator.validate(text) !== CValidatorState.Invalid;
 	}
 
+	#isAcceptableInput(text: string): boolean {
+		if (this.#m_validator === null)
+			return true;
+
+		if (typeof this.#m_validator === "function")
+			return this.#m_validator(text);
+
+		return this.#m_validator.validate(text) === CValidatorState.Acceptable;
+	}
+
     /** Provides selection start behavior. */
     selectionStart(): number {
 	    return Math.min(this.#m_selectionAnchor, this.#m_cursorPosition);
@@ -256,6 +269,17 @@ export class CLineEdit extends CWidget {
 
 	    /** Provides switch behavior. */
 	    switch (event.key()) {
+		case "Enter":
+		case "Return":
+			if (!this.#isAcceptableInput(this.#m_text)) {
+				event.ignore();
+				return;
+			}
+			this.returnPressed.emit();
+			this.editingFinished.emit();
+			event.accept();
+			return;
+
         case "ArrowLeft":
 	        this.#moveCursor(this.#m_cursorPosition - 1, event.shift());
 	        event.accept();

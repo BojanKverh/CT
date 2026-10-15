@@ -4,6 +4,8 @@ import {
 	type CSqlSelectRequest,
 	type CSqlSelectResult
 } from "./CSqlTableAdapter.js";
+import { CSortOrder } from "../gui/CSortOrder.js";
+import { CSqlFilterOperator, type CSqlFilter } from "./CSqlFilter.js";
 
 /** An in-memory SQL table adapter useful for demos and tests. */
 export class CMemorySqlTableAdapter extends CSqlTableAdapter {
@@ -40,7 +42,23 @@ export class CMemorySqlTableAdapter extends CSqlTableAdapter {
 	override async select(
 		request: CSqlSelectRequest
 	): Promise<CSqlSelectResult> {
-		const rows = this.#table(request.table);
+		let rows = [...this.#table(request.table)];
+		const filters = request.filters;
+		if (filters !== undefined)
+			rows = rows.filter(row => filters.every(filter =>
+				this.#matchesFilter(row, filter)));
+
+		if (request.sortColumn !== undefined) {
+			const column = request.sortColumn;
+			const direction = request.sortOrder === CSortOrder.DescendingOrder
+				? -1
+				: 1;
+			rows.sort((left, right) => direction * this.#compareValues(
+				left[column],
+				right[column]
+			));
+		}
+
 		const offset = Math.max(0, Math.floor(request.offset));
 		const limit = Math.max(0, Math.floor(request.limit));
 		const selected = rows.slice(offset, offset + limit);
@@ -50,6 +68,54 @@ export class CMemorySqlTableAdapter extends CSqlTableAdapter {
 				this.#selectColumns(row, request.columns)),
 			totalRowCount: rows.length
 		};
+	}
+
+	#matchesFilter(row: CSqlRow, filter: CSqlFilter): boolean {
+		const actual = row[filter.column];
+		const expected = filter.value;
+
+		switch (filter.operator) {
+			case CSqlFilterOperator.Equal:
+				return Object.is(actual, expected);
+			case CSqlFilterOperator.NotEqual:
+				return !Object.is(actual, expected);
+			case CSqlFilterOperator.LessThan:
+				return this.#compareValues(actual, expected) < 0;
+			case CSqlFilterOperator.LessThanOrEqual:
+				return this.#compareValues(actual, expected) <= 0;
+			case CSqlFilterOperator.GreaterThan:
+				return this.#compareValues(actual, expected) > 0;
+			case CSqlFilterOperator.GreaterThanOrEqual:
+				return this.#compareValues(actual, expected) >= 0;
+			case CSqlFilterOperator.Contains:
+				return this.#text(actual, filter).includes(
+					this.#text(expected, filter));
+			case CSqlFilterOperator.StartsWith:
+				return this.#text(actual, filter).startsWith(
+					this.#text(expected, filter));
+			case CSqlFilterOperator.EndsWith:
+				return this.#text(actual, filter).endsWith(
+					this.#text(expected, filter));
+		}
+	}
+
+	#text(value: unknown, filter: CSqlFilter): string {
+		const text = String(value ?? "");
+		return filter.caseSensitive === true ? text : text.toLocaleLowerCase();
+	}
+
+	#compareValues(left: unknown, right: unknown): number {
+		if (Object.is(left, right))
+			return 0;
+		if (left === null || left === undefined)
+			return -1;
+		if (right === null || right === undefined)
+			return 1;
+		if (typeof left === "number" && typeof right === "number")
+			return left - right;
+		if (left instanceof Date && right instanceof Date)
+			return left.getTime() - right.getTime();
+		return String(left).localeCompare(String(right));
 	}
 
 	override async insert(

@@ -1,8 +1,10 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { COrientation } from "../../src/gui/COrientation.js";
+import { CSortOrder } from "../../src/gui/CSortOrder.js";
 import { CSqlEditStrategy } from "../../src/models/CSqlEditStrategy.js";
 import { CSqlError } from "../../src/models/CSqlError.js";
+import { CSqlFilterOperator } from "../../src/models/CSqlFilter.js";
 import {
 	CSqlTableAdapter,
 	type CSqlRow,
@@ -346,5 +348,82 @@ describe("CSqlTableModel", () => {
 
 		expect(await model.select()).toBe(false);
 		expect(model.lastError()?.message).toBe("No SQL table has been selected.");
+	});
+
+	test("sort reloads the first page using the selected SQL column", async () => {
+		const adapter = new TestSqlAdapter();
+		const model = createModel(adapter);
+		await model.select();
+		adapter.selectCall.mockClear();
+
+		model.sort(1, CSortOrder.DescendingOrder);
+		await model.whenIdle();
+
+		expect(model.sortColumn()).toBe(1);
+		expect(model.sortOrder()).toBe(CSortOrder.DescendingOrder);
+		expect(adapter.selectCall).toHaveBeenCalledWith({
+			table: "employees",
+			columns: ["id", "name", "age"],
+			offset: 0,
+			limit: 100,
+			sortColumn: "name",
+			sortOrder: CSortOrder.DescendingOrder
+		});
+	});
+
+	test("setFilter reloads the first page and clearFilter removes it", async () => {
+		const adapter = new TestSqlAdapter();
+		const model = createModel(adapter);
+		await model.select();
+
+		model.setFilter({
+			column: "name",
+			operator: CSqlFilterOperator.StartsWith,
+			value: "A"
+		});
+		await model.whenIdle();
+
+		expect(model.filters()).toEqual([{
+			column: "name",
+			operator: CSqlFilterOperator.StartsWith,
+			value: "A"
+		}]);
+		expect(adapter.selectCall).toHaveBeenLastCalledWith({
+			table: "employees",
+			columns: ["id", "name", "age"],
+			offset: 0,
+			limit: 100,
+			filters: [{
+				column: "name",
+				operator: CSqlFilterOperator.StartsWith,
+				value: "A"
+			}]
+		});
+
+		model.clearFilter();
+		await model.whenIdle();
+		expect(model.filters()).toEqual([]);
+		expect(adapter.selectCall).toHaveBeenLastCalledWith({
+			table: "employees",
+			columns: ["id", "name", "age"],
+			offset: 0,
+			limit: 100
+		});
+	});
+
+	test("setFilters copies the supplied filter objects", async () => {
+		const model = createModel();
+		await model.select();
+		const filter = {
+			column: "age",
+			operator: CSqlFilterOperator.GreaterThan,
+			value: 30
+		};
+
+		model.setFilters([filter]);
+		filter.value = 99;
+		await model.whenIdle();
+
+		expect(model.filters()[0]?.value).toBe(30);
 	});
 });

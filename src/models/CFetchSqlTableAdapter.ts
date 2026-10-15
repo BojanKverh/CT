@@ -4,6 +4,7 @@ import {
 	type CSqlSelectRequest,
 	type CSqlSelectResult
 } from "./CSqlTableAdapter.js";
+import { CSortOrder } from "../gui/CSortOrder.js";
 
 /** Fetch-compatible function used to perform HTTP requests. */
 export type CSqlFetch = (
@@ -93,6 +94,15 @@ export class CFetchSqlTableAdapter extends CSqlTableAdapter {
 		});
 		if (request.columns.length > 0)
 			query.set("columns", request.columns.join(","));
+		if (request.sortColumn !== undefined) {
+			query.set("sort", request.sortColumn);
+			query.set(
+				"order",
+				request.sortOrder === CSortOrder.DescendingOrder ? "desc" : "asc"
+			);
+		}
+		if (request.filters !== undefined && request.filters.length > 0)
+			query.set("filters", JSON.stringify(request.filters));
 
 		const url = `${this.#tableUrl(request.table)}?${query.toString()}`;
 		const value = await this.#requestJson(url, "GET");

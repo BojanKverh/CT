@@ -5,6 +5,8 @@ import {
 	CFetchSqlTableAdapter,
 	type CSqlFetch
 } from "../../src/models/CFetchSqlTableAdapter.js";
+import { CSortOrder } from "../../src/gui/CSortOrder.js";
+import { CSqlFilterOperator } from "../../src/models/CSqlFilter.js";
 
 function jsonResponse(value: unknown, status = 200): Response {
 	return new Response(JSON.stringify(value), {
@@ -248,5 +250,37 @@ describe("CFetchSqlTableAdapter", () => {
 		expect(headers.get("Accept")).toBe("application/vnd.example+json");
 		expect(headers.get("Content-Type"))
 			.toBe("application/merge-patch+json");
+	});
+
+	test("serializes server-side sorting and filters", async () => {
+		const fetchMock = vi.fn(async (
+			_input: RequestInfo | URL,
+			_init?: RequestInit
+		) => jsonResponse({ rows: [], totalRowCount: 0 }));
+		const adapter = new CFetchSqlTableAdapter("/api", { fetch: fetchMock });
+
+		await adapter.select({
+			table: "employees",
+			columns: ["id", "name"],
+			offset: 0,
+			limit: 20,
+			sortColumn: "name",
+			sortOrder: CSortOrder.DescendingOrder,
+			filters: [{
+				column: "country",
+				operator: CSqlFilterOperator.Equal,
+				value: "Slovenia"
+			}]
+		});
+
+		const url = String(fetchMock.mock.calls[0]?.[0]);
+		const query = new URLSearchParams(url.slice(url.indexOf("?") + 1));
+		expect(query.get("sort")).toBe("name");
+		expect(query.get("order")).toBe("desc");
+		expect(JSON.parse(query.get("filters")!)).toEqual([{
+			column: "country",
+			operator: "eq",
+			value: "Slovenia"
+		}]);
 	});
 });

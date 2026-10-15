@@ -1,12 +1,15 @@
 import { CSignal } from "../core/CSignal.js";
 import { COrientation } from "../gui/COrientation.js";
+import { CSortOrder } from "../gui/CSortOrder.js";
 import { CAbstractTableModel } from "./CAbstractTableModel.js";
 import { CModelIndex } from "./CModelIndex.js";
 import { CSqlEditStrategy } from "./CSqlEditStrategy.js";
 import { CSqlError, type CSqlOperation } from "./CSqlError.js";
+import type { CSqlFilter } from "./CSqlFilter.js";
 import {
 	CSqlTableAdapter,
-	type CSqlRow
+	type CSqlRow,
+	type CSqlSelectRequest
 } from "./CSqlTableAdapter.js";
 
 /** A flat editable model backed by an asynchronous SQL table adapter. */
@@ -24,6 +27,9 @@ export class CSqlTableModel extends CAbstractTableModel {
 	#m_committedRows: CSqlRow[] = [];
 	#m_totalRowCount = 0;
 	#m_fetchSize = 100;
+	#m_sortColumn = -1;
+	#m_sortOrder = CSortOrder.AscendingOrder;
+	#m_filters: CSqlFilter[] = [];
 	#m_dirtyColumns = new Map<number, Set<string>>();
 	#m_editStrategy = CSqlEditStrategy.OnFieldChange;
 	#m_activeRow: number | null = null;
@@ -98,6 +104,48 @@ export class CSqlTableModel extends CAbstractTableModel {
 
 	totalRowCount(): number {
 		return this.#m_totalRowCount;
+	}
+
+	sortColumn(): number {
+		return this.#m_sortColumn;
+	}
+
+	sortOrder(): CSortOrder {
+		return this.#m_sortOrder;
+	}
+
+	override sort(
+		column: number,
+		order: CSortOrder = CSortOrder.AscendingOrder
+	): void {
+		if (column < -1 || column >= this.columnCount())
+			return;
+		if (this.#m_sortColumn === column && this.#m_sortOrder === order)
+			return;
+
+		this.#m_sortColumn = column;
+		this.#m_sortOrder = order;
+		this.#reload();
+	}
+
+	filters(): readonly CSqlFilter[] {
+		return this.#m_filters.map(filter => ({ ...filter }));
+	}
+
+	setFilter(filter: CSqlFilter): void {
+		this.setFilters([filter]);
+	}
+
+	setFilters(filters: readonly CSqlFilter[]): void {
+		this.#m_filters = filters.map(filter => ({ ...filter }));
+		this.#reload();
+	}
+
+	clearFilter(): void {
+		if (this.#m_filters.length === 0)
+			return;
+		this.#m_filters = [];
+		this.#reload();
 	}
 
 	override canFetchMore(_parent = new CModelIndex()): boolean {
@@ -176,12 +224,7 @@ export class CSqlTableModel extends CAbstractTableModel {
 
 		this.#setLoading(true);
 		try {
-			const result = await this.#m_adapter.select({
-				table: this.#m_table,
-				columns: [...this.#m_columns],
-				offset: 0,
-				limit: this.#m_fetchSize
-			});
+			const result = await this.#m_adapter.select(this.#selectRequest(0));
 
 			this.#m_rows = result.rows.map(row => ({ ...row }));
 			this.#m_committedRows = result.rows.map(row => ({ ...row }));
@@ -214,12 +257,9 @@ export class CSqlTableModel extends CAbstractTableModel {
 
 		this.#setLoading(true);
 		try {
-			const result = await this.#m_adapter.select({
-				table: this.#m_table,
-				columns: [...this.#m_columns],
-				offset: this.#m_rows.length,
-				limit: this.#m_fetchSize
-			});
+			const result = await this.#m_adapter.select(
+				this.#selectRequest(this.#m_rows.length)
+			);
 			if (result.rows.length === 0) {
 				this.#m_totalRowCount = this.#m_rows.length;
 				return false;
@@ -342,6 +382,28 @@ export class CSqlTableModel extends CAbstractTableModel {
 	async whenIdle(): Promise<void> {
 		while (this.#m_pendingOperations.size > 0)
 			await Promise.all([...this.#m_pendingOperations]);
+	}
+
+	#reload(): void {
+		this.#track(this.select().then(() => undefined));
+	}
+
+	#selectRequest(offset: number): CSqlSelectRequest {
+		const request: CSqlSelectRequest = {
+			table: this.#m_table,
+			columns: [...this.#m_columns],
+			offset,
+			limit: this.#m_fetchSize
+		};
+
+		const sortColumn = this.#m_columns[this.#m_sortColumn];
+		if (sortColumn !== undefined) {
+			request.sortColumn = sortColumn;
+			request.sortOrder = this.#m_sortOrder;
+		}
+		if (this.#m_filters.length > 0)
+			request.filters = this.filters();
+		return request;
 	}
 
 	#columnAt(index: CModelIndex): string | null {

@@ -376,6 +376,30 @@ describe("CTableView", () => {
 			.toBe(CSortOrder.AscendingOrder);
 	});
 
+	test("a header click reloads an SQL model using server-side sorting", async () => {
+		const adapter = new CMemorySqlTableAdapter({
+			employees: [
+				{ id: 1, name: "Carol" },
+				{ id: 2, name: "Alice" },
+				{ id: 3, name: "Bob" }
+			]
+		});
+		const model = new CSqlTableModel(adapter);
+		model.setTable("employees");
+		model.setColumns(["id", "name"]);
+		await model.select();
+
+		const view = new CTableView();
+		view.setModel(model);
+		view.setSortingEnabled(true);
+		clickHeaderSection(view, 1);
+		await model.whenIdle();
+
+		expect(model.data(model.index(0, 1))).toBe("Alice");
+		expect(model.data(model.index(1, 1))).toBe("Bob");
+		expect(model.data(model.index(2, 1))).toBe("Carol");
+	});
+
 	test("repeated header clicks toggle the sort order", () => {
 		const view = new CTableView();
 		const model = new SortableTableModel();

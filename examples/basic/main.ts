@@ -11,7 +11,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CDrag, CMimeData, CDropAction, CIcon, CDockWidget, CDockWidgetArea,
 	CCursorShape, CDial, CTextBrowser, CDoubleSpinBox, CIntItemDelegate, CComboBoxItemDelegate,
 	CSortOrder, CSortFilterProxyModel, CFont, CSqlTableModel, CMemorySqlTableAdapter,
-	CSqlEditStrategy
+	CSqlEditStrategy, CSqlFilterOperator
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -973,10 +973,10 @@ sqlButton.clicked.connect(async () => {
 
 	const strategyLabel = new CLabel(dlg);
 	strategyLabel.setText("Edit strategy:");
-	strategyLabel.setGeometry(360, 15, 90, 28);
+	strategyLabel.setGeometry(270, 15, 90, 28);
 
 	const strategy = new CComboBox(dlg);
-	strategy.setGeometry(450, 15, 180, 28);
+	strategy.setGeometry(360, 15, 170, 28);
 	strategy.addItems(["On field change", "On row change", "Manual submit"]);
 	strategy.currentIndexChanged.connect(index => {
 		model.setEditStrategy([
@@ -986,9 +986,29 @@ sqlButton.clicked.connect(async () => {
 		][index] ?? CSqlEditStrategy.OnFieldChange);
 	});
 
+	const filterLabel = new CLabel(dlg);
+	filterLabel.setText("Name:");
+	filterLabel.setGeometry(550, 15, 50, 28);
+
+	const filterEdit = new CLineEdit(dlg);
+	filterEdit.setGeometry(600, 15, 180, 28);
+	filterEdit.editingFinished.connect(() => {
+		const value = filterEdit.text().trim();
+		if (value === "") {
+			model.clearFilter();
+			return;
+		}
+		model.setFilter({
+			column: "name",
+			operator: CSqlFilterOperator.Contains,
+			value
+		});
+	});
+
 	const tv = new CTableView(dlg);
 	tv.setGeometry(20, 55, 860, 345);
 	tv.setModel(model);
+	tv.setSortingEnabled(true);
 
 	const ageDelegate = new CIntItemDelegate();
 	ageDelegate.setRange(18, 100);
