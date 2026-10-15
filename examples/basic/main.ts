@@ -708,6 +708,8 @@ but3.clicked.connect(() => {
 	const occupationDelegate = new CComboBoxItemDelegate(["Developer", "Designer",
     	"Manager", "Engineer", "Architect", "Analyst" ]);
 	tv.setItemDelegateForColumn(4, occupationDelegate);
+	proxy.setFilterKeyColumn(1); // Country
+	//proxy.setFilterFixedString("Italy");
 
 	const bb = new CDialogButtonBox(CStandardButton.Ok, dlg);
 	bb.setGeometry(0, 360, 780, 30);
@@ -970,21 +972,21 @@ pb.setGeometry(5, 45, 200, 16);
 pb.setValue(0);
 
 const sbox = new CSpinBox(gb);
-sbox.setGeometry(5, 75, 80, 28);
+sbox.setGeometry(5, 60, 80, 30);
 sbox.setValue(30);
 sbox.valueChanged.connect(value => {
 	console.log("spin value:", value);
 });
 
 const dbox = new CDoubleSpinBox(gb);
-dbox.setGeometry(5, 95, 80, 28);
+dbox.setGeometry(5, 95, 80, 30);
 dbox.setValue(55.51);
 dbox.valueChanged.connect(value => {
 	console.log("double spin value:", value);
 });
 
 const sbar = new CScrollBar(COrientation.Horizontal, gb);
-sbar.setGeometry(5, 125, 200, 16);
+sbar.setGeometry(5, 130, 200, 16);
 
 const vbar = new CScrollBar(COrientation.Vertical, parent);
 vbar.setGeometry(220, 50, 16, 200);
@@ -1243,10 +1245,6 @@ const dial = new CDial(parent); // oziroma tvoj root widget
 dial.setGeometry(420, 250, 120, 120);
 dial.setRange(0, 200);
 dial.setValue(50);
-
-dial.valueChanged.connect((value) => {
-	console.log("Dial value:", value);
-});
 
 const tb = new CTextBrowser(parent);
 tb.setGeometry(460, 480, 200, 150);

@@ -41,7 +41,9 @@ export class CDoubleSpinBox extends CWidget {
 		});
 
 		this.#m_upButton.setText("▲");
+		this.#m_upButton.setRadius(0);
 		this.#m_downButton.setText("▼");
+		this.#m_downButton.setRadius(0);
 		this.#m_upButton.setAutoRepeat(400, 60);
 		this.#m_downButton.setAutoRepeat(400, 60);
 		this.#m_editor.setFocusPolicy(CFocusPolicy.StrongFocus);
@@ -237,18 +239,8 @@ export class CDoubleSpinBox extends CWidget {
 		const buttonWidth = 20;
 		const halfHeight = this.height() / 2;
 		this.#m_editor.setGeometry(0, 0, this.width() - buttonWidth, this.height());
-		this.#m_upButton.setGeometry(
-			this.width() - buttonWidth,
-			1,
-			buttonWidth - 1,
-			halfHeight - 1
-		);
-		this.#m_downButton.setGeometry(
-			this.width() - buttonWidth,
-			halfHeight,
-			buttonWidth - 1,
-			this.height() - halfHeight - 1
-		);
+		this.#m_upButton.setGeometry(this.width() - buttonWidth, 0, buttonWidth - 1, halfHeight);
+		this.#m_downButton.setGeometry(this.width() - buttonWidth, halfHeight, buttonWidth - 1, this.height() - halfHeight);
 	}
 
 	#commitEditorValue(): void {

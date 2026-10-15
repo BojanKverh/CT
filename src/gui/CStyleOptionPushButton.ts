@@ -11,6 +11,8 @@ export class CStyleOptionPushButton extends CStyleOptionButton {
 	 */
 text = "";
 
+radius: number = 3;
+
 		/**
 	 * Creates a new CStyleOptionPushButton instance.
 	 *
@@ -40,5 +42,7 @@ initFromPushButton(button: CPushButton): void {
 
 		if (button.isDown())
 			this.state |= CStyleState.Sunken;
+
+		this.radius = button.radius();
 	}
 }

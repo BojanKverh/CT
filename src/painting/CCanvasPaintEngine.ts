@@ -12,6 +12,8 @@ export class CCanvasPaintEngine extends CPaintEngine {
         super();
 
         this.#m_context = context;
+        this.#m_context.imageSmoothingEnabled = true;
+        this.#m_context.imageSmoothingQuality = "high";
     }
 
     /** Saves the canvas rendering state. */
@@ -167,10 +169,10 @@ export class CCanvasPaintEngine extends CPaintEngine {
     drawRoundedRect(x: number, y: number, w: number, h: number, r: number | number[] ): void
     {
         this.#m_context.beginPath();
-        this.#m_context.roundRect(x, y, w, h, r);
+        this.#m_context.roundRect(x + 1, y + 1, w - 2, h - 2, r);
         this.#m_context.stroke();
         this.#m_context.beginPath();
-        this.#m_context.roundRect(x, y, w, h, r);
+        this.#m_context.roundRect(x + 1, y + 1, w - 2, h - 2, r);
         this.#m_context.fill();
     }
 }

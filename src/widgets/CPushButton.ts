@@ -12,6 +12,7 @@ import { CStyleOptionPushButton } from "../gui/CStyleOptionPushButton.js";
 export class CPushButton extends CAbstractButton {
 	#m_down = false;
 	#m_hovered = false;
+	#m_radius = 3;
 
 	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
@@ -28,6 +29,14 @@ export class CPushButton extends CAbstractButton {
 	/** Returns whether the hovered condition is active. */
 	isHovered(): boolean {
 		return this.#m_hovered;
+	}
+
+	radius(): number {
+		return this.#m_radius;
+	}
+
+	setRadius(r: number) {
+		this.#m_radius = r;
 	}
 
 	/** Returns the preferred size of the widget. */
@@ -47,7 +56,7 @@ export class CPushButton extends CAbstractButton {
 		this.#m_down = true;
 		event.accept();
 		this.update();
-
+		
 		/** Provides if behavior. */
 		if (this.isAutoRepeat())
 			this.startAutoRepeat();
@@ -67,7 +76,7 @@ export class CPushButton extends CAbstractButton {
 
 		event.accept();
 		this.update();
-
+		
 		/** Provides if behavior. */
 		if (wasDown && inside)
 			this.clicked.emit();

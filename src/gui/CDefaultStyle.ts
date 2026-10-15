@@ -164,17 +164,24 @@ override drawPushButton(painter: CPainter, option: CStyleOptionPushButton): void
 
 		if (!enabled) {
 			painter.setBrush(option.palette.color(CPaletteColorRole.Window).toCss());
-		} else if (down || hovered) {
+		} else if (down) {
 			painter.setBrush(option.palette.color(CPaletteColorRole.Highlight).toCss());
+		} else if (hovered) {
+			painter.setBrush(option.palette.color(CPaletteColorRole.Hover).toCss());
 		} else {
 			painter.setBrush(option.palette.color(CPaletteColorRole.Button).toCss());
 		}
-
-		painter.fillRect(option.rect);
-
+		
+		//painter.fillRect(option.rect);
+		
 		const textRole = !enabled? CPaletteColorRole.DisabledText
-			: hovered? CPaletteColorRole.HighlightedText : CPaletteColorRole.ButtonText;
+			: down? CPaletteColorRole.HighlightedText : CPaletteColorRole.ButtonText;
 
+		if (down || hovered)
+			painter.setPen(option.palette.color(CPaletteColorRole.Highlight).toCss());
+		else
+			painter.setPen(option.palette.color(CPaletteColorRole.ButtonText).toCss());
+		painter.drawRoundedRect(option.rect.x(), option.rect.y(), option.rect.width(), option.rect.height(), option.radius);
 		painter.setPen(option.palette.color(textRole).toCss());
 		painter.setFont(option.font);
 		painter.setTextAlign("center");

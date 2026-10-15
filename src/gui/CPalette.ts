@@ -92,7 +92,7 @@ constructor(pal: CPalette | null = null) {
         	this.#m_colors.set(CPaletteColorRole.DisabledText, new CColor(128, 128, 128));
 			this.#m_colors.set(CPaletteColorRole.Highlight, new CColor(0, 120, 215));
 			this.#m_colors.set(CPaletteColorRole.HighlightedText, new CColor(255, 255, 255));
-			this.#m_colors.set(CPaletteColorRole.Hover, new CColor(255, 128, 0));
+			this.#m_colors.set(CPaletteColorRole.Hover, new CColor(224, 238, 249));
 			this.#m_colors.set(CPaletteColorRole.ToolTipBase, new CColor(255, 255, 220));
 			this.#m_colors.set(CPaletteColorRole.ToolTipText, new CColor(0, 0, 0));
 			this.#m_colors.set(CPaletteColorRole.Link, new CColor(0, 0, 238));
