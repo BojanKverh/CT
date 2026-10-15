@@ -17,6 +17,7 @@ import { CPoint } from "../../src/geometry/CPoint";
 import { CPalette } from "../../src/gui/CPalette";
 import { CFocusPolicy } from "../../src/gui/CFocusPolicy";
 import { CContextMenuEvent, CContextMenuReason } from "../../src/events/CContextMenuEvent";
+import { CFont } from "../../src/gui/CFont";
 
 let animationFrameCallbacks = new Map<number, FrameRequestCallback>();
 let nextAnimationFrameId = 1;
@@ -731,29 +732,29 @@ describe("CWidget", () => {
 
 	test("keeps its font when reparented", () => {
 		const parent1 = new CWidget();
-		parent1.setFont("18px serif");
+		parent1.setFont(new CFont("serif", 18));
 
 		const parent2 = new CWidget();
-		parent2.setFont("12px monospace");
+		parent2.setFont(new CFont("monospace", 12));
 
 		const child = new CWidget(parent1);
 
-		expect(child.font()).toBe("18px serif");
+		expect(child.font().toCss()).toBe("18px serif");
 
 		child.setParent(parent2);
 
-		expect(child.font()).toBe("18px serif");
+		expect(child.font().toCss()).toBe("18px serif");
 	});
 
 	test("sets font only on widget by default", () => {
 		const parent = new CWidget();
 		const child = new CWidget(parent);
 
-		child.setFont("12px Arial");
-		parent.setFont("20px Arial");
+		child.setFont(new CFont("Arial", 12));
+		parent.setFont(new CFont("Arial", 20));
 
-		expect(parent.font()).toBe("20px Arial");
-		expect(child.font()).toBe("12px Arial");
+		expect(parent.font().toCss()).toBe("20px Arial");
+		expect(child.font().toCss()).toBe("12px Arial");
 	});
 
 	test("propagates font to descendants", () => {
@@ -761,24 +762,34 @@ describe("CWidget", () => {
 		const child = new CWidget(parent);
 		const grandchild = new CWidget(child);
 
-		parent.setFont("20px Arial", true);
+		parent.setFont(new CFont("Arial", 20), true);
 
-		expect(parent.font()).toBe("20px Arial");
-		expect(child.font()).toBe("20px Arial");
-		expect(grandchild.font()).toBe("20px Arial");
+		expect(parent.font().toCss()).toBe("20px Arial");
+		expect(child.font().toCss()).toBe("20px Arial");
+		expect(grandchild.font().toCss()).toBe("20px Arial");
 	});
 
 	test("propagates font even when widget already has same font", () => {
 		const parent = new CWidget();
 		const child = new CWidget(parent);
 
-		parent.setFont("20px Arial");
-		child.setFont("12px Arial");
+		parent.setFont(new CFont("Arial", 20));
+		child.setFont(new CFont("Arial", 12));
 
-		parent.setFont("20px Arial", true);
+		parent.setFont(new CFont("Arial", 20), true);
 
-		expect(parent.font()).toBe("20px Arial");
-		expect(child.font()).toBe("20px Arial");
+		expect(parent.font().toCss()).toBe("20px Arial");
+		expect(child.font().toCss()).toBe("20px Arial");
+	});
+
+	test("returns an independent font copy", () => {
+		const widget = new CWidget();
+		widget.setFont(new CFont("Arial", 16));
+
+		const font = widget.font();
+		font.setPixelSize(24);
+
+		expect(widget.font().pixelSize()).toBe(16);
 	});
 
 	test("dispatches mouse enter event to mouseEnterEvent", () => {

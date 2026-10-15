@@ -11,6 +11,7 @@ import { CStyleOptionToolButton } from "../gui/CStyleOptionToolButton.js";
 import { CIconMode, CIconState } from "./CIcon.js";
 import { CStyleState } from "./CStyleOption.js";
 import { CStyleOptionPushButton } from "./CStyleOptionPushButton.js";
+import { CFont } from "./CFont.js";
 import { CStyleOptionCheckBox } from "./CStyleOptionCheckBox.js";
 import { CStyleOptionRadioButton } from "./CStyleOptionRadioButton.js";
 import { CStyleOptionComboBox } from "./CStyleOptionComboBox.js";
@@ -172,8 +173,6 @@ override drawPushButton(painter: CPainter, option: CStyleOptionPushButton): void
 			painter.setBrush(option.palette.color(CPaletteColorRole.Button).toCss());
 		}
 		
-		//painter.fillRect(option.rect);
-		
 		const textRole = !enabled? CPaletteColorRole.DisabledText
 			: down? CPaletteColorRole.HighlightedText : CPaletteColorRole.ButtonText;
 
@@ -181,6 +180,7 @@ override drawPushButton(painter: CPainter, option: CStyleOptionPushButton): void
 			painter.setPen(option.palette.color(CPaletteColorRole.Highlight).toCss());
 		else
 			painter.setPen(option.palette.color(CPaletteColorRole.ButtonText).toCss());
+
 		painter.drawRoundedRect(option.rect.x(), option.rect.y(), option.rect.width(), option.rect.height(), option.radius);
 		painter.setPen(option.palette.color(textRole).toCss());
 		painter.setFont(option.font);
@@ -388,7 +388,7 @@ override drawDial(painter: CPainter, option: CStyleOptionSlider): void {
 
 		painter.setFillStyle(option.palette.color(CPaletteColorRole.WindowText).toCss());
 
-		painter.setFont("11px sans-serif");
+			painter.setFont(new CFont("sans-serif", 11));
 		painter.setTextAlign("center");
 		painter.setTextBaseline("middle");
 

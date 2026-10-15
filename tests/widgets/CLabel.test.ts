@@ -9,6 +9,7 @@ import { CColor } from "../../src/gui/CColor.js";
 import { CPalette, CPaletteColorRole} from "../../src/gui/CPalette.js";
 import { CPixmap } from "../../src/painting/CPixmap.js";
 import { CFrame } from "../../src/index.js";
+import { CFont } from "../../src/gui/CFont.js";
 
 class TestLabel extends CLabel {
 	paint(painter: CPainter): void {
@@ -139,7 +140,7 @@ describe("CLabel", () => {
 		const label = new TestLabel();
 		label.resize(200, 40);
 		label.setText("Hello");
-		label.setFont("18px serif");
+		label.setFont(new CFont("serif", 18));
 
 		const device = new TestPaintDevice();
 		const painter = new CPainter(device);

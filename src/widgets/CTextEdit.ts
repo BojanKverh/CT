@@ -10,6 +10,7 @@ import {
 import { CFocusEvent } from "../events/CFocusEvent.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CFontMetrics } from "../gui/CFontMetrics.js";
+import { CFont } from "../gui/CFont.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
 import { CRect } from "../geometry/CRect.js";
@@ -1504,40 +1505,26 @@ export class CTextEdit extends CScrollArea {
 		return width;
 	}
 
-	#fontForFormat(format: CTextCharFormat): string {
-		let font = this.font();
+	#fontForFormat(format: CTextCharFormat): CFont {
+		const font = new CFont(this.font());
 
 		/** Provides if behavior. */
-		if (format.fontSize() !== null) {
-			font = font.replace(
-				/(\d+(?:\.\d+)?)px/,
-				`${format.fontSize()}px`
-			);
-		}
+		if (format.fontSize() !== null)
+			font.setPixelSize(format.fontSize()!);
 
 		/** Provides if behavior. */
-		if (format.fontFamily() !== null) {
-			const family = format.fontFamily()!;
-			font = font.replace(
-				/(\d+(?:\.\d+)?)px(?:\/[^\s]+)?\s+.+$/,
-				(_match, size: string) =>
-					`${size}px ${family}`
-			);
-		}
-
-		const prefixes: string[] = [];
+		if (format.fontFamily() !== null)
+			font.setFamily(format.fontFamily()!);
 
 		/** Provides if behavior. */
 		if (format.fontItalic())
-			prefixes.push("italic");
+			font.setItalic(true);
 
 		/** Provides if behavior. */
 		if (format.fontBold())
-			prefixes.push("bold");
+			font.setBold(true);
 
-		return prefixes.length > 0
-			? `${prefixes.join(" ")} ${font}`
-			: font;
+		return font;
 	}
 
 	#formatHtmlFragment(text: string, format: CTextCharFormat): string {
@@ -1927,8 +1914,7 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	#baseFontPixelSize(): number {
-		const match = /(\d+(?:\.\d+)?)px/.exec(this.font());
-		return match === null ? 14 : Number(match[1]);
+		return this.font().pixelSize();
 	}
 
 	#decodeHtmlEntities(text: string): string {

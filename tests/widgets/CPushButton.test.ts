@@ -238,7 +238,7 @@ describe("CPushButton", () => {
 		button.paint(painter);
 
 		expect(device.engine.setFillStyle).toHaveBeenCalledWith(
-			"rgba(0, 120, 215, 1)"
+			"rgba(224, 238, 249, 1)"
 		);
 	});
 
@@ -261,7 +261,7 @@ describe("CPushButton", () => {
 		button.paint(painter);
 
 		expect(device.engine.setFillStyle).toHaveBeenCalledWith(
-			"rgba(0, 120, 215, 1)"
+			"rgba(0, 120, 215, 1)",
 		);
 	});
 

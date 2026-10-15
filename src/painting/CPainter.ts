@@ -2,6 +2,7 @@ import type { CPaintDevice } from "./CPaintDevice.js";
 import type { CPaintEngine } from "./CPaintEngine.js";
 import { CRect } from "../geometry/CRect.js";
 import { CPixmap } from "../painting/CPixmap.js";
+import { CFont } from "../gui/CFont.js";
 
 /**
  * High-level painting interface that forwards drawing operations to a paint device.
@@ -94,13 +95,13 @@ export class CPainter {
     }
 
     /** Returns the current font specification. */
-    font() : string {
-        return this.#m_engine.font();
+    font() : CFont {
+        return CFont.fromCss(this.#m_engine.font());
     }
 
 	/** Sets the current font specification. */
-	setFont(font: string): void {
-		this.#m_engine.setFont(font);
+	setFont(font: CFont): void {
+		this.#m_engine.setFont(font.toCss());
 	}
 
     /** Returns the current text alignment. */

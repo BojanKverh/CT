@@ -7,6 +7,7 @@ import { CPalette } from "../../src/gui/CPalette.js";
 import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
 import { CApplication } from "../../src/core/CApplication.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
+import { CFont } from "../../src/gui/CFont.js";
 
 describe("CStyleOption", () => {
     beforeEach(() => {
@@ -78,6 +79,17 @@ describe("CStyleOption", () => {
 		)).toBe(true);
 	});
 
+	test("copies font independently", () => {
+		const source = new CStyleOption();
+		source.font = new CFont("Arial", 18);
+
+		const copy = new CStyleOption(source);
+		copy.font.setPixelSize(24);
+
+		expect(source.font.pixelSize()).toBe(18);
+		expect(copy.font.pixelSize()).toBe(24);
+	});
+
 	test("copied rect is independent", () => {
 		const source = new CStyleOption();
 		source.rect.setGeometry(10, 20, 100, 50);
@@ -127,6 +139,16 @@ describe("CStyleOption", () => {
 		option.initFrom(widget);
 
 		expect(option.palette).not.toBe(widget.palette());
+	});
+
+	test("initializes font from widget", () => {
+		const widget = new CWidget();
+		widget.setFont(new CFont("Arial", 18));
+
+		const option = new CStyleOption();
+		option.initFrom(widget);
+
+		expect(option.font.toCss()).toBe("18px Arial");
 	});
 
 	test("sets enabled state for enabled widget", () => {

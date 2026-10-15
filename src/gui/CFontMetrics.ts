@@ -1,10 +1,11 @@
 import { CApplication } from "../core/CApplication.js";
+import { CFont } from "./CFont.js";
 
 /**
  * Provides measurements for text rendered with a specific font.
  */
 export class CFontMetrics {
-	#m_font: string;
+	#m_font: CFont;
 	#m_context: CanvasRenderingContext2D;
 
 		/**
@@ -12,8 +13,8 @@ export class CFontMetrics {
 	 *
 	 * @param font Font.
 	 */
-constructor(font: string) {
-		this.#m_font = font;
+constructor(font: CFont) {
+		this.#m_font = new CFont(font);
 
 		const context = CApplication.instance().canvas().getContext("2d");
 
@@ -28,8 +29,8 @@ constructor(font: string) {
 	 *
 	 * @returns The resulting value.
 	 */
-font(): string {
-		return this.#m_font;
+font(): CFont {
+		return new CFont(this.#m_font);
 	}
 
 		/**
@@ -45,7 +46,7 @@ textWidth(text: string): number {
 			throw new Error("Canvas 2D context is not available.");
 
 		this.#m_context.save();
-		this.#m_context.font = this.#m_font;
+		this.#m_context.font = this.#m_font.toCss();
 
 		const width = this.#m_context.measureText(text).width;
 
@@ -64,7 +65,7 @@ height(): number {
 			throw new Error("Canvas 2D context is not available.");
 
 		this.#m_context.save();
-		this.#m_context.font = this.#m_font;
+		this.#m_context.font = this.#m_font.toCss();
 
 		const metrics = this.#m_context.measureText("Mg");
 		const height = metrics.actualBoundingBoxAscent +

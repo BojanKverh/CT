@@ -5,6 +5,7 @@ import { CPaintEngine } from "../../src/painting/CPaintEngine";
 import { CRect } from "../../src/geometry/CRect";
 import { TestPaintEngine } from "../helpers/createTestPaintEngine";
 import { CPixmap } from "../../src/painting/CPixmap";
+import { CFont, CFontWeight } from "../../src/gui/CFont";
 
 class TestPaintDevice extends CPaintDevice {
     readonly engine = new TestPaintEngine();
@@ -141,11 +142,24 @@ describe("CPainter", () => {
 		const device = new TestPaintDevice();
 		const painter = new CPainter(device);
 
-		painter.setFont("14px sans-serif");
+		painter.setFont(new CFont("Arial", 16, CFontWeight.Bold, true));
 
 		expect(device.engine.setFont).toHaveBeenCalledWith(
-			"14px sans-serif"
+			"italic 700 16px Arial"
 		);
+	});
+
+	test("returns the current font as a CFont", () => {
+		const device = new TestPaintDevice();
+		const painter = new CPainter(device);
+		device.engine.font.mockReturnValue("italic 700 16px Arial");
+
+		const font = painter.font();
+
+		expect(font.family()).toBe("Arial");
+		expect(font.pixelSize()).toBe(16);
+		expect(font.isBold()).toBe(true);
+		expect(font.isItalic()).toBe(true);
 	});
 
 	test("sets text alignment", () => {

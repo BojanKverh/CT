@@ -13,6 +13,13 @@ export { CPaintEngine } from "./painting/CPaintEngine.js";
 export { CCanvasPaintEngine } from "./painting/CCanvasPaintEngine.js";
 export { CPainter } from "./painting/CPainter.js";
 export { CPalette, CPaletteColorRole } from "./gui/CPalette.js";
+export {
+	CFont,
+	CFontStyle,
+	CFontWeight,
+	CFontStretch,
+	CFontCapitalization
+} from "./gui/CFont.js";
 export { CApplication } from "./core/CApplication.js";
 export { CWidget } from "./widgets/CWidget.js";
 export { CPushButton } from "./widgets/CPushButton.js";

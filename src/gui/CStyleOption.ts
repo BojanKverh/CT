@@ -1,6 +1,7 @@
 import { CRect } from "../geometry/CRect.js";
 import { CPalette } from "./CPalette.js";
 import type { CWidget } from "../widgets/CWidget.js";
+import { CFont } from "./CFont.js";
 
 /**
  * Defines state flags passed to style drawing operations.
@@ -59,7 +60,7 @@ palette = new CPalette();
         /**
      * Returns the font used by these metrics.
      */
-font = "";
+font = new CFont();
 
 		/**
 	 * Creates a new CStyleOption instance.
@@ -76,7 +77,7 @@ constructor(other: CStyleOption | null = null) {
 		);
 		this.state = other.state;
 		this.palette = new CPalette(other.palette);
-       	this.font = other.font;
+	       	this.font = new CFont(other.font);
 	}
 
         /**

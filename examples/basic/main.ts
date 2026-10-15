@@ -10,7 +10,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CContextMenuEvent, CDragEnterEvent, CDragMoveEvent, CDragLeaveEvent, CDropEvent,
 	CDrag, CMimeData, CDropAction, CIcon, CDockWidget, CDockWidgetArea,
 	CCursorShape, CDial, CTextBrowser, CDoubleSpinBox, CIntItemDelegate, CComboBoxItemDelegate,
-	CSortOrder, CSortFilterProxyModel
+	CSortOrder, CSortFilterProxyModel, CFont
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -84,7 +84,7 @@ class ScrollContentWidget extends CWidget {
 
 		painter.setStrokeStyle("#d0d0d0");
 		painter.setFillStyle("#202020");
-		painter.setFont("14px sans-serif");
+		painter.setFont(new CFont("sans-serif", 14));
 
 		for (let x = 0; x <= this.width(); x += 100) {
 			painter.drawLine(x, 0, x, this.height());

@@ -26,6 +26,7 @@ import { CDragLeaveEvent } from "../events/CDragLeaveEvent.js";
 import { CDropEvent } from "../events/CDropEvent.js";
 import { CDropAction } from "../events/CDropAction.js";
 import { CClipboard } from "./CClipboard.js";
+import { CFont } from "../gui/CFont.js";
 
 /**
  * Central Canvas Toolkit application object that owns the canvas integration, event dispatch, focus, popups, drag-and-drop and repaint scheduling.
@@ -41,7 +42,7 @@ export class CApplication extends CObject {
 	#m_focusWidget: CWidget | null = null;
 	#m_updatesEnabled = false;
 	#m_frameRequest: number | null = null;
-	#m_font = "14px sans-serif";
+	#m_font = new CFont();
     #m_palette = new CPalette();
     #m_style: CStyle = new CDefaultStyle();
     #m_popupWidgets: CPopupWidget[] = [];
@@ -237,21 +238,21 @@ export class CApplication extends CObject {
 
 /**
  * Returns the application default font.
- * @returns CSS canvas font string.
+ * @returns Independent copy of the current font.
  */
-	font(): string {
-		return this.#m_font;
+	font(): CFont {
+		return new CFont(this.#m_font);
 	}
 
 /**
  * Sets the application default font and schedules a repaint.
- * @param font CSS canvas font string.
+ * @param font Font to use as the application default.
  */
-	setFont(font: string): void {
-		if (this.#m_font === font)
+	setFont(font: CFont): void {
+		if (this.#m_font.isEqual(font))
 			return;
 
-		this.#m_font = font;
+		this.#m_font = new CFont(font);
 		this.requestRepaint();
 	}
 

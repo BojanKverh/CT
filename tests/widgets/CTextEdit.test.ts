@@ -10,6 +10,14 @@ import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { createTestWindow } from "../helpers/createTestWindow.js";
 import { CClipboard } from "../../src/core/CClipboard.js";
 import { CTextCharFormat } from "../../src/gui/CTextCharFormat.js";
+import {
+	CFont,
+	CFontStretch,
+	CFontStyle,
+	CFontWeight
+} from "../../src/gui/CFont.js";
+import { CPainter } from "../../src/painting/CPainter.js";
+import { TestPaintDevice } from "../helpers/createTestPaintEngine.js";
 
 describe("CTextEdit", () => {
 	beforeEach(() => {
@@ -749,6 +757,52 @@ describe("CTextEdit", () => {
 
 		expect(edit.sizeHint().width()).toBe(240);
 		expect(edit.sizeHint().height()).toBe(120);
+	});
+
+	test("paints plain text using the widget CFont", () => {
+		const edit = new CTextEdit();
+		const font = new CFont("serif", 19);
+		font.setStyle(CFontStyle.Italic);
+		font.setWeight(CFontWeight.DemiBold);
+		font.setStretch(CFontStretch.Condensed);
+		edit.setFont(font);
+		edit.setPlainText("Hello");
+
+		const device = new TestPaintDevice();
+		edit.paintText(new CPainter(device));
+
+		expect(device.engine.setFont).toHaveBeenCalledWith(
+			"italic 600 condensed 19px serif"
+		);
+	});
+
+	test("rich text font properties override the widget CFont", () => {
+		const edit = new CTextEdit();
+		const font = new CFont("sans-serif", 17);
+		font.setStretch(CFontStretch.Expanded);
+		edit.setFont(font);
+		edit.setHtml(
+			'<span style="font-size: 24px; font-family: serif; ' +
+			'font-weight: bold; font-style: italic">Hello</span>'
+		);
+
+		const device = new TestPaintDevice();
+		edit.paintText(new CPainter(device));
+
+		expect(device.engine.setFont).toHaveBeenCalledWith(
+			"italic 700 expanded 24px serif"
+		);
+	});
+
+	test("heading size is derived from the widget CFont pixel size", () => {
+		const edit = new CTextEdit();
+		edit.setFont(new CFont("sans-serif", 20));
+		edit.setHtml("<h1>Heading</h1>");
+
+		edit.setCursorPosition(2);
+
+		expect(edit.currentCharFormat().fontSize()).toBe(36);
+		expect(edit.currentCharFormat().fontBold()).toBe(true);
 	});
 
 	test("left mouse press places cursor on clicked line", () => {

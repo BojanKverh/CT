@@ -20,6 +20,7 @@ import { CDragEnterEvent } from "../events/CDragEnterEvent.js";
 import { CDragMoveEvent } from "../events/CDragMoveEvent.js";
 import { CDragLeaveEvent } from "../events/CDragLeaveEvent.js";
 import { CDropEvent } from "../events/CDropEvent.js";
+import { CFont } from "../gui/CFont.js";
 
 /** Implements the widget widget. */
 export class CWidget extends CObject {
@@ -27,7 +28,7 @@ export class CWidget extends CObject {
 
     #m_visible = true;
     #m_enabled = true;
-	#m_font: string;
+	#m_font: CFont;
     #m_layout: CLayout | null = null;
     #m_minimumSize = new CSize(0, 0);
     #m_maximumSize = new CSize(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
@@ -170,8 +171,8 @@ export class CWidget extends CObject {
     }
 
 	/** Provides font behavior. */
-	font(): string {
-		return this.#m_font;
+	font(): CFont {
+		return new CFont(this.#m_font);
 	}
 
     /** Provides font metrics behavior. */
@@ -180,12 +181,12 @@ export class CWidget extends CObject {
     }
 
 	/** Sets the font. */
-	setFont(font: string, propagate = false): void {
-		const changed = this.#m_font !== font;
+	setFont(font: CFont, propagate = false): void {
+		const changed = !this.#m_font.isEqual(font);
 
 		/** Provides if behavior. */
 		if (changed)
-			this.#m_font = font;
+			this.#m_font = new CFont(font);
 
         this.#m_fontMetrics = new CFontMetrics(this.#m_font);
 

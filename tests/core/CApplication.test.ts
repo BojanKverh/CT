@@ -21,6 +21,7 @@ import { CDropAction } from "../../src/events/CDropAction";
 import { CDrag } from "../../src/core/CDrag";
 import { CMimeData } from "../../src/core/CMimeData";
 import { CClipboard } from "../../src/core/CClipboard";
+import { CFont } from "../../src/gui/CFont";
 
 class RenderTrackingWidget extends CWidget {
     renderCalls = 0;
@@ -2188,6 +2189,28 @@ describe("CApplication", () => {
 
 		app.clipboard().setText("Hello");
 		expect(app.clipboard().text()).toBe("Hello");
+
+		app.destroy();
+	});
+
+	test("has a default font", () => {
+		const app = new CApplication(createTestCanvas());
+
+		expect(app.font().toCss()).toBe("14px sans-serif");
+
+		app.destroy();
+	});
+
+	test("stores an independent application font", () => {
+		const app = new CApplication(createTestCanvas());
+		const font = new CFont("Arial", 18);
+		app.setFont(font);
+
+		font.setPixelSize(30);
+		const returned = app.font();
+		returned.setFamily("serif");
+
+		expect(app.font().toCss()).toBe("18px Arial");
 
 		app.destroy();
 	});
