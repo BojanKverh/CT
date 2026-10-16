@@ -126,12 +126,18 @@ export abstract class CLayout {
 
 	/** Adds a layout item and returns whether it was accepted. */
 	protected addItem(item: CLayoutItem): boolean {
+		return this.insertItem(this.#m_items.length, item);
+	}
+
+	/** Inserts a layout item and returns whether it was accepted. */
+	protected insertItem(index: number, item: CLayoutItem): boolean {
 		const widget = item.widget();
 
 		if (widget !== null && this.#indexOf(widget) !== -1)
 			return false;
 
-		this.#m_items.push(item);
+		index = Math.max(0, Math.min(index, this.#m_items.length));
+		this.#m_items.splice(index, 0, item);
 
 		if (widget !== null && this.#m_parentWidget !== null)
 			widget.setParent(this.#m_parentWidget);

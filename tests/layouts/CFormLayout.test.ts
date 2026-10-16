@@ -114,6 +114,70 @@ describe("CFormLayout", () => {
 		).toBe(widget);
 	});
 
+	test("inserts rows while preserving flat widget order", () => {
+		const layout = new CFormLayout();
+		const firstLabel = new CWidget();
+		const firstField = new CWidget();
+		const insertedLabel = new CWidget();
+		const insertedField = new CWidget();
+		const spanning = new CWidget();
+
+		layout.addRow(firstLabel, firstField);
+		layout.addRow(spanning);
+		layout.insertRow(1, insertedLabel, insertedField);
+
+		expect(layout.rowCount()).toBe(3);
+		expect(layout.widgetAt(0)).toBe(firstLabel);
+		expect(layout.widgetAt(1)).toBe(firstField);
+		expect(layout.widgetAt(2)).toBe(insertedLabel);
+		expect(layout.widgetAt(3)).toBe(insertedField);
+		expect(layout.widgetAt(4)).toBe(spanning);
+	});
+
+	test("clamps inserted row positions", () => {
+		const layout = new CFormLayout();
+		const middle = new CWidget();
+		const first = new CWidget();
+		const last = new CWidget();
+
+		layout.addRow(middle);
+		layout.insertRow(-10, first);
+		layout.insertRow(100, last);
+
+		expect(layout.widgetAt(0, CFormLayoutItemRole.SpanningRole)).toBe(first);
+		expect(layout.widgetAt(1, CFormLayoutItemRole.SpanningRole)).toBe(middle);
+		expect(layout.widgetAt(2, CFormLayoutItemRole.SpanningRole)).toBe(last);
+	});
+
+	test("removes a complete row and its layout items", () => {
+		const layout = new CFormLayout();
+		const firstLabel = new CWidget();
+		const firstField = new CWidget();
+		const second = new CWidget();
+		layout.addRow(firstLabel, firstField);
+		layout.addRow(second);
+
+		layout.removeRow(0);
+
+		expect(layout.rowCount()).toBe(1);
+		expect(layout.count()).toBe(1);
+		expect(layout.widgetAt(0)).toBe(second);
+		layout.removeRow(20);
+		expect(layout.rowCount()).toBe(1);
+	});
+
+	test("returns the label associated with a field", () => {
+		const layout = new CFormLayout();
+		const label = new CWidget();
+		const field = new CWidget();
+		const unknown = new CWidget();
+		layout.addRow(label, field);
+
+		expect(layout.labelForField(field)).toBe(label);
+		expect(layout.labelForField(label)).toBeNull();
+		expect(layout.labelForField(unknown)).toBeNull();
+	});
+
 	test("keeps flat widget order for base widgetAt overload", () => {
 		const layout = new CFormLayout();
 		const label = new CWidget();
@@ -222,6 +286,49 @@ describe("CFormLayout", () => {
 		expect(field1.x()).toBe(margin + 80 + spacing);
 		expect(field2.x()).toBe(margin + 80 + spacing);
 		expect(field1.width()).toBe(field2.width());
+	});
+
+	test("supports a fixed label column width and automatic reset", () => {
+		const parent = new CWidget();
+		parent.resize(400, 100);
+		const layout = new CFormLayout();
+		parent.setLayout(layout);
+		const label = new HintWidget(80, 20);
+		const field = new HintWidget(100, 20);
+		layout.addRow(label, field);
+
+		layout.setLabelColumnWidth(120);
+		expect(layout.labelColumnWidth()).toBe(120);
+		expect(label.width()).toBe(120);
+		expect(field.x()).toBe(margin + 120 + spacing);
+
+		layout.setLabelColumnWidth(null);
+		expect(layout.labelColumnWidth()).toBe(80);
+		expect(label.width()).toBe(80);
+	});
+
+	test("clamps a fixed label column width to zero", () => {
+		const layout = new CFormLayout();
+		layout.setLabelColumnWidth(-20);
+		expect(layout.labelColumnWidth()).toBe(0);
+	});
+
+	test("sets alignment on existing and generated labels", () => {
+		const layout = new CFormLayout();
+		const firstField = new CWidget();
+		layout.addRow("First", firstField);
+		const firstLabel = layout.labelForField(firstField) as CLabel;
+
+		layout.setLabelAlignment(CAlignment.Left | CAlignment.VCenter);
+		const secondField = new CWidget();
+		layout.addRow("Second", secondField);
+		const secondLabel = layout.labelForField(secondField) as CLabel;
+
+		expect(layout.labelAlignment()).toBe(
+			CAlignment.Left | CAlignment.VCenter
+		);
+		expect(firstLabel.alignment() & CAlignment.Left).toBeTruthy();
+		expect(secondLabel.alignment() & CAlignment.Left).toBeTruthy();
 	});
 
 	test("centers shorter widgets vertically within a row", () => {

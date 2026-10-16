@@ -31,6 +31,8 @@ export class CFormLayout extends CLayout {
 
 	#m_horizontalSpacing: number | null = null;
 	#m_verticalSpacing: number | null = null;
+	#m_labelColumnWidth: number | null = null;
+	#m_labelAlignment = CAlignment.Right | CAlignment.VCenter;
 
 	/**
 	 * Adds a row to the form.
@@ -46,19 +48,41 @@ export class CFormLayout extends CLayout {
 		labelOrWidget: string | CWidget,
 		field?: CWidget
 	): void {
+		if (field === undefined)
+			this.insertRow(this.#m_rows.length, labelOrWidget as CWidget);
+		else if (typeof labelOrWidget === "string")
+			this.insertRow(this.#m_rows.length, labelOrWidget, field);
+		else
+			this.insertRow(this.#m_rows.length, labelOrWidget, field);
+	}
+
+	/** Inserts a row at the specified position. */
+	insertRow(row: number, labelText: string, field: CWidget): void;
+	insertRow(row: number, label: CWidget, field: CWidget): void;
+	insertRow(row: number, widget: CWidget): void;
+
+	insertRow(
+		row: number,
+		labelOrWidget: string | CWidget,
+		field?: CWidget
+	): void {
+		row = Number.isFinite(row) ? Math.trunc(row) : this.#m_rows.length;
+		row = Math.max(0, Math.min(row, this.#m_rows.length));
+		const itemIndex = this.#flatIndexForRow(row);
+
 		if (field === undefined) {
 			const widget = labelOrWidget as CWidget;
 			const item = new CWidgetItem(widget);
 
-			this.#m_rows.push({
+			if (!this.insertItem(itemIndex, item))
+				return;
+
+			this.#m_rows.splice(row, 0, {
 				labelItem: null,
 				fieldItem: null,
 				spanningItem: item
 			});
-
-			if (!this.addItem(item))
-				this.#m_rows.pop();
-
+			this.update();
 			return;
 		}
 
@@ -68,9 +92,7 @@ export class CFormLayout extends CLayout {
 			const textLabel = new CLabel();
 
 			textLabel.setText(labelOrWidget);
-			textLabel.setAlignment(
-				CAlignment.Right | CAlignment.VCenter
-			);
+			textLabel.setAlignment(this.#m_labelAlignment);
 
 			label = textLabel;
 		} else {
@@ -80,27 +102,87 @@ export class CFormLayout extends CLayout {
 		const labelItem = new CWidgetItem(label);
 		const fieldItem = new CWidgetItem(field);
 
-		this.#m_rows.push({
+		if (!this.insertItem(itemIndex, labelItem))
+			return;
+
+		if (!this.insertItem(itemIndex + 1, fieldItem)) {
+			this.removeWidget(label);
+			return;
+		}
+
+		this.#m_rows.splice(row, 0, {
 			labelItem,
 			fieldItem,
 			spanningItem: null
 		});
-
-		if (!this.addItem(labelItem)) {
-			this.#m_rows.pop();
-			return;
-		}
-
-		if (!this.addItem(fieldItem)) {
-			this.#m_rows.pop();
-			this.removeWidget(label);
-			return;
-		}
+		this.update();
 	}
 
 	/** Returns the number of rows in the form. */
 	rowCount(): number {
 		return this.#m_rows.length;
+	}
+
+	/** Removes the row at the specified position. */
+	removeRow(row: number): void {
+		if (!Number.isInteger(row) || row < 0 || row >= this.#m_rows.length)
+			return;
+
+		const removed = this.#m_rows.splice(row, 1)[0];
+		if (removed === undefined)
+			return;
+
+		const widgets = [
+			removed.labelItem?.widget(),
+			removed.fieldItem?.widget(),
+			removed.spanningItem?.widget()
+		];
+		for (const widget of widgets) {
+			if (widget !== null && widget !== undefined)
+				super.removeWidget(widget);
+		}
+		this.update();
+	}
+
+	/** Returns the label associated with a field widget. */
+	labelForField(field: CWidget): CWidget | null {
+		for (const row of this.#m_rows) {
+			if (row.fieldItem?.widget() === field)
+				return row.labelItem?.widget() ?? null;
+		}
+		return null;
+	}
+
+	/** Returns the effective width of the label column. */
+	labelColumnWidth(): number {
+		return this.#m_labelColumnWidth ?? this.#automaticLabelColumnWidth();
+	}
+
+	/** Sets a fixed label-column width, or `null` for automatic sizing. */
+	setLabelColumnWidth(width: number | null): void {
+		const normalized = width === null ? null : Math.max(0, width);
+		if (normalized === this.#m_labelColumnWidth)
+			return;
+		this.#m_labelColumnWidth = normalized;
+		this.update();
+	}
+
+	/** Returns the alignment applied to label widgets. */
+	labelAlignment(): CAlignment {
+		return this.#m_labelAlignment;
+	}
+
+	/** Sets the alignment of all label widgets. */
+	setLabelAlignment(alignment: CAlignment): void {
+		if (alignment === this.#m_labelAlignment)
+			return;
+		this.#m_labelAlignment = alignment;
+		for (const row of this.#m_rows) {
+			const label = row.labelItem?.widget();
+			if (label instanceof CLabel)
+				label.setAlignment(alignment);
+		}
+		this.update();
 	}
 
 	/** Returns the horizontal spacing between labels and fields. */
@@ -190,7 +272,7 @@ export class CFormLayout extends CLayout {
 			contentsRect.width() - margins.left - margins.right
 		);
 
-		const labelWidth = this.#labelColumnWidth();
+		const labelWidth = this.labelColumnWidth();
 		const hasLabelColumn = labelWidth > 0;
 
 		const fieldX = contentX + labelWidth +
@@ -271,7 +353,7 @@ export class CFormLayout extends CLayout {
 		const horizontalSpacing = this.horizontalSpacing();
 		const verticalSpacing = this.verticalSpacing();
 
-		const labelWidth = this.#labelColumnWidth();
+		const labelWidth = this.labelColumnWidth();
 
 		let fieldWidth = 0;
 		let spanningWidth = 0;
@@ -337,7 +419,7 @@ export class CFormLayout extends CLayout {
 		);
 	}
 
-	#labelColumnWidth(): number {
+	#automaticLabelColumnWidth(): number {
 		let width = 0;
 
 		for (const row of this.#m_rows) {
@@ -353,6 +435,15 @@ export class CFormLayout extends CLayout {
 		}
 
 		return width;
+	}
+
+	#flatIndexForRow(row: number): number {
+		let index = 0;
+		for (let i = 0; i < row; ++i) {
+			const current = this.#m_rows[i]!;
+			index += current.spanningItem !== null ? 1 : 2;
+		}
+		return index;
 	}
 
 	#preferredWidth(widget: CWidget): number {
