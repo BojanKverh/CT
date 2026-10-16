@@ -6,6 +6,7 @@ import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CFontMetrics } from "../gui/CFontMetrics.js";
 import { CFocusEvent } from "../events/CFocusEvent.js";
 import { CSize } from "../geometry/CSize.js";
+import { CRect } from "../geometry/CRect.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
 import { CTimer } from "../core/CTimer.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
@@ -35,6 +36,7 @@ export class CLineEdit extends CWidget {
 	#m_validator: CLineEditValidator | null = null;
 	#m_readOnly = false;
 	#m_completer: CCompleter | null = null;
+	#m_validationError = false;
 
 	/** Public editing finished member. */
 	readonly editingFinished = new CSignal();
@@ -95,6 +97,20 @@ export class CLineEdit extends CWidget {
 	/** Returns the current validator. */
 	validator(): CLineEditValidator | null {
 		return this.#m_validator;
+	}
+
+	/** Returns whether the editor is marked as containing invalid data. */
+	hasValidationError(): boolean {
+		return this.#m_validationError;
+	}
+
+	/** Controls the visual validation-error marker. */
+	setValidationError(error: boolean = true): void {
+		if (error === this.#m_validationError)
+			return;
+
+		this.#m_validationError = error;
+		this.update();
 	}
 
 	/** Returns the completer associated with this editor. */
@@ -264,6 +280,15 @@ export class CLineEdit extends CWidget {
 		option.initFromLineEdit(this);
 
 		this.style().drawLineEdit(painter, option);
+
+		if (this.#m_validationError) {
+			painter.save();
+			painter.setStrokeStyle("#d32f2f");
+			painter.setLineWidth(2);
+			painter.strokeRect(new CRect(1, 1,
+				Math.max(0, this.width() - 2), Math.max(0, this.height() - 2)));
+			painter.restore();
+		}
 	}
 
     /** Handles the key press event. */

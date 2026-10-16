@@ -46,6 +46,16 @@ describe("CLineEdit", () => {
 		expect(edit.text()).toBe("");
 	});
 
+	test("stores the visual validation error state", () => {
+		const edit = new CLineEdit();
+
+		expect(edit.hasValidationError()).toBe(false);
+		edit.setValidationError();
+		expect(edit.hasValidationError()).toBe(true);
+		edit.setValidationError(false);
+		expect(edit.hasValidationError()).toBe(false);
+	});
+
 	test("has cursor at zero by default", () => {
 		const edit = new CLineEdit();
 

@@ -14,7 +14,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CMemorySqlTableAdapter, CSqlEditStrategy, CSqlFilterOperator, CSqlRelation,
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
-	CCompleter
+	CCompleter, CIntValidator
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -1122,8 +1122,8 @@ mapperButton.clicked.connect(() => {
 	const name = new CLineEdit();
 	const country = new CComboBox();
 	country.addItems(sqlCountries);
-	const age = new CSpinBox();
-	age.setRange(18, 100);
+	const age = new CLineEdit();
+	age.setValidator(new CIntValidator(18, 100));
 	const occupation = new CComboBox();
 	occupation.addItems(sqlOccupations);
 	form.addRow("Name", name);
@@ -1138,6 +1138,13 @@ mapperButton.clicked.connect(() => {
 	mapper.addMapping(country, 1);
 	mapper.addMapping(age, 2);
 	mapper.addMapping(occupation, 4);
+
+	const status = new CLabel(dlg);
+	status.setText("For a validation error, enter an age outside 18-100.");
+	status.setGeometry(460, 305, 420, 30);
+	mapper.validationFailed.connect((_widget, section) => {
+		status.setText(`Invalid value in section ${section}. Correct it and submit again.`);
+	});
 	table.selectionModel()?.currentChanged.connect(current =>
 		mapper.setCurrentModelIndex(current));
 	mapper.currentIndexChanged.connect(row => {
@@ -1162,12 +1169,18 @@ mapperButton.clicked.connect(() => {
 	const save = new CPushButton(dlg);
 	save.setText("Submit");
 	save.setGeometry(660, 260, 90, 30);
-	save.clicked.connect(() => mapper.submit());
+	save.clicked.connect(() => {
+		if (mapper.submit())
+			status.setText("Changes submitted successfully.");
+	});
 
 	const revert = new CPushButton(dlg);
 	revert.setText("Revert");
 	revert.setGeometry(760, 260, 90, 30);
-	revert.clicked.connect(() => mapper.revert());
+	revert.clicked.connect(() => {
+		mapper.revert();
+		status.setText("Changes reverted.");
+	});
 
 	const close = new CPushButton(dlg);
 	close.setText("Close");

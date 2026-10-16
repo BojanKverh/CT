@@ -27,6 +27,8 @@ type CMapping = {
 /** Maps columns from one model row onto editor widgets. */
 export class CDataWidgetMapper extends CObject {
 	readonly currentIndexChanged = new CSignal<[number]>();
+	/** Emitted when submission encounters the first invalid mapping. */
+	readonly validationFailed = new CSignal<[CWidget, number]>();
 
 	#m_model: CAbstractItemModel | null = null;
 	#m_mappings: CMapping[] = [];
@@ -165,8 +167,7 @@ export class CDataWidgetMapper extends CObject {
 		if (model === null || this.#m_currentIndex < 0)
 			return false;
 
-		if (!this.#m_mappings.every(mapping =>
-			this.#hasAcceptableInput(mapping.widget)))
+		if (!this.#validateMappings())
 			return false;
 
 		const values = this.#m_mappings.map(mapping => ({
@@ -249,9 +250,15 @@ export class CDataWidgetMapper extends CObject {
 			this.#submitMapping(mapping);
 		};
 		const widget = mapping.widget;
-		if (widget instanceof CLineEdit)
+		if (widget instanceof CLineEdit) {
 			widget.editingFinished.connect(submit);
-		else if (widget instanceof CComboBox)
+			widget.textChanged.connect(() => {
+				if (this.#m_mappings.includes(mapping)
+					&& widget.hasValidationError()
+					&& this.#hasAcceptableInput(widget))
+					widget.setValidationError(false);
+			});
+		} else if (widget instanceof CComboBox)
 			widget.activated.connect(submit);
 		else if (widget instanceof CCheckBox)
 			widget.toggled.connect(submit);
@@ -267,9 +274,14 @@ export class CDataWidgetMapper extends CObject {
 
 	#submitMapping(mapping: CMapping): boolean {
 		const model = this.#m_model;
-		if (model === null || this.#m_currentIndex < 0
-			|| !this.#hasAcceptableInput(mapping.widget))
+		if (model === null || this.#m_currentIndex < 0)
 			return false;
+		if (!this.#hasAcceptableInput(mapping.widget)) {
+			this.#reportValidationFailure(mapping);
+			return false;
+		}
+		if (mapping.widget instanceof CLineEdit)
+			mapping.widget.setValidationError(false);
 		const index = model.index(this.#m_currentIndex, mapping.section);
 		if (!index.isValid())
 			return false;
@@ -304,6 +316,31 @@ export class CDataWidgetMapper extends CObject {
 
 		return validator.validate(widget.text())
 			=== CValidatorState.Acceptable;
+	}
+
+	#validateMappings(): boolean {
+		let firstInvalid: CMapping | null = null;
+
+		for (const mapping of this.#m_mappings) {
+			const acceptable = this.#hasAcceptableInput(mapping.widget);
+			if (mapping.widget instanceof CLineEdit)
+				mapping.widget.setValidationError(!acceptable);
+			if (!acceptable && firstInvalid === null)
+				firstInvalid = mapping;
+		}
+
+		if (firstInvalid === null)
+			return true;
+
+		this.#reportValidationFailure(firstInvalid);
+		return false;
+	}
+
+	#reportValidationFailure(mapping: CMapping): void {
+		if (mapping.widget instanceof CLineEdit)
+			mapping.widget.setValidationError(true);
+		mapping.widget.setFocus();
+		this.validationFailed.emit(mapping.widget, mapping.section);
 	}
 
 	#setWidgetValue(widget: CWidget, value: unknown): void {

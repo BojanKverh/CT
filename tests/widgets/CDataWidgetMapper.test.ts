@@ -218,6 +218,49 @@ describe("CDataWidgetMapper", () => {
 		expect(age.text()).toBe("150");
 	});
 
+	test("validation failure marks and focuses the first invalid editor", () => {
+		const model = new MapperModel();
+		const mapper = new CDataWidgetMapper();
+		const first = new CLineEdit();
+		const second = new CLineEdit();
+		const failed = vi.fn();
+		first.setValidator(new CIntValidator(0, 120));
+		second.setValidator(new CIntValidator(0, 120));
+		mapper.setModel(model);
+		mapper.addMapping(first, 1);
+		mapper.addMapping(second, 2);
+		mapper.toFirst();
+		mapper.setSubmitPolicy(CDataWidgetMapperSubmitPolicy.ManualSubmit);
+		mapper.validationFailed.connect(failed);
+		first.setText("-");
+		second.setText("999");
+
+		expect(mapper.submit()).toBe(false);
+		expect(first.hasValidationError()).toBe(true);
+		expect(second.hasValidationError()).toBe(true);
+		expect(first.hasFocus()).toBe(true);
+		expect(failed).toHaveBeenCalledOnce();
+		expect(failed).toHaveBeenCalledWith(first, 1);
+	});
+
+	test("editing invalid text to an acceptable value clears its marker", () => {
+		const model = new MapperModel();
+		const mapper = new CDataWidgetMapper();
+		const age = new CLineEdit();
+		age.setValidator(new CIntValidator(0, 120));
+		mapper.setModel(model);
+		mapper.addMapping(age, 1);
+		mapper.toFirst();
+		mapper.setSubmitPolicy(CDataWidgetMapperSubmitPolicy.ManualSubmit);
+		age.setText("-");
+		expect(mapper.submit()).toBe(false);
+		expect(age.hasValidationError()).toBe(true);
+
+		age.setText("32");
+
+		expect(age.hasValidationError()).toBe(false);
+	});
+
 	test("supports function validators when submitting", () => {
 		const model = new MapperModel();
 		const mapper = new CDataWidgetMapper();
