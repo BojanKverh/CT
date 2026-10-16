@@ -12,6 +12,7 @@ import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CClipboard } from "../core/CClipboard.js";
 import { CStyleOptionLineEdit } from "../gui/CStyleOptionLineEdit.js";
 import { CValidator, CValidatorState } from "../util/CValidator.js";
+import type { CCompleter } from "./CCompleter.js";
 
 type CLineEditValidator = CValidator | ((text: string) => boolean);
 
@@ -19,6 +20,8 @@ type CLineEditValidator = CValidator | ((text: string) => boolean);
 export class CLineEdit extends CWidget {
 	/** Signal emitted when text changes. */
 	readonly textChanged = new CSignal<[string]>();
+	/** Signal emitted when the user edits text. */
+	readonly textEdited = new CSignal<[string]>();
 
 	/** Signal emitted when Enter or Return confirms acceptable input. */
 	readonly returnPressed = new CSignal();
@@ -31,6 +34,7 @@ export class CLineEdit extends CWidget {
 	#m_cursorTimer = new CTimer(this);
 	#m_validator: CLineEditValidator | null = null;
 	#m_readOnly = false;
+	#m_completer: CCompleter | null = null;
 
 	/** Public editing finished member. */
 	readonly editingFinished = new CSignal();
@@ -93,6 +97,23 @@ export class CLineEdit extends CWidget {
 		return this.#m_validator;
 	}
 
+	/** Returns the completer associated with this editor. */
+	completer(): CCompleter | null {
+		return this.#m_completer;
+	}
+
+	/** Associates a completer with this editor. */
+	setCompleter(completer: CCompleter | null): void {
+		if (completer === this.#m_completer)
+			return;
+
+		if (this.#m_completer?.widget() === this)
+			this.#m_completer.setWidget(null);
+
+		this.#m_completer = completer;
+		completer?.setWidget(this);
+	}
+
 	/** Provides cursor behavior. */
 	override cursor(): CCursorShape {
 		return this.isEnabled()? CCursorShape.IBeam : CCursorShape.Disabled;
@@ -131,6 +152,7 @@ export class CLineEdit extends CWidget {
 		this.#m_cursorPosition = start + text.length;
 		this.#m_selectionAnchor = this.#m_cursorPosition;
 		this.textChanged.emit(this.#m_text);
+		this.textEdited.emit(this.#m_text);
 		this.#resetCursorBlink();
 		this.update();
 	}
@@ -246,6 +268,9 @@ export class CLineEdit extends CWidget {
 
     /** Handles the key press event. */
     protected override keyPressEvent(event: CKeyEvent): void {
+		if (this.#m_completer?.handleKeyEvent(event) === true)
+			return;
+
 		/** Provides if behavior. */
 		if (event.ctrl()) {
 			/** Provides switch behavior. */
@@ -308,7 +333,8 @@ export class CLineEdit extends CWidget {
 			        + this.#m_text.slice(this.#m_cursorPosition);
         		--this.#m_cursorPosition;
 		        this.#m_selectionAnchor = this.#m_cursorPosition;
-        		this.textChanged.emit(this.#m_text);
+				this.textChanged.emit(this.#m_text);
+				this.textEdited.emit(this.#m_text);
 				this.#resetCursorBlink();
 		        this.update();
 	        }
@@ -332,8 +358,9 @@ export class CLineEdit extends CWidget {
         	if (this.#m_cursorPosition < this.#m_text.length) {
 		        this.#m_text = this.#m_text.slice(0, this.#m_cursorPosition)
 			        + this.#m_text.slice(this.#m_cursorPosition + 1);
-        		this.#m_selectionAnchor = this.#m_cursorPosition;
-        		this.textChanged.emit(this.#m_text);
+		        this.#m_selectionAnchor = this.#m_cursorPosition;
+				this.textChanged.emit(this.#m_text);
+				this.textEdited.emit(this.#m_text);
 				this.#resetCursorBlink();
 		        this.update();
 	        }
@@ -470,6 +497,7 @@ export class CLineEdit extends CWidget {
     	this.#m_cursorPosition = start;
 	    this.#m_selectionAnchor = start;
     	this.textChanged.emit(this.#m_text);
+		this.textEdited.emit(this.#m_text);
 		this.#resetCursorBlink();
 	    this.update();
     	return true;
@@ -491,5 +519,11 @@ export class CLineEdit extends CWidget {
 		if (!this.hasFocus())
 			return;
 		this.#startCursorBlink();
+	}
+
+	/** Releases the completion association. */
+	override destroy(): void {
+		this.setCompleter(null);
+		super.destroy();
 	}
 }

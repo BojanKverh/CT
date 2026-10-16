@@ -52,6 +52,10 @@ export { CTabWidget } from "./widgets/CTabWidget.js";
 export { CFrameShadow, CFrameShape } from "./gui/CFrameStyle.js";
 export { CFrame } from "./widgets/CFrame.js";
 export { CComboBox } from "./widgets/CComboBox.js";
+export {
+	CCompleter,
+	CCompleterCaseSensitivity
+} from "./widgets/CCompleter.js";
 export { CFormLayout } from "./layouts/CFormLayout.js";
 export { CToolButton } from "./widgets/CToolButton.js";
 export { CToolButtonStyle } from "./gui/CToolButtonStyle.js"

@@ -22,7 +22,7 @@ export class CPopupWidget extends CFrame {
 	}
 
 	/** Provides open behavior. */
-	open(): void {
+	open(takeFocus = true): void {
 		/** Provides if behavior. */
 		if (this.#m_open)
 			return;
@@ -31,7 +31,8 @@ export class CPopupWidget extends CFrame {
 
 		CApplication.instance().registerPopupWidget(this);
 		this.show();
-		this.setFocus();
+		if (takeFocus)
+			this.setFocus();
 	}
 
 	/** Provides close behavior. */

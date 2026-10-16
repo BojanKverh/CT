@@ -10,6 +10,7 @@ import { CKeyEvent } from "../../src/index.js";
 import { CFontMetrics } from "../../src/gui/CFontMetrics.js";
 import { CClipboard } from "../../src/core/CClipboard.js";
 import { CIntValidator } from "../../src/util/CIntValidator.js";
+import { CCompleter } from "../../src/widgets/CCompleter.js";
 
 describe("CLineEdit", () => {
 	beforeEach(() => {
@@ -1204,5 +1205,43 @@ describe("CLineEdit", () => {
 		expect(returnPressed).not.toHaveBeenCalled();
 		expect(editingFinished).not.toHaveBeenCalled();
 		expect(event.isAccepted()).toBe(false);
+	});
+
+	test("emits textEdited for user input but not setText", () => {
+		const edit = new CLineEdit();
+		const edited = vi.fn();
+		edit.textEdited.connect(edited);
+
+		edit.setText("Hello");
+		expect(edited).not.toHaveBeenCalled();
+
+		edit.insert("!");
+		expect(edited).toHaveBeenCalledOnce();
+		expect(edited).toHaveBeenCalledWith("Hello!");
+	});
+
+	test("sets and removes a completer", () => {
+		const edit = new CLineEdit();
+		const completer = new CCompleter(["Hello"]);
+
+		edit.setCompleter(completer);
+		expect(edit.completer()).toBe(completer);
+		expect(completer.widget()).toBe(edit);
+
+		edit.setCompleter(null);
+		expect(edit.completer()).toBeNull();
+		expect(completer.widget()).toBeNull();
+	});
+
+	test("completion keys are handled before ordinary line editing", () => {
+		const edit = new CLineEdit();
+		const completer = new CCompleter(["Mercator", "Merkur"]);
+		edit.setCompleter(completer);
+		edit.insert("M");
+
+		edit.event(new CKeyEvent(CEventType.KeyPress, "ArrowDown"));
+		edit.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		expect(edit.text()).toBe("Merkur");
 	});
 });

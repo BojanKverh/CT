@@ -13,7 +13,8 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CSortOrder, CSortFilterProxyModel, CFont, CSqlRelationalTableModel,
 	CMemorySqlTableAdapter, CSqlEditStrategy, CSqlFilterOperator, CSqlRelation,
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
-	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy
+	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
+	CCompleter
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -1176,6 +1177,41 @@ mapperButton.clicked.connect(() => {
 	dlg.exec();
 });
 
+const completerButton = new CPushButton(parent);
+completerButton.setText("Completer");
+completerButton.setGeometry(520, 700, 110, 30);
+completerButton.clicked.connect(() => {
+	const dlg = new CDialog(parent);
+	dlg.setGeometry(180, 140, 480, 190);
+	dlg.setWindowTitle("CCompleter");
+
+	const label = new CLabel(dlg);
+	label.setText("Partner:");
+	label.setGeometry(25, 30, 80, 28);
+
+	const editor = new CLineEdit(dlg);
+	editor.setGeometry(110, 30, 330, 28);
+	editor.setCompleter(new CCompleter([
+		"Mercator d.o.o.",
+		"Merkur trgovina d.o.o.",
+		"Petrol d.d.",
+		"Pošta Slovenije d.o.o.",
+		"Telekom Slovenije d.d.",
+		"Triglav, Zdravstvena zavarovalnica d.d."
+	], dlg));
+
+	const help = new CLabel(dlg);
+	help.setText("Vpiši začetek imena, nato uporabi ↑, ↓ in Enter.");
+	help.setGeometry(25, 75, 415, 28);
+
+	const close = new CPushButton(dlg);
+	close.setText("Close");
+	close.setGeometry(360, 135, 80, 30);
+	close.clicked.connect(() => dlg.accept());
+
+	dlg.exec();
+});
+
 const lab = new CLabel(parent);
 lab.setGeometry(250, 50, 130, 40);
 lab.setText("Jaz sem CLabel");
@@ -1462,10 +1498,10 @@ statusBar.showMessage("File saved", 3000);
 statusBar.setGeometry(700, 776, 300, 24);
 
 const dragSource = new DragSourceWidget(parent);
-dragSource.setGeometry(360, 650, 120, 60);
+dragSource.setGeometry(360, 640, 120, 50);
 
 const dropTarget = new DropTargetWidget(parent);
-dropTarget.setGeometry(500, 650, 180, 60);
+dropTarget.setGeometry(500, 640, 180, 50);
 
 const dock = new CDockWidget("Properties");
 const dockContent = new CWidget();
