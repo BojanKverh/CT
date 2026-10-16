@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
 import { CAbstractTableModel } from "../../src/models/CAbstractTableModel.js";
 import { CModelIndex } from "../../src/models/CModelIndex.js";
+import { CIntValidator } from "../../src/util/CIntValidator.js";
 import { CCheckBox } from "../../src/widgets/CCheckBox.js";
 import { CComboBox } from "../../src/widgets/CComboBox.js";
 import {
@@ -176,6 +177,60 @@ describe("CDataWidgetMapper", () => {
 		name.setText("Alicia");
 		expect(mapper.submit()).toBe(true);
 		expect(model.rows[0]?.[0]).toBe("Alicia");
+	});
+
+	test("manual submit rejects non-acceptable line edit input before writing", () => {
+		const model = new MapperModel();
+		const mapper = new CDataWidgetMapper();
+		const name = new CLineEdit();
+		const age = new CLineEdit();
+		age.setValidator(new CIntValidator(0, 120));
+		mapper.setModel(model);
+		mapper.addMapping(name, 0);
+		mapper.addMapping(age, 1);
+		mapper.toFirst();
+		mapper.setSubmitPolicy(CDataWidgetMapperSubmitPolicy.ManualSubmit);
+
+		name.setText("Alicia");
+		age.setText("-");
+
+		expect(mapper.submit()).toBe(false);
+		expect(model.rows[0]?.[0]).toBe("Alice");
+		expect(model.rows[0]?.[1]).toBe(30);
+		expect(name.text()).toBe("Alicia");
+		expect(age.text()).toBe("-");
+	});
+
+	test("auto submit keeps the current row when pending input is invalid", () => {
+		const model = new MapperModel();
+		const mapper = new CDataWidgetMapper();
+		const age = new CLineEdit();
+		age.setValidator(new CIntValidator(0, 120));
+		mapper.setModel(model);
+		mapper.addMapping(age, 1);
+		mapper.toFirst();
+		age.setText("150");
+
+		mapper.toNext();
+
+		expect(mapper.currentIndex()).toBe(0);
+		expect(model.rows[0]?.[1]).toBe(30);
+		expect(age.text()).toBe("150");
+	});
+
+	test("supports function validators when submitting", () => {
+		const model = new MapperModel();
+		const mapper = new CDataWidgetMapper();
+		const name = new CLineEdit();
+		name.setValidator(text => text.length >= 3);
+		mapper.setModel(model);
+		mapper.addMapping(name, 0);
+		mapper.toFirst();
+		mapper.setSubmitPolicy(CDataWidgetMapperSubmitPolicy.ManualSubmit);
+		name.setText("Al");
+
+		expect(mapper.submit()).toBe(false);
+		expect(model.rows[0]?.[0]).toBe("Alice");
 	});
 
 	test("auto submit saves pending line edit text before navigation", () => {

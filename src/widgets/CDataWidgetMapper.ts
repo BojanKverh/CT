@@ -2,6 +2,7 @@ import { CObject } from "../core/CObject.js";
 import { CSignal } from "../core/CSignal.js";
 import { CAbstractItemModel } from "../models/CAbstractItemModel.js";
 import { CModelIndex } from "../models/CModelIndex.js";
+import { CValidatorState } from "../util/CValidator.js";
 import { CCheckBox } from "./CCheckBox.js";
 import { CComboBox } from "./CComboBox.js";
 import { CDateEdit } from "./CDateEdit.js";
@@ -138,7 +139,8 @@ export class CDataWidgetMapper extends CObject {
 		if (index !== this.#m_currentIndex
 			&& this.#m_submitPolicy === CDataWidgetMapperSubmitPolicy.AutoSubmit
 			&& this.#m_currentIndex >= 0)
-			this.submit();
+			if (!this.submit())
+				return;
 		this.#setCurrentIndex(index);
 	}
 
@@ -161,6 +163,10 @@ export class CDataWidgetMapper extends CObject {
 	submit(): boolean {
 		const model = this.#m_model;
 		if (model === null || this.#m_currentIndex < 0)
+			return false;
+
+		if (!this.#m_mappings.every(mapping =>
+			this.#hasAcceptableInput(mapping.widget)))
 			return false;
 
 		const values = this.#m_mappings.map(mapping => ({
@@ -261,7 +267,8 @@ export class CDataWidgetMapper extends CObject {
 
 	#submitMapping(mapping: CMapping): boolean {
 		const model = this.#m_model;
-		if (model === null || this.#m_currentIndex < 0)
+		if (model === null || this.#m_currentIndex < 0
+			|| !this.#hasAcceptableInput(mapping.widget))
 			return false;
 		const index = model.index(this.#m_currentIndex, mapping.section);
 		if (!index.isValid())
@@ -283,6 +290,20 @@ export class CDataWidgetMapper extends CObject {
 			|| widget instanceof CDoubleSpinBox || widget instanceof CComboBox
 			|| widget instanceof CCheckBox || widget instanceof CDateEdit
 			|| widget instanceof CTimeEdit || widget instanceof CDateTimeEdit;
+	}
+
+	#hasAcceptableInput(widget: CWidget): boolean {
+		if (!(widget instanceof CLineEdit))
+			return true;
+
+		const validator = widget.validator();
+		if (validator === null)
+			return true;
+		if (typeof validator === "function")
+			return validator(widget.text());
+
+		return validator.validate(widget.text())
+			=== CValidatorState.Acceptable;
 	}
 
 	#setWidgetValue(widget: CWidget, value: unknown): void {
