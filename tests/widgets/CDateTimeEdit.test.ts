@@ -842,4 +842,48 @@ describe("CDateTimeEdit", () =>
 
 		expect(dateLineEdit.currentSection()).toBe(0);
 	});
+
+	test("typing a complete date continues in the time editor", () => {
+		const edit = new CDateTimeEdit();
+		edit.setDateTime(new Date(2026, 9, 16, 8, 30, 0));
+		edit.dateLineEdit().setCurrentSection(0);
+
+		for (const key of ["2", "5", "1", "2", "2", "0", "3", "1"])
+			edit.dateLineEdit().event(new CKeyEvent(CEventType.KeyPress, key));
+
+		expect(edit.dateTime().getFullYear()).toBe(2031);
+		expect(edit.dateTime().getMonth()).toBe(11);
+		expect(edit.dateTime().getDate()).toBe(25);
+		expect(edit.timeLineEdit().currentSection()).toBe(0);
+		expect(edit.timeLineEdit().hasFocus()).toBe(true);
+	});
+
+	test("typing a complete time continues in the date editor", () => {
+		const edit = new CDateTimeEdit();
+		edit.setTimeDisplayFormat("HH:mm:ss");
+		edit.setDateTime(new Date(2026, 9, 16, 8, 30, 0));
+		edit.timeLineEdit().setCurrentSection(0);
+
+		for (const key of ["1", "4", "4", "5", "0", "9"])
+			edit.timeLineEdit().event(new CKeyEvent(CEventType.KeyPress, key));
+
+		expect(edit.dateTime().getHours()).toBe(14);
+		expect(edit.dateTime().getMinutes()).toBe(45);
+		expect(edit.dateTime().getSeconds()).toBe(9);
+		expect(edit.dateLineEdit().currentSection()).toBe(0);
+		expect(edit.dateLineEdit().hasFocus()).toBe(true);
+	});
+
+	test("typed time respects the minimum date-time", () => {
+		const edit = new CDateTimeEdit();
+		const minimum = new Date(2026, 9, 16, 10, 30, 0);
+		edit.setMinimumDateTime(minimum);
+		edit.setDateTime(minimum);
+		edit.timeLineEdit().setCurrentSection(0);
+
+		edit.timeLineEdit().event(new CKeyEvent(CEventType.KeyPress, "0"));
+		edit.timeLineEdit().event(new CKeyEvent(CEventType.KeyPress, "9"));
+
+		expect(edit.dateTime().getTime()).toBe(minimum.getTime());
+	});
 });

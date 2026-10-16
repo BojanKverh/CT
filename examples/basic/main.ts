@@ -13,7 +13,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CSortOrder, CSortFilterProxyModel, CFont, CSqlRelationalTableModel,
 	CMemorySqlTableAdapter, CSqlEditStrategy, CSqlFilterOperator, CSqlRelation,
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
-	CDateTimeItemDelegate
+	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -1097,6 +1097,68 @@ sqlButton.clicked.connect(async () => {
 
 	await model.select();
 	updateStatus();
+	dlg.exec();
+});
+
+const mapperButton = new CPushButton(parent);
+mapperButton.setText("Widget mapper");
+mapperButton.setGeometry(390, 700, 120, 30);
+mapperButton.clicked.connect(() => {
+	const dlg = new CDialog(parent);
+	dlg.setGeometry(120, 100, 520, 350);
+	dlg.setWindowTitle("Employee mapper");
+
+	const group = new CGroupBox("Employee", dlg);
+	group.setGeometry(20, 20, 480, 220);
+	const form = new CFormLayout();
+	group.setLayout(form);
+
+	const name = new CLineEdit();
+	const country = new CComboBox();
+	country.addItems(sqlCountries);
+	const age = new CSpinBox();
+	age.setRange(18, 100);
+	const occupation = new CComboBox();
+	occupation.addItems(sqlOccupations);
+	form.addRow("Name", name);
+	form.addRow("Country", country);
+	form.addRow("Age", age);
+	form.addRow("Occupation", occupation);
+
+	const mapper = new CDataWidgetMapper(dlg);
+	mapper.setModel(new DemoTableModel());
+	mapper.setSubmitPolicy(CDataWidgetMapperSubmitPolicy.ManualSubmit);
+	mapper.addMapping(name, 0);
+	mapper.addMapping(country, 1);
+	mapper.addMapping(age, 2);
+	mapper.addMapping(occupation, 4);
+	mapper.toFirst();
+
+	const previous = new CPushButton(dlg);
+	previous.setText("Previous");
+	previous.setGeometry(20, 260, 90, 30);
+	previous.clicked.connect(() => mapper.toPrevious());
+
+	const next = new CPushButton(dlg);
+	next.setText("Next");
+	next.setGeometry(120, 260, 90, 30);
+	next.clicked.connect(() => mapper.toNext());
+
+	const save = new CPushButton(dlg);
+	save.setText("Submit");
+	save.setGeometry(220, 260, 90, 30);
+	save.clicked.connect(() => mapper.submit());
+
+	const revert = new CPushButton(dlg);
+	revert.setText("Revert");
+	revert.setGeometry(320, 260, 90, 30);
+	revert.clicked.connect(() => mapper.revert());
+
+	const close = new CPushButton(dlg);
+	close.setText("Close");
+	close.setGeometry(410, 305, 90, 30);
+	close.clicked.connect(() => dlg.accept());
+
 	dlg.exec();
 });
 

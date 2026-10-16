@@ -2371,6 +2371,31 @@ describe("CTableView", () => {
 		expect(editor.parent()).toBeNull();
 	});
 
+	test("a date-time delegate commits a value entered with numeric keys", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+		const index = model.index(0, 4);
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(4, new CDateTimeItemDelegate());
+		view.edit(index);
+
+		const editor = findEditor(view, CDateTimeEdit)!;
+		editor.dateLineEdit().setCurrentSection(0);
+		for (const key of ["2", "5", "1", "2", "2", "0", "3", "1"])
+			editor.dateLineEdit().event(new CKeyEvent(CEventType.KeyPress, key));
+		for (const key of ["1", "4", "4", "5"])
+			editor.timeLineEdit().event(new CKeyEvent(CEventType.KeyPress, key));
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		const result = model.data(index) as Date;
+		expect([
+			result.getFullYear(), result.getMonth(), result.getDate(),
+			result.getHours(), result.getMinutes()
+		]).toEqual([2031, 11, 25, 14, 45]);
+		expect(editor.parent()).toBeNull();
+	});
+
 	test("F2 opens a combo box supplied by the column delegate", () => {
 		const view = new CTableView();
 		const model = new EditableTableModel();
