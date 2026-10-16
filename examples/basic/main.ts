@@ -1105,11 +1105,16 @@ mapperButton.setText("Widget mapper");
 mapperButton.setGeometry(390, 700, 120, 30);
 mapperButton.clicked.connect(() => {
 	const dlg = new CDialog(parent);
-	dlg.setGeometry(120, 100, 520, 350);
+	dlg.setGeometry(70, 80, 920, 400);
 	dlg.setWindowTitle("Employee mapper");
+	const model = new DemoTableModel();
+
+	const table = new CTableView(dlg);
+	table.setGeometry(20, 20, 420, 300);
+	table.setModel(model);
 
 	const group = new CGroupBox("Employee", dlg);
-	group.setGeometry(20, 20, 480, 220);
+	group.setGeometry(460, 20, 440, 220);
 	const form = new CFormLayout();
 	group.setLayout(form);
 
@@ -1126,37 +1131,46 @@ mapperButton.clicked.connect(() => {
 	form.addRow("Occupation", occupation);
 
 	const mapper = new CDataWidgetMapper(dlg);
-	mapper.setModel(new DemoTableModel());
+	mapper.setModel(model);
 	mapper.setSubmitPolicy(CDataWidgetMapperSubmitPolicy.ManualSubmit);
 	mapper.addMapping(name, 0);
 	mapper.addMapping(country, 1);
 	mapper.addMapping(age, 2);
 	mapper.addMapping(occupation, 4);
+	table.selectionModel()?.currentChanged.connect(current =>
+		mapper.setCurrentModelIndex(current));
+	mapper.currentIndexChanged.connect(row => {
+		const index = model.index(row, 0);
+		const selection = table.selectionModel();
+		selection?.clearSelection();
+		selection?.select(index);
+		table.setCurrentIndex(index);
+	});
 	mapper.toFirst();
 
 	const previous = new CPushButton(dlg);
 	previous.setText("Previous");
-	previous.setGeometry(20, 260, 90, 30);
+	previous.setGeometry(460, 260, 90, 30);
 	previous.clicked.connect(() => mapper.toPrevious());
 
 	const next = new CPushButton(dlg);
 	next.setText("Next");
-	next.setGeometry(120, 260, 90, 30);
+	next.setGeometry(560, 260, 90, 30);
 	next.clicked.connect(() => mapper.toNext());
 
 	const save = new CPushButton(dlg);
 	save.setText("Submit");
-	save.setGeometry(220, 260, 90, 30);
+	save.setGeometry(660, 260, 90, 30);
 	save.clicked.connect(() => mapper.submit());
 
 	const revert = new CPushButton(dlg);
 	revert.setText("Revert");
-	revert.setGeometry(320, 260, 90, 30);
+	revert.setGeometry(760, 260, 90, 30);
 	revert.clicked.connect(() => mapper.revert());
 
 	const close = new CPushButton(dlg);
 	close.setText("Close");
-	close.setGeometry(410, 305, 90, 30);
+	close.setGeometry(810, 350, 90, 30);
 	close.clicked.connect(() => dlg.accept());
 
 	dlg.exec();

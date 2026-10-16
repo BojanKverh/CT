@@ -112,6 +112,31 @@ describe("CDataWidgetMapper", () => {
 		expect(changed).toHaveBeenLastCalledWith(0);
 	});
 
+	test("sets the current row from a model index", () => {
+		const model = new MapperModel();
+		const mapper = new CDataWidgetMapper();
+		const name = new CLineEdit();
+		mapper.setModel(model);
+		mapper.addMapping(name, 0);
+
+		mapper.setCurrentModelIndex(model.index(1, 3));
+
+		expect(mapper.currentIndex()).toBe(1);
+		expect(name.text()).toBe("Bob");
+	});
+
+	test("ignores invalid and foreign model indexes", () => {
+		const model = new MapperModel();
+		const mapper = new CDataWidgetMapper();
+		mapper.setModel(model);
+		mapper.toFirst();
+
+		mapper.setCurrentModelIndex(new CModelIndex());
+		mapper.setCurrentModelIndex(new MapperModel().index(1, 0));
+
+		expect(mapper.currentIndex()).toBe(0);
+	});
+
 	test("auto submit writes widget changes to the model", () => {
 		const model = new MapperModel();
 		const mapper = new CDataWidgetMapper();

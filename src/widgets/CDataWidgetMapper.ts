@@ -1,6 +1,7 @@
 import { CObject } from "../core/CObject.js";
 import { CSignal } from "../core/CSignal.js";
 import { CAbstractItemModel } from "../models/CAbstractItemModel.js";
+import { CModelIndex } from "../models/CModelIndex.js";
 import { CCheckBox } from "./CCheckBox.js";
 import { CComboBox } from "./CComboBox.js";
 import { CDateEdit } from "./CDateEdit.js";
@@ -139,6 +140,14 @@ export class CDataWidgetMapper extends CObject {
 			&& this.#m_currentIndex >= 0)
 			this.submit();
 		this.#setCurrentIndex(index);
+	}
+
+	/** Sets the current row from an index belonging to the mapped model. */
+	setCurrentModelIndex(index: CModelIndex): void {
+		if (!index.isValid() || index.model() !== this.#m_model)
+			return;
+
+		this.setCurrentIndex(index.row());
 	}
 
 	toFirst(): void { this.setCurrentIndex(0); }
