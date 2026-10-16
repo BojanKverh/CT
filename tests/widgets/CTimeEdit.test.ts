@@ -541,4 +541,32 @@ describe("CTimeEdit", () =>
 			{ start: 5, length: 2 }
 		]);
 	});
+
+	test("numeric keys enter an hour and advance to minutes", () => {
+		const edit = new CTimeEdit();
+		edit.setTime(makeTime(8, 23, 42));
+		edit.lineEdit().setCurrentSection(0);
+
+		edit.lineEdit().event(new CKeyEvent(CEventType.KeyPress, "1"));
+		edit.lineEdit().event(new CKeyEvent(CEventType.KeyPress, "4"));
+
+		expect(edit.time().getHours()).toBe(14);
+		expect(edit.time().getMinutes()).toBe(23);
+		expect(edit.lineEdit().currentSection()).toBe(1);
+	});
+
+	test("numeric keys enter minutes and seconds", () => {
+		const edit = new CTimeEdit();
+		edit.setDisplayFormat("HH:mm:ss");
+		edit.setTime(makeTime(8, 23, 42));
+		edit.lineEdit().setCurrentSection(1);
+
+		for (const key of ["4", "5", "0", "9"])
+			edit.lineEdit().event(new CKeyEvent(CEventType.KeyPress, key));
+
+		expect(edit.time().getHours()).toBe(8);
+		expect(edit.time().getMinutes()).toBe(45);
+		expect(edit.time().getSeconds()).toBe(9);
+		expect(edit.lineEdit().currentSection()).toBe(0);
+	});
 });

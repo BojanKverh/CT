@@ -12,7 +12,8 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CCursorShape, CDial, CTextBrowser, CDoubleSpinBox, CIntItemDelegate, CComboBoxItemDelegate,
 	CSortOrder, CSortFilterProxyModel, CFont, CSqlRelationalTableModel,
 	CMemorySqlTableAdapter, CSqlEditStrategy, CSqlFilterOperator, CSqlRelation,
-	CSqlRelationalDelegate
+	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
+	CDateTimeItemDelegate
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -502,6 +503,9 @@ function createSqlEmployees(): Array<Record<string, unknown>> {
 		age: 21 + (index * 7) % 45,
 		occupation: sqlOccupations[index % sqlOccupations.length],
 		start_date: new Date(2021 + index % 6, index % 12, index % 28 + 1),
+		start_time: new Date(1970, 0, 1, 7 + index % 10, index % 4 * 15, 0),
+		last_login: new Date(2026, index % 12, index % 28 + 1,
+			8 + index % 9, index % 6 * 10, 0),
 		active: index % 4 !== 0
 	}));
 }
@@ -968,7 +972,7 @@ sqlButton.clicked.connect(async () => {
 	model.setPrimaryKey("id");
 	model.setColumns([
 		"id", "name", "country_id", "age", "occupation", "start_date",
-		"active"
+		"start_time", "last_login", "active"
 	]);
 	model.setRelation(2, new CSqlRelation("countries", "id", "name"));
 	model.setColumnHeader("id", "ID");
@@ -977,6 +981,8 @@ sqlButton.clicked.connect(async () => {
 	model.setColumnHeader("age", "Age");
 	model.setColumnHeader("occupation", "Occupation");
 	model.setColumnHeader("start_date", "Start date");
+	model.setColumnHeader("start_time", "Start time");
+	model.setColumnHeader("last_login", "Last login");
 	model.setColumnHeader("active", "Active");
 	model.setFetchSize(20);
 
@@ -1027,6 +1033,9 @@ sqlButton.clicked.connect(async () => {
 	ageDelegate.setRange(18, 100);
 	tv.setItemDelegateForColumn(3, ageDelegate);
 	tv.setItemDelegateForColumn(4, new CComboBoxItemDelegate(sqlOccupations));
+	tv.setItemDelegateForColumn(5, new CDateItemDelegate());
+	tv.setItemDelegateForColumn(6, new CTimeItemDelegate());
+	tv.setItemDelegateForColumn(7, new CDateTimeItemDelegate());
 
 	const updateStatus = (): void => {
 		status.setText(model.isLoading()
@@ -1048,6 +1057,8 @@ sqlButton.clicked.connect(async () => {
 			age: 30,
 			occupation: "Developer",
 			start_date: new Date(),
+			start_time: new Date(1970, 0, 1, 8, 0, 0),
+			last_login: new Date(),
 			active: true
 		});
 		updateStatus();

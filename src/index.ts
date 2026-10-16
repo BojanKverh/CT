@@ -110,6 +110,9 @@ export { CDoubleValidator } from "./util/CDoubleValidator.js"
 export { CIntItemDelegate } from "./widgets/CIntItemDelegate.js"
 export { CDoubleItemDelegate } from "./widgets/CDoubleItemDelegate.js"
 export { CComboBoxItemDelegate } from "./widgets/CComboBoxItemDelegate.js";
+export { CDateItemDelegate } from "./widgets/CDateItemDelegate.js";
+export { CTimeItemDelegate } from "./widgets/CTimeItemDelegate.js";
+export { CDateTimeItemDelegate } from "./widgets/CDateTimeItemDelegate.js";
 export { CSortOrder } from "./gui/CSortOrder.js"
 export { CSortFilterProxyModel } from "./models/CSortFilterProxyModel.js";
 export { CSqlTableModel } from "./models/CSqlTableModel.js";

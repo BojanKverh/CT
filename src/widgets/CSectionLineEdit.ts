@@ -22,6 +22,8 @@ export class CSectionLineEdit extends CLineEdit
 	readonly sectionChanged = new CSignal<[number]>();
 	/** Public step requested member. */
 	readonly stepRequested = new CSignal<[number, number]>();
+	/** Emitted when a numeric digit is entered for the active section. */
+	readonly digitEntered = new CSignal<[number, number]>();
     /** Public previous section requested member. */
     readonly previousSectionRequested = new CSignal<[number, number]>();
     /** Public next section requested member. */
@@ -145,6 +147,15 @@ export class CSectionLineEdit extends CLineEdit
 		/** Provides if behavior. */
 		if (this.#m_sections.length === 0) {
 			event.ignore();
+			return;
+		}
+
+		if (/^[0-9]$/.test(event.key())) {
+			this.digitEntered.emit(
+				this.#m_currentSection,
+				Number(event.key())
+			);
+			event.accept();
 			return;
 		}
 

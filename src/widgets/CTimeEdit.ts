@@ -5,6 +5,8 @@ import { CSectionLineEdit } from "./CSectionLineEdit.js";
 import { CToolButton } from "./CToolButton.js";
 import { CWidget } from "./CWidget.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import { CEventType } from "../events/CEvent.js";
+import { CKeyEvent } from "../events/CKeyEvent.js";
 
 type CTimeSection =
 	"hour" |
@@ -39,6 +41,8 @@ export class CTimeEdit extends CWidget
 	#m_downButton: CToolButton;
 
 	#m_sections: CTimeSectionInfo[] = [];
+	#m_inputSection = -1;
+	#m_inputDigits = "";
 
 	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null)
@@ -78,6 +82,9 @@ export class CTimeEdit extends CWidget
 				this.#stepSection(section, direction);
 			}
 		);
+		this.#m_lineEdit.digitEntered.connect((section, digit) => {
+			this.#enterDigit(section, digit);
+		});
 
 		this.resize(
 			this.sizeHint().width(),
@@ -476,6 +483,59 @@ export class CTimeEdit extends CWidget
 		this.setTime(time);
 
 		this.#m_lineEdit.setCurrentSection(section);
+	}
+
+	#enterDigit(index: number, digit: number): void
+	{
+		const section = this.#m_sections[index];
+		if (section === undefined || section.type === "ampm")
+			return;
+
+		if (index !== this.#m_inputSection) {
+			this.#m_inputSection = index;
+			this.#m_inputDigits = "";
+		}
+
+		const twelveHour = this.#m_displayFormat.includes("h");
+		const maximum = section.type === "hour"
+			? twelveHour ? 12 : 23
+			: 59;
+		let digits = `${this.#m_inputDigits}${digit}`;
+		let value = Number(digits);
+
+		if (digits.length > 2 || value > maximum) {
+			digits = String(digit);
+			value = digit;
+		}
+
+		this.#m_inputDigits = digits;
+
+		let hour = this.#m_time.getHours();
+		let minute = this.#m_time.getMinutes();
+		let second = this.#m_time.getSeconds();
+
+		if (section.type === "hour") {
+			if (twelveHour) {
+				const afternoon = hour >= 12;
+				hour = value % 12 + (afternoon ? 12 : 0);
+			} else
+				hour = value;
+		} else if (section.type === "minute")
+			minute = value;
+		else
+			second = value;
+
+		this.setTime(this.#makeTime(hour, minute, second));
+		this.#m_lineEdit.setCurrentSection(index);
+
+		if (digits.length >= 2 || value * 10 > maximum) {
+			this.#m_inputDigits = "";
+			this.#m_inputSection = -1;
+			this.#m_lineEdit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				"ArrowRight"
+			));
+		}
 	}
 
 	#normalizedTime(time: Date): Date

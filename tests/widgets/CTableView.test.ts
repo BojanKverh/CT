@@ -20,6 +20,11 @@ import { CSpinBox } from "../../src/widgets/CSpinBox.js";
 import { CDoubleSpinBox } from "../../src/widgets/CDoubleSpinBox.js";
 import { CLineEdit } from "../../src/widgets/CLineEdit.js";
 import { CDateEdit } from "../../src/widgets/CDateEdit.js";
+import { CTimeEdit } from "../../src/widgets/CTimeEdit.js";
+import { CDateTimeEdit } from "../../src/widgets/CDateTimeEdit.js";
+import { CDateItemDelegate } from "../../src/widgets/CDateItemDelegate.js";
+import { CTimeItemDelegate } from "../../src/widgets/CTimeItemDelegate.js";
+import { CDateTimeItemDelegate } from "../../src/widgets/CDateTimeItemDelegate.js";
 import { CComboBox } from "../../src/widgets/CComboBox.js";
 import { CComboBoxItemDelegate } from "../../src/widgets/CComboBoxItemDelegate.js";
 import { CSortOrder } from "../../src/gui/CSortOrder.js";
@@ -2304,6 +2309,65 @@ describe("CTableView", () => {
 		editor.event(new CKeyEvent(CEventType.KeyPress, "Escape"));
 
 		expect((model.data(index) as Date).getTime()).toBe(originalTime);
+		expect(editor.parent()).toBeNull();
+	});
+
+	test("a date column delegate opens CDateEdit and commits its value", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+		const index = model.index(0, 4);
+		const value = new Date(2031, 4, 17);
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(4, new CDateItemDelegate());
+		view.edit(index);
+
+		const editor = findEditor(view, CDateEdit)!;
+		expect(editor.lineEdit().hasFocus()).toBe(true);
+		editor.setDate(value);
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		expect((model.data(index) as Date).getTime()).toBe(value.getTime());
+		expect(editor.parent()).toBeNull();
+	});
+
+	test("a time column delegate opens CTimeEdit and commits its value", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+		const index = model.index(0, 4);
+		const value = new Date(1970, 0, 1, 14, 35, 20);
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(4, new CTimeItemDelegate());
+		view.edit(index);
+
+		const editor = findEditor(view, CTimeEdit)!;
+		expect(editor.lineEdit().hasFocus()).toBe(true);
+		editor.setTime(value);
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		const result = model.data(index) as Date;
+		expect([result.getHours(), result.getMinutes(), result.getSeconds()])
+			.toEqual([14, 35, 20]);
+		expect(editor.parent()).toBeNull();
+	});
+
+	test("a date-time column delegate opens CDateTimeEdit and commits its value", () => {
+		const view = new CTableView();
+		const model = new NumericEditableTableModel();
+		const index = model.index(0, 4);
+		const value = new Date(2032, 8, 21, 16, 45, 30);
+
+		view.setModel(model);
+		view.setItemDelegateForColumn(4, new CDateTimeItemDelegate());
+		view.edit(index);
+
+		const editor = findEditor(view, CDateTimeEdit)!;
+		expect(editor.dateLineEdit().hasFocus()).toBe(true);
+		editor.setDateTime(value);
+		editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+
+		expect((model.data(index) as Date).getTime()).toBe(value.getTime());
 		expect(editor.parent()).toBeNull();
 	});
 

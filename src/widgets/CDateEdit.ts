@@ -8,6 +8,8 @@ import { CToolButton } from "./CToolButton.js";
 import { CWidget } from "./CWidget.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import type { CFocusEvent } from "../events/CFocusEvent.js";
+import { CEventType } from "../events/CEvent.js";
+import { CKeyEvent } from "../events/CKeyEvent.js";
 
 
 type CDateSection = "day" | "month" | "year";
@@ -41,6 +43,8 @@ export class CDateEdit extends CWidget
 	#m_calendar: CCalendarWidget;
 
 	#m_sections: CDateSectionInfo[] = [];
+	#m_inputSection = -1;
+	#m_inputDigits = "";
 
 	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null)
@@ -62,6 +66,9 @@ export class CDateEdit extends CWidget
 				this.#stepSection(section, direction);
 			}
 		);
+		this.#m_lineEdit.digitEntered.connect((section, digit) => {
+			this.#enterDigit(section, digit);
+		});
 
 		this.#m_button = new CToolButton(this);
 		this.#m_button.setText("▼");
@@ -526,6 +533,72 @@ export class CDateEdit extends CWidget
 
 		this.setDate(date);
 		this.#m_lineEdit.setCurrentSection(index);
+	}
+
+	#enterDigit(index: number, digit: number): void
+	{
+		const section = this.#m_sections[index];
+		if (section === undefined)
+			return;
+
+		if (index !== this.#m_inputSection) {
+			this.#m_inputSection = index;
+			this.#m_inputDigits = "";
+		}
+
+		const maximum = section.type === "day"
+			? this.#daysInMonth(this.#m_date.getFullYear(), this.#m_date.getMonth())
+			: section.type === "month" ? 12 : 9999;
+		const maximumDigits = section.type === "year"
+			? Math.max(2, section.length)
+			: 2;
+		let digits = `${this.#m_inputDigits}${digit}`;
+		let value = Number(digits);
+
+		if (digits.length > maximumDigits || value > maximum) {
+			digits = String(digit);
+			value = digit;
+		}
+
+		this.#m_inputDigits = digits;
+
+		if (value > 0 && (section.type !== "year"
+			|| digits.length === maximumDigits)) {
+			let year = this.#m_date.getFullYear();
+			let month = this.#m_date.getMonth();
+			let day = this.#m_date.getDate();
+
+			if (section.type === "day")
+				day = value;
+			else if (section.type === "month") {
+				month = value - 1;
+				day = Math.min(day, this.#daysInMonth(year, month));
+			} else {
+				year = maximumDigits === 2
+					? Math.floor(year / 100) * 100 + value
+					: value;
+				day = Math.min(day, this.#daysInMonth(year, month));
+			}
+
+			const date = new Date(this.#m_date);
+			date.setDate(1);
+			date.setFullYear(year);
+			date.setMonth(month);
+			date.setDate(day);
+			date.setHours(0, 0, 0, 0);
+			this.setDate(date);
+			this.#m_lineEdit.setCurrentSection(index);
+		}
+
+		if (digits.length >= maximumDigits
+			|| (value > 0 && value * 10 > maximum)) {
+			this.#m_inputDigits = "";
+			this.#m_inputSection = -1;
+			this.#m_lineEdit.event(new CKeyEvent(
+				CEventType.KeyPress,
+				"ArrowRight"
+			));
+		}
 	}
 
 	#stepDay(

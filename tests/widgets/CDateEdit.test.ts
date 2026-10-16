@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
 import { CDateEdit } from "../../src/widgets/CDateEdit.js";
+import { CEventType } from "../../src/events/CEvent.js";
+import { CKeyEvent } from "../../src/events/CKeyEvent.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 
 
@@ -861,5 +863,42 @@ describe("CDateEdit", () => {
 		edit.stepUp();
 
 		expect(changed).not.toHaveBeenCalled();
+	});
+
+	test("numeric keys enter a day and advance to the month", () => {
+		const edit = new CDateEdit();
+		edit.setDate(new Date(2026, 9, 16));
+		edit.lineEdit().setCurrentSection(0);
+
+		edit.lineEdit().event(new CKeyEvent(CEventType.KeyPress, "2"));
+		edit.lineEdit().event(new CKeyEvent(CEventType.KeyPress, "5"));
+
+		expect(edit.date().getDate()).toBe(25);
+		expect(edit.lineEdit().currentSection()).toBe(1);
+	});
+
+	test("numeric keys enter a month and clamp the day", () => {
+		const edit = new CDateEdit();
+		edit.setDate(new Date(2026, 0, 31));
+		edit.lineEdit().setCurrentSection(1);
+
+		edit.lineEdit().event(new CKeyEvent(CEventType.KeyPress, "0"));
+		edit.lineEdit().event(new CKeyEvent(CEventType.KeyPress, "2"));
+
+		expect(edit.date().getMonth()).toBe(1);
+		expect(edit.date().getDate()).toBe(28);
+		expect(edit.lineEdit().currentSection()).toBe(2);
+	});
+
+	test("numeric keys enter a four digit year", () => {
+		const edit = new CDateEdit();
+		edit.setDate(new Date(2026, 9, 16));
+		edit.lineEdit().setCurrentSection(2);
+
+		for (const key of ["2", "0", "3", "1"])
+			edit.lineEdit().event(new CKeyEvent(CEventType.KeyPress, key));
+
+		expect(edit.date().getFullYear()).toBe(2031);
+		expect(edit.lineEdit().currentSection()).toBe(0);
 	});
 });
