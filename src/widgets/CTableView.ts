@@ -245,30 +245,14 @@ export class CTableView extends CAbstractItemView {
 
 		const palette = this.palette();
 
-		const base = palette.color(
-			CPaletteColorRole.Base
-		).toCss();
-
-		const text = palette.color(
-			CPaletteColorRole.Text
-		).toCss();
-
-		const highlight = palette.color(
-			CPaletteColorRole.Highlight
-		).toCss();
-
-		const highlightedText = palette.color(
-			CPaletteColorRole.HighlightedText
-		).toCss();
+		const base = palette.color(CPaletteColorRole.Base).toCss();
+		const text = palette.color(CPaletteColorRole.Text).toCss();
+		const highlight = palette.color(CPaletteColorRole.Highlight).toCss();
+		const highlightedText = palette.color(CPaletteColorRole.HighlightedText).toCss();
 
 		painter.setBrush(base);
-		painter.setPen(base);
-		painter.drawRect(
-			0,
-			0,
-			this.#m_contentWidget.width(),
-			this.#m_contentWidget.height()
-		);
+		painter.setPen(text);
+		painter.drawRect(0, 0, this.#m_contentWidget.width(), this.#m_contentWidget.height());
 
 		painter.setFont(this.font());
 		painter.setTextBaseline("middle");
@@ -277,11 +261,7 @@ export class CTableView extends CAbstractItemView {
 		/** Provides for behavior. */
 		for (let row = 0; row < model.rowCount(); row++) {
 			/** Provides for behavior. */
-			for (
-				let column = 0;
-				column < model.columnCount();
-				column++
-			) {
+			for (let column = 0; column < model.columnCount(); column++) {
 				const index = model.index(row, column);
 				const x = this.#m_horizontalHeader.sectionPosition(column);
 				const width = this.#m_horizontalHeader.sectionSize(column);
@@ -299,22 +279,13 @@ export class CTableView extends CAbstractItemView {
 				const rect = new CRect(x, y, width, CTableView.RowHeight);
 				const delegate = this.itemDelegateForIndex(index);
 
-				if (!delegate.paint(
-					painter,
-					rect,
-					index,
-					this.#m_contentWidget
-				)) {
+				if (!delegate.paint(painter, rect, index, this.#m_contentWidget)) {
 					const val = value instanceof Date
 						? this.#formatDate(value)
 						: value === null || value === undefined
 							? ""
 							: String(value);
-					painter.drawText(
-						val,
-						x + 5,
-						y + CTableView.RowHeight / 2
-					);
+					painter.drawText(val, x + 5, y + CTableView.RowHeight / 2);
 				}
 				painter.restore();
 			}

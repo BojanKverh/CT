@@ -232,16 +232,8 @@ export class CHeaderView extends CWidget {
 	/** Handles the paint event. */
 	protected override paintEvent(painter: CPainter): void {
 		const palette = this.palette();
-		const base = palette.color(
-			CPaletteColorRole.Base
-		).toCss();
-		const text = palette.color(
-			CPaletteColorRole.Text
-		).toCss();
-
-		painter.setBrush(base);
-		painter.setPen(base);
-		painter.drawRect(0, 0, this.width(), this.height());
+		const base = palette.color(CPaletteColorRole.Base).toCss();
+		const text = palette.color(CPaletteColorRole.Text).toCss();
 
 		/** Provides if behavior. */
 		if (this.#m_model === null)
@@ -304,6 +296,10 @@ export class CHeaderView extends CWidget {
 				);
 			}
 		}
+		
+		painter.setBrush("rgba(0, 0, 0, 0)");
+		painter.setPen(text);
+		painter.drawRect(0, 0, this.width(), this.height());
 	}
 
 	/** Handles the mouse press event. */

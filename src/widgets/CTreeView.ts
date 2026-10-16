@@ -266,7 +266,7 @@ export class CTreeView extends CAbstractItemView {
 			palette.color(CPaletteColorRole.Base).toCss();
 
 		painter.setBrush(base);
-		painter.setPen(base);
+		painter.setPen(palette.color(CPaletteColorRole.Text).toCss());
 		painter.drawRect(
 			0,
 			0,
@@ -300,17 +300,9 @@ export class CTreeView extends CAbstractItemView {
 				const width = this.#m_header.sectionSize(column);
 
 				painter.save();
-				painter.clipRect(
-					new CRect(
-						x,
-						y,
-						width,
-						CTreeView.RowHeight
-					)
-				);
+				painter.clipRect(new CRect(x, y, width, CTreeView.RowHeight));
 
-				const selected =
-					this.selectionModel()?.isSelected(index) ?? false;
+				const selected = this.selectionModel()?.isSelected(index) ?? false;
 
 				/** Provides if behavior. */
 				if (selected) {
