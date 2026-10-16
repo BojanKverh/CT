@@ -241,7 +241,7 @@ export class CSqlTableModel extends CAbstractTableModel {
 			this.resetModel();
 			return true;
 		} catch (error) {
-			this.#reportError("select", error);
+			this.reportError("select", error);
 			return false;
 		} finally {
 			this.#setLoading(false);
@@ -280,7 +280,7 @@ export class CSqlTableModel extends CAbstractTableModel {
 			this.endInsertRows();
 			return true;
 		} catch (error) {
-			this.#reportError("select", error);
+			this.reportError("select", error);
 			return false;
 		} finally {
 			this.#setLoading(false);
@@ -308,7 +308,7 @@ export class CSqlTableModel extends CAbstractTableModel {
 			this.endInsertRows();
 			return true;
 		} catch (error) {
-			this.#reportError("insert", error);
+			this.reportError("insert", error);
 			return false;
 		}
 	}
@@ -324,7 +324,7 @@ export class CSqlTableModel extends CAbstractTableModel {
 
 		const key = record[this.#m_primaryKey];
 		if (key === undefined || key === null) {
-			this.#reportError("remove", new Error("The row has no primary key value."));
+			this.reportError("remove", new Error("The row has no primary key value."));
 			return false;
 		}
 
@@ -344,7 +344,7 @@ export class CSqlTableModel extends CAbstractTableModel {
 			this.endRemoveRows();
 			return true;
 		} catch (error) {
-			this.#reportError("remove", error);
+			this.reportError("remove", error);
 			return false;
 		}
 	}
@@ -451,7 +451,7 @@ export class CSqlTableModel extends CAbstractTableModel {
 
 		const key = record[this.#m_primaryKey];
 		if (key === undefined || key === null) {
-			this.#reportError("update", new Error("The row has no primary key value."));
+			this.reportError("update", new Error("The row has no primary key value."));
 			return false;
 		}
 
@@ -477,7 +477,7 @@ export class CSqlTableModel extends CAbstractTableModel {
 			this.dataSubmitted.emit(this.index(row, firstColumn));
 			return true;
 		} catch (error) {
-			this.#reportError("update", error);
+			this.reportError("update", error);
 
 			if (this.#m_editStrategy === CSqlEditStrategy.OnFieldChange) {
 				for (const column of columns) {
@@ -526,11 +526,12 @@ export class CSqlTableModel extends CAbstractTableModel {
 		if (this.#m_table.length > 0)
 			return true;
 
-		this.#reportError(operation, new Error("No SQL table has been selected."));
+		this.reportError(operation, new Error("No SQL table has been selected."));
 		return false;
 	}
 
-	#reportError(operation: CSqlOperation, error: unknown): void {
+	/** Stores and emits an adapter error for subclasses implementing SQL operations. */
+	protected reportError(operation: CSqlOperation, error: unknown): void {
 		this.#m_lastError = CSqlError.from(operation, error);
 		this.errorOccurred.emit(this.#m_lastError);
 	}

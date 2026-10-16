@@ -26,6 +26,10 @@ import { CSortOrder } from "../../src/gui/CSortOrder.js";
 import { CSortFilterProxyModel } from "../../src/models/CSortFilterProxyModel.js";
 import { CMemorySqlTableAdapter } from "../../src/models/CMemorySqlTableAdapter.js";
 import { CSqlTableModel } from "../../src/models/CSqlTableModel.js";
+import { CSqlEditStrategy } from "../../src/models/CSqlEditStrategy.js";
+import { CSqlRelation } from "../../src/models/CSqlRelation.js";
+import { CSqlRelationalTableModel } from "../../src/models/CSqlRelationalTableModel.js";
+import { CSqlRelationalDelegate } from "../../src/widgets/CSqlRelationalDelegate.js";
 
 class TestTableModel extends CAbstractTableModel {
 	#m_data: string[][];
@@ -2458,5 +2462,37 @@ describe("CTableView", () => {
 		expect(view.currentIndex().isValid()).toBe(false);
 		expect(delegate.createEditorCalls).toHaveLength(0);
 		expect(event.isAccepted()).toBe(false);
+	});
+
+	test("a relational SQL delegate edits a foreign key through a combo box", async () => {
+		const adapter = new CMemorySqlTableAdapter({
+			employees: [{ id: 1, name: "Alice", country_id: 2 }],
+			countries: [
+				{ id: 1, name: "Slovenia" },
+				{ id: 2, name: "Austria" }
+			]
+		});
+		const model = new CSqlRelationalTableModel(adapter);
+		model.setTable("employees");
+		model.setColumns(["id", "name", "country_id"]);
+		model.setRelation(2, new CSqlRelation("countries", "id", "name"));
+		model.setEditStrategy(CSqlEditStrategy.OnManualSubmit);
+		await model.select();
+		const view = new CTableView();
+		view.setModel(model);
+		view.setItemDelegate(new CSqlRelationalDelegate());
+		const index = model.index(0, 2);
+
+		expect(view.edit(index)).toBe(true);
+		const editor = findEditor(view, CComboBox)!;
+		expect(editor.currentText()).toBe("Austria");
+		expect(editor.popup().isOpen()).toBe(true);
+
+		editor.setCurrentIndex(0);
+		editor.activated.emit(0);
+
+		expect(model.rawData(index)).toBe(1);
+		expect(model.data(index)).toBe("Slovenia");
+		expect(editor.parent()).toBeNull();
 	});
 });

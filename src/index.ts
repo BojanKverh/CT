@@ -119,3 +119,6 @@ export { CSqlError, type CSqlOperation } from "./models/CSqlError.js";
 export { CMemorySqlTableAdapter } from "./models/CMemorySqlTableAdapter.js";
 export { CFetchSqlTableAdapter, CFetchSqlError, type CFetchSqlTableAdapterOptions, type CSqlFetch } from "./models/CFetchSqlTableAdapter.js";
 export { CSqlFilterOperator, type CSqlFilter } from "./models/CSqlFilter.js";
+export { CSqlRelation } from "./models/CSqlRelation.js";
+export { CSqlRelationalDelegate } from "./widgets/CSqlRelationalDelegate.js";
+export { CSqlRelationalTableModel } from "./models/CSqlRelationalTableModel.js";

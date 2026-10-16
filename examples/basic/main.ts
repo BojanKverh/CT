@@ -10,8 +10,9 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CContextMenuEvent, CDragEnterEvent, CDragMoveEvent, CDragLeaveEvent, CDropEvent,
 	CDrag, CMimeData, CDropAction, CIcon, CDockWidget, CDockWidgetArea,
 	CCursorShape, CDial, CTextBrowser, CDoubleSpinBox, CIntItemDelegate, CComboBoxItemDelegate,
-	CSortOrder, CSortFilterProxyModel, CFont, CSqlTableModel, CMemorySqlTableAdapter,
-	CSqlEditStrategy, CSqlFilterOperator
+	CSortOrder, CSortFilterProxyModel, CFont, CSqlRelationalTableModel,
+	CMemorySqlTableAdapter, CSqlEditStrategy, CSqlFilterOperator, CSqlRelation,
+	CSqlRelationalDelegate
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -497,11 +498,16 @@ function createSqlEmployees(): Array<Record<string, unknown>> {
 	return Array.from({ length: 200 }, (_, index) => ({
 		id: index + 1,
 		name: `${names[index % names.length]} ${Math.floor(index / names.length) + 1}`,
-		country: sqlCountries[index % sqlCountries.length],
+		country_id: index % sqlCountries.length + 1,
 		age: 21 + (index * 7) % 45,
 		occupation: sqlOccupations[index % sqlOccupations.length],
+		start_date: new Date(2021 + index % 6, index % 12, index % 28 + 1),
 		active: index % 4 !== 0
 	}));
+}
+
+function createSqlCountries(): Array<Record<string, unknown>> {
+	return sqlCountries.map((name, index) => ({ id: index + 1, name }));
 }
 
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas");
@@ -954,17 +960,23 @@ sqlButton.clicked.connect(async () => {
 	dlg.setWindowTitle("SQL table model");
 
 	const adapter = new CMemorySqlTableAdapter({
-		employees: createSqlEmployees()
+		employees: createSqlEmployees(),
+		countries: createSqlCountries()
 	});
-	const model = new CSqlTableModel(adapter);
+	const model = new CSqlRelationalTableModel(adapter);
 	model.setTable("employees");
 	model.setPrimaryKey("id");
-	model.setColumns(["id", "name", "country", "age", "occupation", "active"]);
+	model.setColumns([
+		"id", "name", "country_id", "age", "occupation", "start_date",
+		"active"
+	]);
+	model.setRelation(2, new CSqlRelation("countries", "id", "name"));
 	model.setColumnHeader("id", "ID");
 	model.setColumnHeader("name", "Name");
-	model.setColumnHeader("country", "Country");
+	model.setColumnHeader("country_id", "Country");
 	model.setColumnHeader("age", "Age");
 	model.setColumnHeader("occupation", "Occupation");
+	model.setColumnHeader("start_date", "Start date");
 	model.setColumnHeader("active", "Active");
 	model.setFetchSize(20);
 
@@ -1008,11 +1020,11 @@ sqlButton.clicked.connect(async () => {
 	const tv = new CTableView(dlg);
 	tv.setGeometry(20, 55, 860, 345);
 	tv.setModel(model);
+	tv.setItemDelegate(new CSqlRelationalDelegate());
 	tv.setSortingEnabled(true);
 
 	const ageDelegate = new CIntItemDelegate();
 	ageDelegate.setRange(18, 100);
-	tv.setItemDelegateForColumn(2, new CComboBoxItemDelegate(sqlCountries));
 	tv.setItemDelegateForColumn(3, ageDelegate);
 	tv.setItemDelegateForColumn(4, new CComboBoxItemDelegate(sqlOccupations));
 
@@ -1032,9 +1044,10 @@ sqlButton.clicked.connect(async () => {
 	addButton.clicked.connect(async () => {
 		await model.insertRecord({
 			name: "New employee",
-			country: "Slovenia",
+			country_id: 1,
 			age: 30,
 			occupation: "Developer",
+			start_date: new Date(),
 			active: true
 		});
 		updateStatus();
