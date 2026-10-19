@@ -828,6 +828,14 @@ export class CTextEdit extends CScrollArea {
 		if (event.ctrl()) {
 			/** Provides switch behavior. */
 			switch (event.key().toLowerCase()) {
+			case "home":
+				this.#moveCursor(0, event.shift());
+				event.accept();
+				return;
+			case "end":
+				this.#moveCursor(this.#m_document.length(), event.shift());
+				event.accept();
+				return;
 
             case "arrowleft":
                 this.#moveCursor(previousWordPosition(this.toPlainText(),

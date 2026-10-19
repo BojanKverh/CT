@@ -3391,4 +3391,119 @@ test("imports anchor href into the character format", () => {
             edit.destroy();
         });
     });
+
+    describe("document boundary keyboard navigation", () => {
+        const text = "first line\nsecond line\nlast line";
+        function press(edit: CTextEdit, key: string, ctrl = true, shift = false): void {
+            const event = new CKeyEvent(CEventType.KeyPress, key, ctrl, shift);
+            edit.event(event);
+            expect(event.isAccepted()).toBe(true);
+        }
+        function editor(): CTextEdit {
+            const edit = new CTextEdit();
+            edit.resize(160, 60);
+            edit.setPlainText(text);
+            edit.setCursorPosition(15);
+            return edit;
+        }
+        test("Ctrl+Home moves to the start of the document", () => {
+            const edit = editor();
+            press(edit, "Home");
+            expect(edit.cursorPosition()).toBe(0);
+            expect(edit.hasSelection()).toBe(false);
+        });
+        test("Ctrl+End moves to the end of the document", () => {
+            const edit = editor();
+            press(edit, "End");
+            expect(edit.cursorPosition()).toBe(text.length);
+            expect(edit.hasSelection()).toBe(false);
+        });
+        test("Ctrl+Shift+Home selects back to the start", () => {
+            const edit = editor();
+            press(edit, "Home", true, true);
+            expect(edit.cursorPosition()).toBe(0);
+            expect(edit.selectionEnd()).toBe(15);
+            expect(edit.selectedText()).toBe(text.slice(0, 15));
+        });
+        test("Ctrl+Shift+End selects through to the end", () => {
+            const edit = editor();
+            press(edit, "End", true, true);
+            expect(edit.cursorPosition()).toBe(text.length);
+            expect(edit.selectionStart()).toBe(15);
+            expect(edit.selectedText()).toBe(text.slice(15));
+        });
+        test("reversing document selection retains the original anchor", () => {
+            const edit = editor();
+            press(edit, "Home", true, true);
+            press(edit, "End", true, true);
+            expect(edit.selectionStart()).toBe(15);
+            expect(edit.selectedText()).toBe(text.slice(15));
+        });
+        test("Ctrl+Home and Ctrl+End collapse existing selections", () => {
+            const edit = editor();
+            edit.setSelection(3, 20);
+            press(edit, "Home");
+            expect(edit.cursorPosition()).toBe(0);
+            expect(edit.hasSelection()).toBe(false);
+            edit.setSelection(3, 20);
+            press(edit, "End");
+            expect(edit.cursorPosition()).toBe(text.length);
+            expect(edit.hasSelection()).toBe(false);
+        });
+        test("unmodified Home and End still stop at the current line boundaries", () => {
+            const edit = editor();
+            press(edit, "Home", false);
+            expect(edit.cursorPosition()).toBe(11);
+            press(edit, "End", false);
+            expect(edit.cursorPosition()).toBe(22);
+        });
+        test("Shift+Home and Shift+End still select within the current line", () => {
+            const edit = editor();
+            press(edit, "Home", false, true);
+            expect(edit.selectedText()).toBe("seco");
+            edit.setCursorPosition(15);
+            press(edit, "End", false, true);
+            expect(edit.selectedText()).toBe("nd line");
+        });
+        test("document navigation scrolls both boundaries into view", () => {
+            const edit = editor();
+            const longText = Array(40).fill("a very long line ".repeat(20)).join("\n");
+            edit.setPlainText(longText);
+            press(edit, "Home");
+            expect(edit.scrollX()).toBe(0);
+            expect(edit.scrollY()).toBe(0);
+            press(edit, "End");
+            expect(edit.scrollX()).toBeGreaterThan(0);
+            expect(edit.scrollY()).toBeGreaterThan(0);
+            expect(edit.cursorPosition()).toBe(longText.length);
+        });
+        test("document navigation works in read-only mode without changing history", () => {
+            const edit = editor();
+            edit.setReadOnly(true);
+            press(edit, "End", true, true);
+            expect(edit.selectedText()).toBe(text.slice(15));
+            press(edit, "Home");
+            expect(edit.cursorPosition()).toBe(0);
+            expect(edit.toPlainText()).toBe(text);
+            expect(edit.canUndo()).toBe(false);
+        });
+        test("document navigation is harmless on empty text", () => {
+            const edit = editor();
+            edit.setPlainText("");
+            press(edit, "Home", true, true);
+            press(edit, "End", true, true);
+            expect(edit.cursorPosition()).toBe(0);
+            expect(edit.hasSelection()).toBe(false);
+        });
+        test("navigation emits selectionChanged only when the cursor or selection changes", () => {
+            const edit = editor();
+            const changed = vi.fn();
+            edit.selectionChanged.connect(changed);
+            press(edit, "Home");
+            expect(changed).toHaveBeenCalledOnce();
+            changed.mockClear();
+            press(edit, "Home");
+            expect(changed).not.toHaveBeenCalled();
+        });
+    });
 });
