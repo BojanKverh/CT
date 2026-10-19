@@ -1,4 +1,6 @@
 export { CObject } from "./core/CObject.js";
+export { CUndoCommand } from "./core/CUndoCommand.js";
+export { CUndoStack } from "./core/CUndoStack.js";
 export { CSignal, type CSlot } from "./core/CSignal.js";
 export { CPoint } from "./geometry/CPoint.js";
 export { CSize } from "./geometry/CSize.js";

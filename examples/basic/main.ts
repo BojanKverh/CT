@@ -1225,6 +1225,64 @@ completerButton.clicked.connect(() => {
 	dlg.exec();
 });
 
+const undoDemoButton = new CPushButton(parent);
+undoDemoButton.setText("Undo / Redo");
+undoDemoButton.setGeometry(520, 740, 110, 30);
+undoDemoButton.clicked.connect(() => {
+    const dlg = new CDialog(parent);
+    dlg.setWindowTitle("Undo / Redo — text editors");
+    dlg.setGeometry(160, 100, 640, 420);
+
+    const lineLabel = new CLabel(dlg);
+    lineLabel.setText("CLineEdit");
+    lineLabel.setGeometry(25, 20, 200, 24);
+    const line = new CLineEdit(dlg);
+    line.setGeometry(25, 50, 390, 28);
+    line.setText("Edit this text");
+
+    const textLabel = new CLabel(dlg);
+    textLabel.setText("CTextEdit");
+    textLabel.setGeometry(25, 105, 200, 24);
+    const text = new CTextEdit(dlg);
+    text.setGeometry(25, 135, 390, 190);
+    text.setPlainText("Edit this text.\nTry typing, selection, cut and paste.");
+
+    // Each editor has its own history and button pair.
+    const addHistoryButtons = (editor: CLineEdit | CTextEdit, y: number): void => {
+        const undo = new CPushButton(dlg);
+        undo.setText("Undo");
+        undo.setGeometry(435, y, 80, 30);
+        undo.setEnabled(editor.canUndo());
+        editor.undoAvailable.connect(available => undo.setEnabled(available));
+        undo.clicked.connect(() => {
+            editor.undo();
+            editor.setFocus();
+        });
+
+        const redo = new CPushButton(dlg);
+        redo.setText("Redo");
+        redo.setGeometry(525, y, 80, 30);
+        redo.setEnabled(editor.canRedo());
+        editor.redoAvailable.connect(available => redo.setEnabled(available));
+        redo.clicked.connect(() => {
+            editor.redo();
+            editor.setFocus();
+        });
+    };
+    addHistoryButtons(line, 50);
+    addHistoryButtons(text, 135);
+
+    const help = new CLabel(dlg);
+    help.setText("Undo: Ctrl+Z     Redo: Ctrl+Y / Ctrl+Shift+Z");
+    help.setGeometry(25, 340, 580, 25);
+
+    const close = new CPushButton(dlg);
+    close.setText("Close");
+    close.setGeometry(525, 375, 80, 30);
+    close.clicked.connect(() => dlg.accept());
+    dlg.exec();
+});
+
 const lab = new CLabel(parent);
 lab.setGeometry(250, 50, 130, 40);
 lab.setText("Jaz sem CLabel");

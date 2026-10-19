@@ -1,3 +1,5 @@
+import { CUndoCommand } from "../core/CUndoCommand.js";
+import { CUndoStack } from "../core/CUndoStack.js";
 import { CSignal } from "../core/CSignal.js";
 import { CTimer } from "../core/CTimer.js";
 import { CScrollArea } from "./CScrollArea.js";
@@ -82,12 +84,44 @@ class CTextEditContentWidget extends CWidget {
 	}
 }
 
+
+/** Internal snapshot command: the editor applies the initial edit after push(). */
+class CTextEditUndoCommand extends CUndoCommand {
+    #after: CTextEditState | null = null;
+    constructor(
+        private readonly before: CTextEditState,
+        private readonly capture: () => CTextEditState,
+        private readonly restore: (state: CTextEditState) => void,
+        private readonly mergeKey: object | null
+    ) { super("Edit text"); }
+
+    override undo(): void {
+        this.#after = this.capture();
+        this.restore(this.before);
+    }
+
+    override redo(): void {
+        if (this.#after !== null) this.restore(this.#after);
+    }
+
+    override id(): number { return this.mergeKey === null ? -1 : 1; }
+
+    override mergeWith(command: CUndoCommand): boolean {
+        return command instanceof CTextEditUndoCommand
+            && this.mergeKey !== null && this.mergeKey === command.mergeKey;
+    }
+}
+
 /** Implements the text edit widget. */
 export class CTextEdit extends CScrollArea {
 	/** Signal emitted when text changes. */
 	readonly textChanged = new CSignal<[]>();
 	/** Signal emitted when selection changes. */
 	readonly selectionChanged = new CSignal<[]>();
+	/** Emitted only when undo availability changes. */
+	readonly undoAvailable = new CSignal<[boolean]>();
+	/** Emitted only when redo availability changes. */
+	readonly redoAvailable = new CSignal<[boolean]>();
 
 	#m_document = new CTextDocument();
 	#m_cursorPosition = 0;
@@ -95,8 +129,8 @@ export class CTextEdit extends CScrollArea {
 	#m_selectingWithMouse = false;
 	#m_readOnly = false;
 	#m_currentCharFormat = new CTextCharFormat();
-    #m_undoStack: CTextEditState[] = [];
-	#m_redoStack: CTextEditState[] = [];
+	#m_history = new CUndoStack(this);
+	#m_mergeKey: object | null = null;
 	#m_restoringHistory = false;
 	#m_undoGroup: CTextEditUndoGroup = null;
 
@@ -114,6 +148,8 @@ export class CTextEdit extends CScrollArea {
 		super(parent);
 
 		this.#m_contentWidget = new CTextEditContentWidget(this);
+		this.#m_history.canUndoChanged.connect(value => this.undoAvailable.emit(value));
+		this.#m_history.canRedoChanged.connect(value => this.redoAvailable.emit(value));
 		this.setWidget(this.#m_contentWidget);
 
 		this.#m_cursorTimer.setInterval(500);
@@ -173,9 +209,8 @@ export class CTextEdit extends CScrollArea {
 		const parsed = this.#parseHtml(html);
 		const hadSelection = this.hasSelection();
 
-		this.#m_undoStack = [];
-		this.#m_redoStack = [];
-		this.#m_undoGroup = null;
+		this.#m_history.clear();
+		this.#breakUndoGroup();
 
 		this.#m_document.setPlainText(parsed.plainText);
 
@@ -210,15 +245,13 @@ export class CTextEdit extends CScrollArea {
 
 	/** Sets the plain text. */
 	setPlainText(text: string): void {
+		this.#m_history.clear();
+		this.#breakUndoGroup();
 		/** Provides if behavior. */
 		if (this.#m_document.toPlainText() === text)
 			return;
 
 		const hadSelection = this.hasSelection();
-
-        this.#m_undoStack = [];
-		this.#m_redoStack = [];
-		this.#m_undoGroup = null;
 
 		this.#m_document.setPlainText(text);
 		this.#m_cursorPosition = text.length;
@@ -275,6 +308,7 @@ export class CTextEdit extends CScrollArea {
 		if (this.#m_readOnly === readOnly)
 			return;
 
+		this.#breakUndoGroup();
 		this.#m_readOnly = readOnly;
 		this.#m_contentWidget.update();
 	}
@@ -461,39 +495,25 @@ export class CTextEdit extends CScrollArea {
 
 	/** Returns whether undo is currently possible. */
 	canUndo(): boolean {
-		return this.#m_undoStack.length > 0;
+		return this.#m_history.canUndo();
 	}
 
 	/** Returns whether redo is currently possible. */
 	canRedo(): boolean {
-		return this.#m_redoStack.length > 0;
+		return this.#m_history.canRedo();
 	}
 
 	/** Provides undo behavior. */
 	undo(): void {
-		this.#breakUndoGroup();
-		const state = this.#m_undoStack.pop();
+        this.#breakUndoGroup();
+        this.#m_history.undo();
+    }
 
-		/** Provides if behavior. */
-		if (state === undefined)
-			return;
-
-		this.#m_redoStack.push(this.#currentState());
-		this.#restoreState(state);
-	}
-
-	/** Provides redo behavior. */
-	redo(): void {
-		this.#breakUndoGroup();
-		const state = this.#m_redoStack.pop();
-
-		/** Provides if behavior. */
-		if (state === undefined)
-			return;
-
-		this.#m_undoStack.push(this.#currentState());
-		this.#restoreState(state);
-	}
+    /** Reapplies the next edit and restores its cursor, selection and formatting. */
+    redo(): void {
+        this.#breakUndoGroup();
+        this.#m_history.redo();
+    }
 
 	/** Provides copy behavior. */
 	copy(): void {
@@ -919,6 +939,7 @@ export class CTextEdit extends CScrollArea {
 	protected override focusOutEvent(
 		event: CFocusEvent
 	): void {
+		this.#breakUndoGroup();
 		this.#m_selectingWithMouse = false;
 		this.#stopCursorBlink();
 
@@ -2023,22 +2044,22 @@ export class CTextEdit extends CScrollArea {
 		};
 	}
 
-	#pushUndoState(group: CTextEditUndoGroup = null): void {
-		/** Provides if behavior. */
-		if (this.#m_restoringHistory)
-			return;
 
-		/** Provides if behavior. */
-		if (group === null || group !== this.#m_undoGroup)
-			this.#m_undoStack.push(this.#currentState());
+    #pushUndoState(group: CTextEditUndoGroup = null): void {
+        if (this.#m_restoringHistory) return;
+        if (group === null || group !== this.#m_undoGroup)
+            this.#m_mergeKey = group === null ? null : {};
+        this.#m_undoGroup = group;
+        this.#m_history.push(new CTextEditUndoCommand(
+            this.#currentState(), () => this.#currentState(),
+            state => this.#restoreState(state), this.#m_mergeKey
+        ));
+    }
 
-		this.#m_undoGroup = group;
-		this.#m_redoStack = [];
-	}
-
-	#breakUndoGroup(): void {
-		this.#m_undoGroup = null;
-	}
+    #breakUndoGroup(): void {
+        this.#m_undoGroup = null;
+        this.#m_mergeKey = null;
+    }
 
 	#restoreState(state: CTextEditState): void {
 		this.#m_restoringHistory = true;
@@ -2065,6 +2086,8 @@ export class CTextEdit extends CScrollArea {
 			this.selectionChanged.emit();
 
 		this.#m_restoringHistory = false;
+		this.#resetCursorBlink();
+		this.#m_contentWidget.update();
 	}
 
 	#insert(text: string, group: CTextEditUndoGroup): void {
@@ -2072,8 +2095,8 @@ export class CTextEdit extends CScrollArea {
 		if (text.length === 0 || this.isReadOnly())
 			return;
 
-		this.#pushUndoState(group);
 		const hadSelection = this.hasSelection();
+		this.#pushUndoState(hadSelection ? null : group);
 
 		const start = hadSelection? this.selectionStart() : this.#m_cursorPosition;
 		const end = hadSelection? this.selectionEnd() : this.#m_cursorPosition;

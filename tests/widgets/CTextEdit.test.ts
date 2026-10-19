@@ -2629,4 +2629,126 @@ test("imports anchor href into the character format", () => {
 		edit.setCursorPosition(9);
 		expect(edit.currentCharFormat().fontUnderline()).toBe(true);
 	});
+
+
+    describe("history availability signals", () => {
+        test("emits only on availability transitions", () => {
+            const edit = new CTextEdit();
+            const undo: boolean[] = [], redo: boolean[] = [];
+            edit.undoAvailable.connect(value => {
+                expect(edit.canUndo()).toBe(value);
+                undo.push(value);
+            });
+            edit.redoAvailable.connect(value => {
+                expect(edit.canRedo()).toBe(value);
+                redo.push(value);
+            });
+            edit.insert("A"); edit.insert("B");
+            edit.undo(); edit.undo(); edit.redo(); edit.redo();
+            expect(undo).toEqual([true, false, true]);
+            expect(redo).toEqual([true, false]);
+            expect(edit.toPlainText()).toBe("AB");
+        });
+        test("empty history operations emit no availability changes", () => {
+            const edit = new CTextEdit();
+            const undo: boolean[] = [], redo: boolean[] = [];
+            edit.undoAvailable.connect(value => undo.push(value));
+            edit.redoAvailable.connect(value => redo.push(value));
+            edit.undo(); edit.redo(); edit.setPlainText("");
+            expect(undo).toEqual([]);
+            expect(redo).toEqual([]);
+        });
+        test("loading text disables both undo and redo", () => {
+            const edit = new CTextEdit();
+            edit.insert("A"); edit.insert("B"); edit.undo();
+            const undo: boolean[] = [], redo: boolean[] = [];
+            edit.undoAvailable.connect(value => undo.push(value));
+            edit.redoAvailable.connect(value => redo.push(value));
+            edit.setPlainText("Loaded");
+            expect(undo).toEqual([false]);
+            expect(redo).toEqual([false]);
+        });
+        test("new editing after undo disables redo", () => {
+            const edit = new CTextEdit();
+            edit.insert("A"); edit.insert("B"); edit.undo();
+            const redo: boolean[] = [];
+            edit.redoAvailable.connect(value => redo.push(value));
+            edit.insert("C");
+            expect(redo).toEqual([false]);
+            expect(edit.toPlainText()).toBe("AC");
+        });
+        test("grouped typing emits undoAvailable true only once", () => {
+            const edit = new CTextEdit();
+            const undo: boolean[] = [];
+            edit.undoAvailable.connect(value => undo.push(value));
+            for (const key of "abc")
+                edit.event(new CKeyEvent(CEventType.KeyPress, key));
+            edit.undo(); edit.redo();
+            expect(undo).toEqual([true, false, true]);
+        });
+    });
+    describe("undo stack integration", () => {
+        function press(edit: CTextEdit, key: string): void {
+            edit.event(new CKeyEvent(CEventType.KeyPress, key));
+        }
+        test("same-value setPlainText resets history without textChanged", () => {
+            const edit = new CTextEdit();
+            edit.insert("abc");
+            const changed = vi.fn();
+            edit.textChanged.connect(changed);
+            edit.setPlainText("abc");
+            expect(edit.canUndo()).toBe(false);
+            expect(edit.canRedo()).toBe(false);
+            expect(changed).not.toHaveBeenCalled();
+        });
+        test("setHtml discards both undo and redo history", () => {
+            const edit = new CTextEdit();
+            edit.insert("A"); edit.insert("B"); edit.undo();
+            edit.setHtml("<b>Loaded</b>");
+            expect(edit.toPlainText()).toBe("Loaded");
+            expect(edit.canUndo()).toBe(false);
+            expect(edit.canRedo()).toBe(false);
+        });
+        test("typing after selection replacement forms a new command", () => {
+            const edit = new CTextEdit();
+            edit.setPlainText("abc"); edit.setSelection(3, 0);
+            press(edit, "X"); press(edit, "Y");
+            edit.undo(); expect(edit.toPlainText()).toBe("X");
+            edit.undo();
+            expect(edit.toPlainText()).toBe("abc");
+            expect(edit.selectedText()).toBe("abc");
+            expect(edit.cursorPosition()).toBe(0);
+            edit.redo(); edit.redo();
+            expect(edit.toPlainText()).toBe("XY");
+            expect(edit.cursorPosition()).toBe(2);
+        });
+        test("paste between typing groups is a separate command", () => {
+            const edit = new CTextEdit();
+            press(edit, "A");
+            CClipboard.instance().setText("one\ntwo");
+            edit.paste(); press(edit, "B");
+            edit.undo(); expect(edit.toPlainText()).toBe("Aone\ntwo");
+            edit.undo(); expect(edit.toPlainText()).toBe("A");
+            edit.redo(); expect(edit.toPlainText()).toBe("Aone\ntwo");
+        });
+        test("cut undo and redo restore backwards selection", () => {
+            const edit = new CTextEdit();
+            edit.setPlainText("abcdef"); edit.setSelection(5, 1); edit.cut();
+            expect(edit.toPlainText()).toBe("af");
+            edit.undo();
+            expect(edit.toPlainText()).toBe("abcdef");
+            expect(edit.selectedText()).toBe("bcde");
+            expect(edit.cursorPosition()).toBe(1);
+            edit.redo(); expect(edit.toPlainText()).toBe("af");
+        });
+        test("editing after undo discards rich text redo history", () => {
+            const edit = new CTextEdit();
+            edit.setPlainText("abc"); edit.selectAll(); edit.setFontBold(true);
+            edit.undo(); edit.setCursorPosition(3); edit.insert("X");
+            expect(edit.canRedo()).toBe(false);
+            edit.undo(); expect(edit.toPlainText()).toBe("abc");
+            expect(edit.currentCharFormat().fontBold()).toBe(false);
+        });
+    });
+
 });

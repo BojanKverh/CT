@@ -1254,4 +1254,252 @@ describe("CLineEdit", () => {
 
 		expect(edit.text()).toBe("Merkur");
 	});
+
+
+    describe("history availability signals", () => {
+        test("emits only on availability transitions", () => {
+            const edit = new CLineEdit();
+            const undo: boolean[] = [], redo: boolean[] = [];
+            edit.undoAvailable.connect(value => {
+                expect(edit.canUndo()).toBe(value);
+                undo.push(value);
+            });
+            edit.redoAvailable.connect(value => {
+                expect(edit.canRedo()).toBe(value);
+                redo.push(value);
+            });
+            edit.insert("A"); edit.insert("B");
+            edit.undo(); edit.undo(); edit.redo(); edit.redo();
+            expect(undo).toEqual([true, false, true]);
+            expect(redo).toEqual([true, false]);
+            expect(edit.text()).toBe("AB");
+        });
+        test("empty history operations emit no availability changes", () => {
+            const edit = new CLineEdit();
+            const undo: boolean[] = [], redo: boolean[] = [];
+            edit.undoAvailable.connect(value => undo.push(value));
+            edit.redoAvailable.connect(value => redo.push(value));
+            edit.undo(); edit.redo(); edit.setText("");
+            expect(undo).toEqual([]);
+            expect(redo).toEqual([]);
+        });
+        test("loading text disables both undo and redo", () => {
+            const edit = new CLineEdit();
+            edit.insert("A"); edit.insert("B"); edit.undo();
+            const undo: boolean[] = [], redo: boolean[] = [];
+            edit.undoAvailable.connect(value => undo.push(value));
+            edit.redoAvailable.connect(value => redo.push(value));
+            edit.setText("Loaded");
+            expect(undo).toEqual([false]);
+            expect(redo).toEqual([false]);
+        });
+        test("new editing after undo disables redo", () => {
+            const edit = new CLineEdit();
+            edit.insert("A"); edit.insert("B"); edit.undo();
+            const redo: boolean[] = [];
+            edit.redoAvailable.connect(value => redo.push(value));
+            edit.insert("C");
+            expect(redo).toEqual([false]);
+            expect(edit.text()).toBe("AC");
+        });
+        test("grouped typing emits undoAvailable true only once", () => {
+            const edit = new CLineEdit();
+            const undo: boolean[] = [];
+            edit.undoAvailable.connect(value => undo.push(value));
+            for (const key of "abc")
+                edit.event(new CKeyEvent(CEventType.KeyPress, key));
+            edit.undo(); edit.redo();
+            expect(undo).toEqual([true, false, true]);
+        });
+    });
+    describe("undo and redo", () => {
+        function press(edit: CLineEdit, key: string, ctrl = false, shift = false): void {
+            edit.event(new CKeyEvent(CEventType.KeyPress, key, ctrl, shift));
+        }
+        function type(edit: CLineEdit, value: string): void {
+            for (const key of value) press(edit, key);
+        }
+
+        test("starts with empty history", () => {
+            const edit = new CLineEdit();
+            expect(edit.canUndo()).toBe(false);
+            expect(edit.canRedo()).toBe(false);
+            edit.undo(); edit.redo();
+            expect(edit.text()).toBe("");
+        });
+        test("groups consecutive typing and restores it with redo", () => {
+            const edit = new CLineEdit();
+            type(edit, "Hello");
+            edit.undo();
+            expect(edit.text()).toBe("");
+            expect(edit.cursorPosition()).toBe(0);
+            expect(edit.canUndo()).toBe(false);
+            expect(edit.canRedo()).toBe(true);
+            edit.redo();
+            expect(edit.text()).toBe("Hello");
+            expect(edit.cursorPosition()).toBe(5);
+        });
+        test("explicit insert calls are separate operations", () => {
+            const edit = new CLineEdit();
+            edit.insert("A"); edit.insert("B");
+            edit.undo(); expect(edit.text()).toBe("A");
+            edit.undo(); expect(edit.text()).toBe("");
+        });
+        test("cursor movement separates typing groups", () => {
+            const edit = new CLineEdit();
+            type(edit, "ab"); press(edit, "ArrowLeft"); type(edit, "X");
+            edit.undo();
+            expect(edit.text()).toBe("ab");
+            expect(edit.cursorPosition()).toBe(1);
+            edit.undo(); expect(edit.text()).toBe("");
+        });
+        test("selection replacement restores backwards selection", () => {
+            const edit = new CLineEdit();
+            edit.setText("abcdef"); edit.setSelection(5, 1); edit.insert("X");
+            edit.undo();
+            expect(edit.text()).toBe("abcdef");
+            expect(edit.selectedText()).toBe("bcde");
+            expect(edit.cursorPosition()).toBe(1);
+            edit.redo();
+            expect(edit.text()).toBe("aXf");
+            expect(edit.hasSelection()).toBe(false);
+            expect(edit.cursorPosition()).toBe(2);
+        });
+        test("typing after a replacement is a separate operation", () => {
+            const edit = new CLineEdit();
+            edit.setText("abc"); edit.setSelection(0, 3);
+            type(edit, "XY");
+            edit.undo(); expect(edit.text()).toBe("X");
+            edit.undo();
+            expect(edit.text()).toBe("abc");
+            expect(edit.selectedText()).toBe("abc");
+        });
+        test("groups consecutive backspaces", () => {
+            const edit = new CLineEdit();
+            edit.setText("abcd"); press(edit, "Backspace"); press(edit, "Backspace");
+            expect(edit.text()).toBe("ab");
+            edit.undo(); expect(edit.text()).toBe("abcd");
+            expect(edit.cursorPosition()).toBe(4);
+            edit.redo(); expect(edit.text()).toBe("ab");
+        });
+        test("groups consecutive deletes", () => {
+            const edit = new CLineEdit();
+            edit.setText("abcd"); edit.setCursorPosition(1);
+            press(edit, "Delete"); press(edit, "Delete");
+            expect(edit.text()).toBe("ad");
+            edit.undo(); expect(edit.text()).toBe("abcd");
+            expect(edit.cursorPosition()).toBe(1);
+            edit.redo(); expect(edit.text()).toBe("ad");
+        });
+        test("typing and backspace have separate groups", () => {
+            const edit = new CLineEdit();
+            type(edit, "abc"); press(edit, "Backspace");
+            edit.undo(); expect(edit.text()).toBe("abc");
+            edit.undo(); expect(edit.text()).toBe("");
+        });
+        test("deleting a selection is an independent operation", () => {
+            const edit = new CLineEdit();
+            edit.setText("abcdef"); edit.setSelection(1, 4);
+            press(edit, "Delete"); press(edit, "Delete");
+            edit.undo(); expect(edit.text()).toBe("aef");
+            edit.undo();
+            expect(edit.text()).toBe("abcdef");
+            expect(edit.selectedText()).toBe("bcd");
+        });
+        test("paste is undone as one operation", () => {
+            const edit = new CLineEdit();
+            type(edit, "ab");
+            CClipboard.instance().setText("long paste");
+            edit.paste(); type(edit, "X");
+            edit.undo(); expect(edit.text()).toBe("ablong paste");
+            edit.undo(); expect(edit.text()).toBe("ab");
+            edit.undo(); expect(edit.text()).toBe("");
+        });
+        test("cut restores text and selection", () => {
+            const edit = new CLineEdit();
+            edit.setText("Hello world"); edit.setSelection(6, 11); edit.cut();
+            expect(edit.text()).toBe("Hello ");
+            edit.undo();
+            expect(edit.text()).toBe("Hello world");
+            expect(edit.selectedText()).toBe("world");
+            edit.redo(); expect(edit.text()).toBe("Hello ");
+        });
+        test("new editing after undo discards redo", () => {
+            const edit = new CLineEdit();
+            type(edit, "abc"); edit.undo(); type(edit, "X");
+            expect(edit.canRedo()).toBe(false);
+            edit.redo(); expect(edit.text()).toBe("X");
+            edit.undo(); expect(edit.text()).toBe("");
+        });
+        test("redo followed by typing creates a new group", () => {
+            const edit = new CLineEdit();
+            type(edit, "abc"); edit.undo(); edit.redo(); type(edit, "X");
+            edit.undo(); expect(edit.text()).toBe("abc");
+            edit.undo(); expect(edit.text()).toBe("");
+        });
+        test("setText resets both histories", () => {
+            const edit = new CLineEdit();
+            edit.insert("A"); edit.insert("B"); edit.undo();
+            edit.setText("Loaded");
+            expect(edit.canUndo()).toBe(false);
+            expect(edit.canRedo()).toBe(false);
+            edit.undo(); expect(edit.text()).toBe("Loaded");
+        });
+        test("setText with identical text also resets history without text signals", () => {
+            const edit = new CLineEdit();
+            edit.insert("A");
+            const changed = vi.fn();
+            edit.textChanged.connect(changed);
+            edit.setText("A");
+            expect(edit.canUndo()).toBe(false);
+            expect(changed).not.toHaveBeenCalled();
+        });
+        test("rejected input preserves undo and redo history", () => {
+            const edit = new CLineEdit();
+            edit.setValidator(text => /^\d*$/.test(text));
+            type(edit, "12"); edit.undo(); type(edit, "x");
+            expect(edit.canUndo()).toBe(false);
+            expect(edit.canRedo()).toBe(true);
+            edit.redo(); expect(edit.text()).toBe("12");
+        });
+        test("read-only edits create no history", () => {
+            const edit = new CLineEdit();
+            edit.setText("abc"); edit.setReadOnly(true);
+            type(edit, "X"); press(edit, "Backspace"); edit.insert("Y");
+            expect(edit.text()).toBe("abc");
+            expect(edit.canUndo()).toBe(false);
+        });
+        test("undo and redo emit textChanged and textEdited once per operation", () => {
+            const edit = new CLineEdit();
+            type(edit, "abc");
+            const changed = vi.fn(), edited = vi.fn();
+            edit.textChanged.connect(changed); edit.textEdited.connect(edited);
+            edit.undo();
+            expect(changed).toHaveBeenCalledOnce();
+            expect(changed).toHaveBeenCalledWith("");
+            expect(edited).toHaveBeenCalledOnce();
+            expect(edited).toHaveBeenCalledWith("");
+            changed.mockClear(); edited.mockClear();
+            edit.redo();
+            expect(changed).toHaveBeenCalledOnce();
+            expect(changed).toHaveBeenCalledWith("abc");
+            expect(edited).toHaveBeenCalledOnce();
+            expect(edited).toHaveBeenCalledWith("abc");
+        });
+        test("Ctrl+Z Ctrl+Y and Ctrl+Shift+Z operate on history", () => {
+            const edit = new CLineEdit();
+            type(edit, "abc");
+            press(edit, "z", true); expect(edit.text()).toBe("");
+            press(edit, "y", true); expect(edit.text()).toBe("abc");
+            press(edit, "Z", true); expect(edit.text()).toBe("");
+            press(edit, "Z", true, true); expect(edit.text()).toBe("abc");
+        });
+        test("Enter separates editing sessions", () => {
+            const edit = new CLineEdit();
+            type(edit, "abc"); press(edit, "Enter"); type(edit, "X");
+            edit.undo(); expect(edit.text()).toBe("abc");
+            edit.undo(); expect(edit.text()).toBe("");
+        });
+    });
+
 });

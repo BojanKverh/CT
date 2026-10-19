@@ -1,3 +1,5 @@
+import { CUndoCommand } from "../core/CUndoCommand.js";
+import { CUndoStack } from "../core/CUndoStack.js";
 import { CSignal } from "../core/CSignal.js";
 import { CWidget } from "./CWidget.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
@@ -17,16 +19,53 @@ import type { CCompleter } from "./CCompleter.js";
 
 type CLineEditValidator = CValidator | ((text: string) => boolean);
 
+type CLineEditState = { text: string; cursorPosition: number; selectionAnchor: number };
+type CLineEditUndoGroup = "insert" | "backspace" | "delete" | null;
+
+/** Internal snapshot command: the editor applies the initial edit after push(). */
+class CLineEditUndoCommand extends CUndoCommand {
+    #after: CLineEditState | null = null;
+    constructor(
+        private readonly before: CLineEditState,
+        private readonly capture: () => CLineEditState,
+        private readonly restore: (state: CLineEditState) => void,
+        private readonly mergeKey: object | null
+    ) { super("Edit text"); }
+
+    override undo(): void {
+        this.#after = this.capture();
+        this.restore(this.before);
+    }
+
+    override redo(): void {
+        if (this.#after !== null) this.restore(this.#after);
+    }
+
+    override id(): number { return this.mergeKey === null ? -1 : 1; }
+
+    override mergeWith(command: CUndoCommand): boolean {
+        return command instanceof CLineEditUndoCommand
+            && this.mergeKey !== null && this.mergeKey === command.mergeKey;
+    }
+}
+
 /** Implements the line edit widget. */
 export class CLineEdit extends CWidget {
 	/** Signal emitted when text changes. */
 	readonly textChanged = new CSignal<[string]>();
 	/** Signal emitted when the user edits text. */
 	readonly textEdited = new CSignal<[string]>();
+	/** Emitted only when undo availability changes. */
+	readonly undoAvailable = new CSignal<[boolean]>();
+	/** Emitted only when redo availability changes. */
+	readonly redoAvailable = new CSignal<[boolean]>();
 
 	/** Signal emitted when Enter or Return confirms acceptable input. */
 	readonly returnPressed = new CSignal();
 	
+	#m_history = new CUndoStack(this);
+	#m_undoGroup: CLineEditUndoGroup = null;
+	#m_mergeKey: object | null = null;
 	#m_text = "";
 	#m_cursorPosition = 0;
     #m_selectionAnchor = 0;
@@ -45,6 +84,8 @@ export class CLineEdit extends CWidget {
 	constructor(parent: CWidget | null = null) {
 		/** Provides super behavior. */
 		super(parent);
+		this.#m_history.canUndoChanged.connect(value => this.undoAvailable.emit(value));
+		this.#m_history.canRedoChanged.connect(value => this.redoAvailable.emit(value));
 
 		this.#m_cursorTimer.setInterval(500);
 
@@ -62,6 +103,8 @@ export class CLineEdit extends CWidget {
 
 	/** Sets the text. */
 	setText(text: string): void {
+		this.#m_history.clear();
+		this.#breakUndoGroup();
 		/** Provides if behavior. */
 		if (this.#m_text === text)
 			return;
@@ -78,6 +121,7 @@ export class CLineEdit extends CWidget {
 	setReadOnly(readOnly: boolean = true): void {
 		/** Provides if behavior. */
 		if (readOnly !== this.#m_readOnly) {
+			this.#breakUndoGroup();
 			this.#m_readOnly = readOnly;
 			this.update();
 		}
@@ -152,6 +196,10 @@ export class CLineEdit extends CWidget {
 
 	/** Inserts . */
 	insert(text: string): void {
+		this.#insert(text, null);
+	}
+
+	#insert(text: string, group: CLineEditUndoGroup): void {
 		/** Provides if behavior. */
 		if (text.length === 0 || this.isReadOnly())
 			return;
@@ -164,6 +212,7 @@ export class CLineEdit extends CWidget {
 		if (!this.#isValidInput(newText))
 			return;
 
+		this.#pushUndoState(this.hasSelection() ? null : group);
 		this.#m_text = newText;
 		this.#m_cursorPosition = start + text.length;
 		this.#m_selectionAnchor = this.#m_cursorPosition;
@@ -219,6 +268,7 @@ export class CLineEdit extends CWidget {
 
     /** Sets the selection. */
     setSelection(anchor: number, position: number): void {
+		this.#breakUndoGroup();
 	    const length = this.#m_text.length;
     	this.#m_selectionAnchor = Math.max(0, Math.min(anchor, length));
     	this.#m_cursorPosition = Math.max(0, Math.min(position, length));
@@ -227,6 +277,7 @@ export class CLineEdit extends CWidget {
 
     /** Clears selection. */
     clearSelection(): void {
+		this.#breakUndoGroup();
 	    this.#m_selectionAnchor = this.#m_cursorPosition;
     }
 
@@ -300,7 +351,15 @@ export class CLineEdit extends CWidget {
 		if (event.ctrl()) {
 			/** Provides switch behavior. */
 			switch (event.key().toLowerCase()) {
-			case "c":
+			case "z":
+                if (event.shift()) this.redo(); else this.undo();
+                event.accept();
+                return;
+            case "y":
+                this.redo();
+                event.accept();
+                return;
+            case "c":
 				void this.copy();
 				event.accept();
 				return;
@@ -321,6 +380,7 @@ export class CLineEdit extends CWidget {
 	    switch (event.key()) {
 		case "Enter":
 		case "Return":
+			this.#breakUndoGroup();
 			if (!this.#isAcceptableInput(this.#m_text)) {
 				event.ignore();
 				return;
@@ -354,6 +414,7 @@ export class CLineEdit extends CWidget {
 
 	        /** Provides if behavior. */
 	        if (this.#m_cursorPosition > 0) {
+				this.#pushUndoState("backspace");
 		        this.#m_text = this.#m_text.slice(0, this.#m_cursorPosition - 1)
 			        + this.#m_text.slice(this.#m_cursorPosition);
         		--this.#m_cursorPosition;
@@ -381,6 +442,7 @@ export class CLineEdit extends CWidget {
             
         	/** Provides if behavior. */
         	if (this.#m_cursorPosition < this.#m_text.length) {
+				this.#pushUndoState("delete");
 		        this.#m_text = this.#m_text.slice(0, this.#m_cursorPosition)
 			        + this.#m_text.slice(this.#m_cursorPosition + 1);
 		        this.#m_selectionAnchor = this.#m_cursorPosition;
@@ -405,8 +467,8 @@ export class CLineEdit extends CWidget {
 	    }			
 
 	    /** Provides if behavior. */
-	    if (event.key().length === 1) {
-		    this.insert(event.key());
+	    if (event.key().length === 1 && !event.ctrl() && !event.alt()) {
+		    this.#insert(event.key(), "insert");
 		    event.accept();
 		    return;
 	    }
@@ -421,6 +483,7 @@ export class CLineEdit extends CWidget {
 			return;
 		}
 
+		this.#breakUndoGroup();
 		const position = this.cursorPositionAt(event.x());
 		this.#m_cursorPosition = position;
 		this.#m_selectionAnchor = position;
@@ -474,6 +537,7 @@ export class CLineEdit extends CWidget {
 
 	/** Handles the focus out event. */
 	protected override focusOutEvent(event: CFocusEvent): void {
+		this.#breakUndoGroup();
 		this.#m_selectingWithMouse = false;
 		this.#stopCursorBlink();
 		this.editingFinished.emit();
@@ -500,6 +564,7 @@ export class CLineEdit extends CWidget {
     }
 
     #moveCursor(position: number, keepAnchor: boolean): void {
+		this.#breakUndoGroup();
 	    const clamped = Math.max(0, Math.min(position, this.#m_text.length));
     	/** Provides if behavior. */
     	if (this.#m_cursorPosition === clamped && (keepAnchor || this.#m_selectionAnchor === clamped))
@@ -516,6 +581,7 @@ export class CLineEdit extends CWidget {
 		/** Provides if behavior. */
 		if (!this.hasSelection() || this.isReadOnly())
 		    return false;
+    	this.#pushUndoState();
     	const start = this.selectionStart();
 	    const end = this.selectionEnd();
     	this.#m_text = this.#m_text.slice(0, start) + this.#m_text.slice(end);
@@ -526,6 +592,63 @@ export class CLineEdit extends CWidget {
 		this.#resetCursorBlink();
 	    this.update();
     	return true;
+    }
+
+
+    /** Returns whether an edit can be undone. */
+    canUndo(): boolean { return this.#m_history.canUndo(); }
+
+    /** Returns whether an undone edit can be restored. */
+    canRedo(): boolean { return this.#m_history.canRedo(); }
+
+    /** Restores the previous text, cursor and selection. */
+    undo(): void {
+        this.#breakUndoGroup();
+        this.#m_history.undo();
+        this.#m_completer?.hidePopup();
+    }
+
+    /** Reapplies the next edit, including its cursor and selection. */
+    redo(): void {
+        this.#breakUndoGroup();
+        this.#m_history.redo();
+        this.#m_completer?.hidePopup();
+    }
+
+    #currentState(): CLineEditState {
+        return {
+            text: this.#m_text,
+            cursorPosition: this.#m_cursorPosition,
+            selectionAnchor: this.#m_selectionAnchor
+        };
+    }
+
+    #pushUndoState(group: CLineEditUndoGroup = null): void {
+        if (group === null || group !== this.#m_undoGroup)
+            this.#m_mergeKey = group === null ? null : {};
+        this.#m_undoGroup = group;
+        this.#m_history.push(new CLineEditUndoCommand(
+            this.#currentState(), () => this.#currentState(),
+            state => this.#restoreState(state), this.#m_mergeKey
+        ));
+    }
+
+    #breakUndoGroup(): void {
+        this.#m_undoGroup = null;
+        this.#m_mergeKey = null;
+    }
+
+    #restoreState(state: CLineEditState): void {
+        const changed = state.text !== this.#m_text;
+        this.#m_text = state.text;
+        this.#m_cursorPosition = state.cursorPosition;
+        this.#m_selectionAnchor = state.selectionAnchor;
+        this.#resetCursorBlink();
+        this.update();
+        if (changed) {
+            this.textChanged.emit(this.#m_text);
+            this.textEdited.emit(this.#m_text);
+        }
     }
 
 	#startCursorBlink(): void {
