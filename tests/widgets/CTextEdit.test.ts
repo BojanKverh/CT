@@ -3126,4 +3126,269 @@ test("imports anchor href into the character format", () => {
 
     });
 
+
+    describe("page navigation and selection autoscroll", () => {
+        const line = "abcdefghij";
+        const text = Array(80).fill(line).join("\n");
+        function editor(): CTextEdit {
+            const edit = new CTextEdit();
+            edit.resize(240, 100);
+            edit.setPlainText(text);
+            edit.setCursorPosition(3);
+            return edit;
+        }
+        function page(edit: CTextEdit, key: "PageUp" | "PageDown", shift = false): void {
+            const event = new CKeyEvent(CEventType.KeyPress, key, false, shift);
+            edit.event(event);
+            expect(event.isAccepted()).toBe(true);
+        }
+        function mouse(edit: CTextEdit, type: CEventType, x: number, y: number): void {
+            // The content receives local coordinates, including the current scroll offset.
+            edit.widget()!.event(new CMouseEvent(type, x + edit.scrollX(),
+                y + edit.scrollY(), CMouseButton.LeftButton));
+        }
+        test("PageDown moves cursor and viewport by approximately a page", () => {
+            const edit = editor();
+            page(edit, "PageDown");
+            const row = Math.floor(edit.cursorPosition() / (line.length + 1));
+            expect(row).toBeGreaterThan(1);
+            expect(edit.cursorPosition() % (line.length + 1)).toBe(3);
+            expect(Math.abs(row * 18 - edit.viewport().height())).toBeLessThanOrEqual(28);
+            expect(edit.scrollY()).toBeGreaterThan(edit.viewport().height() / 2);
+            expect(edit.hasSelection()).toBe(false);
+            expect(edit.canUndo()).toBe(false);
+        });
+        test("PageUp returns toward the previous page", () => {
+            const edit = editor();
+            edit.setCursorPosition(30 * (line.length + 1) + 3);
+            const previous = edit.cursorPosition();
+            const scroll = edit.scrollY();
+            page(edit, "PageUp");
+            expect(edit.cursorPosition()).toBeLessThan(previous - line.length);
+            expect(edit.cursorPosition() % (line.length + 1)).toBe(3);
+            expect(edit.scrollY()).toBeLessThan(scroll);
+        });
+        test("Shift+PageDown extends selection and emits selectionChanged", () => {
+            const edit = editor();
+            const changed = vi.fn();
+            edit.selectionChanged.connect(changed);
+            page(edit, "PageDown", true);
+            expect(edit.selectionStart()).toBe(3);
+            expect(edit.selectionEnd()).toBe(edit.cursorPosition());
+            expect(edit.selectedText()).toBe(text.slice(3, edit.cursorPosition()));
+            expect(changed).toHaveBeenCalledOnce();
+        });
+        test("Shift+PageUp keeps the anchor when extending backwards", () => {
+            const edit = editor();
+            const anchor = 30 * (line.length + 1) + 3;
+            edit.setCursorPosition(anchor);
+            page(edit, "PageUp", true);
+            expect(edit.selectionEnd()).toBe(anchor);
+            expect(edit.selectionStart()).toBe(edit.cursorPosition());
+            expect(edit.selectedText()).toBe(text.slice(edit.cursorPosition(), anchor));
+        });
+        test("an unmodified page key clears an existing selection", () => {
+            const edit = editor();
+            page(edit, "PageDown", true);
+            page(edit, "PageDown");
+            expect(edit.hasSelection()).toBe(false);
+        });
+        test("page movement clamps to the first and last lines", () => {
+            const edit = editor();
+            for (let i = 0; i < 80; ++i) page(edit, "PageDown");
+            expect(edit.cursorPosition()).toBe(79 * (line.length + 1) + 3);
+            for (let i = 0; i < 80; ++i) page(edit, "PageUp");
+            expect(edit.cursorPosition()).toBe(3);
+            expect(edit.scrollY()).toBe(0);
+        });
+        test("page navigation is harmless in an empty document", () => {
+            const edit = new CTextEdit();
+            page(edit, "PageDown", true);
+            page(edit, "PageUp");
+            expect(edit.cursorPosition()).toBe(0);
+            expect(edit.hasSelection()).toBe(false);
+            expect(edit.scrollY()).toBe(0);
+        });
+        test("a taller viewport moves farther", () => {
+            const short = editor();
+            const tall = editor();
+            tall.resize(240, 200);
+            page(short, "PageDown");
+            page(tall, "PageDown");
+            expect(tall.cursorPosition()).toBeGreaterThan(short.cursorPosition());
+        });
+        test("page movement respects rich-text line heights", () => {
+            const plain = editor();
+            const rich = editor();
+            rich.selectAll();
+            rich.setFontSize(30);
+            rich.setCursorPosition(3);
+            page(plain, "PageDown");
+            page(rich, "PageDown");
+            expect(rich.cursorPosition()).toBeGreaterThan(3);
+            expect(rich.cursorPosition()).toBeLessThan(plain.cursorPosition());
+            expect(rich.currentCharFormat().fontSize()).toBe(30);
+        });
+        test("page navigation also works in read-only mode", () => {
+            const edit = editor();
+            edit.setReadOnly(true);
+            page(edit, "PageDown", true);
+            expect(edit.cursorPosition()).toBeGreaterThan(3);
+            expect(edit.hasSelection()).toBe(true);
+            expect(edit.toPlainText()).toBe(text);
+        });
+        test("holding a drag below the viewport keeps scrolling and selecting", () => {
+            vi.useFakeTimers();
+            const edit = editor();
+            mouse(edit, CEventType.MousePress, 6, 6);
+            const anchor = edit.cursorPosition();
+            mouse(edit, CEventType.MouseMove, 6, edit.viewport().height() + 10);
+            const position = edit.cursorPosition();
+            const scroll = edit.scrollY();
+            vi.advanceTimersByTime(200);
+            expect(edit.cursorPosition()).toBeGreaterThan(position);
+            expect(edit.scrollY()).toBeGreaterThan(scroll);
+            expect(edit.selectionStart()).toBe(anchor);
+            expect(edit.toPlainText()).toBe(text);
+            expect(edit.canUndo()).toBe(false);
+            edit.destroy();
+        });
+        test("holding a drag above the viewport scrolls back toward the beginning", () => {
+            vi.useFakeTimers();
+            const edit = editor();
+            edit.setCursorPosition(40 * (line.length + 1));
+            mouse(edit, CEventType.MousePress, 6, 10);
+            const anchor = edit.cursorPosition();
+            mouse(edit, CEventType.MouseMove, 6, -10);
+            const position = edit.cursorPosition();
+            const scroll = edit.scrollY();
+            vi.advanceTimersByTime(200);
+            expect(edit.cursorPosition()).toBeLessThan(position);
+            expect(edit.scrollY()).toBeLessThan(scroll);
+            expect(edit.selectionEnd()).toBe(anchor);
+            edit.destroy();
+        });
+        test("a stationary drag outside a horizontal edge scrolls long lines", () => {
+            vi.useFakeTimers();
+            const edit = editor();
+            edit.setPlainText("abcdefghij".repeat(100));
+            edit.setCursorPosition(0);
+            mouse(edit, CEventType.MousePress, 6, 6);
+            mouse(edit, CEventType.MouseMove, edit.viewport().width() + 10, 6);
+            const position = edit.cursorPosition();
+            const scroll = edit.scrollX();
+            vi.advanceTimersByTime(200);
+            expect(edit.cursorPosition()).toBeGreaterThan(position);
+            expect(edit.scrollX()).toBeGreaterThan(scroll);
+            mouse(edit, CEventType.MouseMove, -10, 6);
+            const rightScroll = edit.scrollX();
+            vi.advanceTimersByTime(200);
+            expect(edit.scrollX()).toBeLessThan(rightScroll);
+            edit.destroy();
+        });
+        test("returning the pointer inside stops automatic selection scrolling", () => {
+            vi.useFakeTimers();
+            const edit = editor();
+            mouse(edit, CEventType.MousePress, 6, 6);
+            mouse(edit, CEventType.MouseMove, 6, edit.viewport().height() + 10);
+            vi.advanceTimersByTime(120);
+            mouse(edit, CEventType.MouseMove, 6, 30);
+            const position = edit.cursorPosition();
+            const scroll = edit.scrollY();
+            vi.advanceTimersByTime(200);
+            expect(edit.cursorPosition()).toBe(position);
+            expect(edit.scrollY()).toBe(scroll);
+            edit.destroy();
+        });
+        test("releasing the mouse stops automatic scrolling", () => {
+            vi.useFakeTimers();
+            const edit = editor();
+            mouse(edit, CEventType.MousePress, 6, 6);
+            mouse(edit, CEventType.MouseMove, 6, edit.viewport().height() + 10);
+            vi.advanceTimersByTime(120);
+            mouse(edit, CEventType.MouseRelease, 6, edit.viewport().height() + 10);
+            const position = edit.cursorPosition();
+            const scroll = edit.scrollY();
+            vi.advanceTimersByTime(200);
+            expect(edit.cursorPosition()).toBe(position);
+            expect(edit.scrollY()).toBe(scroll);
+            edit.destroy();
+        });
+        test("losing focus stops automatic scrolling", () => {
+            vi.useFakeTimers();
+            const edit = editor();
+            mouse(edit, CEventType.MousePress, 6, 6);
+            mouse(edit, CEventType.MouseMove, 6, edit.viewport().height() + 10);
+            vi.advanceTimersByTime(120);
+            const other = new CTextEdit();
+            other.setFocus();
+            const position = edit.cursorPosition();
+            const scroll = edit.scrollY();
+            vi.advanceTimersByTime(200);
+            expect(edit.cursorPosition()).toBe(position);
+            expect(edit.scrollY()).toBe(scroll);
+            edit.destroy();
+            other.destroy();
+        });
+        test("read-only text can still be selected by autoscrolling", () => {
+            vi.useFakeTimers();
+            const edit = editor();
+            edit.setReadOnly(true);
+            mouse(edit, CEventType.MousePress, 6, 6);
+            mouse(edit, CEventType.MouseMove, 6, edit.viewport().height() + 10);
+            const position = edit.cursorPosition();
+            vi.advanceTimersByTime(200);
+            expect(edit.cursorPosition()).toBeGreaterThan(position);
+            expect(edit.toPlainText()).toBe(text);
+            edit.destroy();
+        });
+        test("destroying the editor cancels its selection timer", () => {
+            vi.useFakeTimers();
+            const edit = editor();
+            mouse(edit, CEventType.MousePress, 6, 6);
+            mouse(edit, CEventType.MouseMove, 6, edit.viewport().height() + 10);
+            const move = vi.spyOn(edit, "scrollTo");
+            edit.destroy();
+            move.mockClear();
+            vi.advanceTimersByTime(200);
+            expect(move).not.toHaveBeenCalled();
+        });
+        test("moving outside without a pressed mouse button does not start scrolling", () => {
+            vi.useFakeTimers();
+            const edit = editor();
+            const position = edit.cursorPosition();
+            mouse(edit, CEventType.MouseMove, 6, edit.viewport().height() + 10);
+            vi.advanceTimersByTime(200);
+            expect(edit.cursorPosition()).toBe(position);
+            expect(edit.scrollY()).toBe(0);
+            edit.destroy();
+        });
+        test("disabling the editor stops selection autoscroll", () => {
+            vi.useFakeTimers();
+            const edit = editor();
+            mouse(edit, CEventType.MousePress, 6, 6);
+            mouse(edit, CEventType.MouseMove, 6, edit.viewport().height() + 10);
+            edit.setEnabled(false);
+            const position = edit.cursorPosition();
+            const scroll = edit.scrollY();
+            vi.advanceTimersByTime(200);
+            expect(edit.cursorPosition()).toBe(position);
+            expect(edit.scrollY()).toBe(scroll);
+            edit.destroy();
+        });
+        test("autoscroll stops polling when the document edge is reached", () => {
+            vi.useFakeTimers();
+            const edit = editor();
+            edit.setPlainText("one\ntwo\nthree\nfour\nfive\nsix");
+            edit.setCursorPosition(0);
+            mouse(edit, CEventType.MousePress, 6, 6);
+            mouse(edit, CEventType.MouseMove, 6, edit.viewport().height() + 10);
+            vi.advanceTimersByTime(400);
+            const move = vi.spyOn(edit, "scrollTo");
+            vi.advanceTimersByTime(200);
+            expect(move).not.toHaveBeenCalled();
+            expect(edit.scrollY()).toBeGreaterThan(0);
+            edit.destroy();
+        });
+    });
 });

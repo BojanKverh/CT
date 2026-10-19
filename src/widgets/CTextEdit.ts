@@ -140,6 +140,9 @@ export class CTextEdit extends CScrollArea {
 	#m_cursorPosition = 0;
 	#m_selectionAnchor = 0;
 	#m_selectingWithMouse = false;
+	#m_dragViewportX = 0;
+	#m_dragViewportY = 0;
+	#m_selectionScrollTimer = new CTimer(this);
 	#m_readOnly = false;
 	#m_currentCharFormat = new CTextCharFormat();
 	#m_contextMenu: CMenu | null = null;
@@ -167,6 +170,8 @@ export class CTextEdit extends CScrollArea {
 		this.setWidget(this.#m_contentWidget);
 
 		this.#m_cursorTimer.setInterval(500);
+		this.#m_selectionScrollTimer.setInterval(40);
+		this.#m_selectionScrollTimer.timeout.connect(() => this.#scrollMouseSelection());
 		this.#m_cursorTimer.timeout.connect(() => {
 			this.#m_cursorVisible = !this.#m_cursorVisible;
 			this.#m_contentWidget.update();
@@ -695,6 +700,7 @@ export class CTextEdit extends CScrollArea {
 			event.ignore();
 			return;
 		}
+		this.#m_selectionScrollTimer.stop();
 
 		if (event.clickCount() >= 2) {
             this.#selectMouseText(event, event.clickCount() >= 3);
@@ -731,6 +737,7 @@ export class CTextEdit extends CScrollArea {
 
     #selectMouseText(event: CMouseEvent, paragraph: boolean): void {
         this.#m_selectingWithMouse = false;
+        this.#m_selectionScrollTimer.stop();
         this.setFocus();
         const position = this.#cursorPositionAt(event.x(), event.y(), false);
         const [start, end] = textSelectionRange(this.toPlainText(), position, paragraph);
@@ -747,13 +754,46 @@ export class CTextEdit extends CScrollArea {
 			return;
 		}
 
-		const position = this.#cursorPositionAt(
-			event.x(),
-			event.y()
-		);
-
-		this.#moveCursor(position, true);
+		// Content coordinates change when scrolling; retain the physical pointer
+		// position relative to the viewport for subsequent timer ticks.
+		this.#m_dragViewportX = event.x() - this.scrollX();
+		this.#m_dragViewportY = event.y() - this.scrollY();
+		this.#moveCursor(this.#cursorPositionAt(event.x(), event.y()), true);
+		if (this.#dragOutsideViewport())
+			this.#m_selectionScrollTimer.start();
+		else
+			this.#m_selectionScrollTimer.stop();
 		event.accept();
+	}
+
+	#dragOutsideViewport(): boolean {
+		return this.#m_dragViewportX < 0
+			|| this.#m_dragViewportX >= this.viewport().width()
+			|| this.#m_dragViewportY < 0
+			|| this.#m_dragViewportY >= this.viewport().height();
+	}
+
+	#scrollMouseSelection(): void {
+		if (!this.#m_selectingWithMouse || !this.isEnabled() || !this.#dragOutsideViewport()) {
+			this.#m_selectionScrollTimer.stop();
+			return;
+		}
+		const width = this.viewport().width();
+		const height = this.viewport().height();
+		const oldX = this.scrollX();
+		const oldY = this.scrollY();
+		const step = CTextEdit.#LINE_HEIGHT;
+		const dx = this.#m_dragViewportX < 0 ? -step
+			: this.#m_dragViewportX >= width ? step : 0;
+		const dy = this.#m_dragViewportY < 0 ? -step
+			: this.#m_dragViewportY >= height ? step : 0;
+		this.scrollTo(oldX + dx, oldY + dy);
+		const margin = CTextEdit.#TEXT_MARGIN;
+		const x = Math.max(margin, Math.min(this.#m_dragViewportX, width - margin));
+		const y = Math.max(margin, Math.min(this.#m_dragViewportY, height - margin - 1));
+		this.#moveCursor(this.#cursorPositionAt(x + this.scrollX(), y + this.scrollY()), true);
+		if (this.scrollX() === oldX && this.scrollY() === oldY)
+			this.#m_selectionScrollTimer.stop();
 	}
 
 	/** Provides handle mouse release behavior. */
@@ -771,6 +811,7 @@ export class CTextEdit extends CScrollArea {
 		}
 
 		this.#m_selectingWithMouse = false;
+		this.#m_selectionScrollTimer.stop();
 
 		const position = this.#cursorPositionAt(
 			event.x(),
@@ -846,6 +887,12 @@ export class CTextEdit extends CScrollArea {
 
 		/** Provides switch behavior. */
 		switch (event.key()) {
+		case "PageUp":
+		case "PageDown":
+			this.#moveCursorPage(event.key() === "PageUp" ? -1 : 1, event.shift());
+			event.accept();
+			return;
+
 		case "ArrowLeft":
 			this.#moveCursor(
 				this.#m_cursorPosition - 1,
@@ -999,6 +1046,7 @@ export class CTextEdit extends CScrollArea {
 	): void {
 		this.#breakUndoGroup();
 		this.#m_selectingWithMouse = false;
+		this.#m_selectionScrollTimer.stop();
 		this.#stopCursorBlink();
 
 		super.focusOutEvent(event);
@@ -1293,6 +1341,20 @@ export class CTextEdit extends CScrollArea {
 		const line = this.#lines()[info.line]!;
 
 		return line.start + line.text.length;
+	}
+
+	#moveCursorPage(direction: -1 | 1, keepAnchor: boolean): void {
+		if (this.#m_document.length() === 0 || this.viewport().height() <= 0)
+			return;
+		const current = this.#lineColumnAt(this.#m_cursorPosition);
+		const line = this.#lineLayouts()[current.line]!;
+		const x = CTextEdit.#TEXT_MARGIN + this.#textWidth(line.start, current.column);
+		const pageHeight = Math.max(1, this.viewport().height() - 2 * CTextEdit.#TEXT_MARGIN);
+		const scrollY = this.scrollY();
+		const y = line.y + line.height / 2 + direction * pageHeight;
+		this.#moveCursor(this.#cursorPositionAt(x, y), keepAnchor);
+		this.scrollTo(this.scrollX(), scrollY + direction * pageHeight);
+		this.#ensureCursorVisible();
 	}
 
 	#moveCursorVertical(direction: number, keepAnchor: boolean): void {
@@ -2267,6 +2329,8 @@ export class CTextEdit extends CScrollArea {
     }
 
     override destroy(): void {
+        this.#m_selectingWithMouse = false;
+        this.#m_selectionScrollTimer.stop();
         this.#disposeContextMenu();
         super.destroy();
     }

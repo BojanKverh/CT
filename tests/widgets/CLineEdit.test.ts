@@ -1693,6 +1693,8 @@ describe("CLineEdit", () => {
         function click(edit: CLineEdit, text: string, position: number, count: number,
             type = CEventType.MousePress, button = CMouseButton.LeftButton): CMouseEvent {
             const metrics = new CFontMetrics(edit.font());
+            // These selection tests click characters in fully visible text.
+            edit.resize(Math.ceil(metrics.textWidth(text)) + 20, 28);
             const x = 5 + metrics.textWidth(text.slice(0, position))
                 + metrics.textWidth(text[position] ?? "") / 4;
             const event = new CMouseEvent(type, x, 10, button, false, count);
@@ -1902,6 +1904,33 @@ describe("CLineEdit", () => {
             const copy = new CStyleOptionLineEdit(option);
             expect(copy.horizontalOffset).toBe(option.horizontalOffset);
             expect(copy.horizontalOffset).toBeGreaterThan(0);
+        });
+        test("native double-click selects a visible word after horizontal scrolling", () => {
+            const edit = new CLineEdit();
+            edit.resize(100, 28);
+            const text = "A long prefix ".repeat(10) + "world";
+            edit.setText(text);
+            const metrics = new CFontMetrics(edit.font());
+            const x = 5 + metrics.textWidth(text.slice(0, -5))
+                + metrics.textWidth("w") / 4 - edit.horizontalOffset();
+            expect(edit.horizontalOffset()).toBeGreaterThan(0);
+            expect(x).toBeGreaterThanOrEqual(5);
+            expect(x).toBeLessThan(edit.width() - 5);
+            edit.event(new CMouseEvent(CEventType.MouseDoubleClick, x, 14,
+                CMouseButton.LeftButton, false, 2));
+            expect(edit.selectedText()).toBe("world");
+        });
+        test("double-click selects the first word after returning to the start", () => {
+            const edit = new CLineEdit();
+            edit.resize(100, 28);
+            edit.setText("Hello " + "a long tail ".repeat(10));
+            expect(edit.horizontalOffset()).toBeGreaterThan(0);
+            edit.setCursorPosition(0);
+            expect(edit.horizontalOffset()).toBe(0);
+            const x = 5 + new CFontMetrics(edit.font()).textWidth("H") / 4;
+            edit.event(new CMouseEvent(CEventType.MousePress, x, 14,
+                CMouseButton.LeftButton, false, 2));
+            expect(edit.selectedText()).toBe("Hello");
         });
         test("short text has no offset", () => {
             const edit = editor();
