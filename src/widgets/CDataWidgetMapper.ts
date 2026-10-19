@@ -9,6 +9,7 @@ import { CDateEdit } from "./CDateEdit.js";
 import { CDateTimeEdit } from "./CDateTimeEdit.js";
 import { CDoubleSpinBox } from "./CDoubleSpinBox.js";
 import { CLineEdit } from "./CLineEdit.js";
+import { CNumberEdit } from "./CNumberEdit.js";
 import { CSpinBox } from "./CSpinBox.js";
 import { CTimeEdit } from "./CTimeEdit.js";
 import { CWidget } from "./CWidget.js";
@@ -250,7 +251,9 @@ export class CDataWidgetMapper extends CObject {
 			this.#submitMapping(mapping);
 		};
 		const widget = mapping.widget;
-		if (widget instanceof CLineEdit) {
+		if (widget instanceof CNumberEdit) {
+			widget.editingFinished.connect(submit);
+		} else if (widget instanceof CLineEdit) {
 			widget.editingFinished.connect(submit);
 			widget.textChanged.connect(() => {
 				if (this.#m_mappings.includes(mapping)
@@ -305,6 +308,8 @@ export class CDataWidgetMapper extends CObject {
 	}
 
 	#hasAcceptableInput(widget: CWidget): boolean {
+		if (widget instanceof CNumberEdit)
+			return widget.commit();
 		if (!(widget instanceof CLineEdit))
 			return true;
 
@@ -344,7 +349,10 @@ export class CDataWidgetMapper extends CObject {
 	}
 
 	#setWidgetValue(widget: CWidget, value: unknown): void {
-		if (widget instanceof CLineEdit)
+		if (widget instanceof CNumberEdit) {
+			const number = Number(value);
+			widget.setValue(Number.isFinite(number) ? number : 0);
+		} else if (widget instanceof CLineEdit)
 			widget.setText(value === null || value === undefined ? "" : String(value));
 		else if (widget instanceof CSpinBox)
 			widget.setValue(typeof value === "number" ? value : Number(value) || 0);
@@ -366,6 +374,7 @@ export class CDataWidgetMapper extends CObject {
 	}
 
 	#widgetValue(widget: CWidget): unknown {
+		if (widget instanceof CNumberEdit) return widget.value();
 		if (widget instanceof CLineEdit) return widget.text();
 		if (widget instanceof CSpinBox || widget instanceof CDoubleSpinBox)
 			return widget.value();

@@ -14,7 +14,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CMemorySqlTableAdapter, CSqlEditStrategy, CSqlFilterOperator, CSqlRelation,
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
-	CCompleter, CIntValidator, CNumberEdit, CNumberItemDelegate
+	CCompleter, CNumberEdit, CNumberItemDelegate
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -1110,6 +1110,10 @@ mapperButton.clicked.connect(() => {
 	dlg.setGeometry(70, 80, 920, 400);
 	dlg.setWindowTitle("Employee mapper");
 	const model = new DemoTableModel();
+	for (let row = 0; row < model.rowCount(); ++row) {
+		const index = model.index(row, 2);
+		model.setItemData(index, Number(model.data(index)));
+	}
 
 	const table = new CTableView(dlg);
 	table.setGeometry(20, 20, 420, 300);
@@ -1123,13 +1127,13 @@ mapperButton.clicked.connect(() => {
 	const name = new CLineEdit();
 	const country = new CComboBox();
 	country.addItems(sqlCountries);
-	const age = new CLineEdit();
-	age.setValidator(new CIntValidator(18, 100));
+	const age = new CNumberEdit();
+	age.setDecimals(2);
 	const occupation = new CComboBox();
 	occupation.addItems(sqlOccupations);
 	form.addRow("Name", name);
 	form.addRow("Country", country);
-	form.addRow("Age", age);
+	form.addRow("Age (formula)", age);
 	form.addRow("Occupation", occupation);
 
 	const mapper = new CDataWidgetMapper(dlg);
@@ -1141,10 +1145,15 @@ mapperButton.clicked.connect(() => {
 	mapper.addMapping(occupation, 4);
 
 	const status = new CLabel(dlg);
-	status.setText("For a validation error, enter an age outside 18-100.");
-	status.setGeometry(460, 305, 420, 30);
+	status.setText("Enter confirms the formula; Submit saves the changes.");
+	status.setGeometry(460, 300, 440, 24);
+	const hint = new CLabel(dlg);
+	hint.setText("Try (18+22)/2 or 1/0. Revert discards changes.");
+	hint.setGeometry(460, 326, 440, 20);
 	mapper.validationFailed.connect((_widget, section) => {
-		status.setText(`Invalid value in section ${section}. Correct it and submit again.`);
+		status.setText(section === 2
+			? "Invalid age formula. Correct it or click Revert."
+			: "Invalid value. Correct it and submit again.");
 	});
 	table.selectionModel()?.currentChanged.connect(current =>
 		mapper.setCurrentModelIndex(current));
@@ -1172,7 +1181,7 @@ mapperButton.clicked.connect(() => {
 	save.setGeometry(660, 260, 90, 30);
 	save.clicked.connect(() => {
 		if (mapper.submit())
-			status.setText("Changes submitted successfully.");
+			status.setText(`Changes saved. Age: ${age.value()}.`);
 	});
 
 	const revert = new CPushButton(dlg);

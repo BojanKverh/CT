@@ -1,3 +1,6 @@
+import { CNumberEdit } from "../../src/widgets/CNumberEdit.js";
+import { CEventType } from "../../src/events/CEvent.js";
+import { CKeyEvent } from "../../src/events/CKeyEvent.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
 import { CAbstractTableModel } from "../../src/models/CAbstractTableModel.js";
@@ -370,4 +373,151 @@ describe("CDataWidgetMapper", () => {
 		expect(() => mapper.addMapping(new CLineEdit(), -1)).toThrow(RangeError);
 		expect(() => mapper.addMapping(new CWidget(), 0)).toThrow(TypeError);
 	});
+    describe("number expression mapping", () => {
+        function setup(policy = CDataWidgetMapperSubmitPolicy.ManualSubmit) {
+            const model = new MapperModel();
+            const mapper = new CDataWidgetMapper();
+            const edit = new CNumberEdit();
+            edit.resize(180, 28);
+            mapper.setSubmitPolicy(policy);
+            mapper.setModel(model);
+            mapper.addMapping(edit, 1);
+            mapper.toFirst();
+            return { model, mapper, edit };
+        }
+        function draft(edit: CNumberEdit, text: string): void {
+            edit.setFocus(); edit.selectAll(); edit.insert(text);
+        }
+        test("populates a number rather than treating the widget as a line edit", () => {
+            const { mapper, edit } = setup();
+            expect(edit.value()).toBe(30);
+            expect(edit.expression()).toBe("30");
+            mapper.toNext();
+            expect(edit.value()).toBe(42);
+        });
+        test("submits a formula as a numeric result", () => {
+            const { model, mapper, edit } = setup();
+            draft(edit, "(60+40)*1.22");
+            expect(model.rows[0]?.[1]).toBe(30);
+            expect(mapper.submit()).toBe(true);
+            expect(model.rows[0]?.[1]).toBe(122);
+            expect(typeof model.rows[0]?.[1]).toBe("number");
+            expect(edit.expression()).toBe("122");
+        });
+        test("display precision does not round the submitted result", () => {
+            const { model, mapper, edit } = setup();
+            edit.setDecimals(2);
+            draft(edit, "1/3");
+            expect(mapper.submit()).toBe(true);
+            expect(model.rows[0]?.[1]).toBe(1/3);
+        });
+        test("manual submission rejects invalid arithmetic and focuses the editor", () => {
+            const { model, mapper, edit } = setup();
+            draft(edit, "1/0");
+            const failed = vi.fn();
+            mapper.validationFailed.connect(failed);
+            expect(mapper.submit()).toBe(false);
+            expect(model.rows[0]?.[1]).toBe(30);
+            expect(edit.expression()).toBe("1/0");
+            expect(edit.hasValidationError()).toBe(true);
+            expect(edit.hasFocus()).toBe(true);
+            expect(failed).toHaveBeenCalledExactlyOnceWith(edit, 1);
+        });
+        test("rejects every mapping before writing any fields", () => {
+            const { model, mapper, edit } = setup();
+            const name = new CLineEdit();
+            mapper.clearMapping();
+            mapper.addMapping(name, 0);
+            mapper.addMapping(edit, 1);
+            name.setText("Alicia");
+            draft(edit, "2+");
+            expect(mapper.submit()).toBe(false);
+            expect(model.rows[0]?.[0]).toBe("Alice");
+            expect(model.rows[0]?.[1]).toBe(30);
+        });
+        test("correcting an invalid expression allows a later submit", () => {
+            const { model, mapper, edit } = setup();
+            draft(edit, "2+");
+            expect(mapper.submit()).toBe(false);
+            draft(edit, "2+3");
+            expect(mapper.submit()).toBe(true);
+            expect(model.rows[0]?.[1]).toBe(5);
+            expect(edit.hasValidationError()).toBe(false);
+        });
+        test("AutoSubmit commits on Enter", () => {
+            const { model, edit } = setup(CDataWidgetMapperSubmitPolicy.AutoSubmit);
+            draft(edit, "6*7");
+            edit.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+            expect(model.rows[0]?.[1]).toBe(42);
+        });
+        test("AutoSubmit commits when focus moves to another widget", () => {
+            const { model, edit } = setup(CDataWidgetMapperSubmitPolicy.AutoSubmit);
+            draft(edit, "10*3,5");
+            const other = new CLineEdit();
+            other.setFocus();
+            expect(model.rows[0]?.[1]).toBe(35);
+        });
+        test("AutoSubmit does not submit each intermediate numeric value", () => {
+            const { model, edit } = setup(CDataWidgetMapperSubmitPolicy.AutoSubmit);
+            draft(edit, "2+3");
+            edit.commit();
+            expect(edit.value()).toBe(5);
+            expect(model.rows[0]?.[1]).toBe(30);
+            edit.editingFinished.emit();
+            expect(model.rows[0]?.[1]).toBe(5);
+        });
+        test("AutoSubmit prevents row navigation with invalid arithmetic", () => {
+            const { model, mapper, edit } = setup(CDataWidgetMapperSubmitPolicy.AutoSubmit);
+            draft(edit, "1/0");
+            mapper.toNext();
+            expect(mapper.currentIndex()).toBe(0);
+            expect(model.rows[0]?.[1]).toBe(30);
+            expect(edit.expression()).toBe("1/0");
+        });
+        test("AutoSubmit saves a valid formula before row navigation", () => {
+            const { model, mapper, edit } = setup(CDataWidgetMapperSubmitPolicy.AutoSubmit);
+            draft(edit, "6*7");
+            mapper.toNext();
+            expect(model.rows[0]?.[1]).toBe(42);
+            expect(mapper.currentIndex()).toBe(1);
+            expect(edit.expression()).toBe("42");
+        });
+        test("manual Enter does not write until submit is called", () => {
+            const { model, mapper, edit } = setup();
+            draft(edit, "6*7");
+            edit.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+            expect(model.rows[0]?.[1]).toBe(30);
+            expect(mapper.submit()).toBe(true);
+            expect(model.rows[0]?.[1]).toBe(42);
+        });
+        test("revert discards a formula and clears its error", () => {
+            const { mapper, edit } = setup();
+            draft(edit, "1/0");
+            expect(mapper.submit()).toBe(false);
+            mapper.revert();
+            expect(edit.expression()).toBe("30");
+            expect(edit.value()).toBe(30);
+            expect(edit.hasValidationError()).toBe(false);
+        });
+        test("external numeric data changes update the number editor", () => {
+            const { model, edit } = setup();
+            model.change(0, 1, 12.75);
+            expect(edit.value()).toBe(12.75);
+            expect(edit.expression()).toBe("12.75");
+        });
+        test("clearing the model resets a number editor to zero", () => {
+            const { mapper, edit } = setup();
+            mapper.setModel(null);
+            expect(edit.value()).toBe(0);
+            expect(edit.expression()).toBe("0");
+            expect(edit.hasValidationError()).toBe(false);
+        });
+        test("removing a mapping stops automatic number submissions", () => {
+            const { model, mapper, edit } = setup(CDataWidgetMapperSubmitPolicy.AutoSubmit);
+            mapper.removeMapping(edit);
+            draft(edit, "6*7");
+            edit.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+            expect(model.rows[0]?.[1]).toBe(30);
+        });
+    });
 });
