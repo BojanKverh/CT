@@ -14,7 +14,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CMemorySqlTableAdapter, CSqlEditStrategy, CSqlFilterOperator, CSqlRelation,
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
-	CCompleter, CIntValidator
+	CCompleter, CIntValidator, CNumberEdit
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -1282,6 +1282,11 @@ undoDemoButton.clicked.connect(() => {
     close.clicked.connect(() => dlg.accept());
     dlg.exec();
 });
+
+const edit = new CNumberEdit(parent);
+edit.setGeometry(520, 780, 180, 28);
+edit.setExpression("(60+40)*1.22");
+edit.valueChanged.connect(value => console.log(value));
 
 const lab = new CLabel(parent);
 lab.setGeometry(250, 50, 130, 40);

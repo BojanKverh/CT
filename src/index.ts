@@ -1,3 +1,5 @@
+import { CNumberEdit } from "./widgets/CNumberEdit.js";
+
 export { CObject } from "./core/CObject.js";
 export { CUndoCommand } from "./core/CUndoCommand.js";
 export { CUndoStack } from "./core/CUndoStack.js";
@@ -15,13 +17,7 @@ export { CPaintEngine } from "./painting/CPaintEngine.js";
 export { CCanvasPaintEngine } from "./painting/CCanvasPaintEngine.js";
 export { CPainter } from "./painting/CPainter.js";
 export { CPalette, CPaletteColorRole } from "./gui/CPalette.js";
-export {
-	CFont,
-	CFontStyle,
-	CFontWeight,
-	CFontStretch,
-	CFontCapitalization
-} from "./gui/CFont.js";
+export { CFont, CFontStyle, CFontWeight, CFontStretch, CFontCapitalization } from "./gui/CFont.js";
 export { CApplication } from "./core/CApplication.js";
 export { CWidget } from "./widgets/CWidget.js";
 export { CPushButton } from "./widgets/CPushButton.js";
@@ -54,10 +50,7 @@ export { CTabWidget } from "./widgets/CTabWidget.js";
 export { CFrameShadow, CFrameShape } from "./gui/CFrameStyle.js";
 export { CFrame } from "./widgets/CFrame.js";
 export { CComboBox } from "./widgets/CComboBox.js";
-export {
-	CCompleter,
-	CCompleterCaseSensitivity
-} from "./widgets/CCompleter.js";
+export { CCompleter, CCompleterCaseSensitivity } from "./widgets/CCompleter.js";
 export { CFormLayout } from "./layouts/CFormLayout.js";
 export { CToolButton } from "./widgets/CToolButton.js";
 export { CToolButtonStyle } from "./gui/CToolButtonStyle.js"
@@ -116,10 +109,7 @@ export { CDoubleValidator } from "./util/CDoubleValidator.js"
 export { CIntItemDelegate } from "./widgets/CIntItemDelegate.js"
 export { CDoubleItemDelegate } from "./widgets/CDoubleItemDelegate.js"
 export { CComboBoxItemDelegate } from "./widgets/CComboBoxItemDelegate.js";
-export {
-	CDataWidgetMapper,
-	CDataWidgetMapperSubmitPolicy
-} from "./widgets/CDataWidgetMapper.js";
+export { CDataWidgetMapper, CDataWidgetMapperSubmitPolicy } from "./widgets/CDataWidgetMapper.js";
 export { CDateItemDelegate } from "./widgets/CDateItemDelegate.js";
 export { CTimeItemDelegate } from "./widgets/CTimeItemDelegate.js";
 export { CDateTimeItemDelegate } from "./widgets/CDateTimeItemDelegate.js";
@@ -135,3 +125,4 @@ export { CSqlFilterOperator, type CSqlFilter } from "./models/CSqlFilter.js";
 export { CSqlRelation } from "./models/CSqlRelation.js";
 export { CSqlRelationalDelegate } from "./widgets/CSqlRelationalDelegate.js";
 export { CSqlRelationalTableModel } from "./models/CSqlRelationalTableModel.js";
+export { CNumberEdit } from "./widgets/CNumberEdit.js";
