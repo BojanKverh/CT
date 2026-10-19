@@ -1,3 +1,6 @@
+import { CTableView } from "../../src/widgets/CTableView.js";
+import { CNumberEdit } from "../../src/widgets/CNumberEdit.js";
+import { CNumberItemDelegate } from "../../src/widgets/CNumberItemDelegate.js";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { CApplication } from "../../src/core/CApplication.js";
@@ -932,4 +935,142 @@ describe("CTableWidget", () => {
 		expect(item.data()).toBe("Italy");
 		expect(editor.parent()).toBeNull();
 	});
+    describe("number-expression delegate integration", () => {
+        function setup(initial = 30, explicit = true) {
+            const table = new CTableWidget();
+            table.resize(500, 200);
+            table.setRowCount(1);
+            table.setColumnCount(1);
+            const item = new CTableWidgetItem(initial);
+            table.setItem(0, 0, item);
+            const column = 0;
+            const index = table.indexFromItem(item);
+            if (explicit) table.setItemDelegateForColumn(column, new CNumberItemDelegate());
+            return { table, index, column, value: () => item.data() };
+        }
+
+        function open(table: CTableView, index: CModelIndex): CNumberEdit {
+            table.setCurrentIndex(index);
+            table.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress, "F2"));
+            const editor = findEditor(table, CNumberEdit);
+            expect(editor).not.toBeNull();
+            return editor!;
+        }
+        function enterFormula(editor: CNumberEdit, formula: string): void {
+            editor.setFocus(); editor.selectAll(); editor.insert(formula);
+        }
+        test("F2 opens the configured arithmetic editor with the cell value", () => {
+            const { table, index } = setup();
+            const editor = open(table, index);
+            expect(editor.value()).toBe(30);
+            expect(editor.expression()).toBe("30");
+            expect(editor.hasFocus()).toBe(true);
+            expect(table.currentIndex().equals(index)).toBe(true);
+        });
+        test("double-click opens the arithmetic editor for the clicked cell", () => {
+            const { table, index, column } = setup();
+            const x = table.horizontalHeader().sectionPosition(column) + 10;
+            table.contentMouseDoubleClickEvent(new CMouseEvent(
+                CEventType.MouseDoubleClick, x, 5, CMouseButton.LeftButton));
+            const editor = findEditor(table, CNumberEdit);
+            expect(editor).not.toBeNull();
+            expect(editor?.value()).toBe(30);
+            expect(table.currentIndex().equals(index)).toBe(true);
+        });
+        test("Enter stores the numeric formula result and detaches the editor", () => {
+            const { table, index, value } = setup();
+            const editor = open(table, index);
+            enterFormula(editor, "(60+40)*1.22");
+            editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+            expect(value()).toBe(122);
+            expect(typeof value()).toBe("number");
+            expect(editor.parent()).toBeNull();
+        });
+        test("Return supports decimal commas", () => {
+            const { table, index, value } = setup();
+            const editor = open(table, index);
+            enterFormula(editor, "(60+40)*1,22");
+            editor.event(new CKeyEvent(CEventType.KeyPress, "Return"));
+            expect(value()).toBe(122);
+            expect(editor.parent()).toBeNull();
+        });
+        test("display precision does not round the model value", () => {
+            const { table, index, value } = setup();
+            const editor = open(table, index);
+            editor.setDecimals(2);
+            enterFormula(editor, "1/3");
+            editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+            expect(value()).toBe(1/3);
+        });
+        test("Escape discards a changed expression", () => {
+            const { table, index, value } = setup();
+            const editor = open(table, index);
+            enterFormula(editor, "99*2");
+            editor.event(new CKeyEvent(CEventType.KeyPress, "Escape"));
+            expect(value()).toBe(30);
+            expect(editor.parent()).toBeNull();
+        });
+        test("invalid Enter shows ERR and leaves model data unchanged", () => {
+            const { table, index, value } = setup();
+            const editor = open(table, index);
+            enterFormula(editor, "1/0");
+            editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+            expect(value()).toBe(30);
+            expect(editor.displayText()).toBe("ERR");
+            expect(editor.expression()).toBe("1/0");
+            expect(findEditor(table, CNumberEdit)).toBe(editor);
+        });
+        test("an invalid draft can be corrected and committed", () => {
+            const { table, index, value } = setup();
+            const editor = open(table, index);
+            enterFormula(editor, "(2+");
+            editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+            expect(value()).toBe(30);
+            enterFormula(editor, "6*7");
+            editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+            expect(value()).toBe(42);
+            expect(editor.parent()).toBeNull();
+        });
+        test("Escape can cancel an editor showing ERR", () => {
+            const { table, index, value } = setup();
+            const editor = open(table, index);
+            enterFormula(editor, "1/0");
+            editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+            editor.setFocus();
+            editor.event(new CKeyEvent(CEventType.KeyPress, "Escape"));
+            expect(value()).toBe(30);
+            expect(editor.parent()).toBeNull();
+        });
+        test("reopening uses the stored result instead of the previous formula", () => {
+            const { table, index } = setup();
+            const editor = open(table, index);
+            enterFormula(editor, "(60+40)*1.22");
+            editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+            const reopened = open(table, index);
+            expect(reopened).not.toBe(editor);
+            expect(reopened.expression()).toBe("122");
+            expect(reopened.value()).toBe(122);
+        });
+        test("integers still use a spin box without an explicit delegate", () => {
+            const { table, index } = setup(30, false);
+            table.edit(index);
+            expect(findEditor(table, CSpinBox)).not.toBeNull();
+            expect(findEditor(table, CNumberEdit)).toBeNull();
+        });
+        test("decimal numbers still use a double spin box without an explicit delegate", () => {
+            const { table, index } = setup(12.5, false);
+            table.edit(index);
+            expect(findEditor(table, CDoubleSpinBox)).not.toBeNull();
+            expect(findEditor(table, CNumberEdit)).toBeNull();
+        });
+        test("removing the arithmetic delegate restores automatic integer editing", () => {
+            const { table, index, column } = setup();
+            const editor = open(table, index);
+            editor.event(new CKeyEvent(CEventType.KeyPress, "Escape"));
+            table.setItemDelegateForColumn(column, null);
+            table.edit(index);
+            expect(findEditor(table, CSpinBox)).not.toBeNull();
+            expect(findEditor(table, CNumberEdit)).toBeNull();
+        });
+    });
 });
