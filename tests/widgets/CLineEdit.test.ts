@@ -1759,4 +1759,117 @@ describe("CLineEdit", () => {
         });
     });
 
+
+    describe("word keyboard navigation", () => {
+        function press(edit: CLineEdit, key: string, shift = false): CKeyEvent {
+            const event = new CKeyEvent(CEventType.KeyPress, key, true, shift);
+            edit.event(event);
+            return event;
+        }
+        test("Ctrl+Left moves to preceding word starts", () => {
+            const edit = new CLineEdit();
+            edit.setText("one two three");
+            press(edit, "ArrowLeft"); expect(edit.cursorPosition()).toBe(8);
+            press(edit, "ArrowLeft"); expect(edit.cursorPosition()).toBe(4);
+            press(edit, "ArrowLeft"); expect(edit.cursorPosition()).toBe(0);
+            press(edit, "ArrowLeft"); expect(edit.cursorPosition()).toBe(0);
+        });
+        test("Ctrl+Right moves to following word starts and clamps at the end", () => {
+            const edit = new CLineEdit();
+            edit.setText("one two three"); edit.setCursorPosition(0);
+            press(edit, "ArrowRight"); expect(edit.cursorPosition()).toBe(4);
+            press(edit, "ArrowRight"); expect(edit.cursorPosition()).toBe(8);
+            press(edit, "ArrowRight"); expect(edit.cursorPosition()).toBe(13);
+            press(edit, "ArrowRight"); expect(edit.cursorPosition()).toBe(13);
+        });
+        test("Ctrl+Shift keeps the selection anchor when reversing direction", () => {
+            const edit = new CLineEdit();
+            edit.setText("one two three"); edit.setCursorPosition(4);
+            press(edit, "ArrowRight", true);
+            expect(edit.selectedText()).toBe("two ");
+            press(edit, "ArrowLeft", true);
+            expect(edit.hasSelection()).toBe(false);
+            press(edit, "ArrowLeft", true);
+            expect(edit.selectedText()).toBe("one ");
+            expect(edit.cursorPosition()).toBe(0);
+        });
+        test("Ctrl navigation clears a selection without changing text or history", () => {
+            const edit = new CLineEdit();
+            edit.setText("one two three"); edit.setSelection(0, 4);
+            const event = press(edit, "ArrowRight");
+            expect(edit.hasSelection()).toBe(false);
+            expect(edit.cursorPosition()).toBe(8);
+            expect(edit.text()).toBe("one two three");
+            expect(edit.canUndo()).toBe(false);
+            expect(event.isAccepted()).toBe(true);
+        });
+        test("Ctrl+Backspace deletes one word and restores the original cursor", () => {
+            const edit = new CLineEdit();
+            edit.setText("one two");
+            press(edit, "Backspace"); expect(edit.text()).toBe("one ");
+            edit.undo(); expect(edit.text()).toBe("one two");
+            expect(edit.cursorPosition()).toBe(7);
+            edit.redo(); expect(edit.text()).toBe("one ");
+        });
+        test("Ctrl+Delete removes the following word and its whitespace", () => {
+            const edit = new CLineEdit();
+            edit.setText("one two"); edit.setCursorPosition(0);
+            press(edit, "Delete"); expect(edit.text()).toBe("two");
+            edit.undo(); expect(edit.text()).toBe("one two");
+            expect(edit.cursorPosition()).toBe(0);
+            edit.redo(); expect(edit.text()).toBe("two");
+        });
+        test("successive word deletions remain separate undo steps", () => {
+            const edit = new CLineEdit();
+            edit.setText("one two three");
+            press(edit, "Backspace"); press(edit, "Backspace");
+            expect(edit.text()).toBe("one ");
+            edit.undo(); expect(edit.text()).toBe("one two ");
+            edit.undo(); expect(edit.text()).toBe("one two three");
+        });
+        test("word deletion removes only the existing backwards selection", () => {
+            const edit = new CLineEdit();
+            edit.setText("one two three"); edit.setSelection(7, 4);
+            press(edit, "Delete"); expect(edit.text()).toBe("one  three");
+            edit.undo();
+            expect(edit.text()).toBe("one two three");
+            expect(edit.selectedText()).toBe("two");
+            expect(edit.cursorPosition()).toBe(4);
+        });
+        test("word deletion at a boundary creates no undo step", () => {
+            const edit = new CLineEdit();
+            edit.setText("one"); edit.setCursorPosition(0);
+            press(edit, "Backspace");
+            edit.setCursorPosition(3); press(edit, "Delete");
+            expect(edit.text()).toBe("one");
+            expect(edit.canUndo()).toBe(false);
+        });
+        test("read-only mode permits word navigation and selection but blocks deletion", () => {
+            const edit = new CLineEdit();
+            edit.setText("one two"); edit.setReadOnly(true);
+            press(edit, "ArrowLeft"); expect(edit.cursorPosition()).toBe(4);
+            press(edit, "ArrowLeft", true); expect(edit.selectedText()).toBe("one ");
+            press(edit, "Backspace"); press(edit, "Delete");
+            expect(edit.text()).toBe("one two");
+            expect(edit.canUndo()).toBe(false);
+        });
+        test("word navigation ends the current typing undo group", () => {
+            const edit = new CLineEdit();
+            for (const key of "one two")
+                edit.event(new CKeyEvent(CEventType.KeyPress, key));
+            press(edit, "ArrowLeft");
+            edit.event(new CKeyEvent(CEventType.KeyPress, "X"));
+            edit.undo(); expect(edit.text()).toBe("one two");
+            edit.undo(); expect(edit.text()).toBe("");
+        });
+        test("new word deletion after undo discards redo", () => {
+            const edit = new CLineEdit();
+            edit.setText("one two"); edit.insert(" three"); edit.undo();
+            press(edit, "Backspace");
+            expect(edit.canRedo()).toBe(false);
+            expect(edit.text()).toBe("one ");
+        });
+
+    });
+
 });

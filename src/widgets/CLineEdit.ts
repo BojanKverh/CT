@@ -1,3 +1,4 @@
+import { previousWordPosition, nextWordPosition } from "../util/CTextWordBoundary.js";
 import { textSelectionRange } from "../util/CTextSelection.js";
 import { CAction } from "../core/CAction.js";
 import { CMenu } from "./CMenu.js";
@@ -361,6 +362,26 @@ export class CLineEdit extends CWidget {
 		if (event.ctrl()) {
 			/** Provides switch behavior. */
 			switch (event.key().toLowerCase()) {
+
+            case "arrowleft":
+                this.#moveCursor(previousWordPosition(this.#m_text,
+                    this.#m_cursorPosition), event.shift());
+                event.accept();
+                return;
+            case "arrowright":
+                this.#moveCursor(nextWordPosition(this.#m_text,
+                    this.#m_cursorPosition), event.shift());
+                event.accept();
+                return;
+            case "backspace":
+                this.#deleteWord(-1);
+                event.accept();
+                return;
+            case "delete":
+                this.#deleteWord(1);
+                event.accept();
+                return;
+
 			case "a":
                 this.selectAll();
                 event.accept();
@@ -612,6 +633,28 @@ export class CLineEdit extends CWidget {
 	    	this.#m_selectionAnchor = clamped;
 		this.#resetCursorBlink();
 	    this.update();
+    }
+
+
+    /** Deletes one word as an independent undo command. */
+    #deleteWord(direction: -1 | 1): void {
+        if (this.isReadOnly()) return;
+        if (this.#deleteSelection()) return;
+        const text = this.#m_text;
+        const target = direction < 0
+            ? previousWordPosition(text, this.#m_cursorPosition)
+            : nextWordPosition(text, this.#m_cursorPosition);
+        const start = Math.min(target, this.#m_cursorPosition);
+        const end = Math.max(target, this.#m_cursorPosition);
+        if (start === end) return;
+        this.#pushUndoState();
+        this.#m_text = text.slice(0, start) + text.slice(end);
+        this.#m_cursorPosition = start;
+        this.#m_selectionAnchor = start;
+        this.textChanged.emit(this.#m_text);
+        this.textEdited.emit(this.#m_text);
+        this.#resetCursorBlink();
+        this.update();
     }
 
     #deleteSelection(): boolean {

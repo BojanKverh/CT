@@ -1,3 +1,4 @@
+import { previousWordPosition, nextWordPosition } from "../util/CTextWordBoundary.js";
 import { textSelectionRange } from "../util/CTextSelection.js";
 import { CAction } from "../core/CAction.js";
 import { CMenu } from "./CMenu.js";
@@ -786,6 +787,26 @@ export class CTextEdit extends CScrollArea {
 		if (event.ctrl()) {
 			/** Provides switch behavior. */
 			switch (event.key().toLowerCase()) {
+
+            case "arrowleft":
+                this.#moveCursor(previousWordPosition(this.toPlainText(),
+                    this.#m_cursorPosition), event.shift());
+                event.accept();
+                return;
+            case "arrowright":
+                this.#moveCursor(nextWordPosition(this.toPlainText(),
+                    this.#m_cursorPosition), event.shift());
+                event.accept();
+                return;
+            case "backspace":
+                this.#deleteWord(-1);
+                event.accept();
+                return;
+            case "delete":
+                this.#deleteWord(1);
+                event.accept();
+                return;
+
 			case "a":
 				this.selectAll();
 				event.accept();
@@ -1372,6 +1393,30 @@ export class CTextEdit extends CScrollArea {
 		this.#resetCursorBlink();
 		this.#m_contentWidget.update();
 	}
+
+
+    /** Deletes one word as an independent undo command. */
+    #deleteWord(direction: -1 | 1): void {
+        if (this.isReadOnly()) return;
+        if (this.#deleteSelection()) return;
+        const text = this.toPlainText();
+        const target = direction < 0
+            ? previousWordPosition(text, this.#m_cursorPosition)
+            : nextWordPosition(text, this.#m_cursorPosition);
+        const start = Math.min(target, this.#m_cursorPosition);
+        const end = Math.max(target, this.#m_cursorPosition);
+        if (start === end) return;
+        this.#pushUndoState();
+        this.#m_document.remove(start, end - start);
+        this.#m_cursorPosition = start;
+        this.#m_selectionAnchor = start;
+        this.#syncCurrentCharFormatFromCursor();
+        this.textChanged.emit();
+        this.#updateContentGeometry();
+        this.#ensureCursorVisible();
+        this.#resetCursorBlink();
+        this.#m_contentWidget.update();
+    }
 
 	#deleteSelection(): boolean {
 		/** Provides if behavior. */
