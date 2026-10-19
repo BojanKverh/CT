@@ -1,3 +1,5 @@
+import { CLineEdit } from "../../src/widgets/CLineEdit.js";
+import { CTextEdit } from "../../src/widgets/CTextEdit.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CApplication } from "../../src/core/CApplication";
 import { CWidget } from "../../src/widgets/CWidget";
@@ -22,6 +24,21 @@ import { CDrag } from "../../src/core/CDrag";
 import { CMimeData } from "../../src/core/CMimeData";
 import { CClipboard } from "../../src/core/CClipboard";
 import { CFont } from "../../src/gui/CFont";
+
+class KeyboardContextTrackingWidget extends CWidget {
+    readonly requests: CContextMenuEvent[] = [];
+    acceptContext = true;
+    keyPresses = 0;
+    protected override contextMenuEvent(event: CContextMenuEvent): void {
+        this.requests.push(event);
+        if (this.acceptContext) event.accept(); else event.ignore();
+    }
+    protected override keyPressEvent(event: CKeyEvent): void {
+        ++this.keyPresses;
+        event.ignore();
+    }
+}
+
 
 class RenderTrackingWidget extends CWidget {
     renderCalls = 0;
@@ -2214,4 +2231,115 @@ describe("CApplication", () => {
 
 		app.destroy();
 	});
+describe("keyboard context menus", () => {
+    beforeEach(() => {
+        new CApplication(createTestCanvas());
+    });
+
+    function key(key: string, options: {
+        shiftKey?: boolean; ctrlKey?: boolean; altKey?: boolean; metaKey?: boolean; type?: string
+    } = {}) {
+        const preventDefault = vi.fn();
+        window.dispatchEvent({
+            type: "keydown", key, shiftKey: false, ctrlKey: false,
+            altKey: false, metaKey: false, ...options, preventDefault
+        } as unknown as KeyboardEvent);
+        return preventDefault;
+    }
+
+    test("Shift+F10 dispatches a keyboard context request instead of a key press", () => {
+        const widget = new KeyboardContextTrackingWidget();
+        widget.setGeometry(30, 40, 100, 60);
+        CApplication.instance().setFocusWidget(widget);
+        const prevented = key("F10", { shiftKey: true });
+        expect(widget.requests).toHaveLength(1);
+        expect(widget.requests[0]!.reason()).toBe(CContextMenuReason.Keyboard);
+        expect(widget.requests[0]!.pos().x()).toBe(50);
+        expect(widget.requests[0]!.pos().y()).toBe(30);
+        expect(widget.requests[0]!.globalPos().x()).toBe(80);
+        expect(widget.requests[0]!.globalPos().y()).toBe(70);
+        expect(widget.keyPresses).toBe(0);
+        expect(prevented).toHaveBeenCalledOnce();
+    });
+    test("ContextMenu key opens a context menu", () => {
+        const widget = new KeyboardContextTrackingWidget();
+        CApplication.instance().setFocusWidget(widget);
+        expect(key("ContextMenu")).toHaveBeenCalledOnce();
+        expect(widget.requests).toHaveLength(1);
+    });
+    test("ignored requests bubble to the parent with remapped coordinates", () => {
+        const parent = new KeyboardContextTrackingWidget();
+        parent.setGeometry(20, 30, 300, 200);
+        const child = new KeyboardContextTrackingWidget(parent);
+        child.setGeometry(10, 15, 80, 40);
+        child.acceptContext = false;
+        CApplication.instance().setFocusWidget(child);
+        const prevented = key("ContextMenu");
+        expect(child.requests).toHaveLength(1);
+        expect(parent.requests).toHaveLength(1);
+        expect(parent.requests[0]!.pos().x()).toBe(50);
+        expect(parent.requests[0]!.pos().y()).toBe(35);
+        expect(parent.requests[0]!.globalPos().x()).toBe(70);
+        expect(parent.requests[0]!.globalPos().y()).toBe(65);
+        expect(prevented).toHaveBeenCalledOnce();
+    });
+    test("unhandled requests preserve normal key dispatch and browser default", () => {
+        const widget = new KeyboardContextTrackingWidget();
+        widget.acceptContext = false;
+        CApplication.instance().setFocusWidget(widget);
+        expect(key("ContextMenu")).not.toHaveBeenCalled();
+        expect(widget.requests).toHaveLength(1);
+        expect(widget.keyPresses).toBe(1);
+    });
+    test("plain F10 and additional modifiers do not request a menu", () => {
+        const widget = new KeyboardContextTrackingWidget();
+        CApplication.instance().setFocusWidget(widget);
+        key("F10");
+        key("F10", { shiftKey: true, ctrlKey: true });
+        key("F10", { shiftKey: true, altKey: true });
+        key("ContextMenu", { metaKey: true });
+        expect(widget.requests).toHaveLength(0);
+        expect(widget.keyPresses).toBe(4);
+    });
+    test("key release does not dispatch another context request", () => {
+        const widget = new KeyboardContextTrackingWidget();
+        CApplication.instance().setFocusWidget(widget);
+        key("ContextMenu", { type: "keyup" });
+        expect(widget.requests).toHaveLength(0);
+    });
+    test("a shortcut without focus does nothing", () => {
+        expect(key("ContextMenu")).not.toHaveBeenCalled();
+    });
+    test("disabled or hidden focus widgets do not receive context requests", () => {
+        const widget = new KeyboardContextTrackingWidget();
+        CApplication.instance().setFocusWidget(widget);
+        widget.setEnabled(false);
+        key("ContextMenu");
+        widget.setEnabled(true); widget.hide();
+        key("ContextMenu");
+        expect(widget.requests).toHaveLength(0);
+    });
+    test("Shift+F10 opens the line editor standard menu and Escape restores focus", () => {
+        const edit = new CLineEdit();
+        edit.setGeometry(20, 20, 160, 28);
+        edit.setText("Hello"); edit.selectAll(); edit.setFocus();
+        key("F10", { shiftKey: true });
+        expect(CApplication.instance().popupWidgets()).toHaveLength(1);
+        expect(edit.selectedText()).toBe("Hello");
+        key("Escape");
+        expect(CApplication.instance().popupWidgets()).toHaveLength(0);
+        expect(edit.hasFocus()).toBe(true);
+    });
+    test("ContextMenu opens the text editor standard menu", () => {
+        const edit = new CTextEdit();
+        edit.setGeometry(20, 20, 300, 180);
+        edit.setPlainText("Hello"); edit.selectAll(); edit.setFocus();
+        key("ContextMenu");
+        expect(CApplication.instance().popupWidgets()).toHaveLength(1);
+        expect(edit.selectedText()).toBe("Hello");
+        key("Escape");
+        expect(edit.hasFocus()).toBe(true);
+    });
+});
+
 });

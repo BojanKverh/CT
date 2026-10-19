@@ -865,6 +865,16 @@ export class CApplication extends CObject {
 		if (target === null)
 			return;
 
+		const requestsContextMenu = keyboardEvent.key === "ContextMenu"
+			|| (keyboardEvent.key === "F10" && keyboardEvent.shiftKey);
+		if (type === CEventType.KeyPress && requestsContextMenu
+			&& !keyboardEvent.ctrlKey && !keyboardEvent.altKey && !keyboardEvent.metaKey
+			&& this.#dispatchKeyboardContextMenuEvent(target)) {
+			if (typeof keyboardEvent.preventDefault === "function")
+				keyboardEvent.preventDefault();
+			return;
+		}
+
 		const altGraph = typeof keyboardEvent.getModifierState === "function"? 
 			keyboardEvent.getModifierState("AltGraph") : false;
 		const event = new CKeyEvent(type, keyboardEvent.key,
@@ -1122,6 +1132,25 @@ export class CApplication extends CObject {
 			visit(widget);
 
 		return result;
+	}
+
+	/** Opens a keyboard context menu at the focused widget's centre. */
+	#dispatchKeyboardContextMenuEvent(focused: CWidget): boolean {
+		if (!focused.isEnabled() || !focused.isVisible())
+			return false;
+
+		const position = focused.mapToCanvas(
+			Math.max(0, Math.floor(focused.width() / 2)),
+			Math.max(0, Math.floor(focused.height() / 2)));
+		let target: CWidget | null = focused;
+		while (target !== null) {
+			const event = new CContextMenuEvent(CContextMenuReason.Keyboard,
+				target.mapFromCanvas(position.x(), position.y()), position);
+			if (target.event(event))
+				return true;
+			target = target.parent();
+		}
+		return false;
 	}
 
 	#dispatchContextMenuEvent(domEvent: PointerEvent): void {
