@@ -9,6 +9,8 @@ export class CStyleOptionLineEdit extends CStyleOption {
 	 * Returns or updates the text value.
 	 */
 text = "";
+	/** Horizontal displacement of text and selection, in pixels. */
+	horizontalOffset = 0;
 		/**
 	 * Returns or updates the cursor position value.
 	 */
@@ -38,6 +40,7 @@ constructor(other: CStyleOptionLineEdit | null = null) {
 			return;
 
 		this.text = other.text;
+		this.horizontalOffset = other.horizontalOffset;
 		this.cursorPosition = other.cursorPosition;
 		this.cursorVisible = other.cursorVisible;
 		this.selectionStart = other.selectionStart;
@@ -53,6 +56,7 @@ initFromLineEdit(lineEdit: CLineEdit): void {
 		this.initFrom(lineEdit);
 
 		this.text = lineEdit.text();
+		this.horizontalOffset = lineEdit.horizontalOffset();
 		this.cursorPosition = lineEdit.cursorPosition();
 		this.cursorVisible = lineEdit.cursorVisible();
 		this.selectionStart = lineEdit.selectionStart();

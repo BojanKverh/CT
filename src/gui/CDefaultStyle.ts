@@ -241,12 +241,15 @@ override drawLineEdit(painter: CPainter, option: CStyleOptionLineEdit): void {
 		painter.setStrokeStyle(option.palette.color(CPaletteColorRole.WindowText).toCss());
 		painter.strokeRect(option.rect);
 
-		painter.setFont(option.font);
+		painter.save();
+        painter.clipRect(new CRect(5, 2, Math.max(0, option.rect.width() - 10),
+            Math.max(0, option.rect.height() - 4)));
+        painter.setFont(option.font);
 		painter.setTextAlign("left");
 		painter.setTextBaseline("middle");
 
 		const textY = option.rect.height() / 2;
-		const textX = 5;
+		const textX = 5 - option.horizontalOffset;
 
 		if (!hasSelection) {
 			const textRole = enabled? CPaletteColorRole.Text : CPaletteColorRole.DisabledText;
@@ -282,6 +285,7 @@ override drawLineEdit(painter: CPainter, option: CStyleOptionLineEdit): void {
 			painter.setStrokeStyle(option.palette.color(CPaletteColorRole.Text).toCss());
 			painter.drawLine(cursorX, 4, cursorX, option.rect.height() - 4);
 		}
+        painter.restore();
 	}
 
 		/**

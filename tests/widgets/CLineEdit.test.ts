@@ -11,6 +11,7 @@ import { CMouseEvent, CMouseButton } from "../../src/index.js";
 import { CEventType } from "../../src/events/CEvent.js";
 import { CKeyEvent } from "../../src/index.js";
 import { CFontMetrics } from "../../src/gui/CFontMetrics.js";
+import { CStyleOptionLineEdit } from "../../src/gui/CStyleOptionLineEdit.js";
 import { CClipboard } from "../../src/core/CClipboard.js";
 import { CIntValidator } from "../../src/util/CIntValidator.js";
 import { CCompleter } from "../../src/widgets/CCompleter.js";
@@ -1872,4 +1873,135 @@ describe("CLineEdit", () => {
 
     });
 
+
+    describe("horizontal scrolling", () => {
+        const text = "abcdefghijklmnopqrstuvwxyz".repeat(3);
+        function editor(): CLineEdit {
+            const edit = new CLineEdit();
+            edit.resize(90, 28);
+            edit.setText(text);
+            return edit;
+        }
+        function expectCursorVisible(edit: CLineEdit): void {
+            const metrics = new CFontMetrics(edit.font());
+            const x = 5 + metrics.textWidth(edit.text().slice(0, edit.cursorPosition()))
+                - edit.horizontalOffset();
+            expect(x).toBeGreaterThanOrEqual(5);
+            expect(x).toBeLessThanOrEqual(edit.width() - 6);
+        }
+        test("long programmatic text keeps the end visible", () => {
+            const edit = editor();
+            expect(edit.horizontalOffset()).toBeGreaterThan(0);
+            expectCursorVisible(edit);
+        });
+        test("style options carry and copy the text offset", () => {
+            const edit = editor();
+            const option = new CStyleOptionLineEdit();
+            option.initFromLineEdit(edit);
+            expect(option.horizontalOffset).toBe(edit.horizontalOffset());
+            const copy = new CStyleOptionLineEdit(option);
+            expect(copy.horizontalOffset).toBe(option.horizontalOffset);
+            expect(copy.horizontalOffset).toBeGreaterThan(0);
+        });
+        test("short text has no offset", () => {
+            const edit = editor();
+            edit.setText("Hi");
+            expect(edit.horizontalOffset()).toBe(0);
+        });
+        test("Home and End reveal the corresponding ends", () => {
+            const edit = editor();
+            edit.event(new CKeyEvent(CEventType.KeyPress, "Home"));
+            expect(edit.horizontalOffset()).toBe(0);
+            edit.event(new CKeyEvent(CEventType.KeyPress, "End"));
+            expect(edit.cursorPosition()).toBe(text.length);
+            expectCursorVisible(edit);
+        });
+        test("arrow navigation keeps every cursor position visible", () => {
+            const edit = editor();
+            for (let i = 0; i < text.length; ++i) {
+                edit.event(new CKeyEvent(CEventType.KeyPress, "ArrowLeft"));
+                expectCursorVisible(edit);
+            }
+            for (let i = 0; i < text.length; ++i) {
+                edit.event(new CKeyEvent(CEventType.KeyPress, "ArrowRight"));
+                expectCursorVisible(edit);
+            }
+        });
+        test("inserting and undoing a long string updates the visible range", () => {
+            const edit = editor();
+            edit.setText("");
+            edit.insert(text);
+            expectCursorVisible(edit);
+            edit.undo();
+            expect(edit.horizontalOffset()).toBe(0);
+            edit.redo();
+            expect(edit.text()).toBe(text);
+            expectCursorVisible(edit);
+        });
+        test("resizing rechecks cursor visibility and removes unused offset", () => {
+            const edit = editor();
+            edit.resize(40, 28);
+            expectCursorVisible(edit);
+            edit.resize(new CFontMetrics(edit.font()).textWidth(text) + 20, 28);
+            expect(edit.horizontalOffset()).toBe(0);
+        });
+        test("selection follows its active end in both directions", () => {
+            const edit = editor();
+            edit.setSelection(0, text.length);
+            expectCursorVisible(edit);
+            edit.setSelection(text.length, 0);
+            expect(edit.horizontalOffset()).toBe(0);
+            expect(edit.selectedText()).toBe(text);
+        });
+        test("mouse hit testing includes the displayed text offset", () => {
+            const edit = editor();
+            const metrics = new CFontMetrics(edit.font());
+            const offset = edit.horizontalOffset();
+            const x = 30;
+            let expected = text.length;
+            for (let i = 1; i <= text.length; ++i) {
+                const midpoint = (metrics.textWidth(text.slice(0, i - 1))
+                    + metrics.textWidth(text.slice(0, i))) / 2;
+                if (x - 5 + offset < midpoint) { expected = i - 1; break; }
+            }
+            edit.event(new CMouseEvent(CEventType.MousePress, x, 14,
+                CMouseButton.LeftButton));
+            expect(edit.cursorPosition()).toBe(expected);
+            expectCursorVisible(edit);
+        });
+        test("dragging beyond the edge continues scrolling until release", () => {
+            vi.useFakeTimers();
+            const edit = editor();
+            edit.setCursorPosition(0);
+            edit.event(new CMouseEvent(CEventType.MousePress, 5, 14,
+                CMouseButton.LeftButton));
+            edit.event(new CMouseEvent(CEventType.MouseMove, 100, 14,
+                CMouseButton.LeftButton));
+            const first = edit.cursorPosition();
+            vi.advanceTimersByTime(200);
+            expect(edit.cursorPosition()).toBeGreaterThan(first);
+            expect(edit.horizontalOffset()).toBeGreaterThan(0);
+            expect(edit.hasSelection()).toBe(true);
+            edit.event(new CMouseEvent(CEventType.MouseRelease, 100, 14,
+                CMouseButton.LeftButton));
+            const released = edit.cursorPosition();
+            vi.advanceTimersByTime(200);
+            expect(edit.cursorPosition()).toBe(released);
+            edit.destroy();
+        });
+        test("dragging left reveals the beginning without losing the anchor", () => {
+            vi.useFakeTimers();
+            const edit = editor();
+            edit.event(new CMouseEvent(CEventType.MousePress, 84, 14,
+                CMouseButton.LeftButton));
+            const anchor = edit.cursorPosition();
+            edit.event(new CMouseEvent(CEventType.MouseMove, -10, 14,
+                CMouseButton.LeftButton));
+            vi.advanceTimersByTime(text.length * 40);
+            expect(edit.cursorPosition()).toBe(0);
+            expect(edit.horizontalOffset()).toBe(0);
+            expect(edit.selectionEnd()).toBe(anchor);
+            edit.destroy();
+        });
+    });
 });

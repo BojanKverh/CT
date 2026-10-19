@@ -73,6 +73,9 @@ export class CLineEdit extends CWidget {
 	#m_undoGroup: CLineEditUndoGroup = null;
 	#m_mergeKey: object | null = null;
 	#m_text = "";
+    #m_horizontalOffset = 0;
+    #m_dragX = 0;
+    #m_scrollTimer = new CTimer(this);
 	#m_cursorPosition = 0;
     #m_selectionAnchor = 0;
 	#m_selectingWithMouse = false;
@@ -100,12 +103,45 @@ export class CLineEdit extends CWidget {
 			this.update();
 		});
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
+        this.#m_scrollTimer.setInterval(40);
+        this.#m_scrollTimer.timeout.connect(() => this.#scrollMouseSelection());
 	}
 
 	/** Provides text behavior. */
 	text(): string {
 		return this.#m_text;
 	}
+
+    /** Horizontal displacement of the text, in pixels. */
+    horizontalOffset(): number {
+        this.#ensureCursorVisible();
+        return this.#m_horizontalOffset;
+    }
+
+    #ensureCursorVisible(): void {
+        const metrics = new CFontMetrics(this.font());
+        const available = Math.max(0, this.width() - 11);
+        const cursor = metrics.textWidth(this.#m_text.slice(0, this.#m_cursorPosition));
+        const maximum = Math.max(0, metrics.textWidth(this.#m_text) - available);
+        let offset = Math.min(this.#m_horizontalOffset, maximum);
+        if (cursor < offset) offset = cursor;
+        if (cursor > offset + available) offset = cursor - available;
+        this.#m_horizontalOffset = Math.max(0, Math.min(offset, maximum));
+    }
+
+    #scrollMouseSelection(): void {
+        if (!this.#m_selectingWithMouse) return;
+        const direction = this.#m_dragX < 5 ? -1
+            : this.#m_dragX > this.width() - 6 ? 1 : 0;
+        if (direction === 0) {
+            this.#m_scrollTimer.stop();
+            return;
+        }
+        const previous = this.#m_cursorPosition;
+        this.#moveCursor(previous + direction, true);
+        if (this.#m_cursorPosition === previous)
+            this.#m_scrollTimer.stop();
+    }
 
 	/** Sets the text. */
 	setText(text: string): void {
@@ -527,6 +563,7 @@ export class CLineEdit extends CWidget {
 		this.#m_cursorPosition = position;
 		this.#m_selectionAnchor = position;
 		this.#m_selectingWithMouse = true;
+        this.#resetCursorBlink();
 
 		event.accept();
 		this.update();
@@ -542,6 +579,7 @@ export class CLineEdit extends CWidget {
 
     #selectMouseText(event: CMouseEvent, paragraph: boolean): void {
         this.#m_selectingWithMouse = false;
+        this.#m_scrollTimer.stop();
         this.setFocus();
         const range = paragraph ? [0, this.#m_text.length] as const
             : textSelectionRange(this.#m_text, this.cursorPositionAt(event.x(), false));
@@ -558,9 +596,15 @@ export class CLineEdit extends CWidget {
 			return;
 		}
 
-		const position = this.cursorPositionAt(event.x());
-
-		this.#moveCursor(position, true);
+		this.#m_dragX = event.x();
+        const position = this.cursorPositionAt(event.x());
+        this.#moveCursor(position, true);
+        if (event.x() < 5 || event.x() > this.width() - 6) {
+            this.#scrollMouseSelection();
+            this.#m_scrollTimer.start();
+        } else {
+            this.#m_scrollTimer.stop();
+        }
 		event.accept();
 	}
 
@@ -579,6 +623,7 @@ export class CLineEdit extends CWidget {
 		}
 
 		this.#m_selectingWithMouse = false;
+        this.#m_scrollTimer.stop();
 		const position = this.cursorPositionAt(event.x());
 		this.#moveCursor(position, true);
 
@@ -596,6 +641,7 @@ export class CLineEdit extends CWidget {
 	protected override focusOutEvent(event: CFocusEvent): void {
 		this.#breakUndoGroup();
 		this.#m_selectingWithMouse = false;
+        this.#m_scrollTimer.stop();
 		this.#stopCursorBlink();
 		if (this.#m_contextMenu?.isOpen() !== true)
 			this.editingFinished.emit();
@@ -604,7 +650,7 @@ export class CLineEdit extends CWidget {
 
     private cursorPositionAt(x: number, nearest = true): number {
 	    const fm = new CFontMetrics(this.font());
-	    const textX = x - 5;
+	    const textX = x - 5 + this.horizontalOffset();
 	    /** Provides if behavior. */
 	    if (textX <= 0)
 		    return 0;
@@ -743,6 +789,7 @@ export class CLineEdit extends CWidget {
 	}
 
 	#resetCursorBlink(): void {
+        this.#ensureCursorVisible();
 		/** Provides if behavior. */
 		if (!this.hasFocus())
 			return;
@@ -808,7 +855,8 @@ export class CLineEdit extends CWidget {
 
 	/** Releases the completion association. */
 	override destroy(): void {
-		this.#disposeContextMenu();
+		this.#m_scrollTimer.stop();
+        this.#disposeContextMenu();
 		this.setCompleter(null);
 		super.destroy();
 	}
