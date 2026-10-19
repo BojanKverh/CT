@@ -1,3 +1,6 @@
+import { CMenu } from "../../src/widgets/CMenu.js";
+import { CContextMenuEvent, CContextMenuReason } from "../../src/events/CContextMenuEvent.js";
+import { CPoint } from "../../src/geometry/CPoint.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { CApplication } from "../../src/core/CApplication.js";
@@ -2749,6 +2752,175 @@ test("imports anchor href into the character format", () => {
             edit.undo(); expect(edit.toPlainText()).toBe("abc");
             expect(edit.currentCharFormat().fontBold()).toBe(false);
         });
+    });
+
+
+    describe("standard context menu", () => {
+        function request(edit: CTextEdit): CContextMenuEvent {
+            const event = new CContextMenuEvent(
+                CContextMenuReason.Mouse, new CPoint(10, 12), new CPoint(120, 140));
+            edit.event(event);
+            return event;
+        }
+        function activeMenu(): CMenu {
+            const menu = CApplication.instance().popupWidgets().find(popup => popup instanceof CMenu);
+            expect(menu).toBeInstanceOf(CMenu);
+            return menu as CMenu;
+        }
+        test("contains standard actions and separators", () => {
+            const edit = new CTextEdit();
+            const menu = edit.createStandardContextMenu();
+            expect(Array.from({ length: menu.count() }, (_, i) => menu.actionAt(i)?.text() ?? null))
+                .toEqual(["Undo", "Redo", null, "Cut", "Copy", "Paste", null, "Select All"]);
+            menu.destroy();
+        });
+        test("empty editor with empty clipboard disables all actions", () => {
+            const edit = new CTextEdit();
+            CClipboard.instance().setText("");
+            const menu = edit.createStandardContextMenu();
+            for (const i of [0, 1, 3, 4, 5, 7])
+                expect(menu.actionAt(i)?.isEnabled()).toBe(false);
+            menu.destroy();
+        });
+        test("menu enables undo and redo according to history", () => {
+            const edit = new CTextEdit();
+            edit.insert("A"); edit.insert("B"); edit.undo();
+            const menu = edit.createStandardContextMenu();
+            expect(menu.actionAt(0)?.isEnabled()).toBe(true);
+            expect(menu.actionAt(1)?.isEnabled()).toBe(true);
+            menu.actionAt(0)!.trigger();
+            expect(edit.toPlainText()).toBe("");
+            menu.actionAt(1)!.trigger();
+            expect(edit.toPlainText()).toBe("A");
+            menu.destroy();
+        });
+        test("copy preserves text and copies selection", () => {
+            const edit = new CTextEdit();
+            edit.setPlainText("abcdef"); edit.setSelection(1, 4);
+            const menu = edit.createStandardContextMenu();
+            expect(menu.actionAt(4)?.isEnabled()).toBe(true);
+            menu.actionAt(4)!.trigger();
+            expect(CClipboard.instance().text()).toBe("bcd");
+            expect(edit.toPlainText()).toBe("abcdef");
+            menu.destroy();
+        });
+        test("cut can be undone with its original selection", () => {
+            const edit = new CTextEdit();
+            edit.setPlainText("abcdef"); edit.setSelection(4, 1);
+            const menu = edit.createStandardContextMenu();
+            menu.actionAt(3)!.trigger();
+            expect(edit.toPlainText()).toBe("aef");
+            expect(CClipboard.instance().text()).toBe("bcd");
+            edit.undo();
+            expect(edit.toPlainText()).toBe("abcdef");
+            expect(edit.selectedText()).toBe("bcd");
+            expect(edit.cursorPosition()).toBe(1);
+            menu.destroy();
+        });
+        test("paste replaces the selection and is undoable", () => {
+            const edit = new CTextEdit();
+            edit.setPlainText("abc"); edit.setSelection(0, 3);
+            CClipboard.instance().setText("Pasted");
+            const menu = edit.createStandardContextMenu();
+            expect(menu.actionAt(5)?.isEnabled()).toBe(true);
+            menu.actionAt(5)!.trigger();
+            expect(edit.toPlainText()).toBe("Pasted");
+            edit.undo(); expect(edit.toPlainText()).toBe("abc");
+            menu.destroy();
+        });
+        test("select all preserves cursor direction and does not change history", () => {
+            const edit = new CTextEdit();
+            edit.setPlainText("abc");
+            const menu = edit.createStandardContextMenu();
+            menu.actionAt(7)!.trigger();
+            expect(edit.selectedText()).toBe("abc");
+            expect(edit.cursorPosition()).toBe(3);
+            expect(edit.canUndo()).toBe(false);
+            menu.destroy();
+            const selectedMenu = edit.createStandardContextMenu();
+            expect(selectedMenu.actionAt(7)?.isEnabled()).toBe(false);
+            selectedMenu.destroy();
+        });
+        test("read-only menu permits copying and selecting but no mutations", () => {
+            const edit = new CTextEdit();
+            edit.insert("abc"); edit.setSelection(0, 1); edit.setReadOnly(true);
+            CClipboard.instance().setText("Paste");
+            const menu = edit.createStandardContextMenu();
+            for (const i of [0, 1, 3, 5]) {
+                expect(menu.actionAt(i)?.isEnabled()).toBe(false);
+                menu.actionAt(i)!.trigger();
+            }
+            expect(menu.actionAt(4)?.isEnabled()).toBe(true);
+            expect(menu.actionAt(7)?.isEnabled()).toBe(true);
+            menu.actionAt(4)!.trigger();
+            expect(CClipboard.instance().text()).toBe("a");
+            expect(edit.toPlainText()).toBe("abc");
+            menu.destroy();
+        });
+        test("disabled editor menu contains no enabled actions", () => {
+            const edit = new CTextEdit();
+            edit.insert("abc"); edit.setSelection(0, 1); edit.setEnabled(false);
+            CClipboard.instance().setText("Paste");
+            const menu = edit.createStandardContextMenu();
+            for (const i of [0, 1, 3, 4, 5, 7])
+                expect(menu.actionAt(i)?.isEnabled()).toBe(false);
+            menu.destroy();
+        });
+        test("read-only state is rechecked when triggering an existing action", () => {
+            const edit = new CTextEdit();
+            edit.insert("abc"); edit.setSelection(0, 1);
+            const menu = edit.createStandardContextMenu();
+            edit.setReadOnly(true);
+            menu.actionAt(0)!.trigger(); menu.actionAt(3)!.trigger();
+            expect(edit.toPlainText()).toBe("abc");
+            menu.destroy();
+        });
+        test("context request opens menu at canvas position without changing selection", () => {
+            const edit = new CTextEdit();
+            edit.setPlainText("abcdef"); edit.setSelection(4, 1);
+            const event = request(edit);
+            const menu = activeMenu();
+            expect(event.isAccepted()).toBe(true);
+            expect([menu.x(), menu.y()]).toEqual([120, 140]);
+            expect(edit.selectedText()).toBe("bcd");
+            menu.close();
+            expect(CApplication.instance().popupWidgets()).not.toContain(menu);
+            expect(edit.hasFocus()).toBe(true);
+        });
+        test("reopening and destroying an editor leaves no open context menus", () => {
+            const edit = new CTextEdit();
+            request(edit);
+            const first = activeMenu();
+            request(edit);
+            const second = activeMenu();
+            expect(second).not.toBe(first);
+            expect(first.isOpen()).toBe(false);
+            expect(CApplication.instance().popupWidgets()).not.toContain(first);
+            edit.destroy();
+            expect(second.isOpen()).toBe(false);
+            expect(CApplication.instance().popupWidgets()).not.toContain(second);
+        });
+        test("disabled editor ignores context requests", () => {
+            const edit = new CTextEdit();
+            edit.setEnabled(false);
+            const event = request(edit);
+            expect(event.isAccepted()).toBe(false);
+            expect(CApplication.instance().popupWidgets()).toHaveLength(0);
+        });
+
+        test("content widget forwards the request to the text editor", () => {
+            const edit = new CTextEdit();
+            edit.setPlainText("abc"); edit.selectAll();
+            const event = new CContextMenuEvent(
+                CContextMenuReason.Mouse, new CPoint(5, 5), new CPoint(160, 180));
+            edit.widget()!.event(event);
+            const menu = activeMenu();
+            expect(event.isAccepted()).toBe(true);
+            expect([menu.x(), menu.y()]).toEqual([160, 180]);
+            expect(edit.selectedText()).toBe("abc");
+            menu.close();
+        });
+
     });
 
 });

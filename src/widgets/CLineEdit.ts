@@ -1,3 +1,6 @@
+import { CAction } from "../core/CAction.js";
+import { CMenu } from "./CMenu.js";
+import type { CContextMenuEvent } from "../events/CContextMenuEvent.js";
 import { CUndoCommand } from "../core/CUndoCommand.js";
 import { CUndoStack } from "../core/CUndoStack.js";
 import { CSignal } from "../core/CSignal.js";
@@ -63,6 +66,7 @@ export class CLineEdit extends CWidget {
 	/** Signal emitted when Enter or Return confirms acceptable input. */
 	readonly returnPressed = new CSignal();
 	
+	#m_contextMenu: CMenu | null = null;
 	#m_history = new CUndoStack(this);
 	#m_undoGroup: CLineEditUndoGroup = null;
 	#m_mergeKey: object | null = null;
@@ -275,6 +279,11 @@ export class CLineEdit extends CWidget {
 	    this.update();
     }
 
+    /** Selects the entire text. */
+    selectAll(): void {
+        this.setSelection(0, this.#m_text.length);
+    }
+
     /** Clears selection. */
     clearSelection(): void {
 		this.#breakUndoGroup();
@@ -351,7 +360,11 @@ export class CLineEdit extends CWidget {
 		if (event.ctrl()) {
 			/** Provides switch behavior. */
 			switch (event.key().toLowerCase()) {
-			case "z":
+			case "a":
+                this.selectAll();
+                event.accept();
+                return;
+            case "z":
                 if (event.shift()) this.redo(); else this.undo();
                 event.accept();
                 return;
@@ -540,7 +553,8 @@ export class CLineEdit extends CWidget {
 		this.#breakUndoGroup();
 		this.#m_selectingWithMouse = false;
 		this.#stopCursorBlink();
-		this.editingFinished.emit();
+		if (this.#m_contextMenu?.isOpen() !== true)
+			this.editingFinished.emit();
 		super.focusOutEvent(event);
 	}
 
@@ -669,8 +683,66 @@ export class CLineEdit extends CWidget {
 		this.#startCursorBlink();
 	}
 
+
+    /**
+     * Creates a menu using the current editor state.
+     * The caller owns the returned menu and must destroy it after use.
+     */
+    createStandardContextMenu(): CMenu {
+        const menu = new CMenu();
+        const editable = (): boolean => this.isEnabled() && !this.isReadOnly();
+        const add = (text: string, available: () => boolean, execute: () => void): void => {
+            const action = new CAction(text);
+            action.setEnabled(available());
+            action.triggered.connect(() => {
+                if (available()) execute();
+            });
+            menu.addAction(action);
+        };
+
+        add("Undo", () => editable() && this.canUndo(), () => this.undo());
+        add("Redo", () => editable() && this.canRedo(), () => this.redo());
+        menu.addSeparator();
+        add("Cut", () => editable() && this.hasSelection(), () => this.cut());
+        add("Copy", () => this.isEnabled() && this.hasSelection(), () => this.copy());
+        add("Paste", () => editable() && CClipboard.instance().text().length > 0,
+            () => this.paste());
+        menu.addSeparator();
+        add("Select All", () => this.isEnabled() && this.text().length > 0
+            && this.selectedText().length !== this.text().length, () => this.selectAll());
+        return menu;
+    }
+
+    protected override contextMenuEvent(event: CContextMenuEvent): void {
+        if (!this.isEnabled()) {
+            event.ignore();
+            return;
+        }
+        this.#disposeContextMenu();
+        this.#m_completer?.hidePopup();
+        const menu = this.createStandardContextMenu();
+        this.#m_contextMenu = menu;
+        menu.closed.connect(() => {
+            if (this.#m_contextMenu !== menu) return;
+            this.#m_contextMenu = null;
+            menu.destroy();
+            if (this.isEnabled() && this.isVisible()) this.setFocus();
+        });
+        event.accept();
+        menu.exec(event.globalPos());
+    }
+
+    #disposeContextMenu(): void {
+        const menu = this.#m_contextMenu;
+        if (menu === null) return;
+        this.#m_contextMenu = null;
+        menu.close();
+        menu.destroy();
+    }
+
 	/** Releases the completion association. */
 	override destroy(): void {
+		this.#disposeContextMenu();
 		this.setCompleter(null);
 		super.destroy();
 	}

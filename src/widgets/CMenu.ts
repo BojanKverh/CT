@@ -297,9 +297,10 @@ export class CMenu extends CPopupWidget {
 
 			const enabled = item.type === "action"
 				? item.action.isEnabled() : true;
-            const clr = (i === this.#m_hoveredIndex && enabled)? 
-                this.palette().color(CPaletteColorRole.HighlightedText) : 
-                    this.palette().color(CPaletteColorRole.Text);
+            const clr = this.palette().color(
+                !enabled ? CPaletteColorRole.DisabledText
+                    : i === this.#m_hoveredIndex ? CPaletteColorRole.HighlightedText
+                    : CPaletteColorRole.Text);
                  
 
             /** Provides if behavior. */
