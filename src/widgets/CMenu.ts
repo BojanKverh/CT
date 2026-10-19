@@ -1,3 +1,4 @@
+import type { CFont } from "../gui/CFont.js";
 import { CPopupWidget } from "./CPopupWidget.js";
 import { CAction } from "../core/CAction.js";
 import type { CPainter } from "../painting/CPainter.js";
@@ -21,8 +22,10 @@ export class CMenu extends CPopupWidget {
 	static readonly SeparatorHeight = 9;
 	static readonly HorizontalPadding = 12;
 	static readonly CheckColumnWidth = 20;
+	static readonly ShortcutSpacing = 24;
 
 	#m_items: CMenuItem[] = [];
+	#m_actionConnections = new Map<CAction, () => void>();
 	#m_hoveredIndex = -1;
     #m_openSubMenu: CMenu | null = null;
     #m_parentMenu: CMenu | null = null;
@@ -41,6 +44,12 @@ export class CMenu extends CPopupWidget {
 	/** Adds action. */
 	addAction(action: CAction): CAction {
 		this.#m_items.push({ type: "action", action });
+        if (!this.#m_actionConnections.has(action)) {
+            this.#m_actionConnections.set(action, action.changed.connect(() => {
+                this.#updateGeometry();
+                this.update();
+            }));
+        }
 		this.#updateGeometry();
 
 		return action;
@@ -63,10 +72,26 @@ export class CMenu extends CPopupWidget {
 
 	/** Clears the current contents. */
 	clear(): void {
+        this.#disconnectActions();
 		this.#m_items = [];
 		this.#m_hoveredIndex = -1;
 		this.#updateGeometry();
 	}
+
+    override destroy(): void {
+        this.#disconnectActions();
+        super.destroy();
+    }
+
+    override setFont(font: CFont, propagate = false): void {
+        super.setFont(font, propagate);
+        this.#updateGeometry();
+    }
+
+    #disconnectActions(): void {
+        for (const disconnect of this.#m_actionConnections.values()) disconnect();
+        this.#m_actionConnections.clear();
+    }
 
 	/** Provides count behavior. */
 	count(): number {
@@ -275,6 +300,8 @@ export class CMenu extends CPopupWidget {
 		painter.setPen(this.palette().color(CPaletteColorRole.Text).toCss());
 		painter.drawRect(0, 0, this.width(), this.height());
 		painter.setFont(this.font());
+        const metrics = this.fontMetrics();
+        const arrowWidth = this.#m_items.some(item => item.type === "menu") ? 20 : 0;
         
 		let y = 0;
 
@@ -328,6 +355,12 @@ export class CMenu extends CPopupWidget {
 
                 painter.setPen(clr.toCss());
 				painter.drawText(item.action.text(), CMenu.HorizontalPadding + CMenu.CheckColumnWidth, y + 3 * CMenu.ItemHeight / 4);
+                const shortcut = item.action.shortcut();
+                if (shortcut !== "") {
+                    painter.drawText(shortcut,
+                        this.width() - CMenu.HorizontalPadding - arrowWidth - metrics.textWidth(shortcut),
+                        y + 3 * CMenu.ItemHeight / 4);
+                }
 			} else {
                 painter.setPen(clr.toCss());
 				painter.drawText(item.text, CMenu.HorizontalPadding + CMenu.CheckColumnWidth, y + 3 * CMenu.ItemHeight / 4);
@@ -358,35 +391,35 @@ export class CMenu extends CPopupWidget {
 	}
 
 	#updateGeometry(): void {
-		let height = 0;
-		let width = 120;
-
-		/** Provides for behavior. */
-		for (const item of this.#m_items) {
-			/** Provides if behavior. */
-			if (item.type === "separator") {
-				height += CMenu.SeparatorHeight;
-				continue;
-			}
-
-			height += CMenu.ItemHeight;
-
-			const text = item.type === "action"
-				? item.action.text() : item.text;
-
-			const submenuWidth = item.type === "menu" ? 20 : 0;
-
-			width = Math.max(
-				width,
-				text.length * 8 +
-				CMenu.CheckColumnWidth +
-				CMenu.HorizontalPadding * 2 +
-				submenuWidth
-			);
-		}
-
-		this.resize(width, height);
-	}
+        let height = 0;
+        let labelWidth = 0;
+        let shortcutWidth = 0;
+        let hasShortcut = false;
+        let arrowWidth = 0;
+        const metrics = this.fontMetrics();
+        for (const item of this.#m_items) {
+            if (item.type === "separator") {
+                height += CMenu.SeparatorHeight;
+                continue;
+            }
+            height += CMenu.ItemHeight;
+            const text = item.type === "action" ? item.action.text() : item.text;
+            labelWidth = Math.max(labelWidth, metrics.textWidth(text));
+            if (item.type === "menu") arrowWidth = 20;
+            else if (item.action.shortcut() !== "") {
+                hasShortcut = true;
+                shortcutWidth = Math.max(shortcutWidth, metrics.textWidth(item.action.shortcut()));
+            }
+        }
+        const width = Math.max(120, Math.ceil(CMenu.HorizontalPadding * 2 +
+            CMenu.CheckColumnWidth + labelWidth + arrowWidth +
+            (hasShortcut ? CMenu.ShortcutSpacing + shortcutWidth : 0)));
+        this.resize(width, height);
+        if (this.#m_openSubMenu !== null) {
+            this.#m_openSubMenu.move(this.x() + this.width(),
+                this.y() + this.#itemY(this.#m_hoveredIndex));
+        }
+    }
 
     #itemY(index: number): number {
 		let y = 0;

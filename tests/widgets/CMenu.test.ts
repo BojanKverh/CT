@@ -1,3 +1,6 @@
+import type { CPainter } from "../../src/painting/CPainter.js";
+import { CFont } from "../../src/gui/CFont.js";
+import { CPaletteColorRole } from "../../src/gui/CPalette.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { CAction } from "../../src/core/CAction.js";
@@ -366,4 +369,128 @@ describe("CMenu", () => {
 
 		expect(app.focusWidget()).toBe(menu);
 	});
+
+    describe("shortcut labels", () => {
+        class PaintedMenu extends CMenu {
+            draw() {
+                const texts: { text: string; x: number; y: number; pen: string }[] = [];
+                let pen = "";
+                const painter = {
+                    setBrush(_brush: string) {},
+                    setPen(value: string) { pen = value; },
+                    setFont(_font: CFont) {},
+                    drawRect(_x: number, _y: number, _w: number, _h: number) {},
+                    drawLine(_x: number, _y: number, _x2: number, _y2: number) {},
+                    drawText(text: string, x: number, y: number) { texts.push({ text, x, y, pen }); }
+                };
+                this.paintEvent(painter as unknown as CPainter);
+                return texts;
+            }
+        }
+        function add(menu: CMenu, text: string, key: string) {
+            const action = new CAction(text);
+            action.setShortcut(key);
+            menu.addAction(action);
+            return action;
+        }
+        test("draws the canonical shortcut beside the action label", () => {
+            const menu = new PaintedMenu();
+            add(menu, "Save", "control+s");
+            const texts = menu.draw();
+            expect(texts.map(t => t.text)).toEqual(["Save", "Ctrl+S"]);
+            expect(texts[0]!.y).toBe(texts[1]!.y);
+        });
+        test("right-aligns shortcuts of different lengths", () => {
+            const menu = new PaintedMenu();
+            add(menu, "Save", "Ctrl+S"); add(menu, "Save as", "Ctrl+Shift+S");
+            const labels = menu.draw().filter(t => t.text.startsWith("Ctrl+"));
+            for (const label of labels) {
+                expect(label.x + menu.fontMetrics().textWidth(label.text)).toBeCloseTo(
+                    menu.width() - CMenu.HorizontalPadding);
+            }
+        });
+        test("reserves separate columns for the widest label and shortcut", () => {
+            const menu = new PaintedMenu();
+            add(menu, "A very long action label", "Ctrl+S"); add(menu, "X", "Ctrl+Shift+Alt+S");
+            const texts = menu.draw();
+            const labelEnd = texts[0]!.x + menu.fontMetrics().textWidth(texts[0]!.text);
+            expect(texts[3]!.x - labelEnd).toBeGreaterThanOrEqual(CMenu.ShortcutSpacing);
+        });
+        test("actions without shortcuts do not draw an empty shortcut label", () => {
+            const menu = new PaintedMenu(); menu.addAction(new CAction("Open"));
+            expect(menu.draw().map(t => t.text)).toEqual(["Open"]);
+        });
+        test("disabled shortcuts use DisabledText", () => {
+            const menu = new PaintedMenu(); const action = add(menu, "Save", "Ctrl+S");
+            action.setEnabled(false);
+            const expected = menu.palette().color(CPaletteColorRole.DisabledText).toCss();
+            expect(menu.draw().map(t => t.pen)).toEqual([expected, expected]);
+        });
+        test("selected shortcuts use HighlightedText", () => {
+            const menu = new PaintedMenu(); add(menu, "Save", "Ctrl+S"); menu.open();
+            const expected = menu.palette().color(CPaletteColorRole.HighlightedText).toCss();
+            expect(menu.draw().map(t => t.pen)).toEqual([expected, expected]);
+        });
+        test("changing a shortcut refreshes geometry and painting", () => {
+            const menu = new PaintedMenu(); const action = add(menu, "Save", "Ctrl+S");
+            const width = menu.width(); const update = vi.spyOn(menu, "update");
+            action.setShortcut("Ctrl+Shift+Alt+S");
+            expect(menu.width()).toBeGreaterThan(width);
+            expect(menu.draw().map(t => t.text)).toContain("Ctrl+Alt+Shift+S");
+            expect(update).toHaveBeenCalled();
+        });
+        test("clearing a shortcut shrinks the menu and removes its label", () => {
+            const menu = new PaintedMenu(); const action = add(menu, "Save", "Ctrl+Shift+Alt+S");
+            const width = menu.width(); action.setShortcut("");
+            expect(menu.width()).toBeLessThan(width);
+            expect(menu.draw().map(t => t.text)).toEqual(["Save"]);
+        });
+        test("changing the action text recalculates width", () => {
+            const menu = new CMenu(); const action = add(menu, "Save", "Ctrl+S");
+            const width = menu.width(); action.setText("Save a very long document name");
+            expect(menu.width()).toBeGreaterThan(width);
+        });
+        test("changing the font recalculates width using font metrics", () => {
+            const menu = new CMenu(); add(menu, "Save document", "Ctrl+Shift+S");
+            const font = new CFont(menu.font()); font.setPixelSize(30); menu.setFont(font);
+            const metrics = menu.fontMetrics();
+            expect(menu.width()).toBe(Math.max(120, Math.ceil(CMenu.HorizontalPadding * 2 +
+                CMenu.CheckColumnWidth + metrics.textWidth("Save document") +
+                CMenu.ShortcutSpacing + metrics.textWidth("Ctrl+Shift+S"))));
+        });
+        test("submenu arrows occupy their own column", () => {
+            const menu = new PaintedMenu(); add(menu, "Save", "Ctrl+S");
+            menu.addMenu("More", new CMenu());
+            const texts = menu.draw();
+            const shortcut = texts.find(t => t.text === "Ctrl+S")!;
+            const arrow = texts.find(t => t.text === "▶")!;
+            expect(shortcut.x + menu.fontMetrics().textWidth(shortcut.text)).toBeLessThan(arrow.x);
+        });
+        test("clear disconnects removed actions", () => {
+            const menu = new CMenu(); const action = add(menu, "Save", "Ctrl+S");
+            menu.clear(); const resize = vi.spyOn(menu, "resize"); const update = vi.spyOn(menu, "update");
+            action.setShortcut("Ctrl+Shift+S");
+            expect(resize).not.toHaveBeenCalled(); expect(update).not.toHaveBeenCalled();
+        });
+        test("destroy disconnects actions without destroying shared actions", () => {
+            const menu = new CMenu(); const action = add(menu, "Save", "Ctrl+S");
+            menu.destroy(); const resize = vi.spyOn(menu, "resize");
+            action.setShortcut("Ctrl+Shift+S");
+            expect(resize).not.toHaveBeenCalled();
+            const triggered = vi.fn(); action.triggered.connect(triggered); action.trigger();
+            expect(triggered).toHaveBeenCalledOnce();
+        });
+        test("adding the same action twice keeps one change subscription", () => {
+            const menu = new CMenu(); const action = add(menu, "Save", "Ctrl+S"); menu.addAction(action);
+            const resize = vi.spyOn(menu, "resize"); action.setShortcut("Ctrl+Shift+S");
+            expect(resize).toHaveBeenCalledOnce();
+        });
+        test("shared actions refresh each menu independently", () => {
+            const first = new PaintedMenu(); const second = new PaintedMenu();
+            const action = add(first, "Save", "Ctrl+S"); second.addAction(action);
+            first.clear(); action.setShortcut("Ctrl+Shift+S");
+            expect(second.draw().map(t => t.text)).toContain("Ctrl+Shift+S");
+            expect(first.count()).toBe(0);
+        });
+    });
 });
