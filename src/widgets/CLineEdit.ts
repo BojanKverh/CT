@@ -1,3 +1,4 @@
+import { textSelectionRange } from "../util/CTextSelection.js";
 import { CAction } from "../core/CAction.js";
 import { CMenu } from "./CMenu.js";
 import type { CContextMenuEvent } from "../events/CContextMenuEvent.js";
@@ -496,8 +497,12 @@ export class CLineEdit extends CWidget {
 			return;
 		}
 
-		this.#breakUndoGroup();
-		const position = this.cursorPositionAt(event.x());
+		if (event.clickCount() >= 2) {
+            this.#selectMouseText(event, event.clickCount() >= 3);
+            return;
+        }
+        this.#breakUndoGroup();
+        const position = this.cursorPositionAt(event.x());
 		this.#m_cursorPosition = position;
 		this.#m_selectionAnchor = position;
 		this.#m_selectingWithMouse = true;
@@ -505,6 +510,24 @@ export class CLineEdit extends CWidget {
 		event.accept();
 		this.update();
 	}
+
+    protected override mouseDoubleClickEvent(event: CMouseEvent): void {
+        if (event.button() !== CMouseButton.LeftButton) {
+            event.ignore();
+            return;
+        }
+        this.#selectMouseText(event, event.clickCount() >= 3);
+    }
+
+    #selectMouseText(event: CMouseEvent, paragraph: boolean): void {
+        this.#m_selectingWithMouse = false;
+        this.setFocus();
+        const range = paragraph ? [0, this.#m_text.length] as const
+            : textSelectionRange(this.#m_text, this.cursorPositionAt(event.x(), false));
+        this.setSelection(range[0], range[1]);
+        this.#resetCursorBlink();
+        event.accept();
+    }
 
 	/** Handles the mouse move event. */
 	protected override mouseMoveEvent(event: CMouseEvent): void {
@@ -558,7 +581,7 @@ export class CLineEdit extends CWidget {
 		super.focusOutEvent(event);
 	}
 
-    private cursorPositionAt(x: number): number {
+    private cursorPositionAt(x: number, nearest = true): number {
 	    const fm = new CFontMetrics(this.font());
 	    const textX = x - 5;
 	    /** Provides if behavior. */
@@ -568,7 +591,7 @@ export class CLineEdit extends CWidget {
     	for (let i = 1; i <= this.#m_text.length; ++i) {
 	    	const previousWidth = fm.textWidth(this.#m_text.slice(0, i - 1));
     		const width = fm.textWidth(this.#m_text.slice(0, i));
-    		const middle = (previousWidth + width) / 2;
+    		const middle = nearest ? (previousWidth + width) / 2 : width;
     		/** Provides if behavior. */
     		if (textX < middle)
 	    		return i - 1;

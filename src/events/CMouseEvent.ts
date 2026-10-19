@@ -23,6 +23,7 @@ export class CMouseEvent extends CEvent {
     #m_pos: CPoint;
     #m_button: CMouseButton;
     #m_modifiers: number = 0;
+    #m_clickCount: number;
 
     /** Creates a mouse event.
      * @param type Mouse event type.
@@ -30,12 +31,16 @@ export class CMouseEvent extends CEvent {
      * @param y Y coordinate relative to the receiving widget.
      * @param button Mouse button associated with the event.
      * @param shiftKey Whether Shift is pressed.
+     * @param clickCount Number of consecutive clicks; defaults to one.
      */
-    constructor(type: CEventType, x: number, y: number, button: number, shiftKey: boolean = false) {
+    constructor(type: CEventType, x: number, y: number, button: number,
+        shiftKey: boolean = false, clickCount: number = 1) {
         super(type);
 
         this.#m_pos = new CPoint(x, y);
         this.#m_button = button;
+        this.#m_clickCount = Number.isFinite(clickCount)
+            ? Math.max(1, Math.trunc(clickCount)) : 1;
         this.#m_modifiers += shiftKey? CKeyboardModifier.ShiftModifier : 0;
     }
 
@@ -57,6 +62,11 @@ export class CMouseEvent extends CEvent {
     /** Returns the mouse button associated with the event. */
     button(): CMouseButton {
         return this.#m_button;
+    }
+
+    /** Returns the number of consecutive clicks. */
+    clickCount(): number {
+        return this.#m_clickCount;
     }
 
     /** Returns the active CKeyboardModifier flags. */

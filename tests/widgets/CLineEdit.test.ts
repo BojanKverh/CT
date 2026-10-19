@@ -1687,4 +1687,76 @@ describe("CLineEdit", () => {
 
     });
 
+
+    describe("multi-click selection", () => {
+        function click(edit: CLineEdit, text: string, position: number, count: number,
+            type = CEventType.MousePress, button = CMouseButton.LeftButton): CMouseEvent {
+            const metrics = new CFontMetrics(edit.font());
+            const x = 5 + metrics.textWidth(text.slice(0, position))
+                + metrics.textWidth(text[position] ?? "") / 4;
+            const event = new CMouseEvent(type, x, 10, button, false, count);
+            edit.event(event);
+            return event;
+        }
+        test("double press selects the clicked word and release preserves it", () => {
+            const edit = new CLineEdit();
+            edit.setText("Hello world");
+            click(edit, "Hello world", 7, 2);
+            expect(edit.selectedText()).toBe("world");
+            click(edit, "Hello world", 7, 2, CEventType.MouseRelease);
+            expect(edit.selectedText()).toBe("world");
+        });
+        test("native double-click event selects a word", () => {
+            const edit = new CLineEdit();
+            edit.setText("Hello world");
+            click(edit, "Hello world", 2, 2, CEventType.MouseDoubleClick);
+            expect(edit.selectedText()).toBe("Hello");
+        });
+        test("double click selects Unicode words", () => {
+            const edit = new CLineEdit();
+            edit.setText("Hi čebelar_42!");
+            click(edit, "Hi čebelar_42!", 5, 2);
+            expect(edit.selectedText()).toBe("čebelar_42");
+        });
+        test("double click selects spaces without adjoining words", () => {
+            const edit = new CLineEdit();
+            edit.setText("one   two");
+            click(edit, "one   two", 4, 2);
+            expect(edit.selectedText()).toBe("   ");
+        });
+        test("triple click selects the entire line", () => {
+            const edit = new CLineEdit();
+            edit.setText("Hello world");
+            click(edit, "Hello world", 2, 3);
+            expect(edit.selectedText()).toBe("Hello world");
+            click(edit, "Hello world", 2, 3, CEventType.MouseRelease);
+            expect(edit.selectedText()).toBe("Hello world");
+        });
+        test("read-only editor still allows word selection", () => {
+            const edit = new CLineEdit();
+            edit.setText("Hello world"); edit.setReadOnly(true);
+            click(edit, "Hello world", 2, 2);
+            expect(edit.selectedText()).toBe("Hello");
+            expect(edit.canUndo()).toBe(false);
+        });
+        test("right double click preserves an existing selection", () => {
+            const edit = new CLineEdit();
+            edit.setText("Hello world"); edit.setSelection(0, 5);
+            const event = click(edit, "Hello world", 7, 2,
+                CEventType.MouseDoubleClick, CMouseButton.RightButton);
+            expect(event.isAccepted()).toBe(false);
+            expect(edit.selectedText()).toBe("Hello");
+        });
+        test("typing over a selected word is undoable", () => {
+            const edit = new CLineEdit();
+            edit.setText("Hello world");
+            click(edit, "Hello world", 7, 2);
+            edit.insert("Bojan");
+            expect(edit.text()).toBe("Hello Bojan");
+            edit.undo();
+            expect(edit.text()).toBe("Hello world");
+            expect(edit.selectedText()).toBe("world");
+        });
+    });
+
 });

@@ -2342,4 +2342,90 @@ describe("keyboard context menus", () => {
     });
 });
 
+
+    describe("multi-click event dispatch", () => {
+        let canvas: ReturnType<typeof createTestCanvas>;
+        class ClickWidget extends CWidget {
+            presses: number[] = [];
+            releases: number[] = [];
+            doubles: number[] = [];
+            protected override mousePressEvent(event: CMouseEvent): void {
+                this.presses.push(event.clickCount()); event.accept();
+            }
+            protected override mouseReleaseEvent(event: CMouseEvent): void {
+                this.releases.push(event.clickCount()); event.accept();
+            }
+            protected override mouseDoubleClickEvent(event: CMouseEvent): void {
+                this.doubles.push(event.clickCount()); event.accept();
+            }
+        }
+        beforeEach(() => {
+            canvas = createTestCanvas();
+            new CApplication(canvas);
+        });
+        afterEach(() => vi.restoreAllMocks());
+        function pointer(type: string, x = 40, y = 40, detail = 0, button = 0): void {
+            canvas.dispatchEvent({type, clientX:x, clientY:y, pointerId:1,
+                shiftKey:false, button, detail, preventDefault:vi.fn()
+            } as unknown as PointerEvent);
+        }
+        function click(x = 40, y = 40, detail = 0, button = 0): void {
+            pointer("pointerdown", x, y, detail, button);
+            pointer("pointerup", x, y, detail, button);
+        }
+        function widget(): ClickWidget {
+            const result = new ClickWidget();
+            result.setGeometry(10, 10, 200, 100);
+            return result;
+        }
+        test("counts pointer clicks with detail zero and preserves count on release", () => {
+            const target = widget();
+            vi.spyOn(Date, "now").mockReturnValue(1000);
+            click(); click(); click();
+            expect(target.presses).toEqual([1, 2, 3]);
+            expect(target.releases).toEqual([1, 2, 3]);
+        });
+        test("uses an explicit DOM click count", () => {
+            const target = widget();
+            click(40, 40, 3);
+            expect(target.presses).toEqual([3]);
+        });
+        test("a pause resets the click sequence", () => {
+            const target = widget();
+            const now = vi.spyOn(Date, "now").mockReturnValue(1000);
+            click(); now.mockReturnValue(1600); click();
+            expect(target.presses).toEqual([1, 1]);
+        });
+        test("moving away resets the click sequence", () => {
+            const target = widget();
+            click();
+            pointer("pointermove", 70, 70);
+            click();
+            expect(target.presses).toEqual([1, 1]);
+        });
+        test("changing buttons resets the sequence", () => {
+            const target = widget();
+            click(); click(40, 40, 0, 2);
+            expect(target.presses).toEqual([1, 1]);
+        });
+        test("changing widgets resets the sequence", () => {
+            const first = widget(), second = widget();
+            second.setGeometry(220, 10, 200, 100);
+            click(); click(250, 40);
+            expect(first.presses).toEqual([1]);
+            expect(second.presses).toEqual([1]);
+        });
+        test("native double-click dispatch carries count two", () => {
+            const target = widget();
+            pointer("dblclick");
+            expect(target.doubles).toEqual([2]);
+        });
+        test("a click following a native double-click carries count three", () => {
+            const target = widget();
+            pointer("dblclick");
+            click();
+            expect(target.presses).toEqual([3]);
+        });
+    });
+
 });

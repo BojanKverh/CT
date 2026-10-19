@@ -120,4 +120,22 @@ describe("CMouseEvent", () => {
         event.accept();
         expect(event.isAccepted()).toBe(true);
     });
+    test("preserves the existing constructor default", () => {
+        const event = new CMouseEvent(CEventType.MousePress, 10, 20, CMouseButton.LeftButton);
+        expect(event.clickCount()).toBe(1);
+    });
+    test("stores explicit double and triple counts", () => {
+        for (const count of [2, 3]) {
+            const event = new CMouseEvent(CEventType.MousePress, 10, 20,
+                CMouseButton.LeftButton, true, count);
+            expect(event.clickCount()).toBe(count);
+            expect(event.x()).toBe(10);
+        }
+    });
+    test("normalizes invalid counts", () => {
+        for (const count of [0, -1, NaN, Infinity]) {
+            expect(new CMouseEvent(CEventType.MousePress, 0, 0,
+                CMouseButton.LeftButton, false, count).clickCount()).toBe(1);
+        }
+    });
 });

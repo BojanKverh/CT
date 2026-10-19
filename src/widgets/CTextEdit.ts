@@ -1,3 +1,4 @@
+import { textSelectionRange } from "../util/CTextSelection.js";
 import { CAction } from "../core/CAction.js";
 import { CMenu } from "./CMenu.js";
 import type { CContextMenuEvent } from "../events/CContextMenuEvent.js";
@@ -79,8 +80,12 @@ class CTextEditContentWidget extends CWidget {
 	}
 
 	protected override mouseMoveEvent(event: CMouseEvent): void {
-		this.#m_textEdit.handleMouseMove(event);
-	}
+        this.#m_textEdit.handleMouseMove(event);
+    }
+
+    protected override mouseDoubleClickEvent(event: CMouseEvent): void {
+        this.#m_textEdit.handleMouseDoubleClick(event);
+    }
 
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
         this.#m_textEdit.handleMouseRelease(event);
@@ -690,8 +695,12 @@ export class CTextEdit extends CScrollArea {
 			return;
 		}
 
-		this.#breakUndoGroup();
-		this.setFocus();
+		if (event.clickCount() >= 2) {
+            this.#selectMouseText(event, event.clickCount() >= 3);
+            return;
+        }
+        this.#breakUndoGroup();
+        this.setFocus();
 		
 		const position = this.#cursorPositionAt(
 			event.x(),
@@ -708,6 +717,26 @@ export class CTextEdit extends CScrollArea {
 		event.accept();
 		this.#m_contentWidget.update();
 	}
+
+
+    /** Handles a double-click forwarded by the content widget. */
+    handleMouseDoubleClick(event: CMouseEvent): void {
+        if (event.button() !== CMouseButton.LeftButton) {
+            event.ignore();
+            return;
+        }
+        this.#selectMouseText(event, event.clickCount() >= 3);
+    }
+
+    #selectMouseText(event: CMouseEvent, paragraph: boolean): void {
+        this.#m_selectingWithMouse = false;
+        this.setFocus();
+        const position = this.#cursorPositionAt(event.x(), event.y(), false);
+        const [start, end] = textSelectionRange(this.toPlainText(), position, paragraph);
+        this.setSelection(start, end);
+        this.#resetCursorBlink();
+        event.accept();
+    }
 
 	/** Provides handle mouse move behavior. */
 	handleMouseMove(event: CMouseEvent): void {
@@ -1264,7 +1293,7 @@ export class CTextEdit extends CScrollArea {
 		this.#moveCursor(line.start + column, keepAnchor);
 	}
 
-	#cursorPositionAt(x: number, y: number): number {
+	#cursorPositionAt(x: number, y: number, nearest = true): number {
 		const layouts = this.#lineLayouts();
 		const margin = CTextEdit.#TEXT_MARGIN;
 
@@ -1301,7 +1330,7 @@ export class CTextEdit extends CScrollArea {
 		/** Provides for behavior. */
 		for (let i = 1; i <= line.text.length; ++i) {
 			const width = this.#textWidth(line.start, i);
-			const middle = (previousWidth + width) / 2;
+			const middle = nearest ? (previousWidth + width) / 2 : width;
 
 			/** Provides if behavior. */
 			if (textX < middle)

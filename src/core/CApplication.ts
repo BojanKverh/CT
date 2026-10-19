@@ -53,6 +53,9 @@ export class CApplication extends CObject {
 	#m_toolTipTimer = new CTimer(this);
 	#m_mouseX = 0;
 	#m_mouseY = 0;
+	#m_clickCount = 1;
+	#m_lastClick: { widget: CWidget; button: number; x: number; y: number;
+		time: number; count: number } | null = null;
 	#m_activeDrag: CDrag | null = null;
 	#m_dragTarget: CWidget | null = null;
 	#m_clipboard = new CClipboard(this);
@@ -794,10 +797,19 @@ export class CApplication extends CObject {
 		if (target === null)
 			target = this.#widgetAt(position.x(), position.y());
 
+		if (type === CEventType.MousePress && target !== null)
+			this.#m_clickCount = this.#countMouseClicks(target, pointerEvent, position);
+		if (type === CEventType.MouseMove && this.#m_lastClick !== null
+			&& Math.hypot(position.x() - this.#m_lastClick.x,
+				position.y() - this.#m_lastClick.y) > 5)
+			this.#m_lastClick = null;
+		const clickCount = type === CEventType.MousePress || type === CEventType.MouseRelease
+			? this.#m_clickCount : 1;
+
 		while (target !== null) {
 			const oldFocus = this.#m_focusWidget;
 
-			if (this.#sendMouseEvent(target, type, pointerEvent)) {
+			if (this.#sendMouseEvent(target, type, pointerEvent, clickCount)) {
 				if (type === CEventType.MousePress) {
 					if (this.#m_focusWidget === oldFocus && target.acceptsClickFocus())
 						target.setFocus();
@@ -825,10 +837,14 @@ export class CApplication extends CObject {
 	#dispatchDoubleClick(mouseEvent: MouseEvent): void {
 		const position = this.#canvasPosition(mouseEvent);
 		let target = this.#widgetAt(position.x(), position.y());
+		this.#m_clickCount = Math.max(2, mouseEvent.detail || 2);
+		if (target !== null)
+			this.#m_lastClick = { widget: target, button: mouseEvent.button,
+				x: position.x(), y: position.y(), time: Date.now(), count: this.#m_clickCount };
 
 		while (target !== null) {
 			if (this.#sendMouseEvent(
-				target, CEventType.MouseDoubleClick, mouseEvent
+				target, CEventType.MouseDoubleClick, mouseEvent, this.#m_clickCount
 			))
 				break;
 
@@ -926,14 +942,30 @@ export class CApplication extends CObject {
 			);
 	}
 
-	#sendMouseEvent(widget: CWidget, type: CEventType, mouseEvent: MouseEvent): boolean {
+	/** Pointer events commonly have detail=0, so keep a fallback click sequence. */
+	#countMouseClicks(widget: CWidget, event: MouseEvent, position: CPoint): number {
+		const time = Date.now();
+		const previous = this.#m_lastClick;
+		const continues = previous !== null && previous.widget === widget
+			&& previous.button === event.button && time - previous.time <= 500
+			&& Math.hypot(position.x() - previous.x, position.y() - previous.y) <= 5;
+		const count = Number.isFinite(event.detail) && event.detail > 0
+			? Math.trunc(event.detail)
+			: continues && previous.count < 3 ? previous.count + 1 : 1;
+		this.#m_lastClick = { widget, button: event.button, x: position.x(), y: position.y(),
+			time, count };
+		return count;
+	}
+
+	#sendMouseEvent(widget: CWidget, type: CEventType, mouseEvent: MouseEvent,
+		clickCount = 1): boolean {
 		const position = this.#canvasPosition(mouseEvent);
 		const localPosition = widget.mapFromCanvas(
 			position.x(), position.y()
 		);
 
 		const event = new CMouseEvent(type, localPosition.x(), localPosition.y(),
-				this.#mouseButton(mouseEvent.button), mouseEvent.shiftKey);
+				this.#mouseButton(mouseEvent.button), mouseEvent.shiftKey, clickCount);
 
 		return widget.event(event);
 	}
