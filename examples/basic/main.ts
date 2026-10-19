@@ -14,7 +14,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CMemorySqlTableAdapter, CSqlEditStrategy, CSqlFilterOperator, CSqlRelation,
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
-	CCompleter, CIntValidator, CNumberEdit
+	CCompleter, CIntValidator, CNumberEdit, CNumberItemDelegate
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -947,6 +947,7 @@ but6.clicked.connect(() => {
 		console.log("current:", current?.text() ?? null, "previous:",
 			previous?.text() ?? null);
 	});
+	table.setItemDelegateForColumn(2, new CNumberItemDelegate());
 	
 	const bb = new CDialogButtonBox(CStandardButton.Ok, dlg);
 	bb.setGeometry(0, 360, 780, 30);

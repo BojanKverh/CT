@@ -126,3 +126,4 @@ export { CSqlRelation } from "./models/CSqlRelation.js";
 export { CSqlRelationalDelegate } from "./widgets/CSqlRelationalDelegate.js";
 export { CSqlRelationalTableModel } from "./models/CSqlRelationalTableModel.js";
 export { CNumberEdit } from "./widgets/CNumberEdit.js";
+export { CNumberItemDelegate } from "./widgets/CNumberItemDelegate.js";
