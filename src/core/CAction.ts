@@ -1,5 +1,7 @@
 import { CSignal } from "./CSignal.js";
 import { CIcon } from "../gui/CIcon.js";
+import { CShortcut } from "./CShortcut.js";
+import type { CWidget } from "../widgets/CWidget.js";
 
 /**
  * Represents a reusable user action with text, icon, enabled and checked state.
@@ -10,6 +12,9 @@ export class CAction {
 	#m_enabled = true;
 	#m_checkable = false;
 	#m_checked = false;
+	#m_shortcutKey = "";
+	#m_shortcutParent: CWidget | null = null;
+	#m_shortcut: CShortcut | null = null;
 	
 /**
  * Emitted when an action property changes.
@@ -29,8 +34,54 @@ export class CAction {
  * Creates an action.
  * @param text Initial display text.
  */
-	constructor(text = "") {
+	constructor(text = "", shortcutParent: CWidget | null = null) {
 		this.#m_text = text;
+		this.#m_shortcutParent = shortcutParent;
+	}
+
+	/** Shortcut active in shortcutParent() and its descendants. */
+	shortcut(): string { return this.#m_shortcutKey; }
+
+	setShortcut(key: string): void {
+		const normalized = CShortcut.normalizeSequence(key);
+		if (normalized === this.#m_shortcutKey) return;
+		this.#m_shortcutKey = normalized;
+		this.#updateShortcut();
+		this.changed.emit();
+	}
+
+	shortcutParent(): CWidget | null { return this.#m_shortcutParent; }
+
+	/** Assigns one explicit scope shared by all presentations of this action. */
+	setShortcutParent(parent: CWidget | null): void {
+		if (parent === this.#m_shortcutParent) return;
+		this.#m_shortcut?.destroy();
+		this.#m_shortcut = null;
+		this.#m_shortcutParent = parent;
+		this.#updateShortcut();
+		this.changed.emit();
+	}
+
+	/** Releases the keyboard binding. Menus and toolbars do not own actions. */
+	destroy(): void {
+		this.#m_shortcut?.destroy();
+		this.#m_shortcut = null;
+		this.#m_shortcutParent = null;
+	}
+
+	#updateShortcut(): void {
+		if (this.#m_shortcutKey === "" || this.#m_shortcutParent === null) {
+			this.#m_shortcut?.destroy();
+			this.#m_shortcut = null;
+			return;
+		}
+		if (this.#m_shortcut === null) {
+			this.#m_shortcut = new CShortcut(this.#m_shortcutKey, this.#m_shortcutParent);
+			this.#m_shortcut.activated.connect(() => this.trigger());
+		} else {
+			this.#m_shortcut.setKey(this.#m_shortcutKey);
+		}
+		this.#m_shortcut.setEnabled(this.#m_enabled);
 	}
 
 /**
@@ -90,6 +141,7 @@ export class CAction {
 			return;
 
 		this.#m_enabled = enabled;
+		this.#m_shortcut?.setEnabled(enabled);
 		this.changed.emit();
 	}
 

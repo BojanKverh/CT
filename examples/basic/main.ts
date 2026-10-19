@@ -1184,8 +1184,11 @@ mapperButton.clicked.connect(() => {
 			status.setText(`Changes saved. Age: ${age.value()}.`);
 	};
 	save.clicked.connect(submitChanges);
-	const saveShortcut = new CShortcut("Ctrl+S", dlg);
-	saveShortcut.activated.connect(submitChanges);
+	const saveAction = new CAction("Save", dlg);
+	saveAction.setShortcut("Ctrl+S");
+	saveAction.triggered.connect(() => {
+    	mapper.submit();
+	});
 
 	const revert = new CPushButton(dlg);
 	revert.setText("Revert");

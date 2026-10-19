@@ -5,6 +5,8 @@ import type { CWidget } from "../widgets/CWidget.js";
 
 /** A single key combination active in its parent widget and descendants. */
 export class CShortcut extends CObject {
+    /** Validates and canonicalizes the single-combination shortcut syntax. */
+    static normalizeSequence(key: string): string { return normalizeSequence(key); }
     readonly activated = new CSignal<[]>();
     /** Emitted instead of activated when the same owner has duplicate matches. */
     readonly activatedAmbiguously = new CSignal<[]>();

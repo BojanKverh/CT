@@ -1,3 +1,4 @@
+import { CAction } from "../../src/core/CAction.js";
 import { CShortcut } from "../../src/core/CShortcut.js";
 import { CKeySequenceEdit } from "../../src/widgets/CKeySequenceEdit.js";
 import { CLineEdit } from "../../src/widgets/CLineEdit.js";
@@ -2544,5 +2545,59 @@ describe("shortcut dispatch", () => {
             shiftKey: false, altKey: false, metaKey: false, preventDefault: vi.fn()
         } as unknown as KeyboardEvent);
         expect(activated).not.toHaveBeenCalled();
+    });
+});
+
+
+describe("action shortcut dispatch", () => {
+    function setup() {
+        const app = new CApplication(createTestCanvas());
+        const root = new CWidget();
+        const editor = new CLineEdit(root);
+        editor.setGeometry(0, 0, 100, 28);
+        editor.setFocus();
+        const action = new CAction("Save", root);
+        action.setShortcut("Ctrl+S");
+        const triggered = vi.fn();
+        action.triggered.connect(triggered);
+        return { app, root, action, triggered };
+    }
+    function press(key = "s") {
+        const preventDefault = vi.fn();
+        window.dispatchEvent({ type: "keydown", key, ctrlKey: true,
+            shiftKey: false, altKey: false, metaKey: false, preventDefault
+        } as unknown as KeyboardEvent);
+        return preventDefault;
+    }
+    test("triggers an action and prevents the browser save dialog", () => {
+        const { action, triggered } = setup();
+        action.setCheckable(true);
+        expect(press()).toHaveBeenCalledOnce();
+        expect(triggered).toHaveBeenCalledOnce();
+        expect(action.isChecked()).toBe(true);
+    });
+    test("disabled actions do not consume or activate their shortcuts", () => {
+        const { action, triggered } = setup();
+        action.setEnabled(false);
+        expect(press()).not.toHaveBeenCalled();
+        expect(triggered).not.toHaveBeenCalled();
+        action.setEnabled(true);
+        expect(press()).toHaveBeenCalledOnce();
+        expect(triggered).toHaveBeenCalledOnce();
+    });
+    test("changing and clearing an action shortcut updates dispatch", () => {
+        const { action, triggered } = setup();
+        action.setShortcut("Ctrl+K");
+        expect(press()).not.toHaveBeenCalled();
+        expect(press("k")).toHaveBeenCalledOnce();
+        action.setShortcut("");
+        expect(press("k")).not.toHaveBeenCalled();
+        expect(triggered).toHaveBeenCalledOnce();
+    });
+    test("destroying an action releases its shortcut", () => {
+        const { action, triggered } = setup();
+        action.destroy();
+        expect(press()).not.toHaveBeenCalled();
+        expect(triggered).not.toHaveBeenCalled();
     });
 });
