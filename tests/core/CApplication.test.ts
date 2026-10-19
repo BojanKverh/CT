@@ -1,3 +1,5 @@
+import { CShortcut } from "../../src/core/CShortcut.js";
+import { CKeySequenceEdit } from "../../src/widgets/CKeySequenceEdit.js";
 import { CLineEdit } from "../../src/widgets/CLineEdit.js";
 import { CTextEdit } from "../../src/widgets/CTextEdit.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -2428,4 +2430,119 @@ describe("keyboard context menus", () => {
         });
     });
 
+});
+
+describe("shortcut dispatch", () => {
+    function press(key = "s", options: Partial<KeyboardEvent> = {}) {
+        const preventDefault = vi.fn();
+        window.dispatchEvent({ type: "keydown", key, ctrlKey: true,
+            shiftKey: false, altKey: false, metaKey: false, preventDefault,
+            ...options } as unknown as KeyboardEvent);
+        return preventDefault;
+    }
+    function setup() {
+        const app = new CApplication(createTestCanvas());
+        const root = new CWidget();
+        const child = new CLineEdit(root);
+        child.setGeometry(0, 0, 100, 28);
+        child.setFocus();
+        const shortcut = new CShortcut("Ctrl+S", root);
+        const activated = vi.fn(); shortcut.activated.connect(activated);
+        return { app, root, child, shortcut, activated };
+    }
+    test("activates an ancestor's shortcut and prevents the browser default", () => {
+        const { activated } = setup();
+        expect(press()).toHaveBeenCalledOnce();
+        expect(activated).toHaveBeenCalledOnce();
+    });
+    test("also activates with focus on the owner itself", () => {
+        const { root, activated } = setup();
+        root.setFocusPolicy(CFocusPolicy.StrongFocus); root.setFocus();
+        press(); expect(activated).toHaveBeenCalledOnce();
+    });
+    test("does not activate a shortcut in a different subtree", () => {
+        const { activated } = setup();
+        const other = new CLineEdit(); other.setFocus();
+        press(); expect(activated).not.toHaveBeenCalled();
+    });
+    test("disabled shortcuts fall through without activation", () => {
+        const { shortcut, activated } = setup();
+        shortcut.setEnabled(false); press();
+        expect(activated).not.toHaveBeenCalled();
+    });
+    test("modal shortcuts work after an editor clears focus on Enter", () => {
+        const { app, root, activated } = setup();
+        app.registerModalWidget(root);
+        app.setFocusWidget(null);
+        expect(app.focusWidget()).toBeNull();
+        const preventDefault = press();
+        expect(activated).toHaveBeenCalledOnce();
+        expect(preventDefault).toHaveBeenCalledOnce();
+    });
+    test("destroyed shortcuts no longer activate", () => {
+        const { shortcut, activated } = setup();
+        shortcut.destroy(); press(); expect(activated).not.toHaveBeenCalled();
+    });
+    test("the nearest owner's shortcut takes precedence", () => {
+        const { child, activated } = setup();
+        const local = new CShortcut("Ctrl+S", child);
+        const localActivated = vi.fn(); local.activated.connect(localActivated);
+        press(); expect(localActivated).toHaveBeenCalledOnce();
+        expect(activated).not.toHaveBeenCalled();
+    });
+    test("duplicate shortcuts report ambiguity instead of triggering", () => {
+        const { root, shortcut, activated } = setup();
+        const duplicate = new CShortcut("Ctrl+S", root);
+        const ambiguous = vi.fn(); const duplicateActivated = vi.fn();
+        shortcut.activatedAmbiguously.connect(ambiguous);
+        duplicate.activated.connect(duplicateActivated);
+        const preventDefault = press();
+        expect(ambiguous).toHaveBeenCalledOnce();
+        expect(activated).not.toHaveBeenCalled();
+        expect(duplicateActivated).not.toHaveBeenCalled();
+        expect(preventDefault).toHaveBeenCalledOnce();
+    });
+    test("a modal dialog blocks main-window shortcuts", () => {
+        const { app, root, activated } = setup();
+        const dialog = new CWidget(root);
+        const child = new CLineEdit(dialog);
+        app.registerModalWidget(dialog); child.setFocus();
+        press(); expect(activated).not.toHaveBeenCalled();
+        const local = new CShortcut("Ctrl+S", dialog);
+        const localActivated = vi.fn(); local.activated.connect(localActivated);
+        press(); expect(localActivated).toHaveBeenCalledOnce();
+    });
+    test("modal shortcuts cannot be bypassed by stale background focus", () => {
+        const { app, child, activated } = setup();
+        const dialog = new CWidget(); app.registerModalWidget(dialog);
+        child.setFocus(); press(); expect(activated).not.toHaveBeenCalled();
+    });
+    test("popups block shortcuts owned outside the popup", () => {
+        const { app, activated } = setup();
+        const popup = new CPopupWidget();
+        app.registerPopupWidget(popup);
+        const child = new CLineEdit(popup); child.setFocus();
+        press(); expect(activated).not.toHaveBeenCalled();
+    });
+    test("AltGraph input never activates a Ctrl+Alt shortcut", () => {
+        const { root } = setup();
+        const shortcut = new CShortcut("Ctrl+Alt+Q", root);
+        const activated = vi.fn(); shortcut.activated.connect(activated);
+        press("q", { altKey: true, code: "KeyQ", getModifierState: () => true });
+        expect(activated).not.toHaveBeenCalled();
+    });
+    test("key sequence recording does not activate registered shortcuts", () => {
+        const { root, activated } = setup();
+        const recorder = new CKeySequenceEdit(root); recorder.setFocus();
+        press("s", { code: "KeyS" });
+        expect(recorder.keySequence()).toBe("Ctrl+S");
+        expect(activated).not.toHaveBeenCalled();
+    });
+    test("keyup never activates a shortcut", () => {
+        const { activated } = setup();
+        window.dispatchEvent({ type: "keyup", key: "s", ctrlKey: true,
+            shiftKey: false, altKey: false, metaKey: false, preventDefault: vi.fn()
+        } as unknown as KeyboardEvent);
+        expect(activated).not.toHaveBeenCalled();
+    });
 });

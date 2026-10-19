@@ -1,4 +1,5 @@
 import { CObject } from "./CObject.js";
+import { CShortcut } from "./CShortcut.js";
 import { CWidget } from "../widgets/CWidget.js";
 import type { CPaintDevice } from "../painting/CPaintDevice.js";
 import { CCanvasPaintDevice } from "../painting/CCanvasPaintDevice.js";
@@ -877,7 +878,9 @@ export class CApplication extends CObject {
 			return;
 		}
 
-		let target = this.#m_focusWidget;
+		let target = this.#m_focusWidget
+			?? this.#m_popupWidgets[this.#m_popupWidgets.length - 1]
+			?? this.topModalWidget();
 		if (target === null)
 			return;
 
@@ -898,6 +901,11 @@ export class CApplication extends CObject {
 			keyboardEvent.altKey, keyboardEvent.metaKey, keyboardEvent.code, 
 			altGraph);
 
+		if (type === CEventType.KeyPress && this.#dispatchShortcut(target, event)) {
+			keyboardEvent.preventDefault?.();
+			return;
+		}
+
 		while (target !== null) {
 			if (target.event(event))
 				break;
@@ -915,6 +923,32 @@ export class CApplication extends CObject {
 			if (this.focusNextWidget(!keyboardEvent.shiftKey))
 				keyboardEvent.preventDefault();
 		}
+	}
+
+	#dispatchShortcut(focused: CWidget, event: CKeyEvent): boolean {
+		const recorder = focused as CWidget & { capturesShortcuts?: () => boolean };
+		if (recorder.capturesShortcuts?.() === true) return false;
+		const boundary = this.#m_popupWidgets[this.#m_popupWidgets.length - 1]
+			?? this.topModalWidget();
+		if (boundary && !this.#belongsToModal(focused, boundary)) return false;
+		const path: CWidget[] = [];
+		let current: CWidget | null = focused;
+		while (current !== null) {
+			if (!current.isVisible() || !current.isEnabled()) return false;
+			path.push(current);
+			if (current === boundary) break;
+			current = current.parent();
+		}
+		for (const owner of path) {
+			const matches = (owner as CObject).children().filter((child): child is CShortcut =>
+				child instanceof CShortcut && child.matches(event));
+			if (matches.length === 0) continue;
+			event.accept();
+			if (matches.length === 1) matches[0]!.activated.emit();
+			else for (const shortcut of matches) shortcut.activatedAmbiguously.emit();
+			return true;
+		}
+		return false;
 	}
 
 	#updateHoverWidget(pointerEvent: PointerEvent): void {

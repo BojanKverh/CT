@@ -10,6 +10,8 @@ import { CStyleOptionKeySequenceEdit } from "../gui/CStyleOptionKeySequenceEdit.
 
 /** Implements the key sequence edit widget. */
 export class CKeySequenceEdit extends CWidget {
+	/** Allows recording a combination without activating application shortcuts. */
+	capturesShortcuts(): boolean { return true; }
 	/** Signal emitted when key sequence changes. */
 	readonly keySequenceChanged = new CSignal<[string]>();
 	/** Public editing finished member. */

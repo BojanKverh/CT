@@ -14,7 +14,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CMemorySqlTableAdapter, CSqlEditStrategy, CSqlFilterOperator, CSqlRelation,
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
-	CCompleter, CNumberEdit, CNumberItemDelegate
+	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -1179,10 +1179,13 @@ mapperButton.clicked.connect(() => {
 	const save = new CPushButton(dlg);
 	save.setText("Submit");
 	save.setGeometry(660, 260, 90, 30);
-	save.clicked.connect(() => {
+	const submitChanges = (): void => {
 		if (mapper.submit())
 			status.setText(`Changes saved. Age: ${age.value()}.`);
-	});
+	};
+	save.clicked.connect(submitChanges);
+	const saveShortcut = new CShortcut("Ctrl+S", dlg);
+	saveShortcut.activated.connect(submitChanges);
 
 	const revert = new CPushButton(dlg);
 	revert.setText("Revert");
