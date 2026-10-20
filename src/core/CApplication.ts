@@ -47,6 +47,7 @@ export class CApplication extends CObject {
     #m_palette = new CPalette();
     #m_style: CStyle = new CDefaultStyle();
     #m_popupWidgets: CPopupWidget[] = [];
+    #m_popupFocus = new Map<CPopupWidget, CWidget | null>();
 	#m_windowWidgets: CWidget[] = [];
 	#m_modalWidgets: CWidget[] = [];
 	#m_toolTipWidget: CToolTipWidget | null = null;
@@ -181,8 +182,22 @@ export class CApplication extends CObject {
 		this.#m_toolTipWidget = null;
 		this.#m_toolTipTarget = null;
 
+        // Widgets use the application during destruction; keep the singleton alive
+        // until their child objects (including timers) have been released.
+        if (this.#m_activeDrag !== null) this.cancelDrag();
+        this.setFocusWidget(null);
+        this.#m_popupFocus.clear();
+        const roots = new Set<CWidget>([
+            ...this.#m_topLevelWidgets, ...this.#m_windowWidgets,
+            ...this.#m_modalWidgets, ...this.#m_popupWidgets
+        ]);
+        for (const widget of roots) {
+            if (widget.parent() === null) widget.destroy();
+        }
+
 		this.#m_topLevelWidgets.clear();
 		this.#m_popupWidgets.length = 0;
+        this.#m_popupFocus.clear();
 		this.#m_windowWidgets.length = 0;
 		this.#m_mouseGrabber = null;
 		this.#m_hoverWidget = null;
@@ -456,6 +471,7 @@ export class CApplication extends CObject {
  */
 	registerPopupWidget(widget: CPopupWidget): void {
 		const index = this.#m_popupWidgets.indexOf(widget);
+        if (index === -1) this.#m_popupFocus.set(widget, this.#m_focusWidget);
 
 		if (index !== -1)
 			this.#m_popupWidgets.splice(index, 1);
@@ -475,6 +491,12 @@ export class CApplication extends CObject {
 			return;
 
 		this.#m_popupWidgets.splice(index, 1);
+        const previousFocus = this.#m_popupFocus.get(widget) ?? null;
+        this.#m_popupFocus.delete(widget);
+        if (this.#m_focusWidget !== null && this.#belongsToModal(this.#m_focusWidget, widget)) {
+            this.setFocusWidget(previousFocus !== null && previousFocus.isVisible() && previousFocus.isEnabled()
+                ? previousFocus : null);
+        }
 		this.requestRepaint();
 	}
 
@@ -878,9 +900,18 @@ export class CApplication extends CObject {
 			return;
 		}
 
-		let target = this.#m_focusWidget
-			?? this.#m_popupWidgets[this.#m_popupWidgets.length - 1]
-			?? this.topModalWidget();
+        const focus = this.#m_focusWidget;
+        let target = (focus !== null && focus.isVisible() && focus.isEnabled() ? focus : null)
+            ?? this.#m_popupWidgets[this.#m_popupWidgets.length - 1]
+            ?? this.topModalWidget();
+        if (target === null) {
+            // A window action remains available even when an editor clears focus.
+            const windows = [...this.#m_topLevelWidgets, ...this.#m_windowWidgets];
+            for (let i = windows.length - 1; i >= 0; --i) {
+                const candidate = windows[i]!;
+                if (candidate.isVisible() && candidate.isEnabled()) { target = candidate; break; }
+            }
+        }
 		if (target === null)
 			return;
 

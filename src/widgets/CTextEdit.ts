@@ -2337,6 +2337,7 @@ export class CTextEdit extends CScrollArea {
     }
 
     override destroy(): void {
+        this.#m_cursorTimer.stop();
         this.#m_selectingWithMouse = false;
         this.#m_selectionScrollTimer.stop();
         this.#disposeContextMenu();

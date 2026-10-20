@@ -1527,8 +1527,22 @@ const menuBar = new CMenuBar();
 mainWindow.setMenuBar(menuBar);
 
 const fileMenu = new CMenu();
-fileMenu.addAction(new CAction("New"));
-fileMenu.addAction(new CAction("Open"));
+const newAction = new CAction("New", mainWindow);
+newAction.setShortcut("Alt+N");
+newAction.triggered.connect(() => {
+	console.log("New triggered");
+})
+const openAction = new CAction("Open", mainWindow);
+openAction.setShortcut("Ctrl+O");
+openAction.triggered.connect(() => {
+	console.log("Open");
+})
+fileMenu.addAction(newAction);
+fileMenu.addAction(openAction);
+const importAction = new CAction("Import", mainWindow);
+importAction.setShortcut("Ctrl+I");
+importAction.setEnabled(false);
+fileMenu.addAction(importAction);
 fileMenu.addAction(new CAction("Save"));
 fileMenu.addSeparator();
 fileMenu.addAction(new CAction("Exit"));
@@ -1543,7 +1557,8 @@ editMenu.addAction(new CAction("Paste"));
 
 const viewMenu = new CMenu();
 
-const showGridAction = new CAction("Show grid");
+const showGridAction = new CAction("Show grid", mainWindow);
+showGridAction.setShortcut("Ctrl+G");
 showGridAction.setCheckable(true);
 showGridAction.setChecked(true);
 
@@ -1586,7 +1601,12 @@ permanent.setText("INS");
 statusBar.addWidget(left);
 statusBar.addPermanentWidget(permanent);
 
-statusBar.showMessage("File saved", 3000);
+// Demo actions report activation without creating or opening files.
+newAction.triggered.connect(() => statusBar.showMessage("New action triggered", 3000));
+openAction.triggered.connect(() => statusBar.showMessage("Open action triggered", 3000));
+showGridAction.toggled.connect(checked => statusBar.showMessage(
+    `Show grid: ${checked ? "on" : "off"}`, 3000));
+statusBar.showMessage("Open File or View to see keyboard shortcuts", 5000);
 statusBar.setGeometry(700, 776, 300, 24);
 
 const dragSource = new DragSourceWidget(parent);
@@ -1613,9 +1633,8 @@ const toolBar1 = new CToolBar();
 //toolBar1.setGeometry(0, 0, 500, 120);
 toolBar1.setExtent(45);
 
-const newAction = new CAction("New");
+// Share actions between the menu and toolbar, including their keyboard bindings.
 toolBar1.addAction(newAction);
-const openAction = new CAction("Open");
 toolBar1.addAction(openAction);
 mainWindow.addToolBar(CToolBarArea.Top, toolBar1);
 

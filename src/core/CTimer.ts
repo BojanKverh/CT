@@ -144,6 +144,12 @@ export class CTimer extends CObject
 		);
 	}
 
+    /** Stops scheduled callbacks before releasing child objects. */
+    override destroy(): void {
+        this.stop();
+        super.destroy();
+    }
+
 	#schedule(generation: number): void
 	{
 		this.#m_startedAt = performance.now();

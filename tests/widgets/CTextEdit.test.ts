@@ -1,3 +1,5 @@
+import { CObject } from "../../src/core/CObject.js";
+import { CTimer } from "../../src/core/CTimer.js";
 import { CMenu } from "../../src/widgets/CMenu.js";
 import { CContextMenuEvent, CContextMenuReason } from "../../src/events/CContextMenuEvent.js";
 import { CPoint } from "../../src/geometry/CPoint.js";
@@ -45,10 +47,8 @@ describe("CTextEdit", () => {
 	});
 
 	afterEach(() => {
-		vi.useRealTimers();
-
-		if (CApplication.exists())
-			CApplication.instance().destroy();
+        if (CApplication.exists()) CApplication.instance().destroy();
+        vi.useRealTimers();
 	});
 
 	test("has empty text by default", () => {
@@ -3504,6 +3504,44 @@ test("imports anchor href into the character format", () => {
             changed.mockClear();
             press(edit, "Home");
             expect(changed).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("timer lifetime", () => {
+        function timers(edit: CTextEdit): CTimer[] {
+            return (edit as CObject).children().filter((child): child is CTimer => child instanceof CTimer);
+        }
+        test("destroy stops the focused editor's cursor timer", () => {
+            vi.useFakeTimers();
+            const edit = new CTextEdit(); edit.setGeometry(0, 0, 300, 100); edit.setFocus();
+            const ownedTimers = timers(edit);
+            expect(ownedTimers.some(timer => timer.isActive())).toBe(true);
+            edit.destroy();
+            expect(ownedTimers.every(timer => !timer.isActive())).toBe(true);
+            expect(() => vi.advanceTimersByTime(1500)).not.toThrow();
+        });
+        test("destroying the application destroys editors and stops all their timers", () => {
+            vi.useFakeTimers();
+            const app = CApplication.instance();
+            const edit = new CTextEdit(); edit.setGeometry(0, 0, 300, 100); edit.setFocus();
+            const ownedTimers = timers(edit);
+            expect(ownedTimers.some(timer => timer.isActive())).toBe(true);
+            const destroy = vi.spyOn(edit, "destroy");
+            app.destroy();
+            expect(destroy).toHaveBeenCalledOnce();
+            expect(CApplication.exists()).toBe(false);
+            expect(ownedTimers.every(timer => !timer.isActive())).toBe(true);
+            expect(() => vi.advanceTimersByTime(1500)).not.toThrow();
+            expect(vi.getTimerCount()).toBe(0);
+        });
+        test("old editor timers cannot update a new application", () => {
+            vi.useFakeTimers();
+            const edit = new CTextEdit(); edit.setGeometry(0, 0, 300, 100); edit.setFocus();
+            CApplication.instance().destroy();
+            const app = new CApplication(createTestCanvas());
+            const repaint = vi.spyOn(app, "requestRepaint");
+            vi.advanceTimersByTime(1500);
+            expect(repaint).not.toHaveBeenCalled();
         });
     });
 });

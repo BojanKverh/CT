@@ -26,7 +26,12 @@ export class CShortcut extends CObject {
 
     /** Used by CApplication when dispatching a key press. */
     matches(event: CKeyEvent): boolean {
-        if (!this.#m_enabled || this.#m_key === "" || event.altGraph()) return false;
+        return this.#m_enabled && CShortcut.matchesSequence(this.#m_key, event);
+    }
+
+    /** Matches a sequence without registering another keyboard binding. */
+    static matchesSequence(sequence: string, event: CKeyEvent): boolean {
+        if (sequence === "" || event.altGraph()) return false;
         if (["Control", "Shift", "Alt", "Meta", "AltGraph"].includes(event.key())) return false;
         const modifiers: string[] = [];
         if (event.ctrl()) modifiers.push("Ctrl");
@@ -36,7 +41,7 @@ export class CShortcut extends CObject {
         const code = event.code();
         const key = code.startsWith("Key") ? code.slice(3)
             : code.startsWith("Digit") ? code.slice(5) : event.key();
-        return [...modifiers, normalizeKey(key)].join("+") === this.#m_key;
+        return [...modifiers, normalizeKey(key)].join("+") === normalizeSequence(sequence);
     }
 }
 

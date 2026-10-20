@@ -1,4 +1,5 @@
 import type { CFont } from "../gui/CFont.js";
+import { CShortcut } from "../core/CShortcut.js";
 import { CPopupWidget } from "./CPopupWidget.js";
 import { CAction } from "../core/CAction.js";
 import type { CPainter } from "../painting/CPainter.js";
@@ -251,6 +252,24 @@ export class CMenu extends CPopupWidget {
 
 	/** Handles the key press event. */
 	protected override keyPressEvent(event: CKeyEvent): void {
+        // A popup is a shortcut boundary, so handle its displayed actions here.
+        // Do not register additional CShortcut children for shared actions.
+        const matches = new Set<CAction>();
+        for (const item of this.#m_items) {
+            if (item.type === "action" && item.action.isEnabled() &&
+                CShortcut.matchesSequence(item.action.shortcut(), event)) {
+                matches.add(item.action);
+            }
+        }
+        if (matches.size > 0) {
+            event.accept();
+            // Conflicting actions must not trigger an arbitrary command.
+            if (matches.size === 1) {
+                matches.values().next().value!.trigger();
+                this.#closeMenuChain();
+            }
+            return;
+        }
 		/** Provides switch behavior. */
 		switch (event.key()) {
 			case "ArrowRight":
