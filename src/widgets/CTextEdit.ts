@@ -228,6 +228,10 @@ export class CTextEdit extends CScrollArea {
 	/** Sets the html. */
 	setHtml(html: string): void {
 		const parsed = this.#parseHtml(html);
+		if (!this.supportsRichText()) {
+			this.setPlainText(parsed.plainText);
+			return;
+		}
 		const hadSelection = this.hasSelection();
 
 		this.#m_history.clear();
@@ -439,6 +443,11 @@ export class CTextEdit extends CScrollArea {
 	}
 	
 	/** Handles text document behavior. */
+	/** Whether character formatting is supported by this editor. */
+	protected supportsRichText(): boolean {
+		return true;
+	}
+
 	protected textDocument(): CTextDocument {
 		return this.#m_document;
 	}
@@ -454,6 +463,8 @@ export class CTextEdit extends CScrollArea {
 
 	/** Sets the current char format. */
 	setCurrentCharFormat(format: CTextCharFormat): void {
+		if (!this.supportsRichText())
+			return;
 		/** Provides if behavior. */
 		if (this.hasSelection()) {
 			this.#pushUndoState();
@@ -2139,6 +2150,8 @@ export class CTextEdit extends CScrollArea {
 	#modifyCurrentFormats(
 		modify: (format: CTextCharFormat) => void
 	): void {
+		if (!this.supportsRichText())
+			return;
 		/** Provides if behavior. */
 		if (!this.hasSelection()) {
 			const format = this.#m_currentCharFormat.clone();

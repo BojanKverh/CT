@@ -14,7 +14,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CMemorySqlTableAdapter, CSqlEditStrategy, CSqlFilterOperator, CSqlRelation,
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
-	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut
+	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut, CPlainTextEdit
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -1345,7 +1345,7 @@ cb.addButton(rb3);
 
 const le = new CLineEdit(parent);
 le.setGeometry(10, 100, 150, 20);
-le.setText("Edited text");
+le.setPlaceholderText("This is placeholder");
 
 const gb = new CGroupBox("Sliders & bars", parent);
 gb.setGeometry(5, 135, 210, 160);
@@ -1522,6 +1522,9 @@ const ccw = new ContextMenuWidget();
 ccw.setParent(parent);
 ccw.setGeometry(30, 650, 100, 30);
 
+const plain = new CPlainTextEdit(parent);
+plain.setGeometry(800, 800, 200, 100);
+plain.setPlainText("This is CPlainTextEdit");
 
 const menuBar = new CMenuBar();
 mainWindow.setMenuBar(menuBar);

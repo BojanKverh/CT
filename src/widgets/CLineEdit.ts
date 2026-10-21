@@ -87,6 +87,7 @@ export class CLineEdit extends CWidget {
 	#m_readOnly = false;
 	#m_completer: CCompleter | null = null;
 	#m_validationError = false;
+	#m_placeholderText: string = '';
 
 	/** Public editing finished member. */
 	readonly editingFinished = new CSignal();
@@ -119,6 +120,15 @@ export class CLineEdit extends CWidget {
         this.#ensureCursorVisible();
         return this.#m_horizontalOffset;
     }
+
+	setPlaceholderText(text: string): void {
+		this.#m_placeholderText = text;
+		this.update();
+	}
+
+	placeholderText(): string {
+		return this.#m_placeholderText;
+	}
 
     #ensureCursorVisible(): void {
         const metrics = new CFontMetrics(this.font());

@@ -9,11 +9,11 @@ export class CStyleOptionLineEdit extends CStyleOption {
 	 * Returns or updates the text value.
 	 */
 text = "";
-	/** Horizontal displacement of text and selection, in pixels. */
-	horizontalOffset = 0;
-		/**
-	 * Returns or updates the cursor position value.
-	 */
+/** Horizontal displacement of text and selection, in pixels. */
+horizontalOffset = 0;
+/**
+ * Returns or updates the cursor position value.
+ */
 cursorPosition = 0;
 		/**
 	 * Returns or updates the cursor visible value.
@@ -23,16 +23,23 @@ cursorVisible = false;
 	 * Returns or updates the selection start value.
 	 */
 selectionStart = 0;
-		/**
-	 * Returns or updates the selection end value.
-	 */
+/**
+ * Returns or updates the selection end value.
+ */
 selectionEnd = 0;
-
-		/**
-	 * Creates a new CStyleOptionLineEdit instance.
-	 *
-	 * @param other Other.
-	 */
+/**
+ * Placeholder text
+ */
+placeholderText = "";
+/**
+ * Focus flag
+ */
+focus = false;
+/**
+ * Creates a new CStyleOptionLineEdit instance.
+ *
+ * @param other Other.
+ */
 constructor(other: CStyleOptionLineEdit | null = null) {
 		super(other);
 
@@ -45,6 +52,7 @@ constructor(other: CStyleOptionLineEdit | null = null) {
 		this.cursorVisible = other.cursorVisible;
 		this.selectionStart = other.selectionStart;
 		this.selectionEnd = other.selectionEnd;
+		this.placeholderText = other.placeholderText;
 	}
 
 		/**
@@ -61,5 +69,7 @@ initFromLineEdit(lineEdit: CLineEdit): void {
 		this.cursorVisible = lineEdit.cursorVisible();
 		this.selectionStart = lineEdit.selectionStart();
 		this.selectionEnd = lineEdit.selectionEnd();
+		this.placeholderText = lineEdit.placeholderText();
+		this.focus = lineEdit.hasFocus();
 	}
 }

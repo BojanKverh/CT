@@ -67,7 +67,11 @@ Mid,
 		/**
 	 * Dark.
 	 */
-Dark
+Dark,
+/**
+ * Placeholder text color
+ */
+PlaceholderText
 }
 
 /**
@@ -99,6 +103,7 @@ constructor(pal: CPalette | null = null) {
 			this.#m_colors.set(CPaletteColorRole.Light, new CColor(255, 255, 255));
 			this.#m_colors.set(CPaletteColorRole.Mid, new CColor(160, 160, 160));
 			this.#m_colors.set(CPaletteColorRole.Dark, new CColor(96, 96, 96));
+			this.#m_colors.set(CPaletteColorRole.PlaceholderText, new CColor(160, 160, 160));
 		}	else {
 			this.#m_colors.set(CPaletteColorRole.Window, pal.color(CPaletteColorRole.Window));
 			this.#m_colors.set(CPaletteColorRole.WindowText, pal.color(CPaletteColorRole.WindowText));
@@ -116,6 +121,7 @@ constructor(pal: CPalette | null = null) {
 			this.#m_colors.set(CPaletteColorRole.Light, pal.color(CPaletteColorRole.Light));
 			this.#m_colors.set(CPaletteColorRole.Mid, pal.color(CPaletteColorRole.Mid));
 			this.#m_colors.set(CPaletteColorRole.Dark, pal.color(CPaletteColorRole.Dark));
+			this.#m_colors.set(CPaletteColorRole.PlaceholderText, pal.color(CPaletteColorRole.PlaceholderText));
 		}
 	}
 

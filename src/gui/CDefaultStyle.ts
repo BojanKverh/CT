@@ -11,7 +11,7 @@ import { CStyleOptionToolButton } from "../gui/CStyleOptionToolButton.js";
 import { CIconMode, CIconState } from "./CIcon.js";
 import { CStyleState } from "./CStyleOption.js";
 import { CStyleOptionPushButton } from "./CStyleOptionPushButton.js";
-import { CFont } from "./CFont.js";
+import { CFont, CFontStyle, CFontWeight } from "./CFont.js";
 import { CStyleOptionCheckBox } from "./CStyleOptionCheckBox.js";
 import { CStyleOptionRadioButton } from "./CStyleOptionRadioButton.js";
 import { CStyleOptionComboBox } from "./CStyleOptionComboBox.js";
@@ -255,7 +255,16 @@ override drawLineEdit(painter: CPainter, option: CStyleOptionLineEdit): void {
 			const textRole = enabled? CPaletteColorRole.Text : CPaletteColorRole.DisabledText;
 
 			painter.setPen(option.palette.color(textRole).toCss());
-			painter.drawText(option.text, textX, textY);
+			if (option.text.length > 0 || option.focus == true)
+				painter.drawText(option.text, textX, textY);
+			else {
+				const font = option.font;
+				font.setStyle(CFontStyle.Italic);
+				painter.setFont(font);
+				painter.setPen(option.palette.color(CPaletteColorRole.PlaceholderText).toCss());
+				painter.drawText(option.placeholderText, textX, textY);
+				painter.setFont(option.font);
+			}
 		} else {
 			const before = option.text.slice(0, option.selectionStart);
 			const selected = option.text.slice(option.selectionStart, option.selectionEnd);
