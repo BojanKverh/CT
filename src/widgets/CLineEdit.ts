@@ -56,6 +56,8 @@ class CLineEditUndoCommand extends CUndoCommand {
 
 /** Implements the line edit widget. */
 export class CLineEdit extends CWidget {
+    #m_clipboardRequest = 0;
+
 	/** Signal emitted when text changes. */
 	readonly textChanged = new CSignal<[string]>();
 	/** Signal emitted when the user edits text. */
@@ -372,6 +374,16 @@ export class CLineEdit extends CWidget {
 		this.insert(text);
 	}
 	
+    /** Reads the system clipboard for a user-invoked Paste command. */
+    async pasteFromSystem(): Promise<void> {
+        if (this.isReadOnly() || !this.isEnabled()) return;
+        const request = ++this.#m_clipboardRequest;
+        const text = await CClipboard.instance().readSystemText();
+        if (text === null || text.length === 0 || request !== this.#m_clipboardRequest ||
+            this.isReadOnly() || !this.isEnabled()) return;
+        this.insert(text);
+    }
+
 	/** Handles the paint event. */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionLineEdit();
@@ -818,8 +830,11 @@ export class CLineEdit extends CWidget {
         menu.addSeparator();
         add("Cut", () => editable() && this.hasSelection(), () => this.cut());
         add("Copy", () => this.isEnabled() && this.hasSelection(), () => this.copy());
-        add("Paste", () => editable() && CClipboard.instance().text().length > 0,
-            () => this.paste());
+        add("Paste", () => editable() && (CClipboard.instance().canReadSystemText() || CClipboard.instance().text().length > 0),
+            () => {
+                if (CClipboard.instance().canReadSystemText()) void this.pasteFromSystem();
+                else this.paste();
+            });
         menu.addSeparator();
         add("Select All", () => this.isEnabled() && this.text().length > 0
             && this.selectedText().length !== this.text().length, () => this.selectAll());
@@ -855,6 +870,7 @@ export class CLineEdit extends CWidget {
 
 	/** Releases the completion association. */
 	override destroy(): void {
+        ++this.#m_clipboardRequest;
 		this.#m_scrollTimer.stop();
         this.#disposeContextMenu();
 		this.setCompleter(null);

@@ -2774,12 +2774,14 @@ test("imports anchor href into the character format", () => {
                 .toEqual(["Undo", "Redo", null, "Cut", "Copy", "Paste", null, "Select All"]);
             menu.destroy();
         });
-        test("empty editor with empty clipboard disables all actions", () => {
+        test("empty editor permits system Paste without reading the clipboard in advance", () => {
             const edit = new CTextEdit();
             CClipboard.instance().setText("");
             const menu = edit.createStandardContextMenu();
-            for (const i of [0, 1, 3, 4, 5, 7])
+            for (const i of [0, 1, 3, 4, 7])
                 expect(menu.actionAt(i)?.isEnabled()).toBe(false);
+            expect(menu.actionAt(5)?.isEnabled()).toBe(true);
+            expect(navigator.clipboard.readText).not.toHaveBeenCalled();
             menu.destroy();
         });
         test("menu enables undo and redo according to history", () => {
@@ -2817,16 +2819,39 @@ test("imports anchor href into the character format", () => {
             expect(edit.cursorPosition()).toBe(1);
             menu.destroy();
         });
-        test("paste replaces the selection and is undoable", () => {
+        test("paste replaces the selection and is undoable", async () => {
             const edit = new CTextEdit();
             edit.setPlainText("abc"); edit.setSelection(0, 3);
-            CClipboard.instance().setText("Pasted");
+            CClipboard.instance().withNativeClipboard(() => CClipboard.instance().setText("Stale internal text"));
+            vi.mocked(navigator.clipboard.readText).mockResolvedValue("Pasted");
             const menu = edit.createStandardContextMenu();
             expect(menu.actionAt(5)?.isEnabled()).toBe(true);
             menu.actionAt(5)!.trigger();
-            expect(edit.toPlainText()).toBe("Pasted");
+            await vi.waitFor(() => expect(edit.toPlainText()).toBe("Pasted"));
+            expect(navigator.clipboard.readText).toHaveBeenCalledOnce();
             edit.undo(); expect(edit.toPlainText()).toBe("abc");
             menu.destroy();
+        });
+
+        test("empty internal clipboard disables Paste when system reading is unavailable", () => {
+            const available = vi.spyOn(CClipboard.instance(), "canReadSystemText").mockReturnValue(false);
+            try {
+                const edit = new CTextEdit(); CClipboard.instance().clear();
+                const menu = edit.createStandardContextMenu();
+                for (const i of [0, 1, 3, 4, 5, 7]) expect(menu.actionAt(i)?.isEnabled()).toBe(false);
+                menu.destroy();
+            } finally { available.mockRestore(); }
+        });
+        test("internal Paste remains synchronous and undoable without system reading", () => {
+            const available = vi.spyOn(CClipboard.instance(), "canReadSystemText").mockReturnValue(false);
+            try {
+                const edit = new CTextEdit(); edit.setPlainText("abc"); edit.setSelection(0, 3);
+                CClipboard.instance().withNativeClipboard(() => CClipboard.instance().setText("Internal"));
+                const menu = edit.createStandardContextMenu(); menu.actionAt(5)!.trigger();
+                expect(edit.toPlainText()).toBe("Internal");
+                expect(navigator.clipboard.readText).not.toHaveBeenCalled();
+                edit.undo(); expect(edit.toPlainText()).toBe("abc"); menu.destroy();
+            } finally { available.mockRestore(); }
         });
         test("select all preserves cursor direction and does not change history", () => {
             const edit = new CTextEdit();

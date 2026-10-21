@@ -127,6 +127,8 @@ class CTextEditUndoCommand extends CUndoCommand {
 
 /** Implements the text edit widget. */
 export class CTextEdit extends CScrollArea {
+    #m_clipboardRequest = 0;
+
 	/** Signal emitted when text changes. */
 	readonly textChanged = new CSignal<[]>();
 	/** Signal emitted when selection changes. */
@@ -572,6 +574,16 @@ export class CTextEdit extends CScrollArea {
 
 		this.insert(text);
 	}
+
+    /** Reads the system clipboard for a user-invoked Paste command. */
+    async pasteFromSystem(): Promise<void> {
+        if (this.isReadOnly() || !this.isEnabled()) return;
+        const request = ++this.#m_clipboardRequest;
+        const text = await CClipboard.instance().readSystemText();
+        if (text === null || text.length === 0 || request !== this.#m_clipboardRequest ||
+            this.isReadOnly() || !this.isEnabled()) return;
+        this.insert(text);
+    }
 
 	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
@@ -2302,8 +2314,11 @@ export class CTextEdit extends CScrollArea {
         menu.addSeparator();
         add("Cut", () => editable() && this.hasSelection(), () => this.cut());
         add("Copy", () => this.isEnabled() && this.hasSelection(), () => this.copy());
-        add("Paste", () => editable() && CClipboard.instance().text().length > 0,
-            () => this.paste());
+        add("Paste", () => editable() && (CClipboard.instance().canReadSystemText() || CClipboard.instance().text().length > 0),
+            () => {
+                if (CClipboard.instance().canReadSystemText()) void this.pasteFromSystem();
+                else this.paste();
+            });
         menu.addSeparator();
         add("Select All", () => this.isEnabled() && this.toPlainText().length > 0
             && this.selectedText().length !== this.toPlainText().length, () => this.selectAll());
@@ -2337,7 +2352,11 @@ export class CTextEdit extends CScrollArea {
     }
 
     override destroy(): void {
+<<<<<<< Updated upstream
         this.#m_cursorTimer.stop();
+=======
+        ++this.#m_clipboardRequest;
+>>>>>>> Stashed changes
         this.#m_selectingWithMouse = false;
         this.#m_selectionScrollTimer.stop();
         this.#disposeContextMenu();

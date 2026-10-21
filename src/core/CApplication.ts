@@ -33,6 +33,14 @@ import { CFont } from "../gui/CFont.js";
  * Central Canvas Toolkit application object that owns the canvas integration, event dispatch, focus, popups, drag-and-drop and repaint scheduling.
  * Only one CApplication instance may exist at a time.
  */
+type CClipboardEditor = CWidget & {
+    selectedText(): string;
+    copy(): void;
+    cut(): void;
+    paste(): void;
+    isReadOnly(): boolean;
+};
+
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
 
@@ -104,6 +112,9 @@ export class CApplication extends CObject {
 	#onWheel = (event: WheelEvent) : void => {
 		this.#dispatchWheelEvent(CEventType.Wheel, event);
 	}
+    #onCopy = (event: ClipboardEvent): void => { this.#dispatchClipboardEvent("copy", event); };
+    #onCut = (event: ClipboardEvent): void => { this.#dispatchClipboardEvent("cut", event); };
+    #onPaste = (event: ClipboardEvent): void => { this.#dispatchClipboardEvent("paste", event); };
     #onKeyDown = (event: KeyboardEvent): void => {
 		this.#dispatchKeyEvent(CEventType.KeyPress, event);
 	};
@@ -151,6 +162,9 @@ export class CApplication extends CObject {
         if (typeof window !== "undefined") {
 	        window.addEventListener("keydown", this.#onKeyDown);
 	        window.addEventListener("keyup", this.#onKeyUp);
+            window.addEventListener("copy", this.#onCopy);
+            window.addEventListener("cut", this.#onCut);
+            window.addEventListener("paste", this.#onPaste);
         }
 	}
 
@@ -175,6 +189,9 @@ export class CApplication extends CObject {
 		if (typeof window !== "undefined") {
 			window.removeEventListener("keydown", this.#onKeyDown);
 			window.removeEventListener("keyup", this.#onKeyUp);
+            window.removeEventListener("copy", this.#onCopy);
+            window.removeEventListener("cut", this.#onCut);
+            window.removeEventListener("paste", this.#onPaste);
 		}
 
 		this.#cancelToolTipTimer();
@@ -892,6 +909,8 @@ export class CApplication extends CObject {
 	}
 
 	#dispatchKeyEvent(type: CEventType, keyboardEvent: KeyboardEvent): void {
+        if (this.#isDomEditor(keyboardEvent.target) && (keyboardEvent.ctrlKey || keyboardEvent.metaKey) &&
+            ["c", "x", "v"].includes(keyboardEvent.key.toLowerCase())) return;
 		if (type === CEventType.KeyPress && keyboardEvent.key === "Escape" &&
 			this.#m_popupWidgets.length > 0) {
 			const popup = this.#m_popupWidgets[this.#m_popupWidgets.length - 1]!;
@@ -937,6 +956,14 @@ export class CApplication extends CObject {
 			return;
 		}
 
+        // Let the browser produce a ClipboardEvent with the real system data.
+        // Preventing keydown here would suppress the subsequent paste/copy event.
+        const key = keyboardEvent.key.toLowerCase();
+        if (type === CEventType.KeyPress && typeof ClipboardEvent !== "undefined" &&
+            (event.ctrl() || event.meta()) && !event.alt() && !event.altGraph() &&
+            (!event.shift() || key === "v") && ["c", "x", "v"].includes(key) &&
+            !this.#isDomEditor(keyboardEvent.target) && this.#clipboardEditor() !== null) return;
+
 		while (target !== null) {
 			if (target.event(event))
 				break;
@@ -955,6 +982,56 @@ export class CApplication extends CObject {
 				keyboardEvent.preventDefault();
 		}
 	}
+
+    #isDomEditor(target: EventTarget | null): boolean {
+        const element = target as (HTMLElement | null);
+        return element != null && (element.isContentEditable === true ||
+            ["INPUT", "TEXTAREA", "SELECT"].includes(element.tagName));
+    }
+
+    #clipboardEditor(): CClipboardEditor | null {
+        let widget = this.#m_focusWidget;
+        const boundary = this.#m_popupWidgets[this.#m_popupWidgets.length - 1] ?? this.topModalWidget();
+        if (widget === null || (boundary !== null && boundary !== undefined && !this.#belongsToModal(widget, boundary))) return null;
+        // Validate the whole ancestry before touching the clipboard.
+        for (let owner: CWidget | null = widget; owner !== null; owner = owner.parent()) {
+            if (!owner.isVisible() || !owner.isEnabled()) return null;
+            if (owner === boundary) break;
+        }
+        while (widget !== null) {
+            const candidate = widget as Partial<CClipboardEditor>;
+            if (typeof candidate.selectedText === "function" && typeof candidate.copy === "function" &&
+                typeof candidate.cut === "function" && typeof candidate.paste === "function" &&
+                typeof candidate.isReadOnly === "function") return widget as CClipboardEditor;
+            if (widget === boundary) break;
+            widget = widget.parent();
+        }
+        return null;
+    }
+
+    #dispatchClipboardEvent(kind: "copy" | "cut" | "paste", event: ClipboardEvent): void {
+        if (event.defaultPrevented || this.#isDomEditor(event.target)) return;
+        const editor = this.#clipboardEditor();
+        const data = event.clipboardData;
+        if (editor === null || data == null) return;
+        if (kind !== "copy" && editor.isReadOnly()) return;
+        if (kind === "paste") {
+            // An empty clipboard must not cause insertion of old internal data.
+            if (!Array.from(data.types).includes("text/plain")) return;
+            this.#m_clipboard.withNativeClipboard(() => {
+                this.#m_clipboard.setText(data.getData("text/plain"));
+                editor.paste();
+            });
+        } else {
+            const text = editor.selectedText();
+            if (text.length === 0) return;
+            data.setData("text/plain", text);
+            this.#m_clipboard.withNativeClipboard(() => {
+                if (kind === "cut") editor.cut(); else editor.copy();
+            });
+        }
+        event.preventDefault();
+    }
 
 	#dispatchShortcut(focused: CWidget, event: CKeyEvent): boolean {
 		const recorder = focused as CWidget & { capturesShortcuts?: () => boolean };

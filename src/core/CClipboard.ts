@@ -16,6 +16,57 @@ export class CClipboard extends CObject {
 	readonly dataChanged = new CSignal();
 
 	#m_mimeData: CMimeData | null = null;
+    #m_nativeDepth = 0;
+    #m_lastError = "";
+    #m_revision = 0;
+    /** Reports a denied or failed system clipboard operation. */
+    readonly errorOccurred = new CSignal<[string]>();
+
+    lastError(): string { return this.#m_lastError; }
+
+    canReadSystemText(): boolean {
+        return typeof navigator !== "undefined" && typeof navigator.clipboard?.readText === "function";
+    }
+
+    /** @internal Synchronizes a native clipboard event without writing it back. */
+    withNativeClipboard(operation: () => void): void {
+        ++this.#m_nativeDepth;
+        try { operation(); } finally { --this.#m_nativeDepth; }
+    }
+
+    /** Reads current system text. A denied read returns null, never stale cached text. */
+    async readSystemText(): Promise<string | null> {
+        if (!this.canReadSystemText()) return this.text();
+        const revision = this.#m_revision;
+        try {
+            const text = await navigator.clipboard.readText();
+            if (revision !== this.#m_revision) return null;
+            this.#m_lastError = "";
+            this.withNativeClipboard(() => this.setText(text));
+            return text;
+        } catch (error) {
+            this.#reportError(error);
+            return null;
+        }
+    }
+
+    /** Writes text to the system clipboard; local MIME data is managed separately. */
+    async writeSystemText(text: string): Promise<boolean> {
+        if (typeof navigator === "undefined" || typeof navigator.clipboard?.writeText !== "function") return false;
+        try {
+            await navigator.clipboard.writeText(text);
+            this.#m_lastError = "";
+            return true;
+        } catch (error) {
+            this.#reportError(error);
+            return false;
+        }
+    }
+
+    #reportError(error: unknown): void {
+        this.#m_lastError = error instanceof Error ? error.message : String(error);
+        this.errorOccurred.emit(this.#m_lastError);
+    }
 
 	static #m_instance: CClipboard | null = null;
 
@@ -68,10 +119,13 @@ export class CClipboard extends CObject {
 			this.#m_mimeData.destroy();
 
 		this.#m_mimeData = mimeData;
+        ++this.#m_revision;
 
 		if (mimeData !== null)
 			mimeData.setParent(this);
 
+        // Keep the synchronous CT API, while synchronizing explicit text writes.
+        if (this.#m_nativeDepth === 0 && mimeData?.hasText()) void this.writeSystemText(mimeData.text());
 		this.dataChanged.emit();
 		this.changed.emit();
 	}
