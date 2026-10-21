@@ -2352,11 +2352,8 @@ export class CTextEdit extends CScrollArea {
     }
 
     override destroy(): void {
-<<<<<<< Updated upstream
         this.#m_cursorTimer.stop();
-=======
         ++this.#m_clipboardRequest;
->>>>>>> Stashed changes
         this.#m_selectingWithMouse = false;
         this.#m_selectionScrollTimer.stop();
         this.#disposeContextMenu();
