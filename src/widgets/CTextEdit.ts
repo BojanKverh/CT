@@ -17,7 +17,7 @@ import {
 import { CFocusEvent } from "../events/CFocusEvent.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CFontMetrics } from "../gui/CFontMetrics.js";
-import { CFont } from "../gui/CFont.js";
+import { CFont, CFontStyle } from "../gui/CFont.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
 import { CRect } from "../geometry/CRect.js";
@@ -26,6 +26,14 @@ import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CTextDocument } from "../gui/CTextDocument.js";
 import { CTextCharFormat } from "../gui/CTextCharFormat.js";
 import { CClipboard } from "../core/CClipboard.js";
+
+/** Flags for literal document searches. Combine flags with bitwise OR. */
+export enum CTextEditFindFlag {
+    None = 0,
+    Backward = 1 << 0,
+    CaseSensitive = 1 << 1,
+    WholeWords = 1 << 2
+}
 
 type CTextEditState = {
 	document: CTextDocument;
@@ -152,6 +160,7 @@ export class CTextEdit extends CScrollArea {
 	#m_mergeKey: object | null = null;
 	#m_restoringHistory = false;
 	#m_undoGroup: CTextEditUndoGroup = null;
+	#m_placeholderText: string = "";
 
 	#m_cursorVisible = true;
 	#m_cursorTimer = new CTimer(this);
@@ -268,6 +277,45 @@ export class CTextEdit extends CScrollArea {
 		this.#m_contentWidget.update();
 	}
 
+    /**
+     * Selects the next literal match, starting after the current selection
+     * (before it for Backward). Searches do not wrap. Returns false without
+     * changing cursor or selection when the query is empty or no match exists.
+     * Read-only documents can be searched; document contents and undo history
+     * are never modified.
+     */
+    find(text: string, flags: CTextEditFindFlag = CTextEditFindFlag.None): boolean {
+        if (text.length === 0) return false;
+        const document = this.toPlainText();
+        const backward = (flags & CTextEditFindFlag.Backward) !== 0;
+        const wholeWords = (flags & CTextEditFindFlag.WholeWords) !== 0;
+        const boundary = backward ? this.selectionStart() : this.selectionEnd();
+        // Escape metacharacters: find() always searches for literal text.
+        const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const pattern = new RegExp(escaped,
+            (flags & CTextEditFindFlag.CaseSensitive) !== 0 ? "gu" : "giu");
+        if (!backward) pattern.lastIndex = boundary;
+        let found: { start: number; end: number } | null = null;
+        for (let match = pattern.exec(document); match !== null; match = pattern.exec(document)) {
+            const start = match.index;
+            const end = start + match[0].length;
+            if (backward && end > boundary) break;
+            const before = Array.from(document.slice(Math.max(0, start - 2), start)).pop() ?? "";
+            const after = end < document.length ? String.fromCodePoint(document.codePointAt(end)!) : "";
+            if (!wholeWords || (!/[\p{L}\p{N}\p{M}_]/u.test(before)
+                && !/[\p{L}\p{N}\p{M}_]/u.test(after))) {
+                found = { start, end };
+                if (!backward) break;
+            }
+            // Include overlapping candidates when searching backwards.
+            pattern.lastIndex = start + String.fromCodePoint(document.codePointAt(start)!).length;
+        }
+        if (found === null) return false;
+        this.setSelection(backward ? found.end : found.start,
+            backward ? found.start : found.end);
+        return true;
+    }
+
 	/** Sets the plain text. */
 	setPlainText(text: string): void {
 		this.#m_history.clear();
@@ -293,6 +341,15 @@ export class CTextEdit extends CScrollArea {
 		this.#ensureCursorVisible();
 		this.#resetCursorBlink();
 		this.#m_contentWidget.update();
+	}
+
+	placeholderText(): string {
+		return this.#m_placeholderText;
+	}
+
+	setPlaceholderText(text: string): void {
+		this.#m_placeholderText = text;
+		this.update();
 	}
 
 	/** Clears the current contents. */
@@ -670,6 +727,15 @@ export class CTextEdit extends CScrollArea {
 
 		painter.setTextAlign("left");
 		painter.setTextBaseline("top");
+
+		if (this.hasFocus() === false && this.toPlainText().length === 0) {
+			let font = this.font();
+			font.setStyle(CFontStyle.Italic);
+			painter.setFont(font);
+			painter.setPen(palette.color(CPaletteColorRole.PlaceholderText).toCss());
+			painter.drawText(this.#m_placeholderText, margin, margin);
+			return;
+		}
 
 		const textRole = this.isEnabled()
 			? CPaletteColorRole.Text

@@ -1523,8 +1523,8 @@ ccw.setParent(parent);
 ccw.setGeometry(30, 650, 100, 30);
 
 const plain = new CPlainTextEdit(parent);
-plain.setGeometry(800, 800, 200, 100);
-plain.setPlainText("This is CPlainTextEdit");
+plain.setGeometry(700, 800, 300, 100);
+plain.setPlaceholderText("This is CPlainTextEdit placeholder text");
 
 const menuBar = new CMenuBar();
 mainWindow.setMenuBar(menuBar);

@@ -1,3 +1,6 @@
+import { CPaletteColorRole } from "../../src/gui/CPalette.js";
+import { CFont, CFontStyle } from "../../src/gui/CFont.js";
+import type { CPainter } from "../../src/painting/CPainter.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
 import { CClipboard } from "../../src/core/CClipboard.js";
@@ -183,4 +186,156 @@ describe("CPlainTextEdit", () => {
 		edit.setPlainText("<b>text</b> & more");
 		expect(edit.toHtml()).toContain("&lt;b&gt;text&lt;/b&gt; &amp; more");
 	});
+
+    describe("placeholder", () => {
+        let subject: CPlainTextEdit;
+        beforeEach(() => {
+            subject = new CPlainTextEdit();
+            subject.setGeometry(0, 0, 320, 160);
+        });
+        afterEach(() => subject.destroy());
+
+        function paintPlaceholder() {
+            let font = new CFont();
+            let pen = "";
+            const draws: Array<{ text: string; font: CFont; pen: string }> = [];
+            const painter = {
+                setBrush: vi.fn(), fillRect: vi.fn(),
+                setTextAlign: vi.fn(), setTextBaseline: vi.fn(), drawLine: vi.fn(),
+                setFont: vi.fn((value: CFont) => { font = new CFont(value); }),
+                setPen: vi.fn((value: string) => { pen = value; }),
+                drawText: vi.fn((text: string, _x: number, _y: number) => {
+                    draws.push({ text, font: new CFont(font), pen });
+                })
+            };
+            subject.paintText(painter as unknown as CPainter);
+            return { painter, draws };
+        }
+
+        test("is empty by default and stores Unicode hints", () => {
+            expect(subject.placeholderText()).toBe("");
+            subject.setPlaceholderText("Vpiši besedilo …");
+            expect(subject.placeholderText()).toBe("Vpiši besedilo …");
+            subject.setPlaceholderText("New hint");
+            expect(subject.placeholderText()).toBe("New hint");
+            subject.setPlaceholderText("");
+            expect(subject.placeholderText()).toBe("");
+        });
+
+        test("requests repaint when the hint changes", () => {
+            const update = vi.spyOn(subject, "update");
+            subject.setPlaceholderText("Hint");
+            expect(update).toHaveBeenCalled();
+            update.mockClear();
+            subject.setPlaceholderText("");
+            expect(update).toHaveBeenCalled();
+            update.mockRestore();
+        });
+
+        test("is independent of document contents and editing signals", () => {
+            const changed = vi.fn();
+            const selected = vi.fn();
+            subject.textChanged.connect(changed);
+            subject.selectionChanged.connect(selected);
+            subject.setPlaceholderText("Hint");
+            expect(subject.toPlainText()).toBe("");
+            expect(subject.cursorPosition()).toBe(0);
+            expect(subject.hasSelection()).toBe(false);
+            expect(changed).not.toHaveBeenCalled();
+            expect(selected).not.toHaveBeenCalled();
+            expect(subject.canUndo()).toBe(false);
+        });
+
+        test("preserves existing document selection and cursor", () => {
+            subject.setPlainText("Hello world");
+            subject.setSelection(0, 5);
+            const cursor = subject.cursorPosition();
+            subject.setPlaceholderText("Hint");
+            expect(subject.toPlainText()).toBe("Hello world");
+            expect(subject.selectedText()).toBe("Hello");
+            expect(subject.cursorPosition()).toBe(cursor);
+        });
+
+        test("does not become clipboard content", () => {
+            CClipboard.instance().withNativeClipboard(() =>
+                CClipboard.instance().setText("Existing clipboard"));
+            subject.setPlaceholderText("Hint");
+            subject.selectAll();
+            subject.copy();
+            expect(subject.selectedText()).toBe("");
+            expect(CClipboard.instance().text()).toBe("Existing clipboard");
+        });
+
+        test("survives document replacement, clear and undo/redo", () => {
+            subject.setPlaceholderText("First hint");
+            subject.setPlainText("abc");
+            subject.clear();
+            expect(subject.placeholderText()).toBe("First hint");
+            subject.setPlaceholderText("Second hint");
+            subject.undo();
+            expect(subject.toPlainText()).toBe("abc");
+            expect(subject.placeholderText()).toBe("Second hint");
+            subject.redo();
+            expect(subject.toPlainText()).toBe("");
+            expect(subject.placeholderText()).toBe("Second hint");
+        });
+
+        test("draws the unfocused empty document hint with its palette color and italic font", () => {
+            subject.setPlaceholderText("Vpiši ime …");
+            const result = paintPlaceholder();
+            expect(result.draws).toHaveLength(1);
+            expect(result.draws[0]!.text).toBe("Vpiši ime …");
+            expect(result.draws[0]!.font.style()).toBe(CFontStyle.Italic);
+            expect(result.draws[0]!.pen).toBe(
+                subject.palette().color(CPaletteColorRole.PlaceholderText).toCss());
+        });
+
+        test("does not interpret markup in the hint as HTML", () => {
+            subject.setPlaceholderText("<b>Name</b> & surname");
+            expect(paintPlaceholder().draws[0]!.text).toBe("<b>Name</b> & surname");
+            expect(subject.toPlainText()).toBe("");
+        });
+
+        test("does not mutate the widget font or current character format during painting", () => {
+            subject.setPlaceholderText("Hint");
+            const font = subject.font().toCss();
+            const format = subject.currentCharFormat();
+            paintPlaceholder();
+            paintPlaceholder();
+            expect(subject.font().toCss()).toBe(font);
+            expect(subject.currentCharFormat().equals(format)).toBe(true);
+        });
+
+        test("hides the hint on focus and shows it again on focus loss", () => {
+            subject.setPlaceholderText("Hint");
+            subject.setFocus();
+            const focused = paintPlaceholder();
+            expect(focused.draws.some(draw => draw.text === "Hint")).toBe(false);
+            expect(focused.painter.drawLine).toHaveBeenCalled();
+            subject.clearFocus();
+            expect(paintPlaceholder().draws[0]!.text).toBe("Hint");
+        });
+
+        test("existing text and whitespace suppress the hint", () => {
+            subject.setPlaceholderText("Hint");
+            subject.setPlainText("Actual text");
+            expect(paintPlaceholder().draws.map(draw => draw.text).join("")).toBe("Actual text");
+            subject.setPlainText(" ");
+            expect(paintPlaceholder().draws.map(draw => draw.text).join("")).toBe(" ");
+        });
+
+        test("shows the hint again when document text is removed", () => {
+            subject.setPlaceholderText("Hint");
+            subject.setPlainText("abc");
+            subject.clear();
+            expect(paintPlaceholder().draws[0]!.text).toBe("Hint");
+        });
+
+        test("still shows the hint in an unfocused read-only editor", () => {
+            subject.setReadOnly(true);
+            subject.setPlaceholderText("Read-only hint");
+            expect(paintPlaceholder().draws[0]!.text).toBe("Read-only hint");
+            expect(subject.toPlainText()).toBe("");
+        });
+    });
 });

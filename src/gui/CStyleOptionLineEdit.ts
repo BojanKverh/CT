@@ -53,6 +53,7 @@ constructor(other: CStyleOptionLineEdit | null = null) {
 		this.selectionStart = other.selectionStart;
 		this.selectionEnd = other.selectionEnd;
 		this.placeholderText = other.placeholderText;
+		this.focus = other.focus;
 	}
 
 		/**

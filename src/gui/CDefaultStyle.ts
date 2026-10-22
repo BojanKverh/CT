@@ -258,7 +258,7 @@ override drawLineEdit(painter: CPainter, option: CStyleOptionLineEdit): void {
 			if (option.text.length > 0 || option.focus == true)
 				painter.drawText(option.text, textX, textY);
 			else {
-				const font = option.font;
+				const font = new CFont(option.font);
 				font.setStyle(CFontStyle.Italic);
 				painter.setFont(font);
 				painter.setPen(option.palette.color(CPaletteColorRole.PlaceholderText).toCss());

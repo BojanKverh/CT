@@ -1,3 +1,4 @@
+import { CPaletteColorRole } from "../../src/gui/CPalette.js";
 import { CObject } from "../../src/core/CObject.js";
 import { CTimer } from "../../src/core/CTimer.js";
 import { CMenu } from "../../src/widgets/CMenu.js";
@@ -6,7 +7,8 @@ import { CPoint } from "../../src/geometry/CPoint.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { CApplication } from "../../src/core/CApplication.js";
-import { CTextEdit } from "../../src/widgets/CTextEdit.js";
+import { CTextEdit, CTextEditFindFlag as Find } from "../../src/widgets/CTextEdit.js";
+import { CPlainTextEdit } from "../../src/widgets/CPlainTextEdit.js";
 import { CEventType } from "../../src/events/CEvent.js";
 import { CKeyEvent } from "../../src/events/CKeyEvent.js";
 import { CMouseButton, CMouseEvent } from "../../src/events/CMouseEvent.js";
@@ -3569,4 +3571,341 @@ test("imports anchor href into the character format", () => {
             expect(repaint).not.toHaveBeenCalled();
         });
     });
+
+    describe("placeholder", () => {
+        let subject: CTextEdit;
+        beforeEach(() => {
+            subject = new CTextEdit();
+            subject.setGeometry(0, 0, 320, 160);
+        });
+        afterEach(() => subject.destroy());
+
+        function paintPlaceholder() {
+            let font = new CFont();
+            let pen = "";
+            const draws: Array<{ text: string; font: CFont; pen: string }> = [];
+            const painter = {
+                setBrush: vi.fn(), fillRect: vi.fn(),
+                setTextAlign: vi.fn(), setTextBaseline: vi.fn(), drawLine: vi.fn(),
+                setFont: vi.fn((value: CFont) => { font = new CFont(value); }),
+                setPen: vi.fn((value: string) => { pen = value; }),
+                drawText: vi.fn((text: string, _x: number, _y: number) => {
+                    draws.push({ text, font: new CFont(font), pen });
+                })
+            };
+            subject.paintText(painter as unknown as CPainter);
+            return { painter, draws };
+        }
+
+        test("is empty by default and stores Unicode hints", () => {
+            expect(subject.placeholderText()).toBe("");
+            subject.setPlaceholderText("Vpiši besedilo …");
+            expect(subject.placeholderText()).toBe("Vpiši besedilo …");
+            subject.setPlaceholderText("New hint");
+            expect(subject.placeholderText()).toBe("New hint");
+            subject.setPlaceholderText("");
+            expect(subject.placeholderText()).toBe("");
+        });
+
+        test("requests repaint when the hint changes", () => {
+            const update = vi.spyOn(subject, "update");
+            subject.setPlaceholderText("Hint");
+            expect(update).toHaveBeenCalled();
+            update.mockClear();
+            subject.setPlaceholderText("");
+            expect(update).toHaveBeenCalled();
+            update.mockRestore();
+        });
+
+        test("is independent of document contents and editing signals", () => {
+            const changed = vi.fn();
+            const selected = vi.fn();
+            subject.textChanged.connect(changed);
+            subject.selectionChanged.connect(selected);
+            subject.setPlaceholderText("Hint");
+            expect(subject.toPlainText()).toBe("");
+            expect(subject.cursorPosition()).toBe(0);
+            expect(subject.hasSelection()).toBe(false);
+            expect(changed).not.toHaveBeenCalled();
+            expect(selected).not.toHaveBeenCalled();
+            expect(subject.canUndo()).toBe(false);
+        });
+
+        test("preserves existing document selection and cursor", () => {
+            subject.setPlainText("Hello world");
+            subject.setSelection(0, 5);
+            const cursor = subject.cursorPosition();
+            subject.setPlaceholderText("Hint");
+            expect(subject.toPlainText()).toBe("Hello world");
+            expect(subject.selectedText()).toBe("Hello");
+            expect(subject.cursorPosition()).toBe(cursor);
+        });
+
+        test("does not become clipboard content", () => {
+            CClipboard.instance().withNativeClipboard(() =>
+                CClipboard.instance().setText("Existing clipboard"));
+            subject.setPlaceholderText("Hint");
+            subject.selectAll();
+            subject.copy();
+            expect(subject.selectedText()).toBe("");
+            expect(CClipboard.instance().text()).toBe("Existing clipboard");
+        });
+
+        test("survives document replacement, clear and undo/redo", () => {
+            subject.setPlaceholderText("First hint");
+            subject.setPlainText("abc");
+            subject.clear();
+            expect(subject.placeholderText()).toBe("First hint");
+            subject.setPlaceholderText("Second hint");
+            subject.undo();
+            expect(subject.toPlainText()).toBe("abc");
+            expect(subject.placeholderText()).toBe("Second hint");
+            subject.redo();
+            expect(subject.toPlainText()).toBe("");
+            expect(subject.placeholderText()).toBe("Second hint");
+        });
+
+        test("draws the unfocused empty document hint with its palette color and italic font", () => {
+            subject.setPlaceholderText("Vpiši ime …");
+            const result = paintPlaceholder();
+            expect(result.draws).toHaveLength(1);
+            expect(result.draws[0]!.text).toBe("Vpiši ime …");
+            expect(result.draws[0]!.font.style()).toBe(CFontStyle.Italic);
+            expect(result.draws[0]!.pen).toBe(
+                subject.palette().color(CPaletteColorRole.PlaceholderText).toCss());
+        });
+
+        test("does not interpret markup in the hint as HTML", () => {
+            subject.setPlaceholderText("<b>Name</b> & surname");
+            expect(paintPlaceholder().draws[0]!.text).toBe("<b>Name</b> & surname");
+            expect(subject.toPlainText()).toBe("");
+        });
+
+        test("does not mutate the widget font or current character format during painting", () => {
+            subject.setPlaceholderText("Hint");
+            const font = subject.font().toCss();
+            const format = subject.currentCharFormat();
+            paintPlaceholder();
+            paintPlaceholder();
+            expect(subject.font().toCss()).toBe(font);
+            expect(subject.currentCharFormat().equals(format)).toBe(true);
+        });
+
+        test("hides the hint on focus and shows it again on focus loss", () => {
+            subject.setPlaceholderText("Hint");
+            subject.setFocus();
+            const focused = paintPlaceholder();
+            expect(focused.draws.some(draw => draw.text === "Hint")).toBe(false);
+            expect(focused.painter.drawLine).toHaveBeenCalled();
+            subject.clearFocus();
+            expect(paintPlaceholder().draws[0]!.text).toBe("Hint");
+        });
+
+        test("existing text and whitespace suppress the hint", () => {
+            subject.setPlaceholderText("Hint");
+            subject.setPlainText("Actual text");
+            expect(paintPlaceholder().draws.map(draw => draw.text).join("")).toBe("Actual text");
+            subject.setPlainText(" ");
+            expect(paintPlaceholder().draws.map(draw => draw.text).join("")).toBe(" ");
+        });
+
+        test("shows the hint again when document text is removed", () => {
+            subject.setPlaceholderText("Hint");
+            subject.setPlainText("abc");
+            subject.clear();
+            expect(paintPlaceholder().draws[0]!.text).toBe("Hint");
+        });
+
+        test("still shows the hint in an unfocused read-only editor", () => {
+            subject.setReadOnly(true);
+            subject.setPlaceholderText("Read-only hint");
+            expect(paintPlaceholder().draws[0]!.text).toBe("Read-only hint");
+            expect(subject.toPlainText()).toBe("");
+        });
+    });
 });
+
+for (const Editor of [CTextEdit, CPlainTextEdit]) {
+    describe(`${Editor.name} find`, () => {
+        let edit: CTextEdit;
+        let oldWindow: PropertyDescriptor | undefined;
+        beforeEach(() => {
+            oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+            Object.defineProperty(globalThis, "window", {
+                value: createTestWindow(), configurable: true, writable: true
+            });
+            new CApplication(createTestCanvas());
+            edit = new Editor();
+            edit.setGeometry(0, 0, 320, 160);
+        });
+        afterEach(() => {
+            edit.destroy();
+            if (CApplication.exists()) CApplication.instance().destroy();
+            if (oldWindow) Object.defineProperty(globalThis, "window", oldWindow);
+            else Reflect.deleteProperty(globalThis, "window");
+        });
+        function load(text: string, position = 0) {
+            edit.setPlainText(text);
+            edit.setCursorPosition(position);
+        }
+        test("finds and selects the next match", () => {
+            load("Hello world");
+            expect(edit.find("world")).toBe(true);
+            expect(edit.selectedText()).toBe("world");
+            expect(edit.selectionStart()).toBe(6);
+            expect(edit.cursorPosition()).toBe(11);
+        });
+        test("repeated forward searches advance past the selection", () => {
+            load("one one one");
+            for (const position of [0, 4, 8]) {
+                expect(edit.find("one")).toBe(true);
+                expect(edit.selectionStart()).toBe(position);
+            }
+            expect(edit.find("one")).toBe(false);
+            expect(edit.selectionStart()).toBe(8);
+        });
+        test("forward search starts at the cursor", () => {
+            load("one one", 1);
+            expect(edit.find("one")).toBe(true);
+            expect(edit.selectionStart()).toBe(4);
+        });
+        test("uses selection bounds even when selection was made backwards", () => {
+            load("one one one");
+            edit.setSelection(7, 4);
+            expect(edit.find("one")).toBe(true);
+            expect(edit.selectionStart()).toBe(8);
+        });
+        test("searches backwards and repeats before the selected match", () => {
+            load("one one one", 11);
+            for (const position of [8, 4, 0]) {
+                expect(edit.find("one", Find.Backward)).toBe(true);
+                expect(edit.selectionStart()).toBe(position);
+                expect(edit.cursorPosition()).toBe(position);
+            }
+            expect(edit.find("one", Find.Backward)).toBe(false);
+        });
+        test("backward search does not select a match crossing the cursor", () => {
+            load("one one", 6);
+            expect(edit.find("one", Find.Backward)).toBe(true);
+            expect(edit.selectionStart()).toBe(0);
+        });
+        test("backward search includes overlapping candidates", () => {
+            load("banana", 6);
+            expect(edit.find("ana", Find.Backward)).toBe(true);
+            expect(edit.selectionStart()).toBe(3);
+        });
+        test("is case insensitive by default", () => {
+            load("Hello HELLO hello");
+            expect(edit.find("hello")).toBe(true);
+            expect(edit.selectedText()).toBe("Hello");
+            expect(edit.find("hello")).toBe(true);
+            expect(edit.selectedText()).toBe("HELLO");
+        });
+        test("can require matching case", () => {
+            load("Hello hello");
+            expect(edit.find("hello", Find.CaseSensitive)).toBe(true);
+            expect(edit.selectionStart()).toBe(6);
+        });
+        test("finds Unicode case variants without changing UTF-16 offsets", () => {
+            load("😀 ČEBELA čebela");
+            expect(edit.find("čebela")).toBe(true);
+            expect(edit.selectionStart()).toBe(3);
+            expect(edit.selectedText()).toBe("ČEBELA");
+        });
+        test("case folding earlier in the document does not shift matches", () => {
+            load("İ abc");
+            expect(edit.find("abc")).toBe(true);
+            expect(edit.selectionStart()).toBe(2);
+        });
+        test("treats regular expression characters literally", () => {
+            load("other [a]+ (x).* \\ end");
+            for (const query of ["[a]+", "(x).*", "\\"]) {
+                expect(edit.find(query)).toBe(true);
+                expect(edit.selectedText()).toBe(query);
+            }
+        });
+        test("whole words reject prefixes, suffixes, digits and underscores", () => {
+            load("scatter cats cat_2 2cat cat");
+            expect(edit.find("cat", Find.WholeWords)).toBe(true);
+            expect(edit.selectionStart()).toBe(24);
+            expect(edit.selectedText()).toBe("cat");
+        });
+        test("whole words accept punctuation and line boundaries", () => {
+            load("(cat),\ncat!");
+            expect(edit.find("cat", Find.WholeWords)).toBe(true);
+            expect(edit.selectionStart()).toBe(1);
+            expect(edit.find("cat", Find.WholeWords)).toBe(true);
+            expect(edit.selectionStart()).toBe(7);
+        });
+        test("whole-word boundaries recognize Unicode letters and combining marks", () => {
+            load("čcat catž cat\u0301 cat");
+            expect(edit.find("cat", Find.WholeWords)).toBe(true);
+            expect(edit.selectionStart()).toBe(15);
+        });
+        test("whole-word boundaries recognize astral Unicode letters", () => {
+            load("𐐀cat cat", 0);
+            expect(edit.find("cat", Find.WholeWords)).toBe(true);
+            expect(edit.selectionStart()).toBe(6);
+        });
+        test("combines direction, case and whole-word flags", () => {
+            load("cat CAT scatter cat", 19);
+            expect(edit.find("cat", Find.Backward | Find.CaseSensitive | Find.WholeWords)).toBe(true);
+            expect(edit.selectionStart()).toBe(16);
+            expect(edit.find("cat", Find.Backward | Find.CaseSensitive | Find.WholeWords)).toBe(true);
+            expect(edit.selectionStart()).toBe(0);
+        });
+        test("can find a literal match across lines", () => {
+            load("first\nsecond\nthird");
+            expect(edit.find("st\nsec")).toBe(true);
+            expect(edit.selectionStart()).toBe(3);
+            expect(edit.selectedText()).toBe("st\nsec");
+        });
+        test("failed and empty searches preserve cursor and selection", () => {
+            load("abc");
+            edit.setSelection(3, 1);
+            const selected = vi.fn();
+            edit.selectionChanged.connect(selected);
+            expect(edit.find("missing")).toBe(false);
+            expect(edit.find("")).toBe(false);
+            expect(edit.selectedText()).toBe("bc");
+            expect(edit.cursorPosition()).toBe(1);
+            expect(selected).not.toHaveBeenCalled();
+        });
+        test("searching an empty document is harmless", () => {
+            expect(edit.find("x")).toBe(false);
+            expect(edit.find("x", Find.Backward)).toBe(false);
+            expect(edit.cursorPosition()).toBe(0);
+        });
+        test("does not wrap automatically", () => {
+            load("abc", 3);
+            expect(edit.find("abc")).toBe(false);
+            edit.setCursorPosition(0);
+            expect(edit.find("abc", Find.Backward)).toBe(false);
+        });
+        test("can search read-only text without changing contents or undo history", () => {
+            load("one two");
+            edit.setReadOnly(true);
+            const changed = vi.fn();
+            edit.textChanged.connect(changed);
+            expect(edit.find("two")).toBe(true);
+            expect(edit.selectedText()).toBe("two");
+            expect(edit.toPlainText()).toBe("one two");
+            expect(changed).not.toHaveBeenCalled();
+            expect(edit.canUndo()).toBe(false);
+        });
+        test("preserves an existing undo command", () => {
+            edit.insert("one two");
+            edit.setCursorPosition(0);
+            expect(edit.find("two")).toBe(true);
+            edit.undo();
+            expect(edit.toPlainText()).toBe("");
+        });
+        test("scrolls the selected match into view", () => {
+            edit.setGeometry(0, 0, 140, 60);
+            load(Array.from({ length: 40 }, (_, i) => `line ${i}`).join("\n"));
+            edit.scrollTo(0, 0);
+            expect(edit.find("line 39")).toBe(true);
+            expect(edit.scrollY()).toBeGreaterThan(0);
+        });
+    });
+}

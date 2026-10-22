@@ -1,3 +1,9 @@
+import { CRect } from "../../src/geometry/CRect.js";
+import { CDefaultStyle } from "../../src/gui/CDefaultStyle.js";
+import { CFont, CFontStyle } from "../../src/gui/CFont.js";
+import { CPaletteColorRole } from "../../src/gui/CPalette.js";
+import { CStyleState } from "../../src/gui/CStyleOption.js";
+import type { CPainter } from "../../src/painting/CPainter.js";
 import { CMenu } from "../../src/widgets/CMenu.js";
 import { CContextMenuEvent, CContextMenuReason } from "../../src/events/CContextMenuEvent.js";
 import { CPoint } from "../../src/geometry/CPoint.js";
@@ -2058,4 +2064,300 @@ describe("CLineEdit", () => {
             edit.destroy();
         });
     });
+
+    describe("placeholder text", () => {
+        test("is empty by default", () => {
+            const edit = new CLineEdit();
+            expect(edit.placeholderText()).toBe("");
+        });
+
+        test("stores and replaces Unicode placeholder text", () => {
+            const edit = new CLineEdit();
+            edit.setPlaceholderText("Vpiši število …");
+            expect(edit.placeholderText()).toBe("Vpiši število …");
+            edit.setPlaceholderText("Drugi namig");
+            expect(edit.placeholderText()).toBe("Drugi namig");
+            edit.setPlaceholderText("");
+            expect(edit.placeholderText()).toBe("");
+        });
+
+        test("requests a repaint when changed or removed", () => {
+            const edit = new CLineEdit();
+            const update = vi.spyOn(edit, "update");
+            edit.setPlaceholderText("Hint");
+            expect(update).toHaveBeenCalled();
+            update.mockClear();
+            edit.setPlaceholderText("");
+            expect(update).toHaveBeenCalled();
+            update.mockRestore();
+        });
+
+        test("is not part of the text, cursor or selection", () => {
+            const edit = new CLineEdit();
+            edit.setPlaceholderText("This is placeholder");
+            edit.selectAll();
+            expect(edit.text()).toBe("");
+            expect(edit.cursorPosition()).toBe(0);
+            expect(edit.selectedText()).toBe("");
+            expect(edit.hasSelection()).toBe(false);
+        });
+
+        test("does not emit text change or user editing signals", () => {
+            const edit = new CLineEdit();
+            const textChanged = vi.fn();
+            const textEdited = vi.fn();
+            edit.textChanged.connect(textChanged);
+            edit.textEdited.connect(textEdited);
+            edit.setPlaceholderText("Hint");
+            edit.setPlaceholderText("Another hint");
+            edit.setPlaceholderText("");
+            expect(textChanged).not.toHaveBeenCalled();
+            expect(textEdited).not.toHaveBeenCalled();
+        });
+
+        test("preserves existing text, cursor and selection", () => {
+            const edit = new CLineEdit();
+            edit.setText("Hello world");
+            edit.setSelection(0, 5);
+            const cursor = edit.cursorPosition();
+            edit.setPlaceholderText("Hint");
+            expect(edit.text()).toBe("Hello world");
+            expect(edit.cursorPosition()).toBe(cursor);
+            expect(edit.selectedText()).toBe("Hello");
+        });
+
+        test("survives typing and deletion back to an empty editor", () => {
+            const edit = new CLineEdit();
+            edit.setPlaceholderText("Hint");
+            edit.insert("abc");
+            expect(edit.text()).toBe("abc");
+            expect(edit.placeholderText()).toBe("Hint");
+            edit.selectAll();
+            edit.event(new CKeyEvent(CEventType.KeyPress, "Backspace"));
+            expect(edit.text()).toBe("");
+            expect(edit.placeholderText()).toBe("Hint");
+        });
+
+        test("does not create undo commands", () => {
+            const edit = new CLineEdit();
+            edit.setPlaceholderText("Hint");
+            expect(edit.canUndo()).toBe(false);
+            expect(edit.canRedo()).toBe(false);
+        });
+
+        test("does not clear editing history and is independent of undo and redo", () => {
+            const edit = new CLineEdit();
+            edit.insert("abc");
+            edit.setPlaceholderText("First hint");
+            edit.undo();
+            expect(edit.text()).toBe("");
+            expect(edit.placeholderText()).toBe("First hint");
+            edit.setPlaceholderText("Second hint");
+            expect(edit.canRedo()).toBe(true);
+            edit.redo();
+            expect(edit.text()).toBe("abc");
+            expect(edit.placeholderText()).toBe("Second hint");
+        });
+
+        test("does not copy the hint into the clipboard", () => {
+            const edit = new CLineEdit();
+            CClipboard.instance().withNativeClipboard(() =>
+                CClipboard.instance().setText("Existing clipboard"));
+            edit.setPlaceholderText("Hint");
+            edit.selectAll();
+            edit.copy();
+            expect(CClipboard.instance().text()).toBe("Existing clipboard");
+        });
+
+        test("does not pass the hint through the input validator", () => {
+            const edit = new CLineEdit();
+            edit.setValidator(new CIntValidator(0, 100));
+            edit.setPlaceholderText("Enter a number");
+            expect(edit.placeholderText()).toBe("Enter a number");
+            expect(edit.text()).toBe("");
+            edit.insert("42");
+            expect(edit.text()).toBe("42");
+        });
+
+        test("can be changed while read-only or disabled", () => {
+            const edit = new CLineEdit();
+            edit.setReadOnly(true);
+            edit.setPlaceholderText("Read-only hint");
+            expect(edit.placeholderText()).toBe("Read-only hint");
+            edit.setEnabled(false);
+            edit.setPlaceholderText("Disabled hint");
+            expect(edit.placeholderText()).toBe("Disabled hint");
+            expect(edit.text()).toBe("");
+        });
+    });
+});
+
+/** Records state at draw time, so later font changes cannot hide regressions. */
+function recordingPainter() {
+	let font = new CFont();
+	let pen = "";
+	const draws: Array<{ text: string; x: number; y: number; font: CFont; pen: string }> = [];
+	const painter = {
+		setFillStyle: vi.fn(), fillRect: vi.fn(), setStrokeStyle: vi.fn(),
+		strokeRect: vi.fn(), save: vi.fn(), restore: vi.fn(), clipRect: vi.fn((_rect: CRect) => {}),
+		setTextAlign: vi.fn(), setTextBaseline: vi.fn(), setBrush: vi.fn(),
+		drawLine: vi.fn(),
+		setFont: vi.fn((value: CFont) => { font = new CFont(value); }),
+		setPen: vi.fn((value: string) => { pen = value; }),
+		drawText: vi.fn((text: string, x: number, y: number) => {
+			draws.push({ text, x, y, font: new CFont(font), pen });
+		})
+	};
+	return { painter, draws, paint: painter as unknown as CPainter };
+}
+
+describe("line edit placeholder style", () => {
+	let oldWindow: PropertyDescriptor | undefined;
+	let style: CDefaultStyle;
+	let option: CStyleOptionLineEdit;
+
+	beforeEach(() => {
+		oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+		Object.defineProperty(globalThis, "window", {
+			value: createTestWindow(), configurable: true, writable: true
+		});
+		new CApplication(createTestCanvas());
+		style = new CDefaultStyle();
+		option = new CStyleOptionLineEdit();
+		option.rect = new CRect(0, 0, 200, 30);
+		option.state = CStyleState.Enabled;
+		option.font = new CFont();
+		option.font.setStyle(CFontStyle.Normal);
+		option.placeholderText = "Vpiši ime …";
+	});
+
+	afterEach(() => {
+		if (CApplication.exists()) CApplication.instance().destroy();
+		if (oldWindow) Object.defineProperty(globalThis, "window", oldWindow);
+		else Reflect.deleteProperty(globalThis, "window");
+	});
+
+	test("style options default to no hint and no focus", () => {
+		const empty = new CStyleOptionLineEdit();
+		expect(empty.placeholderText).toBe("");
+		expect(empty.focus).toBe(false);
+	});
+
+	test("initialization transfers placeholder and focus from the widget", () => {
+		const edit = new CLineEdit();
+		try {
+			edit.setPlaceholderText("Widget hint");
+			edit.setFocus();
+			option.initFromLineEdit(edit);
+			expect(option.placeholderText).toBe("Widget hint");
+			expect(option.text).toBe("");
+			expect(option.focus).toBe(true);
+			expect(option.state & CStyleState.HasFocus).not.toBe(0);
+			edit.clearFocus();
+			edit.setPlaceholderText("Updated hint");
+			option.initFromLineEdit(edit);
+			expect(option.placeholderText).toBe("Updated hint");
+			expect(option.focus).toBe(false);
+		} finally { edit.destroy(); }
+	});
+
+	test("copy preserves the hint and both focus representations", () => {
+		option.focus = true;
+		option.state |= CStyleState.HasFocus;
+		const copy = new CStyleOptionLineEdit(option);
+		expect(copy.placeholderText).toBe(option.placeholderText);
+		expect(copy.focus).toBe(true);
+		expect(copy.state & CStyleState.HasFocus).not.toBe(0);
+		copy.placeholderText = "Changed";
+		expect(option.placeholderText).toBe("Vpiši ime …");
+	});
+
+	test("draws an unfocused empty editor hint with the placeholder palette role", () => {
+		const result = recordingPainter();
+		style.drawLineEdit(result.paint, option);
+		expect(result.draws).toHaveLength(1);
+		expect(result.draws[0]!.text).toBe(option.placeholderText);
+		expect(result.draws[0]!.pen).toBe(
+			option.palette.color(CPaletteColorRole.PlaceholderText).toCss());
+		expect(result.draws[0]!.font.style()).toBe(CFontStyle.Italic);
+	});
+
+	test("drawing the hint does not mutate the supplied font", () => {
+		const font = option.font;
+		const original = font.toCss();
+		style.drawLineEdit(recordingPainter().paint, option);
+		expect(option.font).toBe(font);
+		expect(option.font.toCss()).toBe(original);
+	});
+
+	test("ordinary text remains upright after drawing a hint with the same option", () => {
+		style.drawLineEdit(recordingPainter().paint, option);
+		option.text = "Actual value";
+		const result = recordingPainter();
+		style.drawLineEdit(result.paint, option);
+		expect(result.draws[0]!.text).toBe("Actual value");
+		expect(result.draws[0]!.font.style()).toBe(CFontStyle.Normal);
+		expect(result.draws[0]!.pen).toBe(option.palette.color(CPaletteColorRole.Text).toCss());
+	});
+
+	test("existing text takes precedence over the placeholder", () => {
+		option.text = "Entered text";
+		const result = recordingPainter();
+		style.drawLineEdit(result.paint, option);
+		expect(result.draws.map(draw => draw.text)).toEqual(["Entered text"]);
+	});
+
+	test("hides the placeholder while the empty editor has focus", () => {
+		option.focus = true;
+		option.state |= CStyleState.HasFocus;
+		option.cursorVisible = true;
+		const result = recordingPainter();
+		style.drawLineEdit(result.paint, option);
+		expect(result.draws.some(draw => draw.text === option.placeholderText)).toBe(false);
+		expect(result.painter.drawLine).toHaveBeenCalledOnce();
+	});
+
+	test("copying a focused option does not make its placeholder reappear", () => {
+		option.focus = true;
+		option.state |= CStyleState.HasFocus;
+		const result = recordingPainter();
+		style.drawLineEdit(result.paint, new CStyleOptionLineEdit(option));
+		expect(result.draws.some(draw => draw.text === option.placeholderText)).toBe(false);
+	});
+
+	test("shows the hint again after losing focus", () => {
+		option.focus = true;
+		option.state |= CStyleState.HasFocus;
+		style.drawLineEdit(recordingPainter().paint, option);
+		option.focus = false;
+		option.state &= ~CStyleState.HasFocus;
+		const result = recordingPainter();
+		style.drawLineEdit(result.paint, option);
+		expect(result.draws[0]!.text).toBe(option.placeholderText);
+	});
+
+	test("selected text is drawn instead of the placeholder", () => {
+		option.text = "abc";
+		option.selectionStart = 0;
+		option.selectionEnd = 3;
+		const result = recordingPainter();
+		style.drawLineEdit(result.paint, option);
+		expect(result.draws.map(draw => draw.text).join("")).toBe("abc");
+		expect(result.draws.find(draw => draw.text === "abc")!.pen).toBe(
+			option.palette.color(CPaletteColorRole.HighlightedText).toCss());
+	});
+
+	test("clips the hint to the editor interior and restores painter state", () => {
+		option.rect = new CRect(0, 0, 90, 28);
+		option.placeholderText = "A much longer placeholder than the editor width";
+		const result = recordingPainter();
+		style.drawLineEdit(result.paint, option);
+		const clip = result.painter.clipRect.mock.calls[0]![0];
+		expect(clip.x()).toBe(5);
+		expect(clip.y()).toBe(2);
+		expect(clip.width()).toBe(80);
+		expect(clip.height()).toBe(24);
+		expect(result.painter.save).toHaveBeenCalledOnce();
+		expect(result.painter.restore).toHaveBeenCalledOnce();
+	});
 });
