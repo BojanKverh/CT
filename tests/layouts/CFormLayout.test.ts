@@ -1,3 +1,7 @@
+import { vi } from "vitest";
+import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
+import { CEventType } from "../../src/events/CEvent.js";
+import { CMouseButton, CMouseEvent } from "../../src/events/CMouseEvent.js";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { CAlignment } from "../../src/core/CAlignment.js";
@@ -622,4 +626,98 @@ describe("CFormLayout", () => {
 		expect(wide.width()).toBe(160);
 		expect(wide.height()).toBe(30);
 	});
+});
+
+describe("CFormLayout automatic label buddies", () => {
+    beforeEach(() => {
+        Object.defineProperty(globalThis, "window", {
+            value: createTestWindow(), configurable: true, writable: true
+        });
+        new CApplication(createTestCanvas());
+    });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+    function setup() {
+        const root = new CWidget(); root.resize(400, 200);
+        const layout = new CFormLayout(); root.setLayout(layout);
+        const field = new CWidget(); field.setFocusPolicy(CFocusPolicy.StrongFocus);
+        return { root, layout, field };
+    }
+    function press(key: string) {
+        const preventDefault = vi.fn();
+        window.dispatchEvent({ type: "keydown", key, altKey: true, ctrlKey: false,
+            shiftKey: false, metaKey: false, preventDefault } as unknown as KeyboardEvent);
+        return preventDefault;
+    }
+    test("addRow with text assigns the generated label's buddy", () => {
+        const { layout, field } = setup(); layout.addRow("&Name", field);
+        const label = layout.labelForField(field) as CLabel;
+        expect(label.buddy()).toBe(field);
+        expect(label.text()).toBe("&Name"); expect(label.displayText()).toBe("Name");
+        expect(label.mnemonic()).toBe("N");
+    });
+    test("insertRow with text assigns the inserted field's buddy", () => {
+        const { layout, field } = setup(); const other = new CWidget();
+        layout.addRow("&Other", other); layout.insertRow(0, "&Name", field);
+        expect((layout.labelForField(field) as CLabel).buddy()).toBe(field);
+        expect((layout.labelForField(other) as CLabel).buddy()).toBe(other);
+        expect(layout.widgetAt(0, CFormLayoutItemRole.FieldRole)).toBe(field);
+    });
+    test("generated labels focus their fields on a left click even without a mnemonic", () => {
+        const { layout, field } = setup(); layout.addRow("Name", field);
+        const label = layout.labelForField(field) as CLabel;
+        const event = new CMouseEvent(CEventType.MousePress, 2, 2, CMouseButton.LeftButton);
+        label.event(event);
+        expect(event.isAccepted()).toBe(true); expect(field.hasFocus()).toBe(true);
+    });
+    test("Alt focuses the field from a generated label", () => {
+        const { root, layout, field } = setup(); layout.addRow("&Name", field);
+        const initial = new CWidget(root); initial.setFocusPolicy(CFocusPolicy.StrongFocus); initial.setFocus();
+        expect(press("n")).toHaveBeenCalledOnce(); expect(field.hasFocus()).toBe(true);
+    });
+    test("Alt follows the correct buddy after inserting another row", () => {
+        const { layout, field } = setup(); layout.addRow("&Name", field);
+        const other = new CWidget(); other.setFocusPolicy(CFocusPolicy.StrongFocus);
+        layout.insertRow(0, "&Age", other);
+        press("a"); expect(other.hasFocus()).toBe(true);
+        press("n"); expect(field.hasFocus()).toBe(true);
+    });
+    test("buddy links survive attaching a populated layout to its parent", () => {
+        const root = new CWidget(); root.resize(400, 200);
+        const layout = new CFormLayout(); const field = new CWidget();
+        field.setFocusPolicy(CFocusPolicy.StrongFocus); layout.addRow("&Name", field);
+        const label = layout.labelForField(field) as CLabel;
+        root.setLayout(layout);
+        expect(label.parent()).toBe(root); expect(field.parent()).toBe(root);
+        expect(label.buddy()).toBe(field); expect(press("n")).toHaveBeenCalledOnce();
+        expect(field.hasFocus()).toBe(true);
+    });
+    test("escaped ampersands are displayed literally without a shortcut", () => {
+        const { layout, field } = setup(); layout.addRow("A && B", field);
+        const label = layout.labelForField(field) as CLabel;
+        expect(label.displayText()).toBe("A & B"); expect(label.mnemonic()).toBe("");
+        expect(press("b")).not.toHaveBeenCalled();
+    });
+    test("explicit labels retain a manually assigned buddy", () => {
+        const { root, layout, field } = setup(); const target = new CWidget(root);
+        const label = new CLabel(); label.setText("&Other"); label.setBuddy(target);
+        layout.addRow(label, field); expect(label.buddy()).toBe(target);
+        const second = new CWidget(); const inserted = new CLabel(); inserted.setBuddy(target);
+        layout.insertRow(0, inserted, second); expect(inserted.buddy()).toBe(target);
+    });
+    test("explicit labels without buddies are not modified", () => {
+        const { layout, field } = setup(); const label = new CLabel(); label.setText("&Literal");
+        layout.addRow(label, field);
+        expect(label.buddy()).toBeNull(); expect(label.displayText()).toBe("&Literal");
+    });
+    test("generated buddy activation works with a composite field", () => {
+        const { layout, field } = setup(); field.setFocusPolicy(CFocusPolicy.NoFocus);
+        const input = new CWidget(field); input.setFocusPolicy(CFocusPolicy.StrongFocus);
+        layout.addRow("&Country", field);
+        expect(press("c")).toHaveBeenCalledOnce(); expect(input.hasFocus()).toBe(true);
+    });
+    test("a generated buddy does not focus a disabled field", () => {
+        const { layout, field } = setup(); layout.addRow("&Name", field); field.setEnabled(false);
+        expect(press("n")).not.toHaveBeenCalled(); expect(field.hasFocus()).toBe(false);
+        field.setEnabled(true); expect(press("n")).toHaveBeenCalledOnce(); expect(field.hasFocus()).toBe(true);
+    });
 });

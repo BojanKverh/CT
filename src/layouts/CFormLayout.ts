@@ -39,6 +39,8 @@ export class CFormLayout extends CLayout {
 	 *
 	 * The row may consist of a generated text label and field, an explicit
 	 * label widget and field, or a single widget spanning the whole row.
+     * Generated labels automatically use the field as their buddy. Explicit
+     * label widgets keep their existing buddy association.
 	 */
 	addRow(labelText: string, field: CWidget): void;
 	addRow(label: CWidget, field: CWidget): void;
@@ -92,6 +94,7 @@ export class CFormLayout extends CLayout {
 			const textLabel = new CLabel();
 
 			textLabel.setText(labelOrWidget);
+            textLabel.setBuddy(field);
 			textLabel.setAlignment(this.#m_labelAlignment);
 
 			label = textLabel;
