@@ -1,3 +1,13 @@
+import { CRect } from "../../src/geometry/CRect.js";
+import { CDefaultStyle } from "../../src/gui/CDefaultStyle.js";
+import { CStyleState } from "../../src/gui/CStyleOption.js";
+import { CStyleOptionPushButton } from "../../src/gui/CStyleOptionPushButton.js";
+import { CStyleOptionCheckBox } from "../../src/gui/CStyleOptionCheckBox.js";
+import { CStyleOptionRadioButton } from "../../src/gui/CStyleOptionRadioButton.js";
+import { CStyleOptionToolButton } from "../../src/gui/CStyleOptionToolButton.js";
+import { CStyleOptionToolBoxButton } from "../../src/gui/CStyleOptionToolBoxButton.js";
+import { CToolButtonStyle } from "../../src/gui/CToolButtonStyle.js";
+import { createTestWindow } from "../helpers/createTestWindow.js";
 import { beforeEach, afterEach, describe, expect, test, vi } from "vitest";
 
 import { CApplication } from "../../src/core/CApplication.js";
@@ -42,6 +52,7 @@ describe("CPushButton", () => {
 		new CApplication(createTestCanvas());
 	});
 	afterEach(() => {
+        if (CApplication.exists()) CApplication.instance().destroy();
 		vi.useRealTimers();
 	});
 
@@ -500,4 +511,186 @@ describe("CPushButton", () => {
 
 		vi.useRealTimers();
 	});
+});
+function recordPainting() {
+    let fill = "";
+    const fills: Array<{ rect: CRect; color: string }> = [];
+    const stack: string[] = [];
+    const painter = {
+        setBrush: vi.fn((color: string) => { fill = color; }),
+        setFillStyle: vi.fn((color: string) => { fill = color; }),
+        fillRect: vi.fn((rect: CRect) => { fills.push({ rect, color: fill }); }),
+        setPen: vi.fn(), setStrokeStyle: vi.fn(), setFont: vi.fn(),
+        setTextAlign: vi.fn(), setTextBaseline: vi.fn(), drawText: vi.fn(),
+        drawRoundedRect: vi.fn(), strokeRect: vi.fn(), drawLine: vi.fn(),
+        drawEllipse: vi.fn(), fillEllipse: vi.fn(), drawPixmap: vi.fn(),
+        save: vi.fn(() => { stack.push(fill); }),
+        restore: vi.fn(() => { fill = stack.pop()!; })
+    };
+    return {
+        painter, paint: painter as unknown as CPainter,
+        dots: () => fills.filter(item => item.rect.width() === 1 && item.rect.height() === 1)
+    };
+}
+
+describe("button focus indicators", () => {
+    let oldWindow: PropertyDescriptor | undefined;
+    let style: CDefaultStyle;
+    beforeEach(() => {
+        if (CApplication.exists()) CApplication.instance().destroy();
+        oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+        Object.defineProperty(globalThis, "window", {
+            value: createTestWindow(), configurable: true, writable: true
+        });
+        new CApplication(createTestCanvas());
+        style = new CDefaultStyle();
+    });
+    afterEach(() => {
+        if (CApplication.exists()) CApplication.instance().destroy();
+        if (oldWindow) Object.defineProperty(globalThis, "window", oldWindow);
+        else Reflect.deleteProperty(globalThis, "window");
+    });
+
+    const variants = [
+        { name: "push button", make: () => new CStyleOptionPushButton(),
+            draw: (p: CPainter, o: CStyleOptionPushButton) => style.drawPushButton(p, o) },
+        { name: "check box", make: () => new CStyleOptionCheckBox(),
+            draw: (p: CPainter, o: CStyleOptionCheckBox) => style.drawCheckBox(p, o) },
+        { name: "radio button", make: () => new CStyleOptionRadioButton(),
+            draw: (p: CPainter, o: CStyleOptionRadioButton) => style.drawRadioButton(p, o) },
+        ...[
+            CToolButtonStyle.TextOnly, CToolButtonStyle.IconOnly,
+            CToolButtonStyle.TextUnderIcon, CToolButtonStyle.TextBesideIcon
+        ].map(mode => ({ name: `tool button mode ${mode}`, make: () => {
+            const option = new CStyleOptionToolButton();
+            option.toolButtonStyle = mode;
+            option.icon = null;
+            return option;
+        }, draw: (p: CPainter, o: CStyleOptionToolButton) => style.drawToolButton(p, o) })),
+        { name: "tool box button", make: () => new CStyleOptionToolBoxButton(),
+            draw: (p: CPainter, o: CStyleOptionToolBoxButton) => style.drawToolBoxButton(p, o) }
+    ];
+
+    for (const variant of variants) {
+        // Keep each factory and matching draw method paired despite the union above.
+        const exercise = (state: CStyleState, small = false) => {
+            const option = variant.make();
+            option.text = "Button";
+            option.rect = new CRect(0, 0, small ? 6 : 100, small ? 6 : 30);
+            option.state = state;
+            const result = recordPainting();
+            // The factory/draw pairing is guaranteed by the variant definitions.
+            (variant.draw as (p: CPainter, o: typeof option) => void)(result.paint, option);
+            return { ...result, option };
+        };
+        test(`${variant.name}: keyboard focus draws an interior dotted outline`, () => {
+            const result = exercise(CStyleState.Enabled | CStyleState.HasFocus);
+            expect(result.dots().length).toBeGreaterThan(0);
+            for (const { rect } of result.dots()) {
+                expect(rect.x()).toBeGreaterThanOrEqual(4);
+                expect(rect.y()).toBeGreaterThanOrEqual(4);
+                expect(rect.x() + rect.width()).toBeLessThanOrEqual(96);
+                expect(rect.y() + rect.height()).toBeLessThanOrEqual(26);
+            }
+            expect(result.painter.save).toHaveBeenCalledOnce();
+            expect(result.painter.restore).toHaveBeenCalledOnce();
+        });
+        test(`${variant.name}: no outline without focus or when disabled`, () => {
+            expect(exercise(CStyleState.Enabled).dots()).toHaveLength(0);
+            expect(exercise(CStyleState.HasFocus).dots()).toHaveLength(0);
+        });
+        test(`${variant.name}: tiny controls do not draw invalid focus geometry`, () => {
+            expect(exercise(CStyleState.Enabled | CStyleState.HasFocus, true).dots()).toHaveLength(0);
+        });
+    }
+
+    test("checkbox label focus excludes the indicator and follows text width", () => {
+        const option = new CStyleOptionCheckBox();
+        option.rect = new CRect(0, 0, 300, 30);
+        option.state = CStyleState.Enabled | CStyleState.HasFocus;
+        const rightEdges: number[] = [];
+        for (const text of ["A", "A much longer label"]) {
+            option.text = text;
+            const result = recordPainting();
+            style.drawCheckBox(result.paint, option);
+            expect(result.dots().length).toBeGreaterThan(0);
+            expect(result.dots().every(dot => dot.rect.x() >= 20)).toBe(true);
+            rightEdges.push(Math.max(...result.dots().map(dot => dot.rect.x())));
+        }
+        expect(rightEdges[1]!).toBeGreaterThan(rightEdges[0]!);
+        expect(rightEdges[1]!).toBeLessThan(299);
+    });
+
+    test("unlabeled checkbox draws focus inside its indicator", () => {
+        const option = new CStyleOptionCheckBox();
+        option.rect = new CRect(0, 0, 100, 30);
+        option.text = "";
+        option.state = CStyleState.Enabled | CStyleState.HasFocus;
+        const result = recordPainting();
+        style.drawCheckBox(result.paint, option);
+        expect(result.dots().length).toBeGreaterThan(0);
+        expect(result.dots().every(({ rect }) => rect.x() >= 1
+            && rect.x() + 1 <= 15 && rect.y() >= 8 && rect.y() + 1 <= 22)).toBe(true);
+    });
+
+    test("radio button label focus excludes the indicator and follows text width", () => {
+        const option = new CStyleOptionRadioButton();
+        option.rect = new CRect(0, 0, 300, 30);
+        option.state = CStyleState.Enabled | CStyleState.HasFocus;
+        const rightEdges: number[] = [];
+        for (const text of ["A", "A much longer label"]) {
+            option.text = text;
+            const result = recordPainting();
+            style.drawRadioButton(result.paint, option);
+            expect(result.dots().length).toBeGreaterThan(0);
+            expect(result.dots().every(dot => dot.rect.x() >= 20)).toBe(true);
+            rightEdges.push(Math.max(...result.dots().map(dot => dot.rect.x())));
+        }
+        expect(rightEdges[1]!).toBeGreaterThan(rightEdges[0]!);
+        expect(rightEdges[1]!).toBeLessThan(299);
+    });
+
+    test("unlabeled radio button draws focus inside its indicator", () => {
+        const option = new CStyleOptionRadioButton();
+        option.rect = new CRect(0, 0, 100, 30);
+        option.text = "";
+        option.state = CStyleState.Enabled | CStyleState.HasFocus;
+        const result = recordPainting();
+        style.drawRadioButton(result.paint, option);
+        expect(result.dots().length).toBeGreaterThan(0);
+        expect(result.dots().every(({ rect }) => rect.x() >= 3
+            && rect.x() + 1 <= 15 && rect.y() >= 9 && rect.y() + 1 <= 21)).toBe(true);
+    });
+
+    test("pressed push buttons use highlighted text color for the outline", () => {
+        const option = new CStyleOptionPushButton();
+        option.rect = new CRect(0, 0, 100, 30);
+        option.state = CStyleState.Enabled | CStyleState.HasFocus | CStyleState.Sunken;
+        const result = recordPainting();
+        style.drawPushButton(result.paint, option);
+        expect(result.dots().length).toBeGreaterThan(0);
+        expect(result.dots().every(dot => dot.color ===
+            option.palette.color(CPaletteColorRole.HighlightedText).toCss())).toBe(true);
+    });
+
+    test("focus follows the focused button through its style option", () => {
+        const first = new CPushButton();
+        const second = new CPushButton();
+        try {
+            first.setFocus();
+            const firstOption = new CStyleOptionPushButton();
+            const secondOption = new CStyleOptionPushButton();
+            firstOption.initFromPushButton(first);
+            secondOption.initFromPushButton(second);
+            expect(firstOption.state & CStyleState.HasFocus).not.toBe(0);
+            expect(secondOption.state & CStyleState.HasFocus).toBe(0);
+            second.setFocus();
+            firstOption.initFromPushButton(first);
+            secondOption.initFromPushButton(second);
+            expect(firstOption.state & CStyleState.HasFocus).toBe(0);
+            expect(secondOption.state & CStyleState.HasFocus).not.toBe(0);
+            const copy = new CStyleOptionPushButton(secondOption);
+            expect(copy.state & CStyleState.HasFocus).not.toBe(0);
+        } finally { first.destroy(); second.destroy(); }
+    });
 });

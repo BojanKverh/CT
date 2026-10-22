@@ -627,10 +627,10 @@ export class CApplication extends CObject {
 		const current = this.#m_focusWidget;
 		let index = widgets.indexOf(current!);
 
-		if (forward)
-			index = (index + 1 + widgets.length) % widgets.length;
-		else
-			index = (index - 1 + widgets.length) % widgets.length;
+		if (index < 0)
+            index = forward ? 0 : widgets.length - 1;
+        else
+            index = (index + (forward ? 1 : -1) + widgets.length) % widgets.length;
 
 		widgets[index]!.setFocus();
 
@@ -919,10 +919,12 @@ export class CApplication extends CObject {
 			return;
 		}
 
-        const focus = this.#m_focusWidget;
-        let target = (focus !== null && focus.isVisible() && focus.isEnabled() ? focus : null)
-            ?? this.#m_popupWidgets[this.#m_popupWidgets.length - 1]
+        const boundary = this.#m_popupWidgets[this.#m_popupWidgets.length - 1]
             ?? this.topModalWidget();
+        const focus = this.#m_focusWidget;
+        let target = (focus !== null && focus.isVisible() && focus.isEnabled()
+            && (boundary === null || this.#belongsToModal(focus, boundary)) ? focus : null)
+            ?? boundary;
         if (target === null) {
             // A window action remains available even when an editor clears focus.
             const windows = [...this.#m_topLevelWidgets, ...this.#m_windowWidgets];
@@ -968,7 +970,7 @@ export class CApplication extends CObject {
 			if (target.event(event))
 				break;
 
-			target = target.parent();
+			target = target === boundary ? null : target.parent();
 		}
 
 		if (event.isAccepted()) {
@@ -978,7 +980,7 @@ export class CApplication extends CObject {
 		}
 
 		if (type === CEventType.KeyPress && keyboardEvent.key === "Tab") {
-			if (this.focusNextWidget(!keyboardEvent.shiftKey))
+			if (this.focusNextWidget(!keyboardEvent.shiftKey) || boundary !== null)
 				keyboardEvent.preventDefault();
 		}
 	}
@@ -1285,28 +1287,28 @@ export class CApplication extends CObject {
 			this.#m_paintDevice.canvas().style.cursor = shape;
 	}
 
-	#focusableWidgets(): CWidget[] {
-		const result: CWidget[] = [];
-
-		const visit = (widget: CWidget): void => {
-			if (
-				widget.isVisible()
-				&& widget.isEnabled()
-				&& widget.acceptsTabFocus()
-			)
-				result.push(widget);
-
-			for (const child of widget.children()) {
-				if (child instanceof CWidget)
-					visit(child);
-			}
-		};
-
-		for (const widget of this.#m_topLevelWidgets)
-			visit(widget);
-
-		return result;
-	}
+    #focusableWidgets(): CWidget[] {
+        const result: CWidget[] = [];
+        const visited = new Set<CWidget>();
+        const boundary = this.#m_popupWidgets[this.#m_popupWidgets.length - 1]
+            ?? this.topModalWidget();
+        const visit = (widget: CWidget): void => {
+            if (visited.has(widget) || !widget.isVisible() || !widget.isEnabled()) return;
+            visited.add(widget);
+            if (widget.acceptsTabFocus()) result.push(widget);
+            for (const child of widget.children()) {
+                if (child instanceof CWidget) visit(child);
+            }
+        };
+        if (boundary !== null) {
+            visit(boundary);
+        } else {
+            for (const widget of this.#m_topLevelWidgets) visit(widget);
+            // Parentless non-modal dialogs are registered as windows only.
+            for (const widget of this.#m_windowWidgets) visit(widget);
+        }
+        return result;
+    }
 
 	/** Opens a keyboard context menu at the focused widget's centre. */
 	#dispatchKeyboardContextMenuEvent(focused: CWidget): boolean {

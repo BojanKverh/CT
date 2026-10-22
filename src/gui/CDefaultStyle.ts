@@ -9,7 +9,7 @@ import { CFrameShadow, CFrameShape } from "../gui/CFrameStyle.js";
 import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
 import { CStyleOptionToolButton } from "../gui/CStyleOptionToolButton.js";
 import { CIconMode, CIconState } from "./CIcon.js";
-import { CStyleState } from "./CStyleOption.js";
+import { CStyleState, type CStyleOption } from "./CStyleOption.js";
 import { CStyleOptionPushButton } from "./CStyleOptionPushButton.js";
 import { CFont, CFontStyle, CFontWeight } from "./CFont.js";
 import { CStyleOptionCheckBox } from "./CStyleOptionCheckBox.js";
@@ -188,6 +188,7 @@ override drawPushButton(painter: CPainter, option: CStyleOptionPushButton): void
 		painter.setTextBaseline("middle");
 
 		painter.drawText(option.text, option.rect.width() / 2, option.rect.height() / 2);
+		this.#drawButtonFocus(painter, option, textRole);
 	}
 
 		/**
@@ -221,6 +222,18 @@ override drawCheckBox(painter: CPainter, option: CStyleOptionCheckBox): void {
 		painter.setTextBaseline("middle");
 
 		painter.drawText(option.text, boxSize + 6, option.rect.height() / 2);
+        // Match Qt: focus surrounds the label; an unlabeled checkbox uses
+        // an outline inside its indicator instead.
+        const metrics = new CFontMetrics(option.font);
+        const focusRect = option.text.length > 0
+            ? new CRect(boxSize + 4,
+                Math.max(1, (option.rect.height() - metrics.height()) / 2 - 2),
+                Math.min(metrics.textWidth(option.text) + 4,
+                    option.rect.width() - boxSize - 5),
+                Math.min(metrics.height() + 4, option.rect.height() - 2))
+            : new CRect(1, boxY + 1, boxSize - 2, boxSize - 2);
+        if (option.rect.width() >= boxSize && option.rect.height() >= boxSize)
+            this.#drawButtonFocus(painter, option, textRole, focusRect);
 	}
 	
 		/**
@@ -624,6 +637,21 @@ override drawRadioButton(painter: CPainter, option: CStyleOptionRadioButton): vo
 		painter.setTextAlign("left");
 		painter.setTextBaseline("middle");
 		painter.drawText(option.text, indicatorX + indicatorSize + 6, option.rect.height() / 2);
+        const metrics = new CFontMetrics(option.font);
+        const textX = indicatorX + indicatorSize + 6;
+        const focusRect = option.text.length > 0
+            ? new CRect(textX - 2,
+                Math.max(1, (option.rect.height() - metrics.height()) / 2 - 2),
+                Math.min(metrics.textWidth(option.text) + 4,
+                    option.rect.width() - textX + 1),
+                Math.min(metrics.height() + 4, option.rect.height() - 2))
+            : new CRect(indicatorX + 1, indicatorY + 1,
+                indicatorSize - 2, indicatorSize - 2);
+        if (option.rect.width() >= indicatorX + indicatorSize
+            && option.rect.height() >= indicatorSize)
+            this.#drawButtonFocus(painter, option,
+                enabled ? CPaletteColorRole.Text : CPaletteColorRole.DisabledText,
+                focusRect);
 	}
 
 		/**
@@ -903,12 +931,15 @@ override drawToolButton(painter: CPainter, option: CStyleOptionToolButton): void
 			painter.setTextBaseline("middle");
 
 			painter.drawText(text, rect.width() / 2, rect.height() / 2);
+			this.#drawButtonFocus(painter, option, textRole);
 			return;
 		}
 
 		if (toolButtonStyle === CToolButtonStyle.IconOnly) {
-			if (pixmap === null)
-				return;
+			if (pixmap === null) {
+                this.#drawButtonFocus(painter, option, textRole);
+                return;
+            }
 
 			const maxWidth = Math.min(
 				iconSize.width(),
@@ -936,6 +967,7 @@ override drawToolButton(painter: CPainter, option: CStyleOptionToolButton): void
 			const y = (rect.height() - height) / 2;
 
 			painter.drawPixmap(pixmap, x, y, width, height);
+			this.#drawButtonFocus(painter, option, textRole);
 			return;
 		}
 
@@ -980,6 +1012,7 @@ override drawToolButton(painter: CPainter, option: CStyleOptionToolButton): void
 			painter.drawText(text, rect.width() / 2, rect.height() - margin
 			);
 
+			this.#drawButtonFocus(painter, option, textRole);
 			return;
 		}
 
@@ -1006,6 +1039,7 @@ override drawToolButton(painter: CPainter, option: CStyleOptionToolButton): void
 			painter.setTextBaseline("middle");
 			painter.drawText(text, startX + iconSize + margin, rect.height() / 2);
 		}
+		this.#drawButtonFocus(painter, option, textRole);
 	}
 
 		/**
@@ -1146,6 +1180,7 @@ override drawToolBoxButton(painter: CPainter, option: CStyleOptionToolBoxButton)
 		painter.setTextAlign("left");
 		painter.setTextBaseline("middle");
 		painter.drawText(option.text, 8, option.rect.height() / 2);
+		this.#drawButtonFocus(painter, option, textRole);
 	}
 
 		/**
@@ -1179,6 +1214,32 @@ override drawKeySequenceEdit(painter: CPainter, option: CStyleOptionKeySequenceE
 			option.keySequence, 5, option.rect.height() / 2
 		);
 	}
+
+
+    /** Draws a one-pixel dotted focus outline without changing painter state. */
+    #drawButtonFocus(painter: CPainter, option: CStyleOption,
+        colorRole: CPaletteColorRole, focusRect?: CRect): void {
+        if ((option.state & CStyleState.HasFocus) === 0
+            || (option.state & CStyleState.Enabled) === 0) return;
+        const rect = focusRect ?? option.rect;
+        const inset = focusRect ? 0 : 4;
+        const left = Math.ceil(rect.x() + inset);
+        const top = Math.ceil(rect.y() + inset);
+        const right = Math.floor(rect.x() + rect.width() - inset - 1);
+        const bottom = Math.floor(rect.y() + rect.height() - inset - 1);
+        if (right <= left || bottom <= top) return;
+        painter.save();
+        painter.setFillStyle(option.palette.color(colorRole).toCss());
+        for (let x = left; x <= right; x += 2) {
+            painter.fillRect(new CRect(x, top, 1, 1));
+            painter.fillRect(new CRect(x, bottom, 1, 1));
+        }
+        for (let y = top + 2; y < bottom; y += 2) {
+            painter.fillRect(new CRect(left, y, 1, 1));
+            painter.fillRect(new CRect(right, y, 1, 1));
+        }
+        painter.restore();
+    }
 
 	#drawFrameHLine(painter: CPainter, option: CStyleOptionFrame, rect: CRect, 
 		lineWidth: number, midLineWidth: number): void { 

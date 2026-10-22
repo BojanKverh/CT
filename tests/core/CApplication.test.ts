@@ -2601,3 +2601,222 @@ describe("action shortcut dispatch", () => {
         expect(triggered).not.toHaveBeenCalled();
     });
 });
+
+
+describe("modal Tab focus boundaries", () => {
+    let app: CApplication;
+    let oldWindow: PropertyDescriptor | undefined;
+    beforeEach(() => {
+        oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+        Object.defineProperty(globalThis, "window", {
+            value: createTestWindow(), configurable: true, writable: true
+        });
+        app = new CApplication(createTestCanvas());
+    });
+    afterEach(() => {
+        if (CApplication.exists()) CApplication.instance().destroy();
+        if (oldWindow) Object.defineProperty(globalThis, "window", oldWindow);
+        else Reflect.deleteProperty(globalThis, "window");
+    });
+    function field(parent: CWidget | null = null): CWidget {
+        const widget = new CWidget(parent);
+        widget.setFocusPolicy(CFocusPolicy.StrongFocus);
+        return widget;
+    }
+    function pressTab(backward = false) {
+        const preventDefault = vi.fn();
+        window.dispatchEvent({
+            type: "keydown", key: "Tab", code: "Tab", shiftKey: backward,
+            ctrlKey: false, altKey: false, metaKey: false, preventDefault
+        } as unknown as KeyboardEvent);
+        return preventDefault;
+    }
+    function setup(parentless = false) {
+        const background = field();
+        const dialog = new CDialog(parentless ? null : background);
+        dialog.setGeometry(20, 20, 240, 160);
+        dialog.setFocusPolicy(CFocusPolicy.NoFocus);
+        const first = field(dialog);
+        const second = field(dialog);
+        const last = field(dialog);
+        dialog.exec();
+        return { background, dialog, first, second, last };
+    }
+    test("Tab wraps from the last modal field to the first", () => {
+        const { first, last, background } = setup();
+        last.setFocus();
+        expect(pressTab()).toHaveBeenCalledOnce();
+        expect(app.focusWidget()).toBe(first);
+        expect(background.hasFocus()).toBe(false);
+    });
+    test("Shift+Tab wraps from the first modal field to the last", () => {
+        const { first, last } = setup();
+        first.setFocus();
+        pressTab(true);
+        expect(app.focusWidget()).toBe(last);
+    });
+    test("repeated traversal stays in the dialog in both directions", () => {
+        const { first, second, last } = setup();
+        first.setFocus();
+        for (const expected of [second, last, first, second, last, first]) {
+            pressTab(); expect(app.focusWidget()).toBe(expected);
+        }
+        for (const expected of [last, second, first, last, second, first]) {
+            pressTab(true); expect(app.focusWidget()).toBe(expected);
+        }
+    });
+    test("parentless modal dialogs participate in focus traversal", () => {
+        const { first, last } = setup(true);
+        last.setFocus();
+        pressTab();
+        expect(app.focusWidget()).toBe(first);
+    });
+    test("Tab enters the first field when the dialog itself has focus", () => {
+        const { first } = setup();
+        pressTab();
+        expect(app.focusWidget()).toBe(first);
+    });
+    test("Shift+Tab enters the last field when current focus is outside the chain", () => {
+        const { last } = setup();
+        pressTab(true);
+        expect(app.focusWidget()).toBe(last);
+    });
+    test("public traversal uses the modal boundary too", () => {
+        const { first, last } = setup();
+        last.setFocus();
+        expect(app.focusNextWidget()).toBe(true);
+        expect(app.focusWidget()).toBe(first);
+        expect(app.focusNextWidget(false)).toBe(true);
+        expect(app.focusWidget()).toBe(last);
+    });
+    test("stale focus in an accepting background widget cannot swallow modal Tab", () => {
+        class AcceptsKeys extends CWidget {
+            presses = 0;
+            protected override keyPressEvent(event: CKeyEvent): void {
+                ++this.presses; event.accept();
+            }
+        }
+        const { first } = setup();
+        const background = new AcceptsKeys();
+        background.setFocusPolicy(CFocusPolicy.StrongFocus);
+        background.setFocus();
+        pressTab();
+        expect(background.presses).toBe(0);
+        expect(app.focusWidget()).toBe(first);
+    });
+    test("unhandled dialog keys do not bubble to its background owner", () => {
+        class Owner extends CWidget {
+            presses = 0;
+            protected override keyPressEvent(event: CKeyEvent): void {
+                ++this.presses; event.accept();
+            }
+        }
+        const owner = new Owner();
+        const dialog = new CDialog(owner);
+        dialog.setGeometry(20, 20, 240, 160);
+        const inside = field(dialog);
+        dialog.exec(); inside.setFocus();
+        pressTab();
+        expect(owner.presses).toBe(0);
+        expect(app.focusWidget()).toBe(inside);
+    });
+    test("only the topmost nested modal dialog receives Tab", () => {
+        const { dialog, first } = setup();
+        const nested = new CDialog(dialog);
+        nested.setGeometry(30, 30, 160, 100);
+        nested.setFocusPolicy(CFocusPolicy.NoFocus);
+        const a = field(nested);
+        const b = field(nested);
+        nested.exec(); b.setFocus();
+        pressTab();
+        expect(app.focusWidget()).toBe(a);
+        nested.close(); first.setFocus();
+        pressTab();
+        expect(app.focusWidget()!.parent()).toBe(dialog);
+    });
+    test("the top popup has its own Tab cycle above a modal dialog", () => {
+        const { first } = setup();
+        const popup = new CPopupWidget();
+        popup.setGeometry(30, 30, 120, 80);
+        popup.setFocusPolicy(CFocusPolicy.NoFocus);
+        const a = field(popup);
+        const b = field(popup);
+        popup.show(); app.registerPopupWidget(popup); b.setFocus();
+        pressTab();
+        expect(app.focusWidget()).toBe(a);
+        pressTab(true);
+        expect(app.focusWidget()).toBe(b);
+        app.unregisterPopupWidget(popup); popup.hide(); first.setFocus();
+        pressTab(true);
+        expect(app.focusWidget()!.parent()).toBe(first.parent());
+        popup.destroy();
+    });
+    test("hidden and disabled containers exclude all their children", () => {
+        const { dialog, first, second, last } = setup();
+        second.hide(); last.setEnabled(false);
+        const hidden = new CWidget(dialog);
+        field(hidden); hidden.hide();
+        const disabled = new CWidget(dialog);
+        field(disabled); disabled.setEnabled(false);
+        first.setFocus();
+        pressTab();
+        expect(app.focusWidget()).toBe(first);
+        pressTab(true);
+        expect(app.focusWidget()).toBe(first);
+    });
+    test("a container without TabFocus still allows traversal to its visible children", () => {
+        const { dialog, first, second, last } = setup();
+        second.hide(); last.hide();
+        const group = new CWidget(dialog);
+        group.setFocusPolicy(CFocusPolicy.NoFocus);
+        const child = field(group);
+        first.setFocus(); pressTab();
+        expect(app.focusWidget()).toBe(child);
+        pressTab(); expect(app.focusWidget()).toBe(first);
+    });
+    test("a modal dialog with no focusable fields still prevents browser Tab", () => {
+        const { dialog, first, second, last } = setup();
+        for (const widget of [first, second, last]) widget.setFocusPolicy(CFocusPolicy.NoFocus);
+        dialog.setFocus();
+        expect(app.focusWidget()).toBeNull();
+        expect(pressTab()).toHaveBeenCalledOnce();
+        expect(pressTab(true)).toHaveBeenCalledOnce();
+        expect(app.focusWidget()).toBeNull();
+        expect(app.focusNextWidget()).toBe(false);
+    });
+    test("an accepted Tab inside a modal field still overrides traversal", () => {
+        class HandlesTab extends CWidget {
+            protected override keyPressEvent(event: CKeyEvent): void {
+                if (event.key() === "Tab") event.accept(); else event.ignore();
+            }
+        }
+        const { dialog } = setup();
+        const field = new HandlesTab(dialog);
+        field.setFocusPolicy(CFocusPolicy.StrongFocus); field.setFocus();
+        pressTab();
+        expect(app.focusWidget()).toBe(field);
+    });
+    test("closing the modal makes background widgets reachable again", () => {
+        const { dialog, background } = setup();
+        const outside = field();
+        dialog.close(); background.setFocus();
+        pressTab(); expect(app.focusWidget()).toBe(outside);
+    });
+    test("parentless non-modal windows are included without duplicating owned windows", () => {
+        const owner = new CWidget();
+        owner.setFocusPolicy(CFocusPolicy.NoFocus);
+        const a = field(owner);
+        const owned = new CDialog(owner);
+        owned.setGeometry(20, 20, 200, 100);
+        owned.setFocusPolicy(CFocusPolicy.NoFocus);
+        const b = field(owned); owned.open();
+        const separate = new CDialog();
+        separate.setGeometry(20, 20, 200, 100);
+        separate.setFocusPolicy(CFocusPolicy.NoFocus);
+        const c = field(separate); separate.open();
+        a.setFocus();
+        for (const expected of [b, c, a]) {
+            pressTab(); expect(app.focusWidget()).toBe(expected);
+        }
+    });
+});

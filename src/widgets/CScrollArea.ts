@@ -1,3 +1,4 @@
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CWidget } from "./CWidget.js";
 import { CFrame } from "./CFrame.js";
 import { CFrameShadow, CFrameShape } from "../gui/CFrameStyle.js";
@@ -26,6 +27,9 @@ export class CScrollArea extends CFrame {
 			new CScrollBar(COrientation.Horizontal, this);
 		this.#m_verticalScrollBar =
 			new CScrollBar(COrientation.Vertical, this);
+        // Embedded scroll bars are mouse-focusable, but are not separate Tab stops.
+        this.#m_horizontalScrollBar.setFocusPolicy(CFocusPolicy.ClickFocus);
+        this.#m_verticalScrollBar.setFocusPolicy(CFocusPolicy.ClickFocus);
 		this.#m_horizontalScrollBar.valueChanged.connect(value => {
 			this.setScrollX(value);
 		});

@@ -1,3 +1,5 @@
+import { CWidget } from "../../src/widgets/CWidget.js";
+import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
 import { CPaletteColorRole } from "../../src/gui/CPalette.js";
 import { CObject } from "../../src/core/CObject.js";
 import { CTimer } from "../../src/core/CTimer.js";
@@ -4145,3 +4147,82 @@ describe("CTextEdit replacement formatting", () => {
     });
 
 });
+
+
+for (const Editor of [CTextEdit, CPlainTextEdit]) {
+    describe(`${Editor.name} single Tab stop`, () => {
+        let oldWindow: PropertyDescriptor | undefined;
+        let root: CWidget;
+        let previous: CWidget;
+        let editor: CTextEdit;
+        let next: CWidget;
+        beforeEach(() => {
+            oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+            Object.defineProperty(globalThis, "window", {
+                value: createTestWindow(), configurable: true, writable: true
+            });
+            new CApplication(createTestCanvas());
+            root = new CWidget();
+            previous = new CWidget(root);
+            previous.setFocusPolicy(CFocusPolicy.StrongFocus);
+            editor = new Editor(root);
+            editor.setGeometry(0, 0, 120, 60);
+            next = new CWidget(root);
+            next.setFocusPolicy(CFocusPolicy.StrongFocus);
+            // Ensure BOTH scroll bars are visible so neither can hide a Tab stop.
+            editor.setPlainText(Array.from({ length: 60 }, () => "x".repeat(200)).join("\n"));
+            editor.setCursorPosition(0);
+        });
+        afterEach(() => {
+            if (CApplication.exists()) CApplication.instance().destroy();
+            if (oldWindow) Object.defineProperty(globalThis, "window", oldWindow);
+            else Reflect.deleteProperty(globalThis, "window");
+        });
+        function tab(backward = false) {
+            const preventDefault = vi.fn();
+            window.dispatchEvent({
+                type: "keydown", key: "Tab", code: "Tab", shiftKey: backward,
+                ctrlKey: false, altKey: false, metaKey: false, preventDefault
+            } as unknown as KeyboardEvent);
+            expect(preventDefault).toHaveBeenCalledOnce();
+        }
+        test("embedded scroll bars remain clickable but are excluded from Tab traversal", () => {
+            for (const bar of [editor.horizontalScrollBar(), editor.verticalScrollBar()]) {
+                expect(bar.isVisible()).toBe(true);
+                expect(bar.maximum()).toBeGreaterThan(0);
+                expect(bar.acceptsTabFocus()).toBe(false);
+                expect(bar.acceptsClickFocus()).toBe(true);
+            }
+        });
+        test("one Tab leaves the editor for the following field", () => {
+            editor.setFocus(); tab();
+            expect(CApplication.instance().focusWidget()).toBe(next);
+        });
+        test("one Shift+Tab leaves the editor for the preceding field", () => {
+            editor.setFocus(); tab(true);
+            expect(CApplication.instance().focusWidget()).toBe(previous);
+        });
+        test("the editor is visited once when moving in either direction", () => {
+            previous.setFocus();
+            tab(); expect(CApplication.instance().focusWidget()).toBe(editor);
+            tab(); expect(CApplication.instance().focusWidget()).toBe(next);
+            tab(true); expect(CApplication.instance().focusWidget()).toBe(editor);
+            tab(true); expect(CApplication.instance().focusWidget()).toBe(previous);
+        });
+        test("read-only editors also have only one Tab stop", () => {
+            editor.setReadOnly(true);
+            editor.setFocus(); tab();
+            expect(CApplication.instance().focusWidget()).toBe(next);
+        });
+        test("resizing and changing document size do not reintroduce scroll-bar Tab stops", () => {
+            editor.resize(800, 600);
+            editor.setPlainText("short");
+            editor.resize(100, 50);
+            editor.setPlainText(Array.from({ length: 80 }, () => "y".repeat(300)).join("\n"));
+            editor.setFocus(); tab();
+            expect(CApplication.instance().focusWidget()).toBe(next);
+            expect(editor.horizontalScrollBar().acceptsTabFocus()).toBe(false);
+            expect(editor.verticalScrollBar().acceptsTabFocus()).toBe(false);
+        });
+    });
+}
