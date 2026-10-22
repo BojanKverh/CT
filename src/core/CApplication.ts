@@ -639,6 +639,87 @@ export class CApplication extends CObject {
 		return true;
 	}
 
+    /** @internal Focus transfer shared by label clicks and Alt mnemonics. */
+    focusLabelBuddy(label: CWidget, buddy: CWidget): boolean {
+        if (!this.#canFocusLabelBuddy(label, buddy)) return false;
+        const target = this.#labelBuddyFocusTarget(buddy)!;
+        target.setFocus();
+        return target.hasFocus();
+    }
+
+    #labelScope(widget: CWidget): CWidget {
+        let scope = widget;
+        while (scope.parent() !== null && !this.isWindowWidget(scope)
+            && !this.#m_popupWidgets.includes(scope as CPopupWidget)) scope = scope.parent()!;
+        return scope;
+    }
+
+    #labelBuddyFocusTarget(widget: CWidget): CWidget | null {
+        if (!widget.isVisible() || !widget.isEnabled()) return null;
+        if (widget.focusPolicy() !== CFocusPolicy.NoFocus) return widget;
+        // Composite controls such as CComboBox delegate focus to an internal
+        // input. NoFocus on the outer widget must not disable its label buddy.
+        for (const child of widget.children()) {
+            if (!(child instanceof CWidget) || this.isWindowWidget(child)
+                || this.#m_popupWidgets.includes(child as CPopupWidget)) continue;
+            const target = this.#labelBuddyFocusTarget(child);
+            if (target !== null) return target;
+        }
+        return null;
+    }
+
+    #canFocusLabelBuddy(label: CWidget, buddy: CWidget): boolean {
+        const scope = this.#labelScope(label);
+        if (scope !== this.#labelScope(buddy) || this.#labelBuddyFocusTarget(buddy) === null)
+            return false;
+        const boundary = this.#m_popupWidgets[this.#m_popupWidgets.length - 1] ?? this.topModalWidget();
+        if (boundary !== null && (!this.#belongsToModal(label, boundary)
+            || !this.#belongsToModal(buddy, boundary))) return false;
+        for (const widget of [label, buddy]) {
+            for (let current: CWidget | null = widget; current !== null; current = current.parent()) {
+                if (!current.isVisible() || !current.isEnabled()) return false;
+                if (current === scope) break;
+            }
+        }
+        return true;
+    }
+
+    #dispatchLabelMnemonic(target: CWidget, event: CKeyEvent): boolean {
+        if (!event.alt() || event.ctrl() || event.meta() || event.shift() || event.altGraph()
+            || Array.from(event.key()).length !== 1) return false;
+        const recorder = target as CWidget & { capturesShortcuts?: () => boolean };
+        if (recorder.capturesShortcuts?.() === true) return false;
+        const scope = this.#m_popupWidgets[this.#m_popupWidgets.length - 1]
+            ?? this.topModalWidget() ?? this.#labelScope(target);
+        type Label = CWidget & {
+            mnemonic(): string; buddy(): CWidget | null; activateBuddy(): boolean;
+        };
+        const matches: Label[] = [];
+        const key = event.key().normalize("NFC").toLowerCase();
+        const visit = (widget: CWidget): void => {
+            if (!widget.isVisible() || !widget.isEnabled()) return;
+            if (widget !== scope && (this.isWindowWidget(widget)
+                || this.#m_popupWidgets.includes(widget as CPopupWidget))) return;
+            const label = widget as Partial<Label>;
+            if (typeof label.mnemonic === "function" && typeof label.buddy === "function"
+                && typeof label.activateBuddy === "function"
+                && label.mnemonic().normalize("NFC").toLowerCase() === key) {
+                const buddy = label.buddy();
+                if (buddy !== null && this.#canFocusLabelBuddy(widget, buddy)) matches.push(widget as Label);
+            }
+            for (const child of widget.children()) if (child instanceof CWidget) visit(child);
+        };
+        visit(scope);
+        if (matches.length === 0) return false;
+        // Repeated mnemonics cycle between eligible buddies in visual tree order.
+        const current = matches.findIndex(label =>
+            this.#labelBuddyFocusTarget(label.buddy()!) === this.#m_focusWidget);
+        const label = matches[(current + 1) % matches.length]!;
+        if (!label.activateBuddy()) return false;
+        event.accept();
+        return true;
+    }
+
     /** @internal Called by CWidget.setTabOrder(). */
     setTabOrder(first: CWidget, second: CWidget): void {
         if (first === second) return;
@@ -982,7 +1063,8 @@ export class CApplication extends CObject {
 			keyboardEvent.altKey, keyboardEvent.metaKey, keyboardEvent.code, 
 			altGraph);
 
-		if (type === CEventType.KeyPress && this.#dispatchShortcut(target, event)) {
+		if (type === CEventType.KeyPress && (this.#dispatchShortcut(target, event)
+            || (!this.#isDomEditor(keyboardEvent.target) && this.#dispatchLabelMnemonic(target, event)))) {
 			keyboardEvent.preventDefault?.();
 			return;
 		}

@@ -95,7 +95,8 @@ override drawLabel(painter: CPainter,
 		painter.fillRect(option.rect);
 
 		if (option.pixmap === null) {
-			painter.setPen(palette.color(CPaletteColorRole.Text).toCss());
+			painter.setPen(palette.color((option.state & CStyleState.Enabled) !== 0
+                ? CPaletteColorRole.Text : CPaletteColorRole.DisabledText).toCss());
 			painter.setFont(option.font);
 
 			let x: number;
@@ -124,6 +125,27 @@ override drawLabel(painter: CPainter,
 			}
 
 			painter.drawText(option.text, x, y);
+            if (option.mnemonicIndex >= 0 && option.mnemonicIndex < option.text.length) {
+                const metrics = new CFontMetrics(option.font);
+                const width = metrics.textWidth(option.text);
+                const left = (option.alignment & CAlignment.Right) ? x - width
+                    : (option.alignment & CAlignment.HCenter) ? x - width / 2 : x;
+                const prefix = option.text.slice(0, option.mnemonicIndex);
+                const character = String.fromCodePoint(option.text.codePointAt(option.mnemonicIndex)!);
+                const start = Math.max(0, left + metrics.textWidth(prefix));
+                const end = Math.min(option.rect.width(),
+                    left + metrics.textWidth(prefix + character));
+                const underlineY = Math.min(option.rect.height() - 1, Math.max(0,
+                    (option.alignment & CAlignment.Bottom) ? y - 1
+                        : (option.alignment & CAlignment.VCenter) ? y + metrics.height() / 2 - 1
+                        : y + metrics.height() - 1));
+                if (end > start && option.rect.height() > 0) {
+                    painter.save();
+                    painter.setLineWidth(1);
+                    painter.drawLine(start, underlineY, end, underlineY);
+                    painter.restore();
+                }
+            }
 		} else {
 			const pix = option.pixmap;
 			const margin = 3;

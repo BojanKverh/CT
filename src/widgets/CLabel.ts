@@ -1,3 +1,5 @@
+import { CApplication } from "../core/CApplication.js";
+import { CMouseButton, type CMouseEvent } from "../events/CMouseEvent.js";
 import { CFrame } from "./CFrame.js";
 import { CPainter } from "../painting/CPainter.js";
 import { CAlignment } from "../core/CAlignment.js";
@@ -9,6 +11,7 @@ import { CStyleOptionLabel } from "../gui/CStyleOptionLabel.js";
 /** Implements the label widget. */
 export class CLabel extends CFrame {
 	#m_text = "";
+    #m_buddy: CWidget | null = null;
 	#m_alignment = CAlignment.Left | CAlignment.VCenter;
 	#m_pixmap: CPixmap | null = null;
 
@@ -37,6 +40,67 @@ export class CLabel extends CFrame {
 		this.#m_text = text;
 		this.update();
 	}
+
+    /** Returns the widget associated with this label. */
+    buddy(): CWidget | null { return this.#m_buddy; }
+
+    /** Associates an input widget; null restores literal ampersand text. */
+    setBuddy(buddy: CWidget | null): void {
+        if (this.#m_buddy === buddy) return;
+        this.#m_buddy = buddy;
+        this.update();
+    }
+
+    /** Visible text, with mnemonic markers removed when a buddy is set. */
+    displayText(): string { return this.#mnemonicText().text; }
+
+    /** UTF-16 index of the character to underline, or -1. */
+    mnemonicIndex(): number { return this.#mnemonicText().index; }
+
+    /** Character activated by Alt, or an empty string when there is none. */
+    mnemonic(): string {
+        const { text, index } = this.#mnemonicText();
+        return index < 0 ? "" : String.fromCodePoint(text.codePointAt(index)!);
+    }
+
+    /** Focuses the buddy if both widgets are available in the active scope. */
+    activateBuddy(): boolean {
+        return this.#m_pixmap === null && this.#m_buddy !== null
+            && CApplication.instance().focusLabelBuddy(this, this.#m_buddy);
+    }
+
+    #mnemonicText(): { text: string; index: number } {
+        if (this.#m_buddy === null || this.#m_pixmap !== null)
+            return { text: this.#m_text, index: -1 };
+        let text = "";
+        let index = -1;
+        for (let i = 0; i < this.#m_text.length; ++i) {
+            const character = this.#m_text[i]!;
+            if (character !== "&" || i + 1 === this.#m_text.length) {
+                text += character;
+            } else if (this.#m_text[i + 1] === "&") {
+                text += "&";
+                ++i;
+            } else {
+                if (index < 0) index = text.length;
+                // The following character is appended on the next iteration.
+            }
+        }
+        return { text, index };
+    }
+
+    protected override mousePressEvent(event: CMouseEvent): void {
+        if (event.button() === CMouseButton.LeftButton && this.activateBuddy()) {
+            event.accept();
+            return;
+        }
+        super.mousePressEvent(event);
+    }
+
+    override destroy(): void {
+        this.#m_buddy = null;
+        super.destroy();
+    }
 
 	/** Provides alignment behavior. */
 	alignment(): CAlignment {
@@ -70,7 +134,7 @@ export class CLabel extends CFrame {
 	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
 		return new CSize(
-			this.fontMetrics().textWidth(this.text()) + 2 * CLabel.#HPADDING,
+			this.fontMetrics().textWidth(this.displayText()) + 2 * CLabel.#HPADDING,
 			this.fontMetrics().height() + 2 * CLabel.#VPADDING
 		);
 	}

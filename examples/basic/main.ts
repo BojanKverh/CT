@@ -1107,8 +1107,8 @@ mapperButton.setText("Widget mapper");
 mapperButton.setGeometry(390, 700, 120, 30);
 mapperButton.clicked.connect(() => {
 	const dlg = new CDialog(parent);
-	dlg.setGeometry(70, 80, 920, 460);
-	dlg.setWindowTitle("Employee mapper / custom Tab order");
+	dlg.setGeometry(70, 80, 920, 500);
+	dlg.setWindowTitle("Employee mapper / Tab order and label buddies");
 	const model = new DemoTableModel();
 	for (let row = 0; row < model.rowCount(); ++row) {
 		const index = model.index(row, 2);
@@ -1131,10 +1131,16 @@ mapperButton.clicked.connect(() => {
 	age.setDecimals(2);
 	const occupation = new CComboBox();
 	occupation.addItems(sqlOccupations);
-	form.addRow("1. Name", name);
-	form.addRow("3. Country", country);
-	form.addRow("2. Age (formula)", age);
-	form.addRow("4. Occupation", occupation);
+    const addBuddyRow = (text: string, field: CWidget): void => {
+        const label = new CLabel(group);
+        label.setText(text);
+        label.setBuddy(field);
+        form.addRow(label, field);
+    };
+    addBuddyRow("1. &Name", name);
+    addBuddyRow("3. &Country", country);
+    addBuddyRow("2. &Age (formula)", age);
+    addBuddyRow("4. &Occupation", occupation);
 
 	const mapper = new CDataWidgetMapper(dlg);
 	mapper.setModel(model);
@@ -1200,7 +1206,7 @@ mapperButton.clicked.connect(() => {
 
 	const close = new CPushButton(dlg);
 	close.setText("Close");
-	close.setGeometry(810, 410, 90, 30);
+	close.setGeometry(810, 450, 90, 30);
 	close.clicked.connect(() => dlg.accept());
 
     const tabHint = new CLabel(dlg);
@@ -1209,6 +1215,10 @@ mapperButton.clicked.connect(() => {
     const cycleHint = new CLabel(dlg);
     cycleHint.setText("Then Previous -> Next -> Submit -> Revert -> Close -> table -> Name. Focus stays in this dialog.");
     cycleHint.setGeometry(20, 382, 880, 24);
+
+    const buddyHint = new CLabel(dlg);
+    buddyHint.setText("Alt+N: Name | Alt+A: Age | Alt+C: Country | Alt+O: Occupation. Or click a field label.");
+    buddyHint.setGeometry(20, 410, 880, 24);
 
     // The on-screen row order deliberately differs from keyboard navigation.
     CWidget.setTabOrder(name, age);

@@ -11,6 +11,8 @@ export class CStyleOptionLabel extends CStyleOption {
 	 * Returns or updates the text value.
 	 */
 text = "";
+    /** UTF-16 index of the mnemonic character, or -1. */
+    mnemonicIndex = -1;
 		/**
 	 * Returns or updates the alignment value.
 	 */
@@ -30,6 +32,7 @@ constructor(other: CStyleOptionLabel | null = null) {
 
 		if (other) {
 			this.text = other.text;
+            this.mnemonicIndex = other.mnemonicIndex;
 			this.alignment = other.alignment;
 			this.pixmap = other.pixmap;
 		}
@@ -43,7 +46,8 @@ constructor(other: CStyleOptionLabel | null = null) {
 initFromLabel(label: CLabel): void {
 		this.initFrom(label);
 
-		this.text = label.text();
+		this.text = label.displayText();
+        this.mnemonicIndex = label.mnemonicIndex();
 		this.alignment = label.alignment();
 		this.pixmap = label.pixmap();
 	}

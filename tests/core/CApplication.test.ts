@@ -1,3 +1,4 @@
+import { CLabel } from "../../src/widgets/CLabel.js";
 import { CAction } from "../../src/core/CAction.js";
 import { CShortcut } from "../../src/core/CShortcut.js";
 import { CKeySequenceEdit } from "../../src/widgets/CKeySequenceEdit.js";
@@ -2936,5 +2937,157 @@ describe("custom Tab order dispatch", () => {
         expect(pressTab()).toHaveBeenCalledOnce();
         expect(app.focusWidget()).toBe(handler);
         a.setFocus();
+    });
+});
+
+describe("label buddy mnemonic dispatch", () => {
+    let app: CApplication;
+    let oldWindow: PropertyDescriptor | undefined;
+    beforeEach(() => {
+        oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+        Object.defineProperty(globalThis, "window", {
+            value: createTestWindow(), configurable: true, writable: true
+        });
+        app = new CApplication(createTestCanvas());
+    });
+    afterEach(() => {
+        if (CApplication.exists()) CApplication.instance().destroy();
+        if (oldWindow) Object.defineProperty(globalThis, "window", oldWindow);
+        else Reflect.deleteProperty(globalThis, "window");
+    });
+    function field(parent: CWidget): CWidget {
+        const field = new CWidget(parent); field.setFocusPolicy(CFocusPolicy.StrongFocus); return field;
+    }
+    function pair(parent: CWidget, text = "&Name") {
+        const label = new CLabel(parent); const buddy = field(parent);
+        label.setText(text); label.setBuddy(buddy); return { label, buddy };
+    }
+    function press(key = "n", options: Partial<KeyboardEvent> = {}) {
+        const preventDefault = vi.fn();
+        window.dispatchEvent({ type: "keydown", key, altKey: true, ctrlKey: false,
+            shiftKey: false, metaKey: false, preventDefault, ...options } as unknown as KeyboardEvent);
+        return preventDefault;
+    }
+    test("Alt focuses a sibling buddy and prevents the browser action", () => {
+        const root = new CWidget(); const first = field(root); const { buddy } = pair(root);
+        first.setFocus(); expect(press()).toHaveBeenCalledOnce(); expect(app.focusWidget()).toBe(buddy);
+    });
+    test("Alt+C and Alt+O focus the internal inputs of composite buddies", () => {
+        const root = new CWidget();
+        for (const [text, key] of [["&Country", "c"], ["&Occupation", "o"]]) {
+            const { buddy } = pair(root, text!); buddy.setFocusPolicy(CFocusPolicy.NoFocus);
+            const input = new CWidget(buddy); input.setFocusPolicy(CFocusPolicy.StrongFocus);
+            expect(press(key!)).toHaveBeenCalledOnce(); expect(input.hasFocus()).toBe(true);
+        }
+    });
+    test("duplicate mnemonics cycle through composite inputs", () => {
+        const root = new CWidget(); const inputs: CWidget[] = [];
+        for (let i = 0; i < 2; ++i) {
+            const { buddy } = pair(root, "&Country"); buddy.setFocusPolicy(CFocusPolicy.NoFocus);
+            const input = new CWidget(buddy); input.setFocusPolicy(CFocusPolicy.StrongFocus); inputs.push(input);
+        }
+        press("c"); expect(app.focusWidget()).toBe(inputs[0]);
+        press("c"); expect(app.focusWidget()).toBe(inputs[1]);
+        press("c"); expect(app.focusWidget()).toBe(inputs[0]);
+    });
+    test("mnemonics work when the current focus is null", () => {
+        const root = new CWidget(); const { buddy } = pair(root);
+        expect(press()).toHaveBeenCalledOnce(); expect(app.focusWidget()).toBe(buddy);
+    });
+    test("Unicode letters and uppercase event keys match", () => {
+        const root = new CWidget(); const { buddy } = pair(root, "&Čas");
+        expect(press("Č")).toHaveBeenCalledOnce(); expect(app.focusWidget()).toBe(buddy);
+    });
+    test("plain keys, Ctrl+Alt, Shift+Alt, Meta+Alt and AltGraph do not activate a buddy", () => {
+        const root = new CWidget(); const { buddy } = pair(root);
+        const variants: Partial<KeyboardEvent>[] = [
+            { altKey: false }, { ctrlKey: true }, { shiftKey: true }, { metaKey: true },
+            { getModifierState: (key: string) => key === "AltGraph" }
+        ];
+        for (const options of variants) {
+            expect(press("n", options)).not.toHaveBeenCalled(); expect(buddy.hasFocus()).toBe(false);
+        }
+    });
+    test("unmatched keys and key releases are not consumed", () => {
+        const root = new CWidget(); const { buddy } = pair(root);
+        expect(press("x")).not.toHaveBeenCalled();
+        expect(press("n", { type: "keyup" })).not.toHaveBeenCalled();
+        expect(buddy.hasFocus()).toBe(false);
+    });
+    test("changing text, clearing and replacing the buddy updates dispatch immediately", () => {
+        const root = new CWidget(); const { label, buddy } = pair(root);
+        label.setText("&Age"); expect(press()).not.toHaveBeenCalled();
+        expect(press("a")).toHaveBeenCalledOnce();
+        app.setFocusWidget(null); label.setBuddy(null);
+        expect(press("a")).not.toHaveBeenCalled();
+        const replacement = field(root); label.setBuddy(replacement);
+        expect(press("a")).toHaveBeenCalledOnce(); expect(replacement.hasFocus()).toBe(true);
+        expect(buddy.hasFocus()).toBe(false);
+    });
+    test("hidden and disabled labels, buddies and parent containers are ignored", () => {
+        const root = new CWidget(); const group = new CWidget(root); const { label, buddy } = pair(group);
+        field(root).setFocus();
+        for (const widget of [label, buddy, group]) {
+            widget.hide(); expect(press()).not.toHaveBeenCalled(); widget.show();
+            widget.setEnabled(false); expect(press()).not.toHaveBeenCalled(); widget.setEnabled(true);
+        }
+        expect(press()).toHaveBeenCalledOnce(); expect(buddy.hasFocus()).toBe(true);
+    });
+    test("a modal dialog blocks mnemonics belonging to its background owner", () => {
+        const root = new CWidget(); const outside = pair(root); const dialog = new CDialog(root);
+        const inside = pair(dialog); dialog.exec();
+        outside.buddy.setFocus(); // Deliberately stale background focus.
+        expect(press()).toHaveBeenCalledOnce(); expect(inside.buddy.hasFocus()).toBe(true);
+        inside.label.setBuddy(null);
+        expect(press()).not.toHaveBeenCalled(); expect(outside.buddy.hasFocus()).toBe(false);
+    });
+    test("only the top nested modal dialog can activate a mnemonic", () => {
+        const root = new CWidget(); const outer = new CDialog(root); const a = pair(outer); outer.exec();
+        const inner = new CDialog(outer); const b = pair(inner); inner.exec();
+        press(); expect(b.buddy.hasFocus()).toBe(true); expect(a.buddy.hasFocus()).toBe(false);
+        inner.close(); a.buddy.setFocus(); press(); expect(a.buddy.hasFocus()).toBe(true);
+    });
+    test("an open popup isolates mnemonics from the dialog below it", () => {
+        const dialog = new CDialog(); const outside = pair(dialog); dialog.exec();
+        const popup = new CPopupWidget(); const inside = pair(popup); popup.open();
+        press(); expect(inside.buddy.hasFocus()).toBe(true); expect(outside.buddy.hasFocus()).toBe(false);
+        popup.close(); press(); expect(outside.buddy.hasFocus()).toBe(true);
+    });
+    test("mnemonics stay in the focused non-modal window", () => {
+        const root = new CWidget(); const a = pair(root); const dialog = new CDialog(root);
+        const b = pair(dialog); dialog.open(); b.buddy.setFocus();
+        press(); expect(b.buddy.hasFocus()).toBe(true); expect(a.buddy.hasFocus()).toBe(false);
+        a.buddy.setFocus(); press(); expect(a.buddy.hasFocus()).toBe(true);
+    });
+    test("duplicate mnemonics cycle through eligible buddies", () => {
+        const root = new CWidget(); const a = pair(root); const b = pair(root, "&Number");
+        press(); expect(a.buddy.hasFocus()).toBe(true);
+        press(); expect(b.buddy.hasFocus()).toBe(true);
+        press(); expect(a.buddy.hasFocus()).toBe(true);
+        b.buddy.setEnabled(false); press(); expect(a.buddy.hasFocus()).toBe(true);
+    });
+    test("explicit shortcuts take precedence over label mnemonics", () => {
+        const root = new CWidget(); const first = field(root); const { buddy } = pair(root);
+        const shortcut = new CShortcut("Alt+N", root); const activated = vi.fn();
+        shortcut.activated.connect(activated); first.setFocus();
+        expect(press()).toHaveBeenCalledOnce(); expect(activated).toHaveBeenCalledOnce();
+        expect(buddy.hasFocus()).toBe(false);
+    });
+    test("shortcut recording suppresses label mnemonics", () => {
+        class Recorder extends CWidget { capturesShortcuts(): boolean { return true; } }
+        const root = new CWidget(); const { buddy } = pair(root); const recorder = new Recorder(root);
+        recorder.setFocusPolicy(CFocusPolicy.StrongFocus); recorder.setFocus(); press();
+        expect(recorder.hasFocus()).toBe(true); expect(buddy.hasFocus()).toBe(false);
+    });
+    test("destroyed labels and buddies cannot be activated", () => {
+        const root = new CWidget(); const a = pair(root); a.buddy.destroy();
+        expect(press()).not.toHaveBeenCalled();
+        const b = pair(root); b.label.destroy(); expect(press()).not.toHaveBeenCalled();
+    });
+    test("mnemonics do not take keys from native DOM editors", () => {
+        const root = new CWidget(); const { buddy } = pair(root);
+        expect(press("n", { target: { tagName: "INPUT", isContentEditable: false } as unknown as EventTarget }))
+            .not.toHaveBeenCalled();
+        expect(buddy.hasFocus()).toBe(false);
     });
 });
