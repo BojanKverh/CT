@@ -1019,6 +1019,8 @@ export class CApplication extends CObject {
 	}
 
 	#dispatchKeyEvent(type: CEventType, keyboardEvent: KeyboardEvent): void {
+        if (this.#isDomEditor(keyboardEvent.target)
+            && ["Enter", "Return"].includes(keyboardEvent.key)) return;
         if (this.#isDomEditor(keyboardEvent.target) && (keyboardEvent.ctrlKey || keyboardEvent.metaKey) &&
             ["c", "x", "v"].includes(keyboardEvent.key.toLowerCase())) return;
 		if (type === CEventType.KeyPress && keyboardEvent.key === "Escape" &&
@@ -1081,7 +1083,10 @@ export class CApplication extends CObject {
 			if (target.event(event))
 				break;
 
-			target = target === boundary ? null : target.parent();
+			// A non-modal child window must not activate its owner's default button.
+            const stopAtWindow: boolean = this.isWindowWidget(target)
+    			&& (event.key() === "Enter" || event.key() === "Return");
+            target = target === boundary || stopAtWindow ? null : target.parent();
 		}
 
 		if (event.isAccepted()) {

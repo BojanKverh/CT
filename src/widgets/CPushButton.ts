@@ -1,3 +1,4 @@
+import type { CDialog } from "../dialogs/CDialog.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CPoint } from "../geometry/CPoint.js";
@@ -13,6 +14,7 @@ export class CPushButton extends CAbstractButton {
 	#m_down = false;
 	#m_hovered = false;
 	#m_radius = 3;
+    #m_default = false;
 
 	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
@@ -20,6 +22,32 @@ export class CPushButton extends CAbstractButton {
 		super(parent);
 		this.setCheckable(false);
 	}
+
+    /** Whether this is the explicitly configured default button. */
+    isDefault(): boolean { return this.#m_default; }
+
+    /** Makes this the default button of its containing dialog. */
+    setDefault(value = true): void {
+        if (this.#m_default === value) return;
+        this.#m_default = value;
+        if (value) this.#defaultDialog()?.setDefaultButton(this);
+        this.update();
+    }
+
+    override setParent(parent: CWidget | null): void {
+        if (this.parent() === parent) return;
+        super.setParent(parent);
+        if (this.#m_default) this.#defaultDialog()?.setDefaultButton(this);
+    }
+
+    #defaultDialog(): CDialog | null {
+        for (let owner = this.parent(); owner !== null; owner = owner.parent()) {
+            const dialog = owner as CDialog;
+            if (typeof dialog.defaultButton === "function"
+                && typeof dialog.setDefaultButton === "function") return dialog;
+        }
+        return null;
+    }
 
 	/** Returns whether the down condition is active. */
 	isDown(): boolean {
@@ -119,7 +147,7 @@ export class CPushButton extends CAbstractButton {
 		}
 
 		/** Provides if behavior. */
-		if (event.key() === "Enter") {
+		if (event.key() === "Enter" || event.key() === "Return") {
 			event.accept();
 			this.clicked.emit();
 			return;

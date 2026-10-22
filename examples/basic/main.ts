@@ -1107,7 +1107,7 @@ mapperButton.setText("Widget mapper");
 mapperButton.setGeometry(390, 700, 120, 30);
 mapperButton.clicked.connect(() => {
 	const dlg = new CDialog(parent);
-	dlg.setGeometry(70, 80, 920, 500);
+	dlg.setGeometry(70, 80, 920, 540);
 	dlg.setWindowTitle("Employee mapper / Tab order and label buddies");
 	const model = new DemoTableModel();
 	for (let row = 0; row < model.rowCount(); ++row) {
@@ -1131,16 +1131,11 @@ mapperButton.clicked.connect(() => {
 	age.setDecimals(2);
 	const occupation = new CComboBox();
 	occupation.addItems(sqlOccupations);
-    const addBuddyRow = (text: string, field: CWidget): void => {
-        const label = new CLabel(group);
-        label.setText(text);
-        label.setBuddy(field);
-        form.addRow(label, field);
-    };
-    addBuddyRow("1. &Name", name);
-    addBuddyRow("3. &Country", country);
-    addBuddyRow("2. &Age (formula)", age);
-    addBuddyRow("4. &Occupation", occupation);
+    // CFormLayout creates each label and links its buddy automatically.
+    form.addRow("1. &Name", name);
+    form.addRow("3. &Country", country);
+    form.addRow("2. &Age (formula)", age);
+    form.addRow("4. &Occupation", occupation);
 
 	const mapper = new CDataWidgetMapper(dlg);
 	mapper.setModel(model);
@@ -1184,6 +1179,7 @@ mapperButton.clicked.connect(() => {
 
 	const save = new CPushButton(dlg);
 	save.setText("Submit");
+    save.setDefault(true);
 	save.setGeometry(660, 260, 90, 30);
 	const submitChanges = (): void => {
 		if (mapper.submit())
@@ -1206,7 +1202,7 @@ mapperButton.clicked.connect(() => {
 
 	const close = new CPushButton(dlg);
 	close.setText("Close");
-	close.setGeometry(810, 450, 90, 30);
+	close.setGeometry(810, 490, 90, 30);
 	close.clicked.connect(() => dlg.accept());
 
     const tabHint = new CLabel(dlg);
@@ -1219,6 +1215,10 @@ mapperButton.clicked.connect(() => {
     const buddyHint = new CLabel(dlg);
     buddyHint.setText("Alt+N: Name | Alt+A: Age | Alt+C: Country | Alt+O: Occupation. Or click a field label.");
     buddyHint.setGeometry(20, 410, 880, 24);
+
+    const defaultHint = new CLabel(dlg);
+    defaultHint.setText("Submit has the default border. In Age: enter a formula, Enter confirms it; Enter again submits.");
+    defaultHint.setGeometry(20, 438, 880, 24);
 
     // The on-screen row order deliberately differs from keyboard navigation.
     CWidget.setTabOrder(name, age);

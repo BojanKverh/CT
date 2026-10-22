@@ -1,3 +1,5 @@
+import { CPushButton } from "../../src/widgets/CPushButton.js";
+import { CNumberEdit } from "../../src/widgets/CNumberEdit.js";
 import { CLabel } from "../../src/widgets/CLabel.js";
 import { CAction } from "../../src/core/CAction.js";
 import { CShortcut } from "../../src/core/CShortcut.js";
@@ -3089,5 +3091,105 @@ describe("label buddy mnemonic dispatch", () => {
         expect(press("n", { target: { tagName: "INPUT", isContentEditable: false } as unknown as EventTarget }))
             .not.toHaveBeenCalled();
         expect(buddy.hasFocus()).toBe(false);
+    });
+});
+
+describe("dialog default button key dispatch", () => {
+    let app: CApplication;
+    let oldWindow: PropertyDescriptor | undefined;
+    beforeEach(() => {
+        oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+        Object.defineProperty(globalThis, "window", {
+            value: createTestWindow(), configurable: true, writable: true
+        });
+        app = new CApplication(createTestCanvas());
+    });
+    afterEach(() => {
+        if (CApplication.exists()) CApplication.instance().destroy();
+        if (oldWindow) Object.defineProperty(globalThis, "window", oldWindow);
+        else Reflect.deleteProperty(globalThis, "window");
+    });
+    function field(parent: CWidget): CWidget {
+        const widget = new CWidget(parent); widget.setFocusPolicy(CFocusPolicy.StrongFocus); return widget;
+    }
+    function setup(parent: CWidget | null = null, modal = true) {
+        const dialog = new CDialog(parent); dialog.setGeometry(20, 20, 400, 250);
+        const input = field(dialog); const button = new CPushButton(dialog); const clicked = vi.fn();
+        button.clicked.connect(clicked); button.setDefault(true);
+        if (modal) dialog.exec(); else dialog.open();
+        input.setFocus(); return { dialog, input, button, clicked };
+    }
+    function press(key = "Enter", options: Partial<KeyboardEvent> = {}) {
+        const preventDefault = vi.fn();
+        window.dispatchEvent({ type: "keydown", key, altKey: false, ctrlKey: false,
+            shiftKey: false, metaKey: false, preventDefault, ...options } as unknown as KeyboardEvent);
+        return preventDefault;
+    }
+    test("unhandled Enter activates the default once and leaves focus in its field", () => {
+        const { input, clicked } = setup(); expect(press()).toHaveBeenCalledOnce();
+        expect(clicked).toHaveBeenCalledOnce(); expect(app.focusWidget()).toBe(input);
+        press("Enter", { type: "keyup" }); expect(clicked).toHaveBeenCalledOnce();
+    });
+    test("Return uses the same fallback as Enter", () => {
+        const { clicked } = setup(); expect(press("Return")).toHaveBeenCalledOnce(); expect(clicked).toHaveBeenCalledOnce();
+    });
+    test("a focused secondary button handles Enter itself", () => {
+        const { dialog, clicked } = setup(); const other = new CPushButton(dialog); const otherClicked = vi.fn();
+        other.clicked.connect(otherClicked); other.setFocus();
+        press(); expect(otherClicked).toHaveBeenCalledOnce(); expect(clicked).not.toHaveBeenCalled();
+    });
+    test("a default button with focus is not activated twice", () => {
+        const { button, clicked } = setup(); button.setFocus(); press(); expect(clicked).toHaveBeenCalledOnce();
+    });
+    test("an editor that consumes Enter prevents default activation", () => {
+        class Consumer extends CWidget {
+            protected override keyPressEvent(event: CKeyEvent): void {
+                if (event.key() === "Enter") event.accept(); else event.ignore();
+            }
+        }
+        const { dialog, clicked } = setup(); const editor = new Consumer(dialog);
+        editor.setFocusPolicy(CFocusPolicy.StrongFocus); editor.setFocus(); press();
+        expect(clicked).not.toHaveBeenCalled(); expect(editor.hasFocus()).toBe(true);
+    });
+    test("CTextEdit keeps Enter for inserting a newline", () => {
+        const { dialog, clicked } = setup(); const editor = new CTextEdit(dialog);
+        editor.setGeometry(0, 0, 200, 100); editor.setPlainText(""); editor.setFocus(); press();
+        expect(editor.toPlainText()).toBe("\n"); expect(clicked).not.toHaveBeenCalled();
+    });
+    test("CNumberEdit confirms its expression without submitting the dialog", () => {
+        const { dialog, clicked } = setup(); const editor = new CNumberEdit(dialog);
+        editor.setExpression("41+3"); const finished = vi.fn(); editor.editingFinished.connect(finished);
+        editor.setFocus(); press();
+        expect(editor.value()).toBe(44); expect(finished).toHaveBeenCalledOnce(); expect(clicked).not.toHaveBeenCalled();
+    });
+    test("a popup blocks the dialog default even when it ignores Enter", () => {
+        const { clicked } = setup(); const popup = new CPopupWidget(); const input = field(popup);
+        popup.open(); input.setFocus(); press(); expect(clicked).not.toHaveBeenCalled();
+        popup.close(); press(); expect(clicked).toHaveBeenCalledOnce();
+    });
+    test("nested modal dialogs activate only the inner default", () => {
+        const outer = setup(); const inner = setup(outer.dialog); press();
+        expect(inner.clicked).toHaveBeenCalledOnce(); expect(outer.clicked).not.toHaveBeenCalled();
+        inner.dialog.close(); outer.input.setFocus(); press(); expect(outer.clicked).toHaveBeenCalledOnce();
+    });
+    test("a nested non-modal window without a default cannot trigger its owner", () => {
+        const outer = setup(null, false); const child = new CDialog(outer.dialog);
+        child.setGeometry(30, 30, 200, 100); const input = field(child); child.open(); input.setFocus();
+        press(); expect(outer.clicked).not.toHaveBeenCalled();
+    });
+    test("a background default cannot activate while a modal dialog is open", () => {
+        const outer = setup(null, false); const inner = setup(outer.dialog);
+        outer.input.setFocus(); press(); expect(inner.clicked).toHaveBeenCalledOnce();
+        expect(outer.clicked).not.toHaveBeenCalled();
+    });
+    test("explicit shortcuts take precedence over default activation", () => {
+        const { dialog, clicked } = setup(); const shortcut = new CShortcut("Enter", dialog); const activated = vi.fn();
+        shortcut.activated.connect(activated); press(); expect(activated).toHaveBeenCalledOnce();
+        expect(clicked).not.toHaveBeenCalled();
+    });
+    test("native DOM editors do not submit a CT dialog", () => {
+        const { clicked } = setup();
+        expect(press("Enter", { target: { tagName: "INPUT" } as unknown as EventTarget })).not.toHaveBeenCalled();
+        expect(clicked).not.toHaveBeenCalled();
     });
 });

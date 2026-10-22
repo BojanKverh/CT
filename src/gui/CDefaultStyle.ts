@@ -203,7 +203,16 @@ override drawPushButton(painter: CPainter, option: CStyleOptionPushButton): void
 		else
 			painter.setPen(option.palette.color(CPaletteColorRole.ButtonText).toCss());
 
+        if (option.defaultButton && enabled && option.rect.width() > 2 && option.rect.height() > 2) {
+            painter.save();
+            painter.setLineWidth(2);
+            painter.setPen(option.palette.color(CPaletteColorRole.ButtonText).toCss());
+            painter.drawRoundedRect(option.rect.x() + 1, option.rect.y() + 1,
+                option.rect.width() - 2, option.rect.height() - 2, option.radius);
+            painter.restore();
+        } else {
 		painter.drawRoundedRect(option.rect.x(), option.rect.y(), option.rect.width(), option.rect.height(), option.radius);
+        }
 		painter.setPen(option.palette.color(textRole).toCss());
 		painter.setFont(option.font);
 		painter.setTextAlign("center");

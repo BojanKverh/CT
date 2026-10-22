@@ -1,3 +1,5 @@
+import { CDialog } from "../../src/dialogs/CDialog.js";
+import { CWidget } from "../../src/widgets/CWidget.js";
 import { CRect } from "../../src/geometry/CRect.js";
 import { CDefaultStyle } from "../../src/gui/CDefaultStyle.js";
 import { CStyleState } from "../../src/gui/CStyleOption.js";
@@ -692,5 +694,84 @@ describe("button focus indicators", () => {
             const copy = new CStyleOptionPushButton(secondOption);
             expect(copy.state & CStyleState.HasFocus).not.toBe(0);
         } finally { first.destroy(); second.destroy(); }
+    });
+});
+
+describe("CPushButton default button", () => {
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+    test("is not default initially and can be enabled and cleared", () => {
+        const button = new CPushButton(); expect(button.isDefault()).toBe(false);
+        button.setDefault(); expect(button.isDefault()).toBe(true);
+        button.setDefault(false); expect(button.isDefault()).toBe(false);
+    });
+    test("only one button in a dialog remains default", () => {
+        const dialog = new CDialog(); const group = new CWidget(dialog);
+        const a = new CPushButton(dialog), b = new CPushButton(group);
+        a.setDefault(true); b.setDefault(true);
+        expect(a.isDefault()).toBe(false); expect(b.isDefault()).toBe(true);
+        expect(dialog.defaultButton()).toBe(b);
+        b.setDefault(false); expect(dialog.defaultButton()).toBeNull();
+    });
+    test("nested dialogs have independent defaults", () => {
+        const outer = new CDialog(); const inner = new CDialog(outer);
+        const a = new CPushButton(outer), b = new CPushButton(inner);
+        a.setDefault(true); b.setDefault(true);
+        expect(a.isDefault()).toBe(true); expect(b.isDefault()).toBe(true);
+        expect(outer.defaultButton()).toBe(a); expect(inner.defaultButton()).toBe(b);
+    });
+    test("a default assigned before parenting replaces the destination default", () => {
+        const dialog = new CDialog(); const previous = new CPushButton(dialog); previous.setDefault(true);
+        const moved = new CPushButton(); moved.setDefault(true); moved.setParent(dialog);
+        expect(previous.isDefault()).toBe(false); expect(dialog.defaultButton()).toBe(moved);
+    });
+    test("reparenting and destroying a default leave no stale dialog reference", () => {
+        const first = new CDialog(), second = new CDialog();
+        const button = new CPushButton(first); button.setDefault(true); button.setParent(second);
+        expect(first.defaultButton()).toBeNull(); expect(second.defaultButton()).toBe(button);
+        button.destroy(); expect(second.defaultButton()).toBeNull();
+    });
+    test("setting the same default twice does not move focus or click", () => {
+        const dialog = new CDialog(); const button = new CPushButton(dialog); const clicked = vi.fn();
+        button.clicked.connect(clicked); button.setDefault(true); button.setDefault(true);
+        expect(clicked).not.toHaveBeenCalled(); expect(button.hasFocus()).toBe(false);
+    });
+    test("style options initialize and copy the default flag and radius", () => {
+        const button = new CPushButton(); button.setDefault(true); button.setRadius(7);
+        const option = new CStyleOptionPushButton(); option.initFromPushButton(button);
+        const copy = new CStyleOptionPushButton(option);
+        expect(option.defaultButton).toBe(true); expect(copy.defaultButton).toBe(true);
+        expect(copy.radius).toBe(7); expect(new CStyleOptionPushButton().defaultButton).toBe(false);
+        button.setDefault(false); option.initFromPushButton(button); expect(option.defaultButton).toBe(false);
+    });
+    test("default buttons draw an inset ButtonText border without keyboard focus", () => {
+        const option = new CStyleOptionPushButton(); option.rect = new CRect(0, 0, 100, 30);
+        option.defaultButton = true; option.state = CStyleState.Enabled;
+        let currentPen = "";
+        const borders: string[] = [];
+        const painter = {
+            setBrush: vi.fn(), setPen: vi.fn((color: string) => { currentPen = color; }),
+            drawRoundedRect: vi.fn(() => { borders.push(currentPen); }),
+            setFont: vi.fn(), setTextAlign: vi.fn(), setTextBaseline: vi.fn(), drawText: vi.fn(),
+            save: vi.fn(), restore: vi.fn(), setLineWidth: vi.fn()
+        };
+        new CDefaultStyle().drawPushButton(painter as unknown as CPainter, option);
+        expect(borders).toEqual([option.palette.color(CPaletteColorRole.ButtonText).toCss()]);
+        expect(painter.setBrush).toHaveBeenCalledWith(option.palette.color(CPaletteColorRole.Button).toCss());
+        expect(painter.setLineWidth).toHaveBeenCalledWith(2);
+        expect(painter.drawRoundedRect).toHaveBeenCalledWith(1, 1, 98, 28, option.radius);
+        expect(painter.save).toHaveBeenCalledOnce(); expect(painter.restore).toHaveBeenCalledOnce();
+    });
+    test("disabled defaults use the normal border", () => {
+        const option = new CStyleOptionPushButton(); option.rect = new CRect(0, 0, 100, 30);
+        option.defaultButton = true; option.state = CStyleState.None;
+        const painter = {
+            setBrush: vi.fn(), setPen: vi.fn(), drawRoundedRect: vi.fn(),
+            setFont: vi.fn(), setTextAlign: vi.fn(), setTextBaseline: vi.fn(), drawText: vi.fn(),
+            save: vi.fn(), restore: vi.fn(), setLineWidth: vi.fn()
+        };
+        new CDefaultStyle().drawPushButton(painter as unknown as CPainter, option);
+        expect(painter.setLineWidth).not.toHaveBeenCalled();
+        expect(painter.drawRoundedRect).toHaveBeenCalledWith(0, 0, 100, 30, option.radius);
     });
 });

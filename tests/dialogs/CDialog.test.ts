@@ -1,3 +1,4 @@
+import { CWidget } from "../../src/widgets/CWidget.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { CApplication } from "../../src/core/CApplication.js";
@@ -450,4 +451,72 @@ describe("CDialog", () =>
 
 		expect(slot).toHaveBeenCalledOnce();
 	});
+});
+describe("CDialog default buttons", () => {
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+    function setup() {
+        const dialog = new CDialog(); dialog.setGeometry(20, 20, 300, 180);
+        const button = new CPushButton(dialog); const clicked = vi.fn(); button.clicked.connect(clicked);
+        button.setDefault(true); dialog.exec(); return { dialog, button, clicked };
+    }
+    test("has no default button until explicitly set", () => {
+        const dialog = new CDialog(); new CPushButton(dialog); expect(dialog.defaultButton()).toBeNull();
+    });
+    test("unhandled Enter and Return activate the default once", () => {
+        const { dialog, clicked } = setup();
+        for (const key of ["Enter", "Return"]) {
+            const event = new CKeyEvent(CEventType.KeyPress, key); dialog.event(event);
+            expect(event.isAccepted()).toBe(true);
+        }
+        expect(clicked).toHaveBeenCalledTimes(2);
+    });
+    test("the default may accept the dialog", () => {
+        const { dialog, button } = setup(); button.clicked.connect(() => dialog.accept());
+        dialog.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+        expect(dialog.isOpen()).toBe(false); expect(dialog.result()).toBe(CDialogResult.Accepted);
+    });
+    test("setting null clears the dialog default", () => {
+        const { dialog, button, clicked } = setup(); dialog.setDefaultButton(null);
+        expect(button.isDefault()).toBe(false); expect(dialog.defaultButton()).toBeNull();
+        dialog.event(new CKeyEvent(CEventType.KeyPress, "Enter")); expect(clicked).not.toHaveBeenCalled();
+    });
+    test("buttons belonging to another or nested dialog are ignored", () => {
+        const { dialog, button } = setup(); const other = new CDialog(dialog); const outsider = new CPushButton(other);
+        dialog.setDefaultButton(outsider); expect(dialog.defaultButton()).toBe(button);
+        expect(outsider.isDefault()).toBe(false);
+    });
+    test("hidden or disabled defaults do not activate and do not fall back", () => {
+        const { dialog, button, clicked } = setup(); const other = new CPushButton(dialog); const otherClicked = vi.fn();
+        other.clicked.connect(otherClicked);
+        button.hide(); dialog.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+        button.show(); button.setEnabled(false); dialog.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+        expect(clicked).not.toHaveBeenCalled(); expect(otherClicked).not.toHaveBeenCalled();
+        expect(dialog.defaultButton()).toBe(button);
+    });
+    test("a hidden or disabled containing group blocks default activation", () => {
+        const { dialog, button, clicked } = setup(); const group = new CWidget(dialog); button.setParent(group);
+        group.hide(); dialog.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+        group.show(); group.setEnabled(false); dialog.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+        expect(clicked).not.toHaveBeenCalled();
+    });
+    test("closed dialogs and modified Enter do not activate the default", () => {
+        const { dialog, clicked } = setup();
+        for (const flags of [[true, false, false, false], [false, true, false, false],
+            [false, false, true, false], [false, false, false, true]]) {
+            dialog.event(new CKeyEvent(CEventType.KeyPress, "Enter", flags[0], flags[1], flags[2], flags[3]));
+        }
+        dialog.close(); dialog.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+        expect(clicked).not.toHaveBeenCalled();
+    });
+    test("reopening preserves the configured default", () => {
+        const { dialog, button, clicked } = setup(); dialog.close(); dialog.exec();
+        expect(dialog.defaultButton()).toBe(button); dialog.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+        expect(clicked).toHaveBeenCalledOnce();
+    });
+    test("Escape still rejects rather than activating the default", () => {
+        const { dialog, clicked } = setup(); dialog.event(new CKeyEvent(CEventType.KeyPress, "Escape"));
+        expect(clicked).not.toHaveBeenCalled(); expect(dialog.result()).toBe(CDialogResult.Rejected);
+        expect(dialog.isOpen()).toBe(false);
+    });
 });

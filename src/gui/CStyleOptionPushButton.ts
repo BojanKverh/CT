@@ -12,6 +12,7 @@ export class CStyleOptionPushButton extends CStyleOptionButton {
 text = "";
 
 radius: number = 3;
+    defaultButton = false;
 
 		/**
 	 * Creates a new CStyleOptionPushButton instance.
@@ -25,6 +26,8 @@ constructor(other: CStyleOptionPushButton | null = null) {
 			return;
 
 		this.text = other.text;
+        this.radius = other.radius;
+        this.defaultButton = other.defaultButton;
 	}
 
 		/**
@@ -36,6 +39,7 @@ initFromPushButton(button: CPushButton): void {
 		this.initFromButton(button);
 
 		this.text = button.text();
+        this.defaultButton = button.isDefault();
 
 		if (button.isHovered())
 			this.state |= CStyleState.MouseOver;

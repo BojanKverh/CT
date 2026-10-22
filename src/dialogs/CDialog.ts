@@ -1,3 +1,4 @@
+import { CPushButton } from "../widgets/CPushButton.js";
 import { CSignal } from "../core/CSignal.js";
 import type { CKeyEvent } from "../events/CKeyEvent.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
@@ -168,6 +169,52 @@ export class CDialog extends CWidget
 		return this.#m_result;
 	}
 
+    /** Returns the explicitly configured default button, including if disabled. */
+    defaultButton(): CPushButton | null {
+        return this.#pushButtons().find(button => button.isDefault()) ?? null;
+    }
+
+    /** Sets the default button; null clears it. Buttons from other dialogs are ignored. */
+    setDefaultButton(button: CPushButton | null): void {
+        const buttons = this.#pushButtons();
+        if (button !== null && !buttons.includes(button)) return;
+        for (const candidate of buttons) candidate.setDefault(candidate === button);
+    }
+
+    #pushButtons(): CPushButton[] {
+        const buttons: CPushButton[] = [];
+        const visit = (widget: CWidget): void => {
+            for (const child of widget.children()) {
+                // Each nested dialog owns an independent default button.
+                if (!(child instanceof CWidget) || child instanceof CDialog) continue;
+                if (child instanceof CPushButton) buttons.push(child);
+                visit(child);
+            }
+        };
+        visit(this);
+        return buttons;
+    }
+
+    #activateDefaultButton(event: CKeyEvent): boolean {
+        if (!this.#m_open || !this.isVisible() || !this.isEnabled()) return false;
+        const app = CApplication.instance();
+        if (app.popupWidgets().length > 0) return false;
+        const modal = app.topModalWidget();
+        if (modal !== null) {
+            let owner: CWidget | null = this;
+            while (owner !== null && owner !== modal) owner = owner.parent();
+            if (owner === null) return false;
+        }
+        const button = this.defaultButton();
+        if (button === null) return false;
+        for (let owner: CWidget | null = button; owner !== null; owner = owner.parent()) {
+            if (!owner.isVisible() || !owner.isEnabled()) return false;
+            if (owner === this) break;
+        }
+        // Use the button's existing Enter handling; focus stays in the field.
+        return button.event(event);
+    }
+
 /**
  * Opens the dialog.
  */
@@ -254,6 +301,10 @@ export class CDialog extends CWidget
  */
 	protected override keyPressEvent(event: CKeyEvent): void
 	{
+        if ((event.key() === "Enter" || event.key() === "Return")
+            && !event.ctrl() && !event.shift() && !event.alt() && !event.meta() && !event.altGraph()
+            && this.#activateDefaultButton(event)) return;
+
 		if (event.key() === "Escape") {
 			this.reject();
 			event.accept();
