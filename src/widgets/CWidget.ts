@@ -58,6 +58,17 @@ export class CWidget extends CObject {
         this.#m_fontMetrics = new CFontMetrics(this.#m_font);
     }
 
+    /**
+     * Places second immediately after first in the keyboard focus order.
+     * Call pairs in sequence to build a chain. Widgets must belong to the
+     * same parent hierarchy; identical widgets or different roots are ignored.
+     * Hidden, disabled and non-Tab-focusable widgets keep their position but
+     * are skipped during navigation. This does not change the current focus.
+     */
+    static setTabOrder(first: CWidget, second: CWidget): void {
+        CApplication.instance().setTabOrder(first, second);
+    }
+
     /** Provides parent behavior. */
     override parent(): CWidget | null {
         return super.parent() as CWidget | null;

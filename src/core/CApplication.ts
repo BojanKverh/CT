@@ -49,6 +49,8 @@ export class CApplication extends CObject {
 	#m_mouseGrabber: CWidget | null = null;
 	#m_hoverWidget: CWidget | null = null;
 	#m_focusWidget: CWidget | null = null;
+    // Weak keys do not retain destroyed widgets or their window hierarchies.
+    #m_tabOrder = new WeakMap<CWidget, { root: CWidget; position: number }>();
 	#m_updatesEnabled = false;
 	#m_frameRequest: number | null = null;
 	#m_font = new CFont();
@@ -636,6 +638,33 @@ export class CApplication extends CObject {
 
 		return true;
 	}
+
+    /** @internal Called by CWidget.setTabOrder(). */
+    setTabOrder(first: CWidget, second: CWidget): void {
+        if (first === second) return;
+        const root = this.#tabOrderRoot(first);
+        if (root !== this.#tabOrderRoot(second)) return;
+
+        const widgets: CWidget[] = [];
+        const visit = (widget: CWidget): void => {
+            widgets.push(widget);
+            for (const child of widget.children()) {
+                if (child instanceof CWidget) visit(child);
+            }
+        };
+        // Include hidden and NoFocus widgets so their configured position is
+        // retained when they become eligible for keyboard focus later.
+        visit(root);
+        const ordered = this.#applyTabOrder(widgets);
+        const firstIndex = ordered.indexOf(first);
+        const secondIndex = ordered.indexOf(second);
+        if (firstIndex < 0 || secondIndex < 0) return;
+        ordered.splice(secondIndex, 1);
+        ordered.splice(ordered.indexOf(first) + 1, 0, second);
+        ordered.forEach((widget, position) => {
+            this.#m_tabOrder.set(widget, { root, position });
+        });
+    }
 
 /**
  * Returns the active drag operation.
@@ -1287,6 +1316,32 @@ export class CApplication extends CObject {
 			this.#m_paintDevice.canvas().style.cursor = shape;
 	}
 
+    #tabOrderRoot(widget: CWidget): CWidget {
+        let root = widget;
+        while (root.parent() !== null) root = root.parent()!;
+        return root;
+    }
+
+    #applyTabOrder(widgets: CWidget[]): CWidget[] {
+        const result = [...widgets];
+        const groups = new Map<CWidget, number[]>();
+        for (let i = 0; i < widgets.length; ++i) {
+            const widget = widgets[i]!;
+            const entry = this.#m_tabOrder.get(widget);
+            // Reparented widgets do not carry their old hierarchy's order.
+            if (!entry || entry.root !== this.#tabOrderRoot(widget)) continue;
+            const slots = groups.get(entry.root) ?? [];
+            slots.push(i);
+            groups.set(entry.root, slots);
+        }
+        for (const slots of groups.values()) {
+            const ordered = slots.map(i => widgets[i]!).sort((a, b) =>
+                this.#m_tabOrder.get(a)!.position - this.#m_tabOrder.get(b)!.position);
+            slots.forEach((slot, i) => { result[slot] = ordered[i]!; });
+        }
+        return result;
+    }
+
     #focusableWidgets(): CWidget[] {
         const result: CWidget[] = [];
         const visited = new Set<CWidget>();
@@ -1307,7 +1362,7 @@ export class CApplication extends CObject {
             // Parentless non-modal dialogs are registered as windows only.
             for (const widget of this.#m_windowWidgets) visit(widget);
         }
-        return result;
+        return this.#applyTabOrder(result);
     }
 
 	/** Opens a keyboard context menu at the focused widget's centre. */

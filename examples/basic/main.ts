@@ -1107,8 +1107,8 @@ mapperButton.setText("Widget mapper");
 mapperButton.setGeometry(390, 700, 120, 30);
 mapperButton.clicked.connect(() => {
 	const dlg = new CDialog(parent);
-	dlg.setGeometry(70, 80, 920, 400);
-	dlg.setWindowTitle("Employee mapper");
+	dlg.setGeometry(70, 80, 920, 460);
+	dlg.setWindowTitle("Employee mapper / custom Tab order");
 	const model = new DemoTableModel();
 	for (let row = 0; row < model.rowCount(); ++row) {
 		const index = model.index(row, 2);
@@ -1131,10 +1131,10 @@ mapperButton.clicked.connect(() => {
 	age.setDecimals(2);
 	const occupation = new CComboBox();
 	occupation.addItems(sqlOccupations);
-	form.addRow("Name", name);
-	form.addRow("Country", country);
-	form.addRow("Age (formula)", age);
-	form.addRow("Occupation", occupation);
+	form.addRow("1. Name", name);
+	form.addRow("3. Country", country);
+	form.addRow("2. Age (formula)", age);
+	form.addRow("4. Occupation", occupation);
 
 	const mapper = new CDataWidgetMapper(dlg);
 	mapper.setModel(model);
@@ -1200,10 +1200,29 @@ mapperButton.clicked.connect(() => {
 
 	const close = new CPushButton(dlg);
 	close.setText("Close");
-	close.setGeometry(810, 350, 90, 30);
+	close.setGeometry(810, 410, 90, 30);
 	close.clicked.connect(() => dlg.accept());
 
-	dlg.exec();
+    const tabHint = new CLabel(dlg);
+    tabHint.setText("Tab: 1 Name -> 2 Age -> 3 Country -> 4 Occupation (Shift+Tab reverses).");
+    tabHint.setGeometry(20, 354, 880, 24);
+    const cycleHint = new CLabel(dlg);
+    cycleHint.setText("Then Previous -> Next -> Submit -> Revert -> Close -> table -> Name. Focus stays in this dialog.");
+    cycleHint.setGeometry(20, 382, 880, 24);
+
+    // The on-screen row order deliberately differs from keyboard navigation.
+    CWidget.setTabOrder(name, age);
+    CWidget.setTabOrder(age, country);
+    CWidget.setTabOrder(country, occupation);
+    CWidget.setTabOrder(occupation, previous);
+    CWidget.setTabOrder(previous, next);
+    CWidget.setTabOrder(next, save);
+    CWidget.setTabOrder(save, revert);
+    CWidget.setTabOrder(revert, close);
+    CWidget.setTabOrder(close, table);
+
+    dlg.exec();
+    name.setFocus();
 });
 
 const completerButton = new CPushButton(parent);

@@ -2820,3 +2820,121 @@ describe("modal Tab focus boundaries", () => {
         }
     });
 });
+
+describe("custom Tab order dispatch", () => {
+    let app: CApplication;
+    let oldWindow: PropertyDescriptor | undefined;
+    beforeEach(() => {
+        oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+        Object.defineProperty(globalThis, "window", {
+            value: createTestWindow(), configurable: true, writable: true
+        });
+        app = new CApplication(createTestCanvas());
+    });
+    afterEach(() => {
+        if (CApplication.exists()) CApplication.instance().destroy();
+        if (oldWindow) Object.defineProperty(globalThis, "window", oldWindow);
+        else Reflect.deleteProperty(globalThis, "window");
+    });
+    function field(parent: CWidget): CWidget {
+        const widget = new CWidget(parent);
+        widget.setFocusPolicy(CFocusPolicy.StrongFocus);
+        return widget;
+    }
+    function pressTab(shiftKey = false) {
+        const preventDefault = vi.fn();
+        window.dispatchEvent({ type: "keydown", key: "Tab", shiftKey,
+            ctrlKey: false, altKey: false, metaKey: false, preventDefault
+        } as unknown as KeyboardEvent);
+        return preventDefault;
+    }
+    function setup(parent: CWidget | null = null) {
+        const dialog = new CDialog(parent);
+        const a = field(dialog), b = field(dialog), c = field(dialog);
+        CWidget.setTabOrder(a, c);
+        CWidget.setTabOrder(c, b);
+        dialog.exec();
+        return { dialog, a, b, c };
+    }
+    test("Tab and Shift+Tab follow custom order and wrap inside a modal dialog", () => {
+        const root = new CWidget();
+        const outside = field(root);
+        const { a, b, c } = setup(root);
+        a.setFocus();
+        for (const expected of [c, b, a]) {
+            expect(pressTab()).toHaveBeenCalledOnce();
+            expect(app.focusWidget()).toBe(expected);
+        }
+        for (const expected of [b, c, a]) {
+            expect(pressTab(true)).toHaveBeenCalledOnce();
+            expect(app.focusWidget()).toBe(expected);
+        }
+        expect(outside.hasFocus()).toBe(false);
+    });
+    test("order configured before opening a parentless dialog is retained", () => {
+        const { a, b, c } = setup();
+        a.setFocus(); pressTab(); expect(app.focusWidget()).toBe(c);
+        pressTab(); expect(app.focusWidget()).toBe(b);
+        pressTab(); expect(app.focusWidget()).toBe(a);
+    });
+    test("initial Tab chooses the first custom field and initial Shift+Tab the last", () => {
+        const { dialog, a, b, c } = setup();
+        CWidget.setTabOrder(c, a);
+        CWidget.setTabOrder(a, b);
+        app.setFocusWidget(null);
+        pressTab(); expect(app.focusWidget()).toBe(c);
+        app.setFocusWidget(null);
+        pressTab(true); expect(app.focusWidget()).toBe(b);
+        dialog.close();
+    });
+    test("hidden and disabled fields are skipped during actual key dispatch", () => {
+        const { a, b, c } = setup();
+        c.hide(); a.setFocus(); pressTab(); expect(app.focusWidget()).toBe(b);
+        c.show(); b.setEnabled(false);
+        a.setFocus(); pressTab(); expect(app.focusWidget()).toBe(c);
+        pressTab(); expect(app.focusWidget()).toBe(a);
+        b.setEnabled(true);
+        pressTab(); pressTab(); expect(app.focusWidget()).toBe(b);
+    });
+    test("nested modal dialogs retain independent custom navigation", () => {
+        const outer = setup();
+        const inner = setup(outer.dialog);
+        inner.a.setFocus(); pressTab(); expect(app.focusWidget()).toBe(inner.c);
+        pressTab(); expect(app.focusWidget()).toBe(inner.b);
+        pressTab(); expect(app.focusWidget()).toBe(inner.a);
+        inner.dialog.close();
+        outer.a.setFocus(); pressTab(); expect(app.focusWidget()).toBe(outer.c);
+    });
+    test("an open popup traps custom navigation until it closes", () => {
+        const outer = setup();
+        const popup = new CPopupWidget();
+        const a = field(popup), b = field(popup), c = field(popup);
+        CWidget.setTabOrder(a, c);
+        popup.open();
+        a.setFocus(); pressTab(); expect(app.focusWidget()).toBe(c);
+        pressTab(); expect(app.focusWidget()).toBe(b);
+        pressTab(); expect(app.focusWidget()).toBe(a);
+        popup.close();
+        outer.a.setFocus(); pressTab(); expect(app.focusWidget()).toBe(outer.c);
+    });
+    test("closing and reopening a dialog preserves its custom order", () => {
+        const { dialog, a, c } = setup();
+        dialog.close(); dialog.exec();
+        a.setFocus(); pressTab(); expect(app.focusWidget()).toBe(c);
+    });
+    test("widgets that accept Tab retain control of the key", () => {
+        class HandlesTab extends CWidget {
+            protected override keyPressEvent(event: CKeyEvent): void {
+                if (event.key() === "Tab") event.accept(); else event.ignore();
+            }
+        }
+        const { dialog, a, c } = setup();
+        const handler = new HandlesTab(dialog);
+        handler.setFocusPolicy(CFocusPolicy.StrongFocus);
+        CWidget.setTabOrder(handler, c);
+        handler.setFocus();
+        expect(pressTab()).toHaveBeenCalledOnce();
+        expect(app.focusWidget()).toBe(handler);
+        a.setFocus();
+    });
+});

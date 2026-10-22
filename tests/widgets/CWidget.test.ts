@@ -1433,3 +1433,107 @@ describe("CWidget", () => {
 		expect(widget.acceptDrops()).toBe(false);
 	});
 });
+
+describe("CWidget.setTabOrder", () => {
+    function setup() {
+        const app = CApplication.instance();
+        const root = new CWidget();
+        const fields = Array.from({ length: 4 }, () => {
+            const widget = new CWidget(root);
+            widget.setFocusPolicy(CFocusPolicy.StrongFocus);
+            return widget;
+        });
+        return { app, root, a: fields[0]!, b: fields[1]!, c: fields[2]!, d: fields[3]! };
+    }
+    function checkChain(app: CApplication, widgets: CWidget[], forward = true): void {
+        widgets[0]!.setFocus();
+        for (const widget of [...widgets.slice(1), widgets[0]!]) {
+            expect(app.focusNextWidget(forward)).toBe(true);
+            expect(app.focusWidget()).toBe(widget);
+        }
+    }
+    test("default order follows the widget tree", () => {
+        const { app, a, b, c, d } = setup();
+        checkChain(app, [a, b, c, d]);
+    });
+    test("moves the second widget after the first and preserves the others", () => {
+        const { app, a, b, c, d } = setup();
+        a.setFocus();
+        CWidget.setTabOrder(a, c);
+        expect(app.focusWidget()).toBe(a);
+        checkChain(app, [a, c, b, d]);
+        checkChain(app, [a, d, b, c], false);
+    });
+    test("sequential calls define a complete custom chain", () => {
+        const { app, a, b, c, d } = setup();
+        CWidget.setTabOrder(d, b);
+        CWidget.setTabOrder(b, a);
+        CWidget.setTabOrder(a, c);
+        checkChain(app, [d, b, a, c]);
+        checkChain(app, [d, c, a, b], false);
+    });
+    test("repeated calls are idempotent and can replace an earlier order", () => {
+        const { app, a, b, c, d } = setup();
+        CWidget.setTabOrder(a, c);
+        CWidget.setTabOrder(a, c);
+        checkChain(app, [a, c, b, d]);
+        CWidget.setTabOrder(a, d);
+        checkChain(app, [a, d, c, b]);
+    });
+    test("hidden and disabled fields return to their configured positions", () => {
+        const { app, a, b, c, d } = setup();
+        c.hide(); b.setEnabled(false);
+        CWidget.setTabOrder(a, c);
+        checkChain(app, [a, d]);
+        c.show(); b.setEnabled(true);
+        checkChain(app, [a, c, b, d]);
+    });
+    test("NoFocus fields retain their configured position", () => {
+        const { app, a, b, c, d } = setup();
+        c.setFocusPolicy(CFocusPolicy.NoFocus);
+        CWidget.setTabOrder(a, c);
+        checkChain(app, [a, b, d]);
+        c.setFocusPolicy(CFocusPolicy.StrongFocus);
+        checkChain(app, [a, c, b, d]);
+    });
+    test("orders fields in different child containers", () => {
+        const { app, root, a, b, c, d } = setup();
+        const group = new CWidget(root);
+        c.setParent(group);
+        CWidget.setTabOrder(a, c);
+        checkChain(app, [a, c, b, d]);
+        group.hide();
+        checkChain(app, [a, b, d]);
+    });
+    test("identical widgets and different hierarchies leave order unchanged", () => {
+        const { app, a, b, c, d } = setup();
+        const other = new CWidget();
+        const outside = new CWidget(other);
+        outside.setFocusPolicy(CFocusPolicy.StrongFocus);
+        CWidget.setTabOrder(a, a);
+        CWidget.setTabOrder(a, outside);
+        checkChain(app, [a, b, c, d, outside]);
+    });
+    test("destroyed fields are skipped without losing the remaining order", () => {
+        const { app, a, b, c, d } = setup();
+        CWidget.setTabOrder(a, c);
+        c.destroy();
+        checkChain(app, [a, b, d]);
+    });
+    test("widgets added later remain reachable without duplicating existing fields", () => {
+        const { app, root, a, b, c, d } = setup();
+        CWidget.setTabOrder(a, c);
+        const added = new CWidget(root);
+        added.setFocusPolicy(CFocusPolicy.StrongFocus);
+        checkChain(app, [a, c, b, d, added]);
+    });
+    test("reparenting a field to another hierarchy discards its old order", () => {
+        const { app, a, b, c, d } = setup();
+        CWidget.setTabOrder(a, c);
+        const other = new CWidget();
+        const existing = new CWidget(other);
+        existing.setFocusPolicy(CFocusPolicy.StrongFocus);
+        c.setParent(other);
+        checkChain(app, [a, b, d, existing, c]);
+    });
+});
