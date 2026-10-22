@@ -3909,3 +3909,239 @@ for (const Editor of [CTextEdit, CPlainTextEdit]) {
         });
     });
 }
+
+
+for (const Editor of [CTextEdit, CPlainTextEdit]) {
+    describe(`${Editor.name} replace`, () => {
+        let edit: CTextEdit;
+        let oldWindow: PropertyDescriptor | undefined;
+        beforeEach(() => {
+            oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+            Object.defineProperty(globalThis, "window", {
+                value: createTestWindow(), configurable: true, writable: true
+            });
+            new CApplication(createTestCanvas());
+            edit = new Editor();
+            edit.setGeometry(0, 0, 320, 160);
+        });
+        afterEach(() => {
+            edit.destroy();
+            if (CApplication.exists()) CApplication.instance().destroy();
+            if (oldWindow) Object.defineProperty(globalThis, "window", oldWindow);
+            else Reflect.deleteProperty(globalThis, "window");
+        });
+        function load(text: string, cursor = 0) {
+            edit.setPlainText(text);
+            edit.setCursorPosition(cursor);
+        }
+        test("replaces the next match and advances the cursor", () => {
+            load("one two one");
+            expect(edit.replace("one", "three")).toBe(true);
+            expect(edit.toPlainText()).toBe("three two one");
+            expect(edit.cursorPosition()).toBe(5);
+            expect(edit.hasSelection()).toBe(false);
+        });
+        test("replaces the current find result instead of skipping it", () => {
+            load("cat cat");
+            edit.find("cat");
+            expect(edit.replace("cat", "dog")).toBe(true);
+            expect(edit.toPlainText()).toBe("dog cat");
+        });
+        test("accepts a matching selection made backwards", () => {
+            load("cat cat");
+            edit.setSelection(3, 0);
+            expect(edit.replace("cat", "dog")).toBe(true);
+            expect(edit.toPlainText()).toBe("dog cat");
+        });
+        test("skips a non-matching selection", () => {
+            load("one two one");
+            edit.setSelection(4, 7);
+            expect(edit.replace("one", "three")).toBe(true);
+            expect(edit.toPlainText()).toBe("one two three");
+        });
+        test("does not replace a partial-word selection in whole-word mode", () => {
+            load("cats cat");
+            edit.setSelection(0, 3);
+            expect(edit.replace("cat", "dog", Find.WholeWords)).toBe(true);
+            expect(edit.toPlainText()).toBe("cats dog");
+        });
+        test("repeats backwards without revisiting inserted text", () => {
+            load("cat cat", 7);
+            expect(edit.replace("cat", "cat!", Find.Backward)).toBe(true);
+            expect(edit.cursorPosition()).toBe(4);
+            expect(edit.replace("cat", "cat!", Find.Backward)).toBe(true);
+            expect(edit.toPlainText()).toBe("cat! cat!");
+            expect(edit.replace("cat", "cat!", Find.Backward)).toBe(false);
+        });
+        test("empty replacement deletes a match and is undoable", () => {
+            load("cat dog");
+            expect(edit.replace("cat", "")).toBe(true);
+            expect(edit.toPlainText()).toBe(" dog");
+            edit.undo();
+            expect(edit.toPlainText()).toBe("cat dog");
+            expect(edit.cursorPosition()).toBe(0);
+            edit.redo();
+            expect(edit.toPlainText()).toBe(" dog");
+        });
+        test("failed replacement preserves the selection and history", () => {
+            load("abc");
+            edit.setSelection(3, 1);
+            expect(edit.replace("missing", "x")).toBe(false);
+            expect(edit.selectedText()).toBe("bc");
+            expect(edit.cursorPosition()).toBe(1);
+            expect(edit.canUndo()).toBe(false);
+        });
+        test("replaceAll uses the whole document regardless of cursor and direction", () => {
+            load("cat cat", 5);
+            expect(edit.replaceAll("cat", "dog", Find.Backward)).toBe(2);
+            expect(edit.toPlainText()).toBe("dog dog");
+        });
+        test("one undo and redo cover the complete replaceAll operation", () => {
+            load("a a a", 2);
+            edit.setSelection(0, 1);
+            expect(edit.replaceAll("a", "long")).toBe(3);
+            expect(edit.toPlainText()).toBe("long long long");
+            edit.undo();
+            expect(edit.toPlainText()).toBe("a a a");
+            expect(edit.selectedText()).toBe("a");
+            expect(edit.canUndo()).toBe(false);
+            edit.redo();
+            expect(edit.toPlainText()).toBe("long long long");
+        });
+        test("bulk replacement is separate from the previous editing command", () => {
+            edit.insert("a a");
+            edit.replaceAll("a", "b");
+            edit.undo();
+            expect(edit.toPlainText()).toBe("a a");
+            edit.undo();
+            expect(edit.toPlainText()).toBe("");
+        });
+        test("replaceAll emits a single text change", () => {
+            load("cat cat cat");
+            const changed = vi.fn();
+            edit.textChanged.connect(changed);
+            expect(edit.replaceAll("cat", "dog")).toBe(3);
+            expect(changed).toHaveBeenCalledOnce();
+        });
+        test("replacement text is literal including dollar signs and markup", () => {
+            load("x x");
+            expect(edit.replaceAll("x", "$& <b>$1</b> \\")).toBe(2);
+            expect(edit.toPlainText()).toBe("$& <b>$1</b> \\ $& <b>$1</b> \\");
+        });
+        test("supports case-sensitive and whole-word replacements", () => {
+            load("cat CAT scatter cat_1 cat");
+            expect(edit.replaceAll("cat", "dog", Find.CaseSensitive | Find.WholeWords)).toBe(2);
+            expect(edit.toPlainText()).toBe("dog CAT scatter cat_1 dog");
+        });
+        test("case-insensitive replacements preserve Unicode offsets", () => {
+            load("İ 😀 ČEBELA čebela");
+            expect(edit.replaceAll("čebela", "čmrlj")).toBe(2);
+            expect(edit.toPlainText()).toBe("İ 😀 čmrlj čmrlj");
+        });
+        test("whole-word replacements respect Unicode boundaries", () => {
+            load("𐐀cat catž cat\u0301 cat");
+            expect(edit.replaceAll("cat", "dog", Find.WholeWords)).toBe(1);
+            expect(edit.toPlainText()).toBe("𐐀cat catž cat\u0301 dog");
+        });
+        test("replacement does not recursively search inserted text", () => {
+            load("a a");
+            expect(edit.replaceAll("a", "aaa")).toBe(2);
+            expect(edit.toPlainText()).toBe("aaa aaa");
+        });
+        test("replaceAll uses non-overlapping matches", () => {
+            load("aaaaa");
+            expect(edit.replaceAll("aa", "b")).toBe(2);
+            expect(edit.toPlainText()).toBe("bba");
+        });
+        test("can delete all contents and restore them with one undo", () => {
+            load("aaa");
+            expect(edit.replaceAll("a", "")).toBe(3);
+            expect(edit.toPlainText()).toBe("");
+            expect(edit.cursorPosition()).toBe(0);
+            edit.undo();
+            expect(edit.toPlainText()).toBe("aaa");
+        });
+        test("can replace matches and replacements spanning lines", () => {
+            load("a\nb a\nb");
+            expect(edit.replaceAll("a\nb", "x\ny\nz")).toBe(2);
+            expect(edit.toPlainText()).toBe("x\ny\nz x\ny\nz");
+        });
+        test("empty queries and read-only documents reject replacements", () => {
+            load("cat cat");
+            edit.selectAll();
+            expect(edit.replace("", "x")).toBe(false);
+            expect(edit.replaceAll("", "x")).toBe(0);
+            edit.setReadOnly(true);
+            expect(edit.replace("cat", "dog")).toBe(false);
+            expect(edit.replaceAll("cat", "dog")).toBe(0);
+            expect(edit.selectedText()).toBe("cat cat");
+            expect(edit.canUndo()).toBe(false);
+        });
+        test("identical replacements and missing matches do not clear redo", () => {
+            load("cat");
+            edit.insert("!");
+            edit.undo();
+            const changed = vi.fn();
+            edit.textChanged.connect(changed);
+            expect(edit.replaceAll("missing", "x")).toBe(0);
+            expect(edit.replaceAll("cat", "cat")).toBe(1);
+            expect(edit.replace("cat", "cat")).toBe(true);
+            expect(edit.canRedo()).toBe(true);
+            expect(changed).not.toHaveBeenCalled();
+            edit.redo();
+            expect(edit.toPlainText()).toBe("!cat");
+        });
+    });
+}
+
+describe("CTextEdit replacement formatting", () => {
+    let edit: CTextEdit;
+    let oldWindow: PropertyDescriptor | undefined;
+    beforeEach(() => {
+        oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+        Object.defineProperty(globalThis, "window", {
+            value: createTestWindow(), configurable: true, writable: true
+        });
+        new CApplication(createTestCanvas());
+        edit = new CTextEdit();
+    });
+    afterEach(() => {
+        edit.destroy();
+        if (CApplication.exists()) CApplication.instance().destroy();
+        if (oldWindow) Object.defineProperty(globalThis, "window", oldWindow);
+        else Reflect.deleteProperty(globalThis, "window");
+    });
+    test("preserves surrounding formats and uses the format of each match", () => {
+        edit.setHtml('<b>cat</b> <i>keep</i> <span style="color: red">cat</span>');
+        expect(edit.replaceAll("cat", "elephant")).toBe(2);
+        edit.setSelection(0, 8);
+        expect(edit.currentCharFormat().fontBold()).toBe(true);
+        edit.setSelection(9, 13);
+        expect(edit.currentCharFormat().fontItalic()).toBe(true);
+        edit.setSelection(14, 22);
+        expect(edit.currentCharFormat().foreground()).toBe("red");
+        edit.undo();
+        expect(edit.toPlainText()).toBe("cat keep cat");
+        edit.setSelection(0, 3);
+        expect(edit.currentCharFormat().fontBold()).toBe(true);
+    });
+    test("single replacement inherits its match format", () => {
+        edit.setHtml("<b>cat</b> plain");
+        edit.setCursorPosition(0);
+        expect(edit.replace("cat", "dog")).toBe(true);
+        edit.setSelection(0, 3);
+        expect(edit.currentCharFormat().fontBold()).toBe(true);
+        edit.setSelection(4, 9);
+        expect(edit.currentCharFormat().fontBold()).toBe(false);
+    });
+    test("unchanged matches keep their internal formats during case normalization", () => {
+        edit.setHtml("Cat c<b>a</b>t");
+        expect(edit.replaceAll("cat", "cat")).toBe(2);
+        expect(edit.toPlainText()).toBe("cat cat");
+        edit.setSelection(5, 6);
+        expect(edit.currentCharFormat().fontBold()).toBe(true);
+        edit.setSelection(4, 5);
+        expect(edit.currentCharFormat().fontBold()).toBe(false);
+    });
+
+});

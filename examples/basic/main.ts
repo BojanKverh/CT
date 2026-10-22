@@ -1305,19 +1305,19 @@ findDemoButton.setText("Find text");
 findDemoButton.setGeometry(390, 740, 120, 30);
 findDemoButton.clicked.connect(() => {
     const dlg = new CDialog(parent);
-    dlg.setWindowTitle("Find — CPlainTextEdit / CTextEdit");
+    dlg.setWindowTitle("Find / Replace — CPlainTextEdit / CTextEdit");
     dlg.setGeometry(120, 70, 800, 560);
 
     const hint = new CLabel(dlg);
     hint.setGeometry(20, 15, 620, 28);
-    hint.setText("Ctrl+F: iskanje   Enter / F3: naslednji   Shift+F3: prejšnji");
+    hint.setText("Ctrl+F: išči   Ctrl+H: zamenjaj   F3 / Shift+F3: naprej / nazaj");
 
     const showFind = new CPushButton(dlg);
     showFind.setGeometry(665, 15, 115, 28);
     showFind.setText("Išči (Ctrl+F)");
 
     const bar = new CWidget(dlg);
-    bar.setGeometry(20, 52, 760, 90);
+    bar.setGeometry(20, 52, 760, 126);
     const query = new CLineEdit(bar);
     query.setGeometry(0, 0, 350, 28);
     query.setPlaceholderText("Besedilo za iskanje");
@@ -1331,14 +1331,24 @@ findDemoButton.clicked.connect(() => {
     hideFind.setGeometry(610, 0, 150, 28);
     hideFind.setText("Zapri iskanje (Esc)");
 
+    const replacement = new CLineEdit(bar);
+    replacement.setGeometry(0, 32, 350, 28);
+    replacement.setPlaceholderText("Zamenjaj z … (prazno izbriše zadetek)");
+    const replaceOne = new CPushButton(bar);
+    replaceOne.setGeometry(360, 32, 115, 28);
+    replaceOne.setText("Zamenjaj");
+    const replaceAll = new CPushButton(bar);
+    replaceAll.setGeometry(485, 32, 115, 28);
+    replaceAll.setText("Zamenjaj vse");
+
     const caseSensitive = new CCheckBox(bar);
-    caseSensitive.setGeometry(0, 32, 250, 26);
+    caseSensitive.setGeometry(0, 64, 250, 26);
     caseSensitive.setText("Velike/male črke");
     const wholeWords = new CCheckBox(bar);
-    wholeWords.setGeometry(265, 32, 180, 26);
+    wholeWords.setGeometry(265, 64, 180, 26);
     wholeWords.setText("Cele besede");
     const status = new CLabel(bar);
-    status.setGeometry(0, 61, 760, 26);
+    status.setGeometry(0, 93, 760, 26);
 
     const editor = new CPlainTextEdit(dlg);
     editor.setPlainText([
@@ -1362,7 +1372,7 @@ findDemoButton.clicked.connect(() => {
         const selected = editor.selectedText();
         if (selected.length > 0 && !selected.includes("\n")) query.setText(selected);
         bar.show();
-        editor.setGeometry(20, 150, 760, 345);
+        editor.setGeometry(20, 188, 760, 307);
         escapeFind.setEnabled(true);
         query.setFocus();
         query.selectAll();
@@ -1374,6 +1384,27 @@ findDemoButton.clicked.connect(() => {
         escapeFind.setEnabled(false);
         editor.setFocus();
     };
+    const searchFlags = (backward = false): CTextEditFindFlag => {
+        let flags = backward ? CTextEditFindFlag.Backward : CTextEditFindFlag.None;
+        if (caseSensitive.isChecked()) flags |= CTextEditFindFlag.CaseSensitive;
+        if (wholeWords.isChecked()) flags |= CTextEditFindFlag.WholeWords;
+        return flags;
+    };
+    const replaceText = (all: boolean): void => {
+        if (query.text().length === 0) {
+            status.setText("Najprej vpiši besedilo za iskanje.");
+            query.setFocus();
+            return;
+        }
+        if (all) {
+            const count = editor.replaceAll(query.text(), replacement.text(), searchFlags());
+            status.setText(`Zamenjav v celotnem dokumentu: ${count}. En Undo razveljavi vse.`);
+        } else {
+            const found = editor.replace(query.text(), replacement.text(), searchFlags());
+            status.setText(found ? "Zadetek zamenjan. Znova klikni za naslednjega."
+                : "Ni naslednjega zadetka. Uporabi »Na začetek«.");
+        }
+    };
     const search = (backward: boolean): void => {
         if (!bar.isVisible()) openFind();
         const text = query.text();
@@ -1382,10 +1413,7 @@ findDemoButton.clicked.connect(() => {
             query.setFocus();
             return;
         }
-        let flags = backward ? CTextEditFindFlag.Backward : CTextEditFindFlag.None;
-        if (caseSensitive.isChecked()) flags |= CTextEditFindFlag.CaseSensitive;
-        if (wholeWords.isChecked()) flags |= CTextEditFindFlag.WholeWords;
-        const found = editor.find(text, flags);
+        const found = editor.find(text, searchFlags(backward));
         status.setText(found
             ? `Najdeno: »${editor.selectedText()}« (položaj ${editor.selectionStart() + 1}).`
             : backward
@@ -1394,6 +1422,14 @@ findDemoButton.clicked.connect(() => {
         );
     };
 
+    replaceOne.clicked.connect(() => replaceText(false));
+    replaceAll.clicked.connect(() => replaceText(true));
+    replacement.returnPressed.connect(() => replaceText(false));
+    new CShortcut("Ctrl+H", dlg).activated.connect(() => {
+        openFind();
+        replacement.setFocus();
+        replacement.selectAll();
+    });
     showFind.clicked.connect(openFind);
     hideFind.clicked.connect(closeFind);
     previous.clicked.connect(() => search(true));
@@ -1421,6 +1457,18 @@ findDemoButton.clicked.connect(() => {
         editor.setFocus();
         status.setText("Kurzor je na koncu dokumenta.");
     });
+    const undo = new CPushButton(dlg);
+    undo.setGeometry(310, 515, 100, 28);
+    undo.setText("Undo");
+    undo.setEnabled(editor.canUndo());
+    editor.undoAvailable.connect(available => undo.setEnabled(available));
+    undo.clicked.connect(() => { editor.undo(); editor.setFocus(); });
+    const redo = new CPushButton(dlg);
+    redo.setGeometry(420, 515, 100, 28);
+    redo.setText("Redo");
+    redo.setEnabled(editor.canRedo());
+    editor.redoAvailable.connect(available => redo.setEnabled(available));
+    redo.clicked.connect(() => { editor.redo(); editor.setFocus(); });
     const close = new CPushButton(dlg);
     close.setGeometry(665, 515, 115, 28);
     close.setText("Zapri demo");

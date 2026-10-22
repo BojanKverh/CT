@@ -285,36 +285,120 @@ export class CTextEdit extends CScrollArea {
      * are never modified.
      */
     find(text: string, flags: CTextEditFindFlag = CTextEditFindFlag.None): boolean {
-        if (text.length === 0) return false;
-        const document = this.toPlainText();
         const backward = (flags & CTextEditFindFlag.Backward) !== 0;
-        const wholeWords = (flags & CTextEditFindFlag.WholeWords) !== 0;
         const boundary = backward ? this.selectionStart() : this.selectionEnd();
-        // Escape metacharacters: find() always searches for literal text.
-        const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const pattern = new RegExp(escaped,
-            (flags & CTextEditFindFlag.CaseSensitive) !== 0 ? "gu" : "giu");
-        if (!backward) pattern.lastIndex = boundary;
         let found: { start: number; end: number } | null = null;
-        for (let match = pattern.exec(document); match !== null; match = pattern.exec(document)) {
-            const start = match.index;
-            const end = start + match[0].length;
-            if (backward && end > boundary) break;
-            const before = Array.from(document.slice(Math.max(0, start - 2), start)).pop() ?? "";
-            const after = end < document.length ? String.fromCodePoint(document.codePointAt(end)!) : "";
-            if (!wholeWords || (!/[\p{L}\p{N}\p{M}_]/u.test(before)
-                && !/[\p{L}\p{N}\p{M}_]/u.test(after))) {
-                found = { start, end };
-                if (!backward) break;
-            }
-            // Include overlapping candidates when searching backwards.
-            pattern.lastIndex = start + String.fromCodePoint(document.codePointAt(start)!).length;
+        for (const match of this.#searchMatches(text, flags, backward ? 0 : boundary)) {
+            if (backward && match.end > boundary) break;
+            found = match;
+            if (!backward) break;
         }
         if (found === null) return false;
         this.setSelection(backward ? found.end : found.start,
             backward ? found.start : found.end);
         return true;
     }
+
+    /**
+     * Replaces a matching current selection, otherwise the next match in the
+     * requested direction. Returns false when read-only or no match exists.
+     * Replacement text is literal and inherits the match's first character format.
+     */
+    replace(text: string, replacement: string,
+        flags: CTextEditFindFlag = CTextEditFindFlag.None): boolean {
+        if (this.isReadOnly() || text.length === 0) return false;
+        const start = this.selectionStart();
+        const end = this.selectionEnd();
+        const backward = (flags & CTextEditFindFlag.Backward) !== 0;
+        let target: { start: number; end: number } | null = null;
+        for (const match of this.#searchMatches(text, flags)) {
+            if (this.hasSelection() && match.start === start && match.end === end) {
+                target = match;
+                break;
+            }
+            if (backward) {
+                if (match.end <= start) target = match;
+                else if (match.start > start) break;
+            } else if (match.start >= end && target === null) {
+                target = match;
+                break;
+            }
+        }
+        if (target === null) return false;
+        this.#applyReplacements([target], replacement, backward);
+        return true;
+    }
+
+    /**
+     * Replaces non-overlapping matches in the entire document and returns their
+     * count. Backward is ignored. One undo restores the entire operation.
+     * Empty queries and read-only documents return zero without changing state.
+     */
+    replaceAll(text: string, replacement: string,
+        flags: CTextEditFindFlag = CTextEditFindFlag.None): number {
+        if (this.isReadOnly() || text.length === 0) return 0;
+        const matches: Array<{ start: number; end: number }> = [];
+        let end = 0;
+        for (const match of this.#searchMatches(text, flags)) {
+            if (match.start < end) continue;
+            matches.push(match);
+            end = match.end;
+        }
+        if (matches.length > 0) this.#applyReplacements(matches, replacement, false);
+        return matches.length;
+    }
+
+    /** Yields literal matches, including overlapping candidates, in document order. */
+    *#searchMatches(text: string, flags: CTextEditFindFlag,
+        start = 0): Generator<{ start: number; end: number }> {
+        if (text.length === 0) return;
+        const document = this.toPlainText();
+        const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const pattern = new RegExp(escaped,
+            (flags & CTextEditFindFlag.CaseSensitive) !== 0 ? "gu" : "giu");
+        pattern.lastIndex = start;
+        for (let match = pattern.exec(document); match !== null; match = pattern.exec(document)) {
+            const start = match.index;
+            const end = start + match[0].length;
+            const before = Array.from(document.slice(Math.max(0, start - 2), start)).pop() ?? "";
+            const after = end < document.length ? String.fromCodePoint(document.codePointAt(end)!) : "";
+            if ((flags & CTextEditFindFlag.WholeWords) === 0
+                || (!/[\p{L}\p{N}\p{M}_]/u.test(before) && !/[\p{L}\p{N}\p{M}_]/u.test(after)))
+                yield { start, end };
+            pattern.lastIndex = start + String.fromCodePoint(document.codePointAt(start)!).length;
+        }
+    }
+
+    #applyReplacements(matches: Array<{ start: number; end: number }>,
+        replacement: string, backward: boolean): void {
+        const original = this.toPlainText();
+        // An identical replacement is successful but creates no editing command.
+        if (matches.every(match => original.slice(match.start, match.end) === replacement)) return;
+        const oldCursor = this.#m_cursorPosition;
+        const oldAnchor = this.#m_selectionAnchor;
+        this.#pushUndoState();
+        for (let i = matches.length - 1; i >= 0; --i) {
+            const match = matches[i]!;
+            if (original.slice(match.start, match.end) === replacement) continue;
+            const format = this.#m_document.charFormatAt(match.start);
+            this.#m_document.remove(match.start, match.end - match.start);
+            if (replacement.length > 0) this.#m_document.insert(match.start, replacement, format);
+        }
+        const last = matches[matches.length - 1]!;
+        const shift = matches.slice(0, -1).reduce((sum, match) =>
+            sum + replacement.length - (match.end - match.start), 0);
+        this.#m_cursorPosition = last.start + shift + (backward ? 0 : replacement.length);
+        this.#m_selectionAnchor = this.#m_cursorPosition;
+        this.#syncCurrentCharFormatFromCursor();
+        this.#updateContentGeometry();
+        this.#ensureCursorVisible();
+        this.#resetCursorBlink();
+        this.#m_contentWidget.update();
+        this.textChanged.emit();
+        if (oldCursor !== this.#m_cursorPosition || oldAnchor !== this.#m_selectionAnchor)
+            this.selectionChanged.emit();
+    }
+
 
 	/** Sets the plain text. */
 	setPlainText(text: string): void {
