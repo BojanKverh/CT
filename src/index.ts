@@ -72,7 +72,7 @@ export { CCalendarWidget } from "./widgets/CCalendarWidget.js";
 export { CDateEdit } from "./widgets/CDateEdit.js";
 export { CTimeEdit } from "./widgets/CTimeEdit.js";
 export { CDateTimeEdit } from "./widgets/CDateTimeEdit.js";
-export { CTextEdit } from "./widgets/CTextEdit.js";
+export { CTextEdit, CTextEditFindFlag } from "./widgets/CTextEdit.js";
 export { CKeySequenceEdit } from "./widgets/CKeySequenceEdit.js";
 export { CListView } from "./widgets/CListView.js";
 export { CModelIndex } from "./models/CModelIndex.js";

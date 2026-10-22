@@ -14,7 +14,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CMemorySqlTableAdapter, CSqlEditStrategy, CSqlFilterOperator, CSqlRelation,
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
-	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut, CPlainTextEdit
+	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut, CPlainTextEdit, CTextEditFindFlag
 } from "../../src/index.js";
 
 class RedWidget extends CWidget {
@@ -1297,6 +1297,137 @@ undoDemoButton.clicked.connect(() => {
     close.setGeometry(525, 375, 80, 30);
     close.clicked.connect(() => dlg.accept());
     dlg.exec();
+});
+
+// Find uses CTextEdit's shared implementation through CPlainTextEdit.
+const findDemoButton = new CPushButton(parent);
+findDemoButton.setText("Find text");
+findDemoButton.setGeometry(390, 740, 120, 30);
+findDemoButton.clicked.connect(() => {
+    const dlg = new CDialog(parent);
+    dlg.setWindowTitle("Find — CPlainTextEdit / CTextEdit");
+    dlg.setGeometry(120, 70, 800, 560);
+
+    const hint = new CLabel(dlg);
+    hint.setGeometry(20, 15, 620, 28);
+    hint.setText("Ctrl+F: iskanje   Enter / F3: naslednji   Shift+F3: prejšnji");
+
+    const showFind = new CPushButton(dlg);
+    showFind.setGeometry(665, 15, 115, 28);
+    showFind.setText("Išči (Ctrl+F)");
+
+    const bar = new CWidget(dlg);
+    bar.setGeometry(20, 52, 760, 90);
+    const query = new CLineEdit(bar);
+    query.setGeometry(0, 0, 350, 28);
+    query.setPlaceholderText("Besedilo za iskanje");
+    const previous = new CPushButton(bar);
+    previous.setGeometry(360, 0, 115, 28);
+    previous.setText("Prejšnji");
+    const next = new CPushButton(bar);
+    next.setGeometry(485, 0, 115, 28);
+    next.setText("Naslednji");
+    const hideFind = new CPushButton(bar);
+    hideFind.setGeometry(610, 0, 150, 28);
+    hideFind.setText("Zapri iskanje (Esc)");
+
+    const caseSensitive = new CCheckBox(bar);
+    caseSensitive.setGeometry(0, 32, 250, 26);
+    caseSensitive.setText("Velike/male črke");
+    const wholeWords = new CCheckBox(bar);
+    wholeWords.setGeometry(265, 32, 180, 26);
+    wholeWords.setText("Cele besede");
+    const status = new CLabel(bar);
+    status.setGeometry(0, 61, 760, 26);
+
+    const editor = new CPlainTextEdit(dlg);
+    editor.setPlainText([
+        "Iskanje v Canvas Toolkit",
+        "",
+        "Bojan uporablja Canvas Toolkit. Clarica uporablja canvas toolkit.",
+        "Beseda Canvas se ponovi večkrat: Canvas, canvas in CANVAS.",
+        "Pri celih besedah: test, tester, test_2 in test.",
+        "Šumniki: čebela, ČEBELA in čebelar.",
+        "Posebni znaki so dobesedni: [a]+ in (60+40)*1.22.",
+        "",
+        ...Array.from({ length: 25 }, (_, i) =>
+            `Vrstica ${i + 1}: besedilo za pomikanje in iskanje.`),
+        "",
+        "Zadnji zadetek: Canvas."
+    ].join("\n"));
+    editor.setCursorPosition(0);
+
+    const escapeFind = new CShortcut("Escape", dlg);
+    const openFind = (): void => {
+        const selected = editor.selectedText();
+        if (selected.length > 0 && !selected.includes("\n")) query.setText(selected);
+        bar.show();
+        editor.setGeometry(20, 150, 760, 345);
+        escapeFind.setEnabled(true);
+        query.setFocus();
+        query.selectAll();
+        status.setText("Poskusi Canvas, test ali čebela. Iskanje ne preskoči konca dokumenta.");
+    };
+    const closeFind = (): void => {
+        bar.hide();
+        editor.setGeometry(20, 52, 760, 443);
+        escapeFind.setEnabled(false);
+        editor.setFocus();
+    };
+    const search = (backward: boolean): void => {
+        if (!bar.isVisible()) openFind();
+        const text = query.text();
+        if (text.length === 0) {
+            status.setText("Najprej vpiši besedilo za iskanje.");
+            query.setFocus();
+            return;
+        }
+        let flags = backward ? CTextEditFindFlag.Backward : CTextEditFindFlag.None;
+        if (caseSensitive.isChecked()) flags |= CTextEditFindFlag.CaseSensitive;
+        if (wholeWords.isChecked()) flags |= CTextEditFindFlag.WholeWords;
+        const found = editor.find(text, flags);
+        status.setText(found
+            ? `Najdeno: »${editor.selectedText()}« (položaj ${editor.selectionStart() + 1}).`
+            : backward
+                ? "Pred trenutno izbiro ni zadetka. Iskanje ne preskoči na konec."
+                : "Za trenutno izbiro ni zadetka. Za iskanje od začetka klikni »Na začetek«."
+        );
+    };
+
+    showFind.clicked.connect(openFind);
+    hideFind.clicked.connect(closeFind);
+    previous.clicked.connect(() => search(true));
+    next.clicked.connect(() => search(false));
+    query.returnPressed.connect(() => search(false));
+    query.textEdited.connect(() => status.setText("Enter: naslednji zadetek; Shift+F3: prejšnji."));
+    new CShortcut("Ctrl+F", dlg).activated.connect(openFind);
+    new CShortcut("F3", dlg).activated.connect(() => search(false));
+    new CShortcut("Shift+F3", dlg).activated.connect(() => search(true));
+    escapeFind.activated.connect(closeFind);
+
+    const beginning = new CPushButton(dlg);
+    beginning.setGeometry(20, 515, 130, 28);
+    beginning.setText("Na začetek");
+    beginning.clicked.connect(() => {
+        editor.setCursorPosition(0);
+        editor.setFocus();
+        status.setText("Kurzor je na začetku dokumenta.");
+    });
+    const end = new CPushButton(dlg);
+    end.setGeometry(160, 515, 130, 28);
+    end.setText("Na konec");
+    end.clicked.connect(() => {
+        editor.setCursorPosition(editor.toPlainText().length);
+        editor.setFocus();
+        status.setText("Kurzor je na koncu dokumenta.");
+    });
+    const close = new CPushButton(dlg);
+    close.setGeometry(665, 515, 115, 28);
+    close.setText("Zapri demo");
+    close.clicked.connect(() => dlg.accept());
+    closeFind();
+    dlg.exec();
+    editor.setFocus();
 });
 
 const edit = new CNumberEdit(parent);
