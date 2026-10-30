@@ -1,3 +1,4 @@
+import { CSizePolicy, CSizePolicyType } from "../../src/geometry/CSizePolicy.js";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { CApplication } from "../../src/core/CApplication.js";
@@ -603,4 +604,91 @@ describe("CBoxLayout", () => {
 		expect(child.height()).toBe(50);
 	});
 
+});
+describe("CBoxLayout size policies", () => {
+    beforeEach(() => {
+        Object.defineProperty(globalThis, "window", { value: createTestWindow(), writable: true, configurable: true });
+        new CApplication(createTestCanvas());
+    });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+    function setup(vertical = false, width = 300, height = 100) {
+        const root = new CWidget(); root.resize(width, height);
+        const layout = new CBoxLayout(vertical ? CBoxLayoutDirection.TopToBottom : CBoxLayoutDirection.LeftToRight);
+        layout.setContentsMargins(0, 0, 0, 0); layout.setSpacing(0); root.setLayout(layout);
+        const a = new HintWidget(50, 20), b = new HintWidget(50, 20);
+        layout.addWidget(a); layout.addWidget(b); return { root, layout, a, b };
+    }
+    test("Preferred preserves equal growth and fills the cross axis", () => {
+        const { a, b } = setup(); expect(a.width()).toBe(150); expect(b.width()).toBe(150); expect(a.height()).toBe(100);
+    });
+    test("Fixed preserves the hint on both axes", () => {
+        const { a, b } = setup(); a.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed);
+        expect(a.width()).toBe(50); expect(a.height()).toBe(20); expect(b.width()).toBe(250);
+    });
+    test("Expanding receives extra space before Preferred", () => {
+        const { a, b } = setup(); b.setSizePolicy(CSizePolicyType.Expanding, CSizePolicyType.Preferred);
+        expect(a.width()).toBe(50); expect(b.width()).toBe(250);
+    });
+    test("a capped expanding item passes remaining space to Preferred", () => {
+        const { a, b } = setup(); b.setMaximumSize(100, 100);
+        b.setSizePolicy(CSizePolicyType.Expanding, CSizePolicyType.Preferred);
+        expect(a.width()).toBe(200); expect(b.width()).toBe(100);
+    });
+    test("Minimum does not shrink below its hint", () => {
+        const { root, a, b } = setup(); a.setSizePolicy(CSizePolicyType.Minimum, CSizePolicyType.Preferred);
+        root.resize(60, 100); expect(a.width()).toBe(50); expect(b.width()).toBe(10);
+    });
+    test("Maximum shrinks but does not grow past its hint", () => {
+        const { root, a, b } = setup(); a.setSizePolicy(CSizePolicyType.Maximum, CSizePolicyType.Preferred);
+        expect(a.width()).toBe(50); expect(b.width()).toBe(250);
+        root.resize(60, 100); expect(a.width()).toBe(30); expect(b.width()).toBe(30);
+    });
+    test("MinimumExpanding takes extra space but will not shrink below its hint", () => {
+        const { root, a, b } = setup(); a.setSizePolicy(CSizePolicyType.MinimumExpanding, CSizePolicyType.Preferred);
+        expect(a.width()).toBe(250); expect(b.width()).toBe(50);
+        root.resize(60, 100); expect(a.width()).toBe(50); expect(b.width()).toBe(10);
+    });
+    test("Ignored removes its hint contribution while honoring an explicit minimum", () => {
+        const { layout, a } = setup(); a.setMinimumSize(10, 5);
+        a.setSizePolicy(CSizePolicyType.Ignored, CSizePolicyType.Ignored);
+        expect(layout.sizeHint().width()).toBe(60); expect(layout.sizeHint().height()).toBe(20);
+    });
+    test("explicit bounds override Fixed hint", () => {
+        const { a } = setup(); a.setMinimumSize(80, 30);
+        a.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed);
+        expect(a.width()).toBe(80); expect(a.height()).toBe(30);
+        a.setMaximumSize(90, 40); expect(a.width()).toBe(80);
+    });
+    test("explicit stretch cannot expand a Fixed item", () => {
+        const { layout, a, b } = setup(); layout.clear();
+        a.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed);
+        layout.addWidget(a, 10); layout.addWidget(b, 1);
+        expect(a.width()).toBe(50); expect(b.width()).toBe(250);
+    });
+    test("policy stretch distributes extra space proportionally", () => {
+        const { a, b } = setup();
+        const pa = new CSizePolicy(); pa.setHorizontalStretch(1);
+        const pb = new CSizePolicy(); pb.setHorizontalStretch(3);
+        a.setSizePolicy(pa); b.setSizePolicy(pb);
+        expect(a.width()).toBe(100); expect(b.width()).toBe(200);
+    });
+    test("vertical layout uses vertical policy and horizontal cross policy", () => {
+        const { a, b } = setup(true, 100, 200);
+        a.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Expanding);
+        expect(a.width()).toBe(50); expect(a.height()).toBe(180); expect(b.height()).toBe(20);
+    });
+    test("Fixed items overflow a too-small container instead of violating their size", () => {
+        const { root, a, b } = setup();
+        a.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed);
+        b.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed);
+        root.resize(40, 10); expect(a.width()).toBe(50); expect(b.width()).toBe(50); expect(a.height()).toBe(20);
+    });
+    test("fixed cross axis ignores resizing while the growable neighbor fills it", () => {
+        const { root, a, b } = setup(); a.setSizePolicy(CSizePolicyType.Preferred, CSizePolicyType.Fixed);
+        root.resize(400, 150); expect(a.height()).toBe(20); expect(b.height()).toBe(150);
+    });
+    test("default policies preserve mixed explicit and implicit stretch weights", () => {
+        const { layout, a, b } = setup(); layout.clear(); layout.addWidget(a, 3); layout.addWidget(b);
+        expect(a.width()).toBe(200); expect(b.width()).toBe(100);
+    });
 });

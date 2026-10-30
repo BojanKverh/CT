@@ -68,7 +68,7 @@ export class CNumberEdit extends CLineEdit {
     }
 
     /** Text currently painted; text()/expression() always return the formula. */
-    displayText(): string {
+    override displayText(): string {
         if (this.hasFocus()) return this.expression();
         if (this.hasValidationError()) return "ERR";
         const rounded = Number(this.#m_value.toFixed(this.#m_decimals));

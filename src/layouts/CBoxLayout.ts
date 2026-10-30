@@ -1,3 +1,4 @@
+import { CSizePolicy } from "../geometry/CSizePolicy.js";
 import { CLayout } from "./CLayout.js";
 import { CWidget } from "../widgets/CWidget.js";
 import { CBoxLayoutItem } from "./CBoxLayoutItem.js";
@@ -61,7 +62,11 @@ export class CBoxLayout extends CLayout {
 
 			const minimum = widget.minimumSize();
 			const maximum = widget.maximumSize();
-			const hint = widget.sizeHint();
+            const originalHint = widget.sizeHint();
+            const policy = widget.sizePolicy();
+            const hint = new CSize(
+                CSizePolicy.ignoresHint(policy.horizontalPolicy()) ? 0 : originalHint.width(),
+                CSizePolicy.ignoresHint(policy.verticalPolicy()) ? 0 : originalHint.height());
 
 			if (this.#m_direction === CBoxLayoutDirection.LeftToRight) {
 				main += Math.min(
@@ -171,155 +176,82 @@ export class CBoxLayout extends CLayout {
 		}
 	}
 
-	#mainMinimum(widget: CWidget): number {
-		return this.#m_direction === CBoxLayoutDirection.LeftToRight
-			? widget.minimumSize().width() : widget.minimumSize().height();
-	}
+    #bounds(widget: CWidget, horizontal: boolean): { minimum: number; preferred: number; maximum: number } {
+        const sizePolicy = widget.sizePolicy();
+        const policy = horizontal ? sizePolicy.horizontalPolicy() : sizePolicy.verticalPolicy();
+        const minimum = horizontal ? widget.minimumWidth() : widget.minimumHeight();
+        const maximum = horizontal ? widget.maximumWidth() : widget.maximumHeight();
+        const hint = widget.sizeHint();
+        const preferred = Math.min(maximum, Math.max(minimum, CSizePolicy.ignoresHint(policy)
+            ? 0 : horizontal ? hint.width() : hint.height()));
+        return {
+            minimum: CSizePolicy.canShrink(policy) ? minimum : preferred,
+            preferred,
+            maximum: CSizePolicy.canGrow(policy) ? maximum : preferred
+        };
+    }
 
-	#mainMaximum(widget: CWidget): number {
-		return this.#m_direction === CBoxLayoutDirection.LeftToRight
-			? widget.maximumSize().width() : widget.maximumSize().height();
-	}
+    #crossSize(widget: CWidget, available: number): number {
+        const bounds = this.#bounds(widget, this.#m_direction !== CBoxLayoutDirection.LeftToRight);
+        return Math.min(bounds.maximum, Math.max(bounds.minimum, available));
+    }
 
-	#mainSizeHint(widget: CWidget): number {
-		return this.#m_direction === CBoxLayoutDirection.LeftToRight
-			? widget.sizeHint().width() : widget.sizeHint().height();
-	}
+    #calculateSizes(available: number): number[] {
+        const minimums: number[] = [], preferred: number[] = [], maximums: number[] = [];
+        const weights: number[] = [], priorities: number[] = [];
+        const horizontal = this.#m_direction === CBoxLayoutDirection.LeftToRight;
+        const hasSpacer = this.#hasStretchSpacer();
+        const hasExpanding = this.items().some(item => {
+            const policy = item.widget()?.sizePolicy();
+            const axis = horizontal ? policy?.horizontalPolicy() : policy?.verticalPolicy();
+            return axis !== undefined && CSizePolicy.isExpanding(axis);
+        });
+        for (let i = 0; i < this.count(); ++i) {
+            const item = this.itemAt(i) as CBoxLayoutItem;
+            const widget = item.widget();
+            const bounds = widget === null ? { minimum: 0, preferred: 0, maximum: Number.MAX_SAFE_INTEGER }
+                : this.#bounds(widget, horizontal);
+            const policy = widget?.sizePolicy();
+            const axisPolicy = horizontal ? policy?.horizontalPolicy() : policy?.verticalPolicy();
+            const stretch = item.stretch() || (horizontal ? policy?.horizontalStretch() : policy?.verticalStretch()) || 0;
+            minimums.push(bounds.minimum); preferred.push(bounds.preferred); maximums.push(bounds.maximum);
+            weights.push(stretch || 1);
+            priorities.push(stretch > 0 ? 3
+                : axisPolicy !== undefined && CSizePolicy.isExpanding(axisPolicy) ? 2 : hasSpacer ? 0 : hasExpanding ? 1 : 3);
+        }
+        const totalPreferred = preferred.reduce((a, b) => a + b, 0);
+        const totalMinimum = minimums.reduce((a, b) => a + b, 0);
+        if (available >= totalPreferred) {
+            const sizes = [...preferred];
+            let extra = available - totalPreferred;
+            // Prefer expanding policies while retaining legacy stretch ratios when none expand.
+            for (const priority of [3, 2, 1]) {
+                while (extra > 1e-9) {
+                    const active = sizes.map((_, i) => i).filter(i =>
+                        priorities[i] === priority && sizes[i]! < maximums[i]! - 1e-9);
+                    if (active.length === 0) break;
+                    const totalWeight = active.reduce((sum, i) => sum + weights[i]!, 0);
+                    let distributed = 0;
+                    for (const i of active) {
+                        const amount = Math.min(extra * weights[i]! / totalWeight, maximums[i]! - sizes[i]!);
+                        sizes[i]! += amount; distributed += amount;
+                    }
+                    if (distributed <= 1e-9) break;
+                    extra -= distributed;
+                }
+            }
+            return sizes;
+        }
+        if (available <= totalMinimum) return minimums;
+        const capacity = totalPreferred - totalMinimum;
+        return preferred.map((size, i) => size - (totalPreferred - available) * (size - minimums[i]!) / capacity);
+    }
 
-	#crossSize(widget: CWidget, available: number): number {
-		const minimum = widget.minimumSize();
-		const maximum = widget.maximumSize();
-
-		if (this.#m_direction === CBoxLayoutDirection.LeftToRight) {
-			return Math.min(
-				maximum.height(),
-				Math.max(available, minimum.height())
-			);
-		}
-
-		return Math.min(
-			maximum.width(),
-			Math.max(available, minimum.width())
-		);
-	}
-
-	#calculateSizes(available: number): number[] {
-		const count = this.count();
-
-		const minimums: number[] = [];
-		const preferred: number[] = [];
-		const maximums: number[] = [];
-		const stretches: number[] = [];
-
-		let totalMinimum = 0;
-		let totalPreferred = 0;
-
-		const hasSpacer = this.#hasStretchSpacer();
-
-		for (let i = 0; i < count; ++i) {
-			const item = this.itemAt(i) as CBoxLayoutItem;
-			const widget = item.widget();
-
-			const minimum = widget !== null
-				? this.#mainMinimum(widget) : 0;
-			const maximum = widget !== null
-				? this.#mainMaximum(widget) : Number.MAX_SAFE_INTEGER;
-			const hint = widget !== null
-				? this.#mainSizeHint(widget) : 0;
-			const preferredSize = Math.min(
-				maximum,
-				Math.max(minimum, hint)
-			);
-
-			let stretch = item.stretch();
-
-			if (widget !== null && stretch === 0)
-				stretch = hasSpacer ? 0 : 1;
-
-			minimums.push(minimum);
-			preferred.push(preferredSize);
-			maximums.push(maximum);
-			stretches.push(stretch);
-
-			totalMinimum += minimum;
-			totalPreferred += preferredSize;
-		}
-
-		if (available >= totalPreferred) {
-			const sizes = [...preferred];
-			let extra = available - totalPreferred;
-
-			while (extra > 0) {
-				let totalStretch = 0;
-
-				for (let i = 0; i < count; ++i) {
-					if (
-						stretches[i]! > 0
-						&& sizes[i]! < maximums[i]!
-					)
-						totalStretch += stretches[i]!;
-				}
-
-				if (totalStretch === 0)
-					break;
-
-				let distributed = 0;
-
-				for (let i = 0; i < count; ++i) {
-					const stretch = stretches[i]!;
-
-					if (
-						stretch === 0
-						|| sizes[i]! >= maximums[i]!
-					)
-						continue;
-
-					const share = extra * stretch / totalStretch;
-					const amount = Math.min(
-						share,
-						maximums[i]! - sizes[i]!
-					);
-
-					sizes[i]! += amount;
-					distributed += amount;
-				}
-
-				if (distributed <= 0)
-					break;
-
-				extra -= distributed;
-			}
-
-			return sizes;
-		}
-
-		if (available >= totalMinimum) {
-			const shrink = totalPreferred - available;
-			const capacities = preferred.map((size, index) =>
-				size - minimums[index]!);
-			const totalCapacity = capacities.reduce(
-				(sum, value) => sum + value,
-				0
-			);
-
-			if (totalCapacity === 0)
-				return [...minimums];
-
-			return preferred.map((size, index) =>
-				size - shrink * capacities[index]! / totalCapacity);
-		}
-
-		return [...minimums];
-	}
-
-	#hasStretchSpacer(): boolean {
-		for (let i = 0; i < this.count(); ++i) {
-			const item = this.itemAt(i) as CBoxLayoutItem;
-
-			if (item.widget() === null && item.stretch() > 0)
-				return true;
-		}
-
-		return false;
-	}
+    #hasStretchSpacer(): boolean {
+        for (let i = 0; i < this.count(); ++i) {
+            const item = this.itemAt(i) as CBoxLayoutItem;
+            if (item.widget() === null && item.stretch() > 0) return true;
+        }
+        return false;
+    }
 }

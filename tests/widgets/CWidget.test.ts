@@ -1,3 +1,4 @@
+import { CSizePolicy, CSizePolicyType } from "../../src/geometry/CSizePolicy.js";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { CApplication } from "../../src/core/CApplication";
 import { CWidget } from "../../src/widgets/CWidget";
@@ -1633,5 +1634,46 @@ describe("CWidget focus proxies", () => {
     test("moving the complete composite preserves its internal proxy", () => {
         const { owner, editor } = setup(); owner.setFocusProxy(editor); const other = new CWidget(); owner.setParent(other);
         expect(owner.focusProxy()).toBe(editor); owner.setFocus(); expect(editor.hasFocus()).toBe(true);
+    });
+});
+
+describe("CWidget size policy", () => {
+    test("defaults to Preferred on both axes", () => {
+        const policy = new CWidget().sizePolicy();
+        expect(policy.horizontalPolicy()).toBe(CSizePolicyType.Preferred);
+        expect(policy.verticalPolicy()).toBe(CSizePolicyType.Preferred);
+    });
+    test("accepts independent horizontal and vertical policies", () => {
+        const widget = new CWidget(); widget.setSizePolicy(CSizePolicyType.Expanding, CSizePolicyType.Fixed);
+        expect(widget.sizePolicy().horizontalPolicy()).toBe(CSizePolicyType.Expanding);
+        expect(widget.sizePolicy().verticalPolicy()).toBe(CSizePolicyType.Fixed);
+    });
+    test("stores a copy and returns a copy of the size policy", () => {
+        const widget = new CWidget(); const policy = new CSizePolicy(); policy.setHorizontalStretch(3);
+        widget.setSizePolicy(policy); policy.setHorizontalStretch(9);
+        const result = widget.sizePolicy(); result.setVerticalPolicy(CSizePolicyType.Fixed);
+        expect(widget.sizePolicy().horizontalStretch()).toBe(3);
+        expect(widget.sizePolicy().verticalPolicy()).toBe(CSizePolicyType.Preferred);
+    });
+    test("policy copy preserves both axes and stretch factors", () => {
+        const policy = new CSizePolicy(CSizePolicyType.Maximum, CSizePolicyType.Minimum);
+        policy.setHorizontalStretch(2); policy.setVerticalStretch(7); const copy = new CSizePolicy(policy);
+        expect(copy.isEqual(policy)).toBe(true); copy.setVerticalStretch(1); expect(copy.isEqual(policy)).toBe(false);
+    });
+    test("stretch is normalized to integer values from zero through 255", () => {
+        const policy = new CSizePolicy(); policy.setHorizontalStretch(-3); policy.setVerticalStretch(999);
+        expect(policy.horizontalStretch()).toBe(0); expect(policy.verticalStretch()).toBe(255);
+        policy.setHorizontalStretch(4.9); policy.setHorizontalStretch(Number.NaN);
+        expect(policy.horizontalStretch()).toBe(4);
+    });
+    test("policies define the expected grow and shrink capabilities", () => {
+        expect(CSizePolicy.canGrow(CSizePolicyType.Fixed)).toBe(false);
+        expect(CSizePolicy.canShrink(CSizePolicyType.Fixed)).toBe(false);
+        expect(CSizePolicy.canGrow(CSizePolicyType.Minimum)).toBe(true);
+        expect(CSizePolicy.canShrink(CSizePolicyType.Minimum)).toBe(false);
+        expect(CSizePolicy.canGrow(CSizePolicyType.Maximum)).toBe(false);
+        expect(CSizePolicy.canShrink(CSizePolicyType.Maximum)).toBe(true);
+        expect(CSizePolicy.isExpanding(CSizePolicyType.Expanding)).toBe(true);
+        expect(CSizePolicy.ignoresHint(CSizePolicyType.Ignored)).toBe(true);
     });
 });

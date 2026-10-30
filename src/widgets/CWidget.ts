@@ -1,3 +1,4 @@
+import { CSizePolicy, CSizePolicyType } from "../geometry/CSizePolicy.js";
 import { CApplication } from "../core/CApplication.js";
 import { CObject } from "../core/CObject.js";
 import { CPoint } from "../geometry/CPoint.js";
@@ -30,6 +31,7 @@ export class CWidget extends CObject {
     #m_enabled = true;
 	#m_font: CFont;
     #m_layout: CLayout | null = null;
+    #m_sizePolicy = new CSizePolicy();
     #m_minimumSize = new CSize(0, 0);
     #m_maximumSize = new CSize(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
     #m_palette: CPalette;
@@ -532,6 +534,19 @@ export class CWidget extends CObject {
 	    this.#m_layout = layout;
 	    layout.setParentWidget(this);
 	    layout.update();
+    }
+
+    /** Returns a copy; apply changes with setSizePolicy(). */
+    sizePolicy(): CSizePolicy { return new CSizePolicy(this.#m_sizePolicy); }
+
+    setSizePolicy(policy: CSizePolicy): void;
+    setSizePolicy(horizontal: CSizePolicyType, vertical: CSizePolicyType): void;
+    setSizePolicy(policy: CSizePolicy | CSizePolicyType, vertical = CSizePolicyType.Preferred): void {
+        const next = policy instanceof CSizePolicy ? new CSizePolicy(policy) : new CSizePolicy(policy, vertical);
+        if (this.#m_sizePolicy.isEqual(next)) return;
+        this.#m_sizePolicy = next;
+        const parent = this.parent();
+        if (parent instanceof CWidget) parent.layout()?.update();
     }
 
     /** Returns the minimum size. */
