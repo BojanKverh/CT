@@ -94,6 +94,8 @@ export class CTimeEdit extends CWidget
 		this.#updateText();
 		this.#updateGeometry();
         this.#m_lineEdit.setFocusPolicy(CFocusPolicy.StrongFocus);
+		this.setFocusPolicy(CFocusPolicy.StrongFocus);
+		this.setFocusProxy(this.#m_lineEdit);
         this.#m_upButton.setFocusPolicy(CFocusPolicy.ClickFocus);
         this.#m_downButton.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}

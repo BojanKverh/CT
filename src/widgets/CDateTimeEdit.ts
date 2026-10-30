@@ -45,6 +45,9 @@ export class CDateTimeEdit extends CWidget
 		this.#m_dateEdit = new CDateEdit(this);
 		this.#m_timeEdit = new CTimeEdit(this);
 
+		this.setFocusPolicy(CFocusPolicy.StrongFocus);
+		this.setFocusProxy(this.#m_dateEdit);
+
 		this.#m_dateEdit.dateChanged.connect(date =>
 		{
 			/** Provides if behavior. */
@@ -91,6 +94,19 @@ export class CDateTimeEdit extends CWidget
 		);
 
 		this.#updateGeometry();
+	}
+
+	/** Reports logical focus in either the date or time editor. */
+	override hasFocus(): boolean
+	{
+		return super.hasFocus() || this.#m_timeEdit.hasFocus();
+	}
+
+	/** Applies the focus policy to both embedded editors. */
+	override setFocusPolicy(policy: CFocusPolicy): void
+	{
+		super.setFocusPolicy(policy);
+		this.#m_timeEdit.setFocusPolicy(policy);
 	}
 
 	/** Provides date time behavior. */

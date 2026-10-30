@@ -1,3 +1,8 @@
+import { CWidget } from "../../src/widgets/CWidget.js";
+import { CLineEdit } from "../../src/widgets/CLineEdit.js";
+import { CLabel } from "../../src/widgets/CLabel.js";
+import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
+import { createTestWindow } from "../helpers/createTestWindow.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
 import { CDateEdit } from "../../src/widgets/CDateEdit.js";
@@ -902,3 +907,75 @@ describe("CDateEdit", () => {
 		expect(edit.lineEdit().currentSection()).toBe(0);
 	});
 });
+
+
+ describe("CDateEdit focus proxy", () => {
+  let previousWindow: PropertyDescriptor | undefined;
+  beforeEach(() => {
+   previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+   Object.defineProperty(globalThis, "window", { value: createTestWindow(), writable: true, configurable: true });
+   new CApplication(createTestCanvas());
+  });
+  afterEach(() => {
+   if (CApplication.exists()) CApplication.instance().destroy();
+   if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow);
+   else Reflect.deleteProperty(globalThis, "window");
+  });
+  test("setFocus resolves to the embedded section editor", () => {
+   const edit = new CDateEdit(); edit.setFocus();
+   expect(edit.focusProxy()).toBe(edit.lineEdit());
+   expect(CApplication.instance().focusWidget()).toBe(edit.lineEdit());
+   expect(edit.hasFocus()).toBe(true);
+  });
+  test("direct editor focus gives the owner logical focus", () => {
+   const edit = new CDateEdit(); edit.lineEdit().setFocus(); expect(edit.hasFocus()).toBe(true);
+   edit.clearFocus(); expect(CApplication.instance().focusWidget()).toBeNull();
+  });
+  test("moving focus to another widget clears logical focus", () => {
+   const edit = new CDateEdit(); const other = new CLineEdit();
+   edit.setFocus(); other.setFocus(); expect(edit.hasFocus()).toBe(false);
+  });
+  test("focus policy propagates and NoFocus clears editor focus", () => {
+   const edit = new CDateEdit(); edit.setFocus(); edit.setFocusPolicy(CFocusPolicy.NoFocus);
+   expect(edit.lineEdit().focusPolicy()).toBe(CFocusPolicy.NoFocus);
+   expect(CApplication.instance().focusWidget()).toBeNull();
+   edit.setFocusPolicy(CFocusPolicy.StrongFocus); edit.setFocus(); expect(edit.lineEdit().hasFocus()).toBe(true);
+  });
+  test("hidden and disabled owners cannot take editor focus", () => {
+   const edit = new CDateEdit(); const other = new CLineEdit(); other.setFocus();
+   edit.hide(); edit.setFocus(); expect(other.hasFocus()).toBe(true);
+   edit.show(); edit.setEnabled(false); edit.setFocus(); expect(other.hasFocus()).toBe(true);
+   edit.setEnabled(true); edit.setFocus(); expect(edit.lineEdit().hasFocus()).toBe(true);
+  });
+  test("Tab and Shift+Tab visit each embedded input once and skip buttons", () => {
+   const root = new CWidget(); const first = new CLineEdit(root);
+   const edit = new CDateEdit(root); const last = new CLineEdit(root);
+   const app = CApplication.instance(); first.setFocus();
+   for (const target of [edit.lineEdit(), last, first]) {
+    expect(app.focusNextWidget()).toBe(true); expect(app.focusWidget()).toBe(target);
+   }
+   for (const target of [last, edit.lineEdit(), first]) {
+    expect(app.focusNextWidget(false)).toBe(true); expect(app.focusWidget()).toBe(target);
+   }
+  });
+  test("custom Tab order moves the owner and its proxy together", () => {
+   const root = new CWidget(); const first = new CLineEdit(root);
+   const edit = new CDateEdit(root); const last = new CLineEdit(root);
+   CWidget.setTabOrder(first, last); CWidget.setTabOrder(last, edit);
+   const app = CApplication.instance(); first.setFocus(); app.focusNextWidget();
+   expect(app.focusWidget()).toBe(last); app.focusNextWidget(); expect(app.focusWidget()).toBe(edit.lineEdit());
+  });
+  test("a buddy label focuses the section editor", () => {
+   const root = new CWidget(); const edit = new CDateEdit(root); const label = new CLabel(root);
+   label.setText("&Value"); label.setBuddy(edit); expect(label.activateBuddy()).toBe(true);
+   expect(CApplication.instance().focusWidget()).toBe(edit.lineEdit());
+  });
+  test("reparenting preserves the proxy chain", () => {
+   const edit = new CDateEdit(); const root = new CWidget(); edit.setParent(root); edit.setFocus();
+   expect(edit.focusProxy()).toBe(edit.lineEdit()); expect(edit.lineEdit().hasFocus()).toBe(true);
+  });
+  test("destroying a focused editor clears application focus", () => {
+   const edit = new CDateEdit(); edit.setFocus(); edit.destroy();
+   expect(CApplication.instance().focusWidget()).toBeNull();
+  });
+ });

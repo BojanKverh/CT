@@ -107,6 +107,8 @@ export class CDateEdit extends CWidget
 		this.#updateText();
 		this.#updateGeometry();
         this.#m_lineEdit.setFocusPolicy(CFocusPolicy.StrongFocus);
+		this.setFocusPolicy(CFocusPolicy.StrongFocus);
+		this.setFocusProxy(this.#m_lineEdit);
         this.#m_button.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
