@@ -18,6 +18,7 @@ import { CCursorShape } from "../gui/CCursorShape.js";
 import { CTimer } from "../core/CTimer.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CClipboard } from "../core/CClipboard.js";
+import { CPaletteColorRole } from "../gui/CPalette.js";
 import { CStyleOptionLineEdit } from "../gui/CStyleOptionLineEdit.js";
 import { CValidator, CValidatorState } from "../util/CValidator.js";
 import type { CCompleter } from "./CCompleter.js";
@@ -57,6 +58,8 @@ class CLineEditUndoCommand extends CUndoCommand {
 /** Implements the line edit widget. */
 export class CLineEdit extends CWidget {
     #m_clipboardRequest = 0;
+    #m_clearButtonEnabled = false;
+    #m_clearButtonPressed = false;
 
 	/** Signal emitted when text changes. */
 	readonly textChanged = new CSignal<[string]>();
@@ -77,6 +80,8 @@ export class CLineEdit extends CWidget {
 	#m_text = "";
     #m_horizontalOffset = 0;
     #m_dragX = 0;
+	#m_mouseX = 0;
+	#m_mouseY = 0;
     #m_scrollTimer = new CTimer(this);
 	#m_cursorPosition = 0;
     #m_selectionAnchor = 0;
@@ -130,9 +135,76 @@ export class CLineEdit extends CWidget {
 		return this.#m_placeholderText;
 	}
 
+    /** Returns whether the optional clear button is enabled. */
+    isClearButtonEnabled(): boolean {
+        return this.#m_clearButtonEnabled;
+    }
+
+    /** Shows a clear button for nonempty, editable text. */
+    setClearButtonEnabled(enabled: boolean): void {
+        if (enabled === this.#m_clearButtonEnabled) return;
+        this.#m_clearButtonEnabled = enabled;
+        this.#m_clearButtonPressed = false;
+        this.update();
+    }
+
+    #clearButtonWidth(): number {
+        return this.#m_clearButtonEnabled && this.#m_text.length > 0
+            && !this.isReadOnly() && this.width() >= 34 && this.height() >= 16 ? 24 : 0;
+    }
+
+    #textRight(): number {
+        return this.width() - 6 - this.#clearButtonWidth();
+    }
+
+    #inClearButton(event: CMouseEvent): boolean {
+        const width = this.#clearButtonWidth();
+        return width > 0 && event.x() >= this.width() - width - 1
+            && event.x() < this.width() - 1 && event.y() >= 1 && event.y() < this.height() - 1;
+    }
+
+    #clearFromButton(): void {
+        if (!this.isEnabled() || this.#clearButtonWidth() === 0) return;
+        this.#pushUndoState();
+        this.#m_text = "";
+        this.#m_cursorPosition = 0;
+        this.#m_selectionAnchor = 0;
+        this.#m_horizontalOffset = 0;
+        this.textChanged.emit("");
+        this.textEdited.emit("");
+        this.#m_completer?.hidePopup();
+        this.#resetCursorBlink();
+        this.update();
+    }
+
+    #paintClearButton(painter: CPainter): void {
+        const width = this.#clearButtonWidth();
+        if (width === 0) return;
+        const rect = new CRect(this.width() - width - 1, 1, width, this.height() - 2);
+        const palette = this.palette();
+        painter.save();
+        painter.clipRect(rect);
+        // Erase text, selection and caret underneath the complete button area.
+        painter.setFillStyle(palette.color(CPaletteColorRole.Base).toCss());
+        painter.fillRect(rect);
+        const bg = palette.color(this.isEnabled()
+            ? CPaletteColorRole.PlaceholderText : CPaletteColorRole.DisabledText).toCss();
+        painter.setBrush(bg);
+		const ctr = rect.center();
+		const r = Math.min(rect.width(), rect.height()) / 2 - 4;
+        painter.fillEllipse(ctr.x(), ctr.y(), r, r);
+        painter.setPen(palette.color(CPaletteColorRole.Base).toCss());
+        painter.setLineWidth(this.#m_clearButtonPressed ? 3 : 2);
+        const x = rect.x() + width / 2;
+        const y = this.height() / 2;
+        painter.drawLine(x - 4, y - 4, x + 4, y + 4);
+        painter.drawLine(x - 4, y + 4, x + 4, y - 4);
+        painter.restore();
+    }
+
     #ensureCursorVisible(): void {
         const metrics = new CFontMetrics(this.font());
-        const available = Math.max(0, this.width() - 11);
+        const available = Math.max(0, this.#textRight() - 5);
         const cursor = metrics.textWidth(this.#m_text.slice(0, this.#m_cursorPosition));
         const maximum = Math.max(0, metrics.textWidth(this.#m_text) - available);
         let offset = Math.min(this.#m_horizontalOffset, maximum);
@@ -144,7 +216,7 @@ export class CLineEdit extends CWidget {
     #scrollMouseSelection(): void {
         if (!this.#m_selectingWithMouse) return;
         const direction = this.#m_dragX < 5 ? -1
-            : this.#m_dragX > this.width() - 6 ? 1 : 0;
+            : this.#m_dragX > this.#textRight() ? 1 : 0;
         if (direction === 0) {
             this.#m_scrollTimer.stop();
             return;
@@ -230,7 +302,16 @@ export class CLineEdit extends CWidget {
 
 	/** Provides cursor behavior. */
 	override cursor(): CCursorShape {
-		return this.isEnabled()? CCursorShape.IBeam : CCursorShape.Disabled;
+ 	   if (!this.isEnabled())
+    	    return CCursorShape.Disabled;
+
+    	const width = this.#clearButtonWidth();
+    	const overClearButton = width > 0
+        	&& this.#m_mouseX >= this.width() - width - 1
+        	&& this.#m_mouseX < this.width() - 1
+			&& this.#m_mouseY >= 1
+			&& this.#m_mouseY < this.height() - 1;
+    	return overClearButton? CCursorShape.Arrow : CCursorShape.IBeam;
 	}
 
 	/** Provides cursor position behavior. */
@@ -400,6 +481,7 @@ export class CLineEdit extends CWidget {
 		option.initFromLineEdit(this);
 
 		this.style().drawLineEdit(painter, option);
+        this.#paintClearButton(painter);
 
 		if (this.#m_validationError) {
 			painter.save();
@@ -576,6 +658,16 @@ export class CLineEdit extends CWidget {
 			return;
 		}
 
+        if (this.isEnabled() && this.#inClearButton(event)) {
+            this.#m_selectingWithMouse = false;
+            this.#m_scrollTimer.stop();
+            this.#m_clearButtonPressed = true;
+            this.setFocus();
+            event.accept();
+            this.update();
+            return;
+        }
+
 		if (event.clickCount() >= 2) {
             this.#selectMouseText(event, event.clickCount() >= 3);
             return;
@@ -592,6 +684,10 @@ export class CLineEdit extends CWidget {
 	}
 
     protected override mouseDoubleClickEvent(event: CMouseEvent): void {
+        if (event.button() === CMouseButton.LeftButton && this.#inClearButton(event)) {
+            this.mousePressEvent(event);
+            return;
+        }
         if (event.button() !== CMouseButton.LeftButton) {
             event.ignore();
             return;
@@ -612,6 +708,13 @@ export class CLineEdit extends CWidget {
 
 	/** Handles the mouse move event. */
 	protected override mouseMoveEvent(event: CMouseEvent): void {
+        if (this.#m_clearButtonPressed) {
+            event.accept();
+            return;
+        }
+		this.#m_mouseX = event.x();
+		this.#m_mouseY = event.y();
+
 		/** Provides if behavior. */
 		if (!this.#m_selectingWithMouse) {
 			event.ignore();
@@ -621,7 +724,7 @@ export class CLineEdit extends CWidget {
 		this.#m_dragX = event.x();
         const position = this.cursorPositionAt(event.x());
         this.#moveCursor(position, true);
-        if (event.x() < 5 || event.x() > this.width() - 6) {
+        if (event.x() < 5 || event.x() > this.#textRight()) {
             this.#scrollMouseSelection();
             this.#m_scrollTimer.start();
         } else {
@@ -632,6 +735,13 @@ export class CLineEdit extends CWidget {
 
 	/** Handles the mouse release event. */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
+        if (event.button() === CMouseButton.LeftButton && this.#m_clearButtonPressed) {
+            this.#m_clearButtonPressed = false;
+            if (this.#inClearButton(event)) this.#clearFromButton();
+            event.accept();
+            this.update();
+            return;
+        }
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
@@ -661,6 +771,7 @@ export class CLineEdit extends CWidget {
 
 	/** Handles the focus out event. */
 	protected override focusOutEvent(event: CFocusEvent): void {
+        this.#m_clearButtonPressed = false;
 		this.#breakUndoGroup();
 		this.#m_selectingWithMouse = false;
         this.#m_scrollTimer.stop();

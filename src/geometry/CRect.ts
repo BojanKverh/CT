@@ -97,6 +97,13 @@ export class CRect {
             && point.y() < this.bottom();
     }
 
+    center(): CPoint {
+        return new CPoint(
+            this.#m_x + this.#m_width / 2,
+            this.#m_y + this.#m_height / 2
+        );
+    }
+
     /**
      * Tests whether this rectangle overlaps another rectangle.
      *

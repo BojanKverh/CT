@@ -1,3 +1,4 @@
+import { CWidget } from "../../src/widgets/CWidget.js";
 import { CRect } from "../../src/geometry/CRect.js";
 import { CDefaultStyle } from "../../src/gui/CDefaultStyle.js";
 import { CFont, CFontStyle } from "../../src/gui/CFont.js";
@@ -2360,4 +2361,207 @@ describe("line edit placeholder style", () => {
 		expect(result.painter.save).toHaveBeenCalledOnce();
 		expect(result.painter.restore).toHaveBeenCalledOnce();
 	});
+});
+
+describe("CLineEdit clear button", () => {
+    beforeEach(() => {
+        Object.defineProperty(globalThis, "window", {
+            value: createTestWindow(), writable: true, configurable: true
+        });
+        new CApplication(createTestCanvas());
+    });
+    afterEach(() => {
+        if (CApplication.exists()) CApplication.instance().destroy();
+    });
+    function editor(): CLineEdit {
+        const edit = new CLineEdit();
+        edit.setGeometry(0, 0, 160, 28);
+        edit.setClearButtonEnabled(true);
+        edit.setText("Hello world");
+        return edit;
+    }
+    function mouse(edit: CLineEdit, type: CEventType, x = edit.width() - 13,
+        y = edit.height() / 2, button = CMouseButton.LeftButton): CMouseEvent {
+        const event = new CMouseEvent(type, x, y, button);
+        edit.event(event);
+        return event;
+    }
+    function click(edit: CLineEdit): void {
+        mouse(edit, CEventType.MousePress); mouse(edit, CEventType.MouseRelease);
+    }
+    test("is disabled by default and can be enabled and disabled", () => {
+        const edit = new CLineEdit();
+        expect(edit.isClearButtonEnabled()).toBe(false);
+        edit.setClearButtonEnabled(true); expect(edit.isClearButtonEnabled()).toBe(true);
+        edit.setClearButtonEnabled(false); expect(edit.isClearButtonEnabled()).toBe(false);
+    });
+    test("clears on release and keeps keyboard focus", () => {
+        const edit = editor();
+        expect(mouse(edit, CEventType.MousePress).isAccepted()).toBe(true);
+        expect(edit.text()).toBe("Hello world");
+        expect(mouse(edit, CEventType.MouseRelease).isAccepted()).toBe(true);
+        expect(edit.text()).toBe(""); expect(edit.hasFocus()).toBe(true);
+        expect(edit.cursorPosition()).toBe(0); expect(edit.hasSelection()).toBe(false);
+    });
+    test("emits one textChanged and textEdited without confirming editing", () => {
+        const edit = editor(); edit.setFocus();
+        const changed = vi.fn(), edited = vi.fn(), finished = vi.fn(), returned = vi.fn();
+        edit.textChanged.connect(changed); edit.textEdited.connect(edited);
+        edit.editingFinished.connect(finished); edit.returnPressed.connect(returned);
+        click(edit);
+        expect(changed).toHaveBeenCalledOnce(); expect(changed).toHaveBeenCalledWith("");
+        expect(edited).toHaveBeenCalledOnce(); expect(edited).toHaveBeenCalledWith("");
+        expect(finished).not.toHaveBeenCalled(); expect(returned).not.toHaveBeenCalled();
+    });
+    test("undo restores text and the original cursor and selection", () => {
+        const edit = editor(); edit.setSelection(9, 2); click(edit);
+        expect(edit.canUndo()).toBe(true); edit.undo();
+        expect(edit.text()).toBe("Hello world"); expect(edit.cursorPosition()).toBe(2);
+        expect(edit.selectionStart()).toBe(2); expect(edit.selectionEnd()).toBe(9);
+        edit.redo(); expect(edit.text()).toBe(""); expect(edit.cursorPosition()).toBe(0);
+    });
+    test("clearing is a separate undo command from typing", () => {
+        const edit = editor(); edit.setText("");
+        edit.event(new CKeyEvent(CEventType.KeyPress, "a"));
+        edit.event(new CKeyEvent(CEventType.KeyPress, "b"));
+        click(edit); edit.undo(); expect(edit.text()).toBe("ab");
+        edit.undo(); expect(edit.text()).toBe("");
+    });
+    test("clearing remains possible with a validator that rejects empty input", () => {
+        const edit = editor(); edit.setValidator(text => text.length > 0);
+        click(edit); expect(edit.text()).toBe(""); edit.undo(); expect(edit.text()).toBe("Hello world");
+    });
+    test("does not clear read-only text", () => {
+        const edit = editor(); edit.setReadOnly(true); click(edit);
+        expect(edit.text()).toBe("Hello world"); expect(edit.canUndo()).toBe(false);
+        edit.setReadOnly(false); click(edit); expect(edit.text()).toBe("");
+    });
+    test("does not clear disabled text", () => {
+        const edit = editor(); edit.setEnabled(false); click(edit);
+        expect(edit.text()).toBe("Hello world"); expect(edit.canUndo()).toBe(false);
+    });
+    test("does not clear when the option is disabled", () => {
+        const edit = editor(); edit.setClearButtonEnabled(false); click(edit);
+        expect(edit.text()).toBe("Hello world"); expect(edit.canUndo()).toBe(false);
+    });
+    test("empty input produces no undo command or change signal", () => {
+        const edit = editor(); edit.setText(""); const changed = vi.fn(); edit.textChanged.connect(changed);
+        click(edit); expect(changed).not.toHaveBeenCalled(); expect(edit.canUndo()).toBe(false);
+    });
+    test("releasing outside the button cancels the clear", () => {
+        const edit = editor(); edit.setSelection(0, 5);
+        mouse(edit, CEventType.MousePress); mouse(edit, CEventType.MouseMove, 10);
+        mouse(edit, CEventType.MouseRelease, 10);
+        expect(edit.text()).toBe("Hello world"); expect(edit.selectedText()).toBe("Hello");
+    });
+    test("release on the button without a button press does not clear", () => {
+        const edit = editor(); mouse(edit, CEventType.MouseRelease);
+        expect(edit.text()).toBe("Hello world");
+    });
+    test("right click never activates the clear button", () => {
+        const edit = editor();
+        mouse(edit, CEventType.MousePress, 147, 14, CMouseButton.RightButton);
+        mouse(edit, CEventType.MouseRelease, 147, 14, CMouseButton.RightButton);
+        expect(edit.text()).toBe("Hello world");
+    });
+    test("disabling the button between press and release cancels clearing", () => {
+        const edit = editor(); mouse(edit, CEventType.MousePress);
+        edit.setClearButtonEnabled(false); mouse(edit, CEventType.MouseRelease);
+        expect(edit.text()).toBe("Hello world");
+    });
+    test("losing focus between press and release cancels clearing", () => {
+        const edit = editor(); const other = new CLineEdit();
+        mouse(edit, CEventType.MousePress); other.setFocus(); mouse(edit, CEventType.MouseRelease);
+        expect(edit.text()).toBe("Hello world"); expect(other.hasFocus()).toBe(true);
+    });
+    test("the hit area follows resizing", () => {
+        const edit = editor(); edit.resize(240, 32); click(edit); expect(edit.text()).toBe("");
+    });
+    test("tiny widgets hide the button rather than cover the whole input", () => {
+        const edit = editor(); edit.resize(30, 28); click(edit);
+        expect(edit.text()).toBe("Hello world");
+        edit.resize(160, 12); click(edit); expect(edit.text()).toBe("Hello world");
+    });
+    test("reserves space for the caret and releases it when disabled or read-only", () => {
+        const edit = editor(); edit.resize(90, 28); edit.setText("abcdefghijklmno");
+        const withButton = edit.horizontalOffset();
+        edit.setClearButtonEnabled(false);
+        expect(withButton - edit.horizontalOffset()).toBe(24);
+        edit.setClearButtonEnabled(true); expect(edit.horizontalOffset()).toBe(withButton);
+        edit.setReadOnly(true); expect(withButton - edit.horizontalOffset()).toBe(24);
+    });
+    test("clearing resets a scrolled input and undo restores its text", () => {
+        const edit = editor(); edit.resize(60, 28); edit.setText("A very long text beyond the input width");
+        expect(edit.horizontalOffset()).toBeGreaterThan(0); click(edit);
+        expect(edit.horizontalOffset()).toBe(0); edit.undo();
+        expect(edit.text()).toBe("A very long text beyond the input width");
+        expect(edit.horizontalOffset()).toBeGreaterThan(0);
+    });
+    test("does not add a Tab stop", () => {
+        const root = new CWidget(); const edit = new CLineEdit(root); const next = new CLineEdit(root);
+        edit.setClearButtonEnabled(true); edit.setText("abc"); edit.setFocus();
+        CApplication.instance().focusNextWidget(); expect(next.hasFocus()).toBe(true);
+        CApplication.instance().focusNextWidget(false); expect(edit.hasFocus()).toBe(true);
+    });
+    class PaintableLineEdit extends CLineEdit {
+        paint(painter: CPainter): void { super.paintEvent(painter); }
+    }
+    class ClearButtonTestStyle extends CDefaultStyle {
+        override drawLineEdit(_painter: CPainter, _option: CStyleOptionLineEdit): void {}
+    }
+    function painted(enabled = true, readOnly = false, text = "abc", disabled = false) {
+        CApplication.instance().setStyle(new ClearButtonTestStyle());
+        const edit = new PaintableLineEdit(); edit.resize(160, 28);
+        edit.setClearButtonEnabled(enabled); edit.setReadOnly(readOnly); edit.setText(text);
+        edit.setEnabled(!disabled);
+        const painter = { save: vi.fn(), restore: vi.fn(), clipRect: vi.fn(),
+            setFillStyle: vi.fn(), fillRect: vi.fn(), setStrokeStyle: vi.fn(),
+            setLineWidth: vi.fn(), drawLine: vi.fn(), setBrush: vi.fn(),
+            fillEllipse: vi.fn(), setPen: vi.fn() };
+        edit.paint(painter as unknown as CPainter);
+        return { edit, painter };
+    }
+    test("draws the round clear button inside the frame and erases text underneath", () => {
+        const { painter } = painted();
+        expect(painter.drawLine).toHaveBeenCalledTimes(2);
+        expect(painter.fillRect).toHaveBeenCalledOnce();
+        expect(painter.fillEllipse).toHaveBeenCalledOnce();
+        expect(painter.fillEllipse).toHaveBeenCalledWith(147, 14, 8, 8);
+        const rect = painter.fillRect.mock.calls[0]![0] as CRect;
+        expect(rect.x()).toBe(135); expect(rect.y()).toBe(1);
+        expect(rect.width()).toBe(24); expect(rect.height()).toBe(26);
+        expect(painter.save).toHaveBeenCalledOnce(); expect(painter.restore).toHaveBeenCalledOnce();
+    });
+    test("does not draw a clear cross for empty, read-only or opted-out inputs", () => {
+        expect(painted(true, false, "").painter.drawLine).not.toHaveBeenCalled();
+        expect(painted(true, true).painter.drawLine).not.toHaveBeenCalled();
+        expect(painted(false).painter.drawLine).not.toHaveBeenCalled();
+    });
+    test("disabled clear circle uses DisabledText and the cross uses Base", () => {
+        const { edit, painter } = painted(true, false, "abc", true);
+        expect(painter.setBrush).toHaveBeenCalledWith(
+            edit.palette().color(CPaletteColorRole.DisabledText).toCss());
+        expect(painter.setPen).toHaveBeenCalledWith(
+            edit.palette().color(CPaletteColorRole.Base).toCss());
+    });
+    test("enabled circle uses PlaceholderText over the Base background", () => {
+        const { edit, painter } = painted();
+        expect(painter.setFillStyle).toHaveBeenCalledWith(
+            edit.palette().color(CPaletteColorRole.Base).toCss());
+        expect(painter.setBrush).toHaveBeenCalledWith(
+            edit.palette().color(CPaletteColorRole.PlaceholderText).toCss());
+        expect(painter.setPen).toHaveBeenCalledWith(
+            edit.palette().color(CPaletteColorRole.Base).toCss());
+        expect(painter.setLineWidth).toHaveBeenCalledWith(2);
+    });
+    test("pressing the round button thickens the cross", () => {
+        const { edit } = painted();
+        mouse(edit, CEventType.MousePress);
+        const painter = { save: vi.fn(), restore: vi.fn(), clipRect: vi.fn(),
+            setFillStyle: vi.fn(), fillRect: vi.fn(), setBrush: vi.fn(),
+            fillEllipse: vi.fn(), setPen: vi.fn(), setLineWidth: vi.fn(), drawLine: vi.fn() };
+        edit.paint(painter as unknown as CPainter);
+        expect(painter.setLineWidth).toHaveBeenCalledWith(3);
+        expect(edit.text()).toBe("abc");
+    });
 });

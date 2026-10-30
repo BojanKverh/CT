@@ -1678,7 +1678,7 @@ nameLabel.setText("Name:");
 const nameEdit = new CLineEdit(generalPage);
 nameEdit.setGeometry(90, 15, 160, 28);
 nameEdit.setText("Bojan");
-nameEdit.setReadOnly();
+nameEdit.setClearButtonEnabled(true);
 const dateLabel = new CLabel(generalPage);
 dateLabel.setGeometry(10, 45, 80, 30);
 dateLabel.setText("Birthday:");
