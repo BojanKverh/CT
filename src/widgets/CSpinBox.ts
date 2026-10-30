@@ -50,6 +50,8 @@ export class CSpinBox extends CWidget {
 		this.#m_upButton.setAutoRepeat(400, 60);
 		this.#m_downButton.setAutoRepeat(400, 60);
 		this.#m_editor.setFocusPolicy(CFocusPolicy.StrongFocus);
+		this.setFocusPolicy(CFocusPolicy.StrongFocus);
+		this.setFocusProxy(this.#m_editor);
 		this.#m_upButton.setFocusPolicy(CFocusPolicy.ClickFocus);
 		this.#m_downButton.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}

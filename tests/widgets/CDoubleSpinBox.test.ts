@@ -1,3 +1,6 @@
+import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
+import { CLabel } from "../../src/widgets/CLabel.js";
+import { CLineEdit } from "../../src/widgets/CLineEdit.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
 import { CEventType } from "../../src/events/CEvent.js";
@@ -381,4 +384,82 @@ describe("CDoubleSpinBox", () => {
 		spinBox.event(new CWheelEvent(0, 120));
 		expect(spinBox.value()).toBe(0);
 	});
+
+ describe("focus proxy", () => {
+  test("uses the line editor as its focus proxy", () => {
+   const spin = new CDoubleSpinBox();
+   expect(spin.focusProxy()).toBe(spin.lineEdit());
+   expect(spin.focusPolicy()).toBe(CFocusPolicy.StrongFocus);
+  });
+  test("setFocus gives the editor actual focus and the spin box logical focus", () => {
+   const spin = new CDoubleSpinBox(); spin.setFocus();
+   expect(CApplication.instance().focusWidget()).toBe(spin.lineEdit());
+   expect(spin.hasFocus()).toBe(true); expect(spin.lineEdit().hasFocus()).toBe(true);
+  });
+  test("focusing the editor also gives the spin box logical focus", () => {
+   const spin = new CDoubleSpinBox(); spin.lineEdit().setFocus();
+   expect(spin.hasFocus()).toBe(true);
+   spin.clearFocus(); expect(CApplication.instance().focusWidget()).toBeNull();
+  });
+  test("focusing another field clears logical focus", () => {
+   const spin = new CDoubleSpinBox(); const other = new CLineEdit();
+   spin.setFocus(); other.setFocus(); expect(spin.hasFocus()).toBe(false);
+  });
+  test("focus policy changes propagate to the editor", () => {
+   const spin = new CDoubleSpinBox(); spin.setFocus(); spin.setFocusPolicy(CFocusPolicy.NoFocus);
+   expect(spin.lineEdit().focusPolicy()).toBe(CFocusPolicy.NoFocus);
+   expect(spin.hasFocus()).toBe(false);
+   spin.setFocusPolicy(CFocusPolicy.StrongFocus); spin.setFocus();
+   expect(spin.lineEdit().hasFocus()).toBe(true);
+  });
+  test("hidden and disabled spin boxes cannot acquire editor focus", () => {
+   const spin = new CDoubleSpinBox(); const other = new CLineEdit(); other.setFocus();
+   spin.hide(); spin.setFocus(); expect(other.hasFocus()).toBe(true);
+   spin.show(); spin.setEnabled(false); spin.setFocus(); expect(other.hasFocus()).toBe(true);
+   spin.setEnabled(true); spin.setFocus(); expect(spin.lineEdit().hasFocus()).toBe(true);
+  });
+  test("Tab and Shift+Tab visit the spin box once and skip its arrow buttons", () => {
+   const root = new CWidget(); const first = new CLineEdit(root);
+   const spin = new CDoubleSpinBox(root); const last = new CLineEdit(root);
+   const app = CApplication.instance(); first.setFocus();
+   for (const target of [spin.lineEdit(), last, first]) {
+    expect(app.focusNextWidget()).toBe(true); expect(app.focusWidget()).toBe(target);
+   }
+   for (const target of [last, spin.lineEdit(), first]) {
+    expect(app.focusNextWidget(false)).toBe(true); expect(app.focusWidget()).toBe(target);
+   }
+  });
+  test("custom Tab order addresses the complete spin box", () => {
+   const root = new CWidget(); const first = new CLineEdit(root);
+   const spin = new CDoubleSpinBox(root); const last = new CLineEdit(root);
+   CWidget.setTabOrder(first, last); CWidget.setTabOrder(last, spin);
+   const app = CApplication.instance(); first.setFocus();
+   app.focusNextWidget(); expect(app.focusWidget()).toBe(last);
+   app.focusNextWidget(); expect(app.focusWidget()).toBe(spin.lineEdit());
+   app.focusNextWidget(); expect(app.focusWidget()).toBe(first);
+  });
+  test("a label buddy focuses the embedded editor", () => {
+   const root = new CWidget(); const spin = new CDoubleSpinBox(root); const label = new CLabel(root);
+   label.setText("&Value"); label.setBuddy(spin);
+   expect(label.activateBuddy()).toBe(true);
+   expect(CApplication.instance().focusWidget()).toBe(spin.lineEdit());
+   expect(spin.hasFocus()).toBe(true);
+  });
+  test("leaving by Tab commits edited text once", () => {
+   const root = new CWidget(); const spin = new CDoubleSpinBox(root); const next = new CLineEdit(root);
+   const changed = vi.fn(); spin.valueChanged.connect(changed);
+   spin.setFocus(); spin.lineEdit().setText("42.25");
+   CApplication.instance().focusNextWidget();
+   expect(next.hasFocus()).toBe(true); expect(spin.hasFocus()).toBe(false);
+   expect(spin.value()).toBe(42.25); expect(changed).toHaveBeenCalledOnce();
+  });
+  test("reparenting the complete spin box preserves its proxy", () => {
+   const spin = new CDoubleSpinBox(); const root = new CWidget(); spin.setParent(root); spin.setFocus();
+   expect(spin.focusProxy()).toBe(spin.lineEdit()); expect(spin.lineEdit().hasFocus()).toBe(true);
+  });
+  test("destroying a focused spin box clears actual focus", () => {
+   const spin = new CDoubleSpinBox(); spin.setFocus(); spin.destroy();
+   expect(CApplication.instance().focusWidget()).toBeNull();
+  });
+ });
 });
