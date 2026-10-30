@@ -65,6 +65,7 @@ class CLineEditUndoCommand extends CUndoCommand {
 /** Implements the line edit widget. */
 export class CLineEdit extends CWidget {
     #m_clipboardRequest = 0;
+    #m_maxLength = Number.POSITIVE_INFINITY;
     #m_echoMode = CEchoMode.Normal;
     #m_clearButtonEnabled = false;
     #m_clearButtonPressed = false;
@@ -153,6 +154,35 @@ export class CLineEdit extends CWidget {
 
     /** Whether selected text may be exported to either clipboard. */
     canCopy(): boolean { return this.#m_echoMode === CEchoMode.Normal && this.hasSelection(); }
+
+    /** Maximum UTF-16 length; Infinity means unlimited. */
+    maxLength(): number { return this.#m_maxLength; }
+
+    /** Limits future input and truncates existing text when necessary.
+     * Lowering the limit clears undo/redo so older states cannot exceed it.
+     */
+    setMaxLength(length: number): void {
+        if (Number.isNaN(length) || length === Number.NEGATIVE_INFINITY) return;
+        const maximum = Math.max(0, Math.floor(length));
+        if (maximum === this.#m_maxLength) return;
+        const lowered = maximum < this.#m_maxLength;
+        this.#m_maxLength = maximum;
+        this.#breakUndoGroup();
+        if (this.#m_text.length > maximum) {
+            this.setText(this.#truncateToLength(this.#m_text, maximum));
+        } else if (lowered) {
+            this.#m_history.clear();
+        }
+    }
+
+    #truncateToLength(text: string, maximum: number): string {
+        if (text.length <= maximum) return text;
+        let end = maximum;
+        // Never leave half of a supplementary Unicode character at the boundary.
+        if (end > 0 && text.charCodeAt(end - 1) >= 0xd800 && text.charCodeAt(end - 1) <= 0xdbff
+            && text.charCodeAt(end) >= 0xdc00 && text.charCodeAt(end) <= 0xdfff) --end;
+        return text.slice(0, end);
+    }
 
     /** Horizontal displacement of the text, in pixels. */
     horizontalOffset(): number {
@@ -264,6 +294,7 @@ export class CLineEdit extends CWidget {
 
 	/** Sets the text. */
 	setText(text: string): void {
+        text = this.#truncateToLength(text, this.#m_maxLength);
 		this.#m_history.clear();
 		this.#breakUndoGroup();
 		/** Provides if behavior. */
@@ -375,6 +406,9 @@ export class CLineEdit extends CWidget {
 			return;
 		const start = this.hasSelection()? this.selectionStart() : this.#m_cursorPosition;
 		const end = this.hasSelection()? this.selectionEnd() : this.#m_cursorPosition;
+        const remaining = this.#m_maxLength - (this.#m_text.length - (end - start));
+        text = this.#truncateToLength(text, remaining);
+        if (text.length === 0) return;
 		const newText = this.#m_text.slice(0, start) + text
 			+ this.#m_text.slice(end);
 

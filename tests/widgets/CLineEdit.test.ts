@@ -2751,3 +2751,120 @@ describe("CLineEdit echo modes", () => {
         edit.setCompleter(completer); expect(completer.widget()).toBeNull(); completer.destroy();
     });
 });
+
+describe("CLineEdit maximum length", () => {
+    beforeEach(() => {
+        Object.defineProperty(globalThis, "window", {
+            value: createTestWindow(), writable: true, configurable: true
+        });
+        new CApplication(createTestCanvas());
+    });
+    afterEach(() => {
+        if (CApplication.exists()) CApplication.instance().destroy();
+    });
+    test("is unlimited by default", () => {
+        const edit = new CLineEdit(); expect(edit.maxLength()).toBe(Number.POSITIVE_INFINITY);
+        const text = "x".repeat(40000); edit.setText(text); expect(edit.text()).toBe(text);
+    });
+    test("setText truncates at the configured limit", () => {
+        const edit = new CLineEdit(); edit.setMaxLength(4); edit.setText("abcdef");
+        expect(edit.text()).toBe("abcd"); expect(edit.cursorPosition()).toBe(4);
+        expect(edit.hasSelection()).toBe(false);
+    });
+    test("zero prevents typing, insert and setText", () => {
+        const edit = new CLineEdit(); edit.setMaxLength(0); edit.setText("abc"); edit.insert("x");
+        edit.event(new CKeyEvent(CEventType.KeyPress, "y"));
+        expect(edit.text()).toBe(""); expect(edit.canUndo()).toBe(false);
+    });
+    test("normalizes negative and fractional limits and ignores invalid numbers", () => {
+        const edit = new CLineEdit(); edit.setMaxLength(4.9); expect(edit.maxLength()).toBe(4);
+        edit.setMaxLength(Number.NaN); edit.setMaxLength(Number.NEGATIVE_INFINITY);
+        expect(edit.maxLength()).toBe(4); edit.setMaxLength(-2); expect(edit.maxLength()).toBe(0);
+    });
+    test("typing beyond the limit emits no extra text signals or undo command", () => {
+        const edit = new CLineEdit(); edit.setMaxLength(2); edit.setText("ab");
+        const changed = vi.fn(), edited = vi.fn(); edit.textChanged.connect(changed); edit.textEdited.connect(edited);
+        edit.event(new CKeyEvent(CEventType.KeyPress, "c"));
+        expect(edit.text()).toBe("ab"); expect(changed).not.toHaveBeenCalled();
+        expect(edited).not.toHaveBeenCalled(); expect(edit.canUndo()).toBe(false);
+    });
+    test("insert accepts only the prefix that fits and leaves the suffix in place", () => {
+        const edit = new CLineEdit(); edit.setMaxLength(6); edit.setText("abcd"); edit.setCursorPosition(2);
+        edit.insert("XYZ"); expect(edit.text()).toBe("abXYcd"); expect(edit.cursorPosition()).toBe(4);
+        edit.undo(); expect(edit.text()).toBe("abcd"); edit.redo(); expect(edit.text()).toBe("abXYcd");
+    });
+    test("selection replacement reclaims selected space at the limit", () => {
+        const edit = new CLineEdit(); edit.setMaxLength(6); edit.setText("abcdef"); edit.setSelection(4, 1);
+        edit.insert("WXYZ"); expect(edit.text()).toBe("aWXYef"); expect(edit.cursorPosition()).toBe(4);
+        edit.undo(); expect(edit.text()).toBe("abcdef"); expect(edit.selectedText()).toBe("bcd");
+        expect(edit.cursorPosition()).toBe(1);
+    });
+    test("replacing all text permits a new value up to the complete limit", () => {
+        const edit = new CLineEdit(); edit.setMaxLength(3); edit.setText("abc"); edit.selectAll(); edit.insert("12345");
+        expect(edit.text()).toBe("123");
+    });
+    test("paste truncates once and remains one undo operation", () => {
+        const edit = new CLineEdit(); edit.setMaxLength(5); edit.setText("ab");
+        CClipboard.instance().setText("123456"); edit.paste(); expect(edit.text()).toBe("ab123");
+        edit.undo(); expect(edit.text()).toBe("ab"); expect(edit.canUndo()).toBe(false);
+    });
+    test("native paste observes the same limit", () => {
+        const edit = new CLineEdit(); edit.setMaxLength(4); edit.setFocus();
+        window.dispatchEvent({ type: "paste", defaultPrevented: false, target: null, preventDefault: vi.fn(),
+            clipboardData: { types: ["text/plain"], getData: () => "abcdef" }
+        } as unknown as ClipboardEvent);
+        expect(edit.text()).toBe("abcd"); edit.undo(); expect(edit.text()).toBe("");
+    });
+    test("lowering the limit truncates and emits only textChanged", () => {
+        const edit = new CLineEdit(); edit.setText("abcdef"); edit.setSelection(5, 1);
+        const changed = vi.fn(), edited = vi.fn(); edit.textChanged.connect(changed); edit.textEdited.connect(edited);
+        edit.setMaxLength(3); expect(edit.text()).toBe("abc"); expect(edit.cursorPosition()).toBe(3);
+        expect(edit.hasSelection()).toBe(false); expect(changed).toHaveBeenCalledOnce();
+        expect(changed).toHaveBeenCalledWith("abc"); expect(edited).not.toHaveBeenCalled();
+    });
+    test("lowering the limit clears undo and redo including oversized older states", () => {
+        const edit = new CLineEdit(); edit.setText("abcdef"); edit.selectAll(); edit.insert("ab");
+        edit.setMaxLength(3); expect(edit.text()).toBe("ab"); expect(edit.canUndo()).toBe(false);
+        edit.undo(); expect(edit.text()).toBe("ab");
+        edit.insert("c"); edit.undo(); expect(edit.canRedo()).toBe(true);
+        edit.setMaxLength(2); expect(edit.canRedo()).toBe(false); edit.redo(); expect(edit.text()).toBe("ab");
+    });
+    test("raising or removing the limit preserves safe undo history", () => {
+        const edit = new CLineEdit(); edit.setMaxLength(3); edit.insert("abc");
+        edit.setMaxLength(5); edit.undo(); expect(edit.text()).toBe(""); edit.redo(); expect(edit.text()).toBe("abc");
+        edit.setMaxLength(Number.POSITIVE_INFINITY); edit.insert("defgh"); expect(edit.text()).toBe("abcdefgh");
+    });
+    test("setting the same limit preserves history and selection", () => {
+        const edit = new CLineEdit(); edit.setMaxLength(4); edit.insert("abc"); edit.setSelection(0, 2);
+        edit.setMaxLength(4); expect(edit.canUndo()).toBe(true); expect(edit.selectedText()).toBe("ab");
+    });
+    test("validator checks the final truncated value", () => {
+        const edit = new CLineEdit(); edit.setMaxLength(3); edit.setValidator(text => /^\d*$/.test(text));
+        edit.insert("123a"); expect(edit.text()).toBe("123");
+        edit.selectAll(); edit.insert("1a23"); expect(edit.text()).toBe("123"); expect(edit.selectedText()).toBe("123");
+    });
+    test("programmatic truncation works for read-only inputs", () => {
+        const edit = new CLineEdit(); edit.setText("abcdef"); edit.setReadOnly(true); edit.setMaxLength(3);
+        expect(edit.text()).toBe("abc"); edit.setText("12345"); expect(edit.text()).toBe("123");
+        edit.insert("x"); expect(edit.text()).toBe("123");
+    });
+    test("Password and NoEcho limit stored input before masking", () => {
+        for (const mode of [CEchoMode.Password, CEchoMode.NoEcho]) {
+            const edit = new CLineEdit(); edit.setEchoMode(mode); edit.setMaxLength(3); edit.insert("secret");
+            expect(edit.text()).toBe("sec");
+            expect(edit.displayText()).toBe(mode === CEchoMode.Password ? "•••" : "");
+        }
+    });
+    test("truncation never leaves half of an emoji", () => {
+        const edit = new CLineEdit(); edit.setMaxLength(2); edit.setText("a😀b"); expect(edit.text()).toBe("a");
+        edit.setMaxLength(3); edit.setText("a😀b"); expect(edit.text()).toBe("a😀");
+        edit.setText("a"); edit.setMaxLength(2); edit.insert("😀"); expect(edit.text()).toBe("a");
+    });
+    test("clear and undo remain within the configured limit", () => {
+        const edit = new CLineEdit(); edit.resize(160, 28); edit.setMaxLength(3);
+        edit.setClearButtonEnabled(true); edit.setText("abcdef");
+        edit.event(new CMouseEvent(CEventType.MousePress, 147, 14, CMouseButton.LeftButton));
+        edit.event(new CMouseEvent(CEventType.MouseRelease, 147, 14, CMouseButton.LeftButton));
+        expect(edit.text()).toBe(""); edit.undo(); expect(edit.text()).toBe("abc");
+    });
+});

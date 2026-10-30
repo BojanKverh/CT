@@ -1679,6 +1679,7 @@ nameLabel.setText("Name:");
 const nameEdit = new CLineEdit(generalPage);
 nameEdit.setGeometry(90, 15, 160, 28);
 nameEdit.setText("Bojan");
+nameEdit.setMaxLength(10);
 nameEdit.setClearButtonEnabled(true);
 const passLabel = new CLabel(generalPage);
 passLabel.setGeometry(10, 45, 80, 28);
