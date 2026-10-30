@@ -11,7 +11,7 @@ import { CPoint } from "../../src/geometry/CPoint.js";
 import {afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { CApplication } from "../../src/core/CApplication.js";
-import { CLineEdit } from "../../src/widgets/CLineEdit.js";
+import { CLineEdit, CEchoMode } from "../../src/widgets/CLineEdit.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { createTestWindow } from "../helpers/createTestWindow.js";
 import { CMouseEvent, CMouseButton } from "../../src/index.js";
@@ -2563,5 +2563,191 @@ describe("CLineEdit clear button", () => {
         edit.paint(painter as unknown as CPainter);
         expect(painter.setLineWidth).toHaveBeenCalledWith(3);
         expect(edit.text()).toBe("abc");
+    });
+});
+
+describe("CLineEdit echo modes", () => {
+    beforeEach(() => {
+        Object.defineProperty(globalThis, "window", {
+            value: createTestWindow(), writable: true, configurable: true
+        });
+        new CApplication(createTestCanvas());
+    });
+    afterEach(() => {
+        if (CApplication.exists()) CApplication.instance().destroy();
+    });
+    function editor(mode = CEchoMode.Password): CLineEdit {
+        const edit = new CLineEdit(); edit.resize(160, 28);
+        edit.setText("secret"); edit.setEchoMode(mode); return edit;
+    }
+    test("Normal is the default and displays original text", () => {
+        const edit = new CLineEdit(); edit.setText("Hello");
+        expect(edit.echoMode()).toBe(CEchoMode.Normal); expect(edit.displayText()).toBe("Hello");
+    });
+    test("Password masks text without changing the stored value", () => {
+        const edit = editor(); expect(edit.text()).toBe("secret"); expect(edit.displayText()).toBe("••••••");
+    });
+    test("NoEcho displays nothing while retaining the value", () => {
+        const edit = editor(CEchoMode.NoEcho); expect(edit.text()).toBe("secret"); expect(edit.displayText()).toBe("");
+    });
+    test("mode changes preserve cursor, selection, history and emit no text signals", () => {
+        const edit = editor(CEchoMode.Normal); edit.insert("!"); edit.setSelection(5, 1);
+        const changed = vi.fn(), edited = vi.fn(); edit.textChanged.connect(changed); edit.textEdited.connect(edited);
+        edit.setEchoMode(CEchoMode.Password); edit.setEchoMode(CEchoMode.NoEcho); edit.setEchoMode(CEchoMode.Normal);
+        expect(edit.text()).toBe("secret!"); expect(edit.cursorPosition()).toBe(1); expect(edit.selectedText()).toBe("ecre");
+        expect(changed).not.toHaveBeenCalled(); expect(edited).not.toHaveBeenCalled();
+        edit.undo(); expect(edit.text()).toBe("secret");
+    });
+    test("typing, deleting and undo work in Password mode", () => {
+        const edit = editor(); edit.event(new CKeyEvent(CEventType.KeyPress, "x"));
+        expect(edit.displayText()).toBe("•••••••");
+        edit.event(new CKeyEvent(CEventType.KeyPress, "Backspace")); expect(edit.text()).toBe("secret");
+        edit.undo(); expect(edit.text()).toBe("secretx"); expect(edit.displayText()).toBe("•••••••");
+    });
+    test("NoEcho accepts input and undo without revealing characters", () => {
+        const edit = editor(CEchoMode.NoEcho); edit.insert("123");
+        expect(edit.text()).toBe("secret123"); expect(edit.displayText()).toBe("");
+        edit.undo(); expect(edit.text()).toBe("secret"); expect(edit.displayText()).toBe("");
+    });
+    test("Password selection replacement is undoable", () => {
+        const edit = editor(); edit.setSelection(1, 5); edit.insert("X");
+        expect(edit.text()).toBe("sXt"); expect(edit.displayText()).toBe("•••");
+        edit.undo(); expect(edit.selectedText()).toBe("ecre"); expect(edit.displayText()).toBe("••••••");
+    });
+    test("validators still validate the original input", () => {
+        const edit = editor(); edit.setValidator(text => /^[0-9]*$/.test(text)); edit.setText("");
+        edit.insert("12"); edit.insert("a"); expect(edit.text()).toBe("12"); expect(edit.displayText()).toBe("••");
+    });
+    test("copy and cut cannot export or delete a Password selection", () => {
+        const edit = editor(); edit.selectAll(); CClipboard.instance().setText("keep");
+        expect(edit.canCopy()).toBe(false); edit.copy(); edit.cut();
+        expect(CClipboard.instance().text()).toBe("keep"); expect(edit.text()).toBe("secret"); expect(edit.canUndo()).toBe(false);
+    });
+    test("copy and cut cannot export or delete a NoEcho selection", () => {
+        const edit = editor(CEchoMode.NoEcho); edit.selectAll(); CClipboard.instance().setText("keep");
+        edit.copy(); edit.cut(); expect(CClipboard.instance().text()).toBe("keep"); expect(edit.text()).toBe("secret");
+    });
+    test("switching back to Normal restores ordinary copying", () => {
+        const edit = editor(); edit.selectAll(); edit.setEchoMode(CEchoMode.Normal); edit.copy();
+        expect(edit.canCopy()).toBe(true); expect(CClipboard.instance().text()).toBe("secret");
+    });
+    test("Ctrl+C and Ctrl+X do not export masked input", () => {
+        const edit = editor(); edit.selectAll(); CClipboard.instance().setText("keep");
+        // Use the application dispatcher to exercise actual keyboard modifiers.
+        edit.setFocus();
+        for (const key of ["c", "x"]) window.dispatchEvent({ type: "keydown", key,
+            ctrlKey: true, altKey: false, shiftKey: false, metaKey: false, preventDefault: vi.fn()
+        } as unknown as KeyboardEvent);
+        expect(CClipboard.instance().text()).toBe("keep"); expect(edit.text()).toBe("secret");
+    });
+    test("native Copy and Cut cannot bypass Password restrictions", () => {
+        const edit = editor(); edit.selectAll(); edit.setFocus();
+        for (const type of ["copy", "cut"]) {
+            const setData = vi.fn(), preventDefault = vi.fn();
+            window.dispatchEvent({ type, defaultPrevented: false, target: null, preventDefault,
+                clipboardData: { types: ["text/plain"], getData: () => "", setData }
+            } as unknown as ClipboardEvent);
+            expect(setData).not.toHaveBeenCalled(); expect(preventDefault).toHaveBeenCalledOnce();
+        }
+        expect(edit.text()).toBe("secret");
+    });
+    test("native Copy cannot bypass NoEcho restrictions", () => {
+        const edit = editor(CEchoMode.NoEcho); edit.selectAll(); edit.setFocus(); const setData = vi.fn();
+        window.dispatchEvent({ type: "copy", defaultPrevented: false, target: null, preventDefault: vi.fn(),
+            clipboardData: { setData } } as unknown as ClipboardEvent);
+        expect(setData).not.toHaveBeenCalled();
+    });
+    test("paste remains available in Password and NoEcho", () => {
+        for (const mode of [CEchoMode.Password, CEchoMode.NoEcho]) {
+            const edit = editor(mode); edit.selectAll(); CClipboard.instance().setText("replacement"); edit.paste();
+            expect(edit.text()).toBe("replacement"); edit.undo(); expect(edit.text()).toBe("secret");
+        }
+    });
+    test("context menu disables Copy and Cut for hidden input", () => {
+        for (const mode of [CEchoMode.Password, CEchoMode.NoEcho]) {
+            const edit = editor(mode); edit.selectAll(); const menu = edit.createStandardContextMenu();
+            expect(menu.actionAt(3)?.isEnabled()).toBe(false); expect(menu.actionAt(4)?.isEnabled()).toBe(false);
+            menu.destroy();
+        }
+    });
+    test("clear button continues to clear masked input and supports undo", () => {
+        const edit = editor(); edit.setClearButtonEnabled(true);
+        edit.event(new CMouseEvent(CEventType.MousePress, 147, 14, CMouseButton.LeftButton));
+        edit.event(new CMouseEvent(CEventType.MouseRelease, 147, 14, CMouseButton.LeftButton));
+        expect(edit.text()).toBe(""); edit.undo(); expect(edit.displayText()).toBe("••••••");
+    });
+    test("NoEcho never scrolls according to secret length", () => {
+        const edit = editor(CEchoMode.NoEcho); edit.resize(40, 28); edit.setText("a".repeat(100));
+        expect(edit.horizontalOffset()).toBe(0); edit.setCursorPosition(50); expect(edit.horizontalOffset()).toBe(0);
+    });
+    test("Password scrolling uses mask width", () => {
+        const edit = editor(); edit.resize(40, 28); edit.setText("WWWWWWWWWW");
+        const metrics = new CFontMetrics(edit.font());
+        expect(edit.horizontalOffset()).toBe(Math.max(0, metrics.textWidth("••••••••••") - 29));
+    });
+    test("switching modes recomputes horizontal scrolling", () => {
+        const edit = editor(); edit.resize(40, 28); edit.setText("x".repeat(100));
+        expect(edit.horizontalOffset()).toBeGreaterThan(0); edit.setEchoMode(CEchoMode.NoEcho);
+        expect(edit.horizontalOffset()).toBe(0);
+        edit.setEchoMode(CEchoMode.Normal); expect(edit.horizontalOffset()).toBeGreaterThan(0);
+    });
+    test("mouse hit testing follows displayed bullets", () => {
+        const edit = editor(); edit.setCursorPosition(0);
+        const metrics = new CFontMetrics(edit.font()); const x = 5 + metrics.textWidth("••");
+        edit.event(new CMouseEvent(CEventType.MousePress, x, 14, CMouseButton.LeftButton));
+        expect(edit.cursorPosition()).toBe(2);
+    });
+    test("a double click selects the whole password without exposing word boundaries", () => {
+        const edit = editor(); edit.setText("one two three");
+        edit.event(new CMouseEvent(CEventType.MouseDoubleClick, 10, 14, CMouseButton.LeftButton));
+        expect(edit.selectionStart()).toBe(0); expect(edit.selectionEnd()).toBe(edit.text().length);
+    });
+    class PaintableEchoEdit extends CLineEdit {
+        paint(painter: CPainter): void { super.paintEvent(painter); }
+    }
+    class EchoTestStyle extends CDefaultStyle {
+        options: CStyleOptionLineEdit[] = [];
+        override drawLineEdit(_painter: CPainter, option: CStyleOptionLineEdit): void {
+            this.options.push(new CStyleOptionLineEdit(option));
+        }
+    }
+    function painted(mode: CEchoMode, text = "secret") {
+        const style = new EchoTestStyle(); CApplication.instance().setStyle(style);
+        const edit = new PaintableEchoEdit(); edit.resize(160, 28); edit.setText(text);
+        edit.setPlaceholderText("Hint"); edit.setSelection(1, text.length); edit.setEchoMode(mode);
+        edit.paint({} as CPainter);
+        return { edit, option: style.options[0]! };
+    }
+    test("style receives bullets rather than the original password", () => {
+        const { option } = painted(CEchoMode.Password);
+        expect(option.text).toBe("••••••"); expect(option.cursorPosition).toBe(6);
+        expect(option.selectionStart).toBe(1); expect(option.selectionEnd).toBe(6);
+    });
+    test("NoEcho paint exposes no characters, cursor displacement or selection extent", () => {
+        const { option } = painted(CEchoMode.NoEcho);
+        expect(option.text).toBe(""); expect(option.cursorPosition).toBe(0);
+        expect(option.selectionStart).toBe(0); expect(option.selectionEnd).toBe(0);
+        expect(option.horizontalOffset).toBe(0);
+    });
+    test("NoEcho does not draw a placeholder over a stored value", () => {
+        expect(painted(CEchoMode.NoEcho).option.placeholderText).toBe("");
+    });
+    test("Normal paint preserves text and ordinary selection", () => {
+        const { option } = painted(CEchoMode.Normal); expect(option.text).toBe("secret");
+        expect(option.selectionStart).toBe(1); expect(option.selectionEnd).toBe(6);
+    });
+    test("empty password preserves its placeholder", () => {
+        expect(painted(CEchoMode.Password, "").option.placeholderText).toBe("Hint");
+    });
+    test("Password detaches the completer and Normal restores it", () => {
+        const edit = editor(CEchoMode.Normal); const completer = new CCompleter(["secret"]);
+        edit.setCompleter(completer); expect(completer.widget()).toBe(edit);
+        edit.setEchoMode(CEchoMode.Password); expect(completer.widget()).toBeNull();
+        expect(edit.completer()).toBe(completer); expect(completer.popup().isOpen()).toBe(false);
+        edit.setEchoMode(CEchoMode.Normal); expect(completer.widget()).toBe(edit); completer.destroy();
+    });
+    test("a completer assigned in NoEcho remains detached", () => {
+        const edit = editor(CEchoMode.NoEcho); const completer = new CCompleter(["secret"]);
+        edit.setCompleter(completer); expect(completer.widget()).toBeNull(); completer.destroy();
     });
 });

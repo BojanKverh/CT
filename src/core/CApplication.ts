@@ -1145,6 +1145,11 @@ export class CApplication extends CObject {
                 editor.paste();
             });
         } else {
+            const copyPolicy = editor as typeof editor & { canCopy?: () => boolean };
+            if (copyPolicy.canCopy?.() === false) {
+                event.preventDefault();
+                return;
+            }
             const text = editor.selectedText();
             if (text.length === 0) return;
             data.setData("text/plain", text);

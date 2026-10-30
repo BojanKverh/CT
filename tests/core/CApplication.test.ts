@@ -4,7 +4,7 @@ import { CLabel } from "../../src/widgets/CLabel.js";
 import { CAction } from "../../src/core/CAction.js";
 import { CShortcut } from "../../src/core/CShortcut.js";
 import { CKeySequenceEdit } from "../../src/widgets/CKeySequenceEdit.js";
-import { CLineEdit } from "../../src/widgets/CLineEdit.js";
+import { CLineEdit, CEchoMode } from "../../src/widgets/CLineEdit.js";
 import { CTextEdit } from "../../src/widgets/CTextEdit.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CApplication } from "../../src/core/CApplication";
@@ -3267,5 +3267,67 @@ describe("focus proxy navigation", () => {
         const { first, composite, editor, last, dialog } = setup(); const alias = field(dialog); alias.setFocusProxy(editor);
         first.setFocus(); tab(); expect(app.focusWidget()).toBe(editor); tab(); expect(app.focusWidget()).toBe(last);
         tab(); expect(app.focusWidget()).toBe(first); expect(composite.hasFocus()).toBe(false);
+    });
+});
+
+describe("native clipboard copy policy", () => {
+    beforeEach(() => {
+        Object.defineProperty(globalThis, "window", {
+            value: createTestWindow(), writable: true, configurable: true
+        });
+        new CApplication(createTestCanvas());
+    });
+    afterEach(() => {
+        if (CApplication.exists()) CApplication.instance().destroy();
+    });
+    function clipboard(type: "copy" | "cut" | "paste", value = "pasted") {
+        const setData = vi.fn(), preventDefault = vi.fn();
+        window.dispatchEvent({ type, defaultPrevented: false, target: null, preventDefault,
+            clipboardData: { types: ["text/plain"], setData, getData: () => value }
+        } as unknown as ClipboardEvent);
+        return { setData, preventDefault };
+    }
+    function focused(mode: CEchoMode) {
+        const edit = new CLineEdit(); edit.setText("secret");
+        edit.setEchoMode(mode); edit.selectAll(); edit.setFocus(); return edit;
+    }
+    test("Password blocks native Copy and Cut before writing clipboard data", () => {
+        const edit = focused(CEchoMode.Password);
+        for (const kind of ["copy", "cut"] as const) {
+            const result = clipboard(kind);
+            expect(result.setData).not.toHaveBeenCalled();
+            expect(result.preventDefault).toHaveBeenCalledOnce();
+        }
+        expect(edit.text()).toBe("secret"); expect(edit.canUndo()).toBe(false);
+    });
+    test("NoEcho blocks native Copy and Cut before writing clipboard data", () => {
+        const edit = focused(CEchoMode.NoEcho);
+        for (const kind of ["copy", "cut"] as const) {
+            const result = clipboard(kind);
+            expect(result.setData).not.toHaveBeenCalled();
+            expect(result.preventDefault).toHaveBeenCalledOnce();
+        }
+        expect(edit.text()).toBe("secret");
+    });
+    test("Normal still copies selected text to the native clipboard", () => {
+        const edit = focused(CEchoMode.Normal); const result = clipboard("copy");
+        expect(result.setData).toHaveBeenCalledWith("text/plain", "secret");
+        expect(result.preventDefault).toHaveBeenCalledOnce(); expect(edit.text()).toBe("secret");
+    });
+    test("Normal native Cut deletes the selection and is undoable", () => {
+        const edit = focused(CEchoMode.Normal); const result = clipboard("cut");
+        expect(result.setData).toHaveBeenCalledWith("text/plain", "secret");
+        expect(edit.text()).toBe(""); edit.undo(); expect(edit.text()).toBe("secret");
+    });
+    test("copy restrictions do not block native Paste into hidden inputs", () => {
+        for (const mode of [CEchoMode.Password, CEchoMode.NoEcho]) {
+            const edit = focused(mode); const result = clipboard("paste", "new secret");
+            expect(result.preventDefault).toHaveBeenCalledOnce(); expect(edit.text()).toBe("new secret");
+        }
+    });
+    test("switching back to Normal restores native Copy", () => {
+        const edit = focused(CEchoMode.Password); clipboard("copy");
+        edit.setEchoMode(CEchoMode.Normal); const result = clipboard("copy");
+        expect(result.setData).toHaveBeenCalledWith("text/plain", "secret");
     });
 });

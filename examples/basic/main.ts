@@ -16,6 +16,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
 	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut, CPlainTextEdit, CTextEditFindFlag
 } from "../../src/index.js";
+import { CEchoMode } from "../../src/widgets/CLineEdit.js";
 
 class RedWidget extends CWidget {
 	#m_color: string = "#ffa0a0";
@@ -1679,20 +1680,27 @@ const nameEdit = new CLineEdit(generalPage);
 nameEdit.setGeometry(90, 15, 160, 28);
 nameEdit.setText("Bojan");
 nameEdit.setClearButtonEnabled(true);
+const passLabel = new CLabel(generalPage);
+passLabel.setGeometry(10, 45, 80, 28);
+passLabel.setText("Password");
+const passEdit = new CLineEdit(generalPage);
+passEdit.setGeometry(90, 45, 160, 28);
+passEdit.setEchoMode(CEchoMode.Password);
+
 const dateLabel = new CLabel(generalPage);
-dateLabel.setGeometry(10, 45, 80, 30);
+dateLabel.setGeometry(10, 75, 80, 30);
 dateLabel.setText("Birthday:");
 const dateEdit = new CDateEdit(generalPage);
-dateEdit.setGeometry(90, 45, 120, 30);
+dateEdit.setGeometry(90, 75, 120, 30);
 const timeLabel = new CLabel(generalPage);
-timeLabel.setGeometry(10, 75, 80, 30);
+timeLabel.setGeometry(10, 105, 80, 30);
 timeLabel.setText("Time:");
 const timeEdit = new CTimeEdit(generalPage);
 timeEdit.setDisplayFormat("hh:mm ap");
-timeEdit.setGeometry(90, 75, 120, 30);
+timeEdit.setGeometry(90, 105, 120, 30);
 
 const dateTimeEdit = new CDateTimeEdit(generalPage);
-dateTimeEdit.setGeometry(40, 115, 200, 30);
+dateTimeEdit.setGeometry(40, 145, 200, 30);
 
 const networkPage = new CWidget();
 

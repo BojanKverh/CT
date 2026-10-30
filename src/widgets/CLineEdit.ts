@@ -23,6 +23,13 @@ import { CStyleOptionLineEdit } from "../gui/CStyleOptionLineEdit.js";
 import { CValidator, CValidatorState } from "../util/CValidator.js";
 import type { CCompleter } from "./CCompleter.js";
 
+/** Controls how a line editor displays its stored text. */
+export enum CEchoMode {
+    Normal,
+    Password,
+    NoEcho
+}
+
 type CLineEditValidator = CValidator | ((text: string) => boolean);
 
 type CLineEditState = { text: string; cursorPosition: number; selectionAnchor: number };
@@ -58,6 +65,7 @@ class CLineEditUndoCommand extends CUndoCommand {
 /** Implements the line edit widget. */
 export class CLineEdit extends CWidget {
     #m_clipboardRequest = 0;
+    #m_echoMode = CEchoMode.Normal;
     #m_clearButtonEnabled = false;
     #m_clearButtonPressed = false;
 
@@ -119,6 +127,32 @@ export class CLineEdit extends CWidget {
 	text(): string {
 		return this.#m_text;
 	}
+
+    /** Returns the current text display mode. */
+    echoMode(): CEchoMode { return this.#m_echoMode; }
+
+    /** Changes display only; stored text and undo history are preserved. */
+    setEchoMode(mode: CEchoMode): void {
+        if (mode === this.#m_echoMode) return;
+        this.#breakUndoGroup();
+        this.#m_echoMode = mode;
+        this.#m_horizontalOffset = 0;
+        if (this.#m_completer !== null) {
+            this.#m_completer.hidePopup();
+            this.#m_completer.setWidget(mode === CEchoMode.Normal ? this : null);
+        }
+        this.update();
+    }
+
+    /** Returns rendered text; text() always returns the original value. */
+    displayText(): string {
+        if (this.#m_echoMode === CEchoMode.NoEcho) return "";
+        if (this.#m_echoMode === CEchoMode.Password) return "•".repeat(this.#m_text.length);
+        return this.#m_text;
+    }
+
+    /** Whether selected text may be exported to either clipboard. */
+    canCopy(): boolean { return this.#m_echoMode === CEchoMode.Normal && this.hasSelection(); }
 
     /** Horizontal displacement of the text, in pixels. */
     horizontalOffset(): number {
@@ -205,8 +239,9 @@ export class CLineEdit extends CWidget {
     #ensureCursorVisible(): void {
         const metrics = new CFontMetrics(this.font());
         const available = Math.max(0, this.#textRight() - 5);
-        const cursor = metrics.textWidth(this.#m_text.slice(0, this.#m_cursorPosition));
-        const maximum = Math.max(0, metrics.textWidth(this.#m_text) - available);
+        const display = this.displayText();
+        const cursor = metrics.textWidth(display.slice(0, this.#m_cursorPosition));
+        const maximum = Math.max(0, metrics.textWidth(display) - available);
         let offset = Math.min(this.#m_horizontalOffset, maximum);
         if (cursor < offset) offset = cursor;
         if (cursor > offset + available) offset = cursor - available;
@@ -297,7 +332,7 @@ export class CLineEdit extends CWidget {
 			this.#m_completer.setWidget(null);
 
 		this.#m_completer = completer;
-		completer?.setWidget(this);
+		completer?.setWidget(this.#m_echoMode === CEchoMode.Normal ? this : null);
 	}
 
 	/** Provides cursor behavior. */
@@ -429,7 +464,7 @@ export class CLineEdit extends CWidget {
 	/** Provides copy behavior. */
 	copy(): void {
 		/** Provides if behavior. */
-		if (!this.hasSelection())
+		if (!this.canCopy())
 			return;
 
 		CClipboard.instance().setText(this.selectedText());
@@ -438,7 +473,7 @@ export class CLineEdit extends CWidget {
 	/** Provides cut behavior. */
 	cut(): void {
 		/** Provides if behavior. */
-		if (!this.hasSelection())
+		if (!this.canCopy())
 			return;
 
 		CClipboard.instance().setText(this.selectedText());
@@ -479,6 +514,13 @@ export class CLineEdit extends CWidget {
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionLineEdit();
 		option.initFromLineEdit(this);
+        option.text = this.displayText();
+        if (this.#m_echoMode === CEchoMode.NoEcho) {
+            option.cursorPosition = 0;
+            option.selectionStart = 0;
+            option.selectionEnd = 0;
+            if (this.#m_text.length > 0) option.placeholderText = "";
+        }
 
 		this.style().drawLineEdit(painter, option);
         this.#paintClearButton(painter);
@@ -495,7 +537,7 @@ export class CLineEdit extends CWidget {
 
     /** Handles the key press event. */
     protected override keyPressEvent(event: CKeyEvent): void {
-		if (this.#m_completer?.handleKeyEvent(event) === true)
+		if (this.#m_echoMode === CEchoMode.Normal && this.#m_completer?.handleKeyEvent(event) === true)
 			return;
 
 		/** Provides if behavior. */
@@ -699,7 +741,7 @@ export class CLineEdit extends CWidget {
         this.#m_selectingWithMouse = false;
         this.#m_scrollTimer.stop();
         this.setFocus();
-        const range = paragraph ? [0, this.#m_text.length] as const
+        const range = paragraph || this.#m_echoMode !== CEchoMode.Normal ? [0, this.#m_text.length] as const
             : textSelectionRange(this.#m_text, this.cursorPositionAt(event.x(), false));
         this.setSelection(range[0], range[1]);
         this.#resetCursorBlink();
@@ -783,14 +825,16 @@ export class CLineEdit extends CWidget {
 
     private cursorPositionAt(x: number, nearest = true): number {
 	    const fm = new CFontMetrics(this.font());
+        if (this.#m_echoMode === CEchoMode.NoEcho) return this.#m_text.length;
+        const display = this.displayText();
 	    const textX = x - 5 + this.horizontalOffset();
 	    /** Provides if behavior. */
 	    if (textX <= 0)
 		    return 0;
     	/** Provides for behavior. */
     	for (let i = 1; i <= this.#m_text.length; ++i) {
-	    	const previousWidth = fm.textWidth(this.#m_text.slice(0, i - 1));
-    		const width = fm.textWidth(this.#m_text.slice(0, i));
+	    	const previousWidth = fm.textWidth(display.slice(0, i - 1));
+    		const width = fm.textWidth(display.slice(0, i));
     		const middle = nearest ? (previousWidth + width) / 2 : width;
     		/** Provides if behavior. */
     		if (textX < middle)
@@ -949,8 +993,8 @@ export class CLineEdit extends CWidget {
         add("Undo", () => editable() && this.canUndo(), () => this.undo());
         add("Redo", () => editable() && this.canRedo(), () => this.redo());
         menu.addSeparator();
-        add("Cut", () => editable() && this.hasSelection(), () => this.cut());
-        add("Copy", () => this.isEnabled() && this.hasSelection(), () => this.copy());
+        add("Cut", () => editable() && this.canCopy(), () => this.cut());
+        add("Copy", () => this.isEnabled() && this.canCopy(), () => this.copy());
         add("Paste", () => editable() && (CClipboard.instance().canReadSystemText() || CClipboard.instance().text().length > 0),
             () => {
                 if (CClipboard.instance().canReadSystemText()) void this.pasteFromSystem();
