@@ -3193,3 +3193,79 @@ describe("dialog default button key dispatch", () => {
         expect(clicked).not.toHaveBeenCalled();
     });
 });
+
+describe("focus proxy navigation", () => {
+    let app: CApplication;
+    let oldWindow: PropertyDescriptor | undefined;
+    beforeEach(() => {
+        oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+        Object.defineProperty(globalThis, "window", { value: createTestWindow(), configurable: true, writable: true });
+        app = new CApplication(createTestCanvas());
+    });
+    afterEach(() => {
+        if (CApplication.exists()) CApplication.instance().destroy();
+        if (oldWindow) Object.defineProperty(globalThis, "window", oldWindow);
+        else Reflect.deleteProperty(globalThis, "window");
+    });
+    function field(parent: CWidget): CWidget {
+        const widget = new CWidget(parent); widget.setFocusPolicy(CFocusPolicy.StrongFocus); return widget;
+    }
+    function setup() {
+        const dialog = new CDialog(); dialog.setGeometry(20, 20, 400, 250);
+        const first = field(dialog); const composite = field(dialog); const editor = field(composite);
+        composite.setFocusProxy(editor); const last = field(dialog); dialog.exec();
+        return { dialog, first, composite, editor, last };
+    }
+    function tab(shiftKey = false) {
+        const preventDefault = vi.fn();
+        window.dispatchEvent({ type: "keydown", key: "Tab", altKey: false, ctrlKey: false,
+            shiftKey, metaKey: false, preventDefault } as unknown as KeyboardEvent);
+        return preventDefault;
+    }
+    test("application-level focus assignment resolves the proxy", () => {
+        const { composite, editor } = setup(); app.setFocusWidget(composite); expect(app.focusWidget()).toBe(editor);
+    });
+    test("Tab and Shift+Tab visit a composite only once", () => {
+        const { first, editor, last } = setup(); first.setFocus();
+        for (const expected of [editor, last, first]) { expect(tab()).toHaveBeenCalledOnce(); expect(app.focusWidget()).toBe(expected); }
+        for (const expected of [last, editor, first]) { tab(true); expect(app.focusWidget()).toBe(expected); }
+    });
+    test("custom order moves the logical composite rather than leaving its input behind", () => {
+        const { first, composite, editor, last } = setup();
+        CWidget.setTabOrder(first, last); CWidget.setTabOrder(last, composite);
+        first.setFocus(); tab(); expect(app.focusWidget()).toBe(last);
+        tab(); expect(app.focusWidget()).toBe(editor); tab(); expect(app.focusWidget()).toBe(first);
+        tab(true); expect(app.focusWidget()).toBe(editor); tab(true); expect(app.focusWidget()).toBe(last);
+    });
+    test("proxy chains still create one Tab stop", () => {
+        const { first, composite, editor, last } = setup(); const middle = field(composite);
+        middle.setFocusProxy(editor); composite.setFocusProxy(middle); first.setFocus();
+        tab(); expect(app.focusWidget()).toBe(editor); tab(); expect(app.focusWidget()).toBe(last);
+    });
+    test("unavailable targets are skipped without consuming an extra Tab", () => {
+        const { first, editor, last } = setup(); editor.hide(); first.setFocus(); tab(); expect(app.focusWidget()).toBe(last);
+        editor.show(); editor.setEnabled(false); first.setFocus(); tab(); expect(app.focusWidget()).toBe(last);
+    });
+    test("buddy activation follows the explicit proxy instead of the first child", () => {
+        const { dialog, composite, editor } = setup(); const other = field(composite);
+        composite.setFocusProxy(other); const label = new CLabel(dialog); label.setText("&Input"); label.setBuddy(composite);
+        expect(label.activateBuddy()).toBe(true); expect(app.focusWidget()).toBe(other); expect(editor.hasFocus()).toBe(false);
+    });
+    test("the proxy cannot take Tab or buddy focus outside the active dialog", () => {
+        const root = new CWidget(); const outside = field(root); const dialog = new CDialog(root);
+        const composite = field(dialog); composite.setFocusProxy(outside); const inside = field(dialog);
+        const label = new CLabel(dialog); label.setText("&Input"); label.setBuddy(composite); dialog.exec();
+        expect(label.activateBuddy()).toBe(false); inside.setFocus(); tab(); expect(app.focusWidget()).toBe(inside);
+    });
+    test("an open popup keeps proxy traversal inside the popup", () => {
+        const { first } = setup(); const popup = new CPopupWidget(); const owner = field(popup);
+        const editor = field(owner); owner.setFocusProxy(editor); popup.open(); editor.setFocus();
+        tab(); expect(app.focusWidget()).toBe(editor); tab(true); expect(app.focusWidget()).toBe(editor);
+        popup.close(); first.setFocus(); expect(first.hasFocus()).toBe(true);
+    });
+    test("shared proxy targets are deduplicated", () => {
+        const { first, composite, editor, last, dialog } = setup(); const alias = field(dialog); alias.setFocusProxy(editor);
+        first.setFocus(); tab(); expect(app.focusWidget()).toBe(editor); tab(); expect(app.focusWidget()).toBe(last);
+        tab(); expect(app.focusWidget()).toBe(first); expect(composite.hasFocus()).toBe(false);
+    });
+});

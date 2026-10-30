@@ -87,9 +87,13 @@ export class CComboBox extends CWidget {
 		super(parent);
 
 		this.#m_lineEdit = new CComboLineEdit(this);
+        this.setFocusPolicy(CFocusPolicy.StrongFocus);
+        this.setFocusProxy(this.#m_lineEdit);
 
 		this.#m_popup = new CPopupWidget();
 		this.#m_listWidget = new CListWidget(this.#m_popup);
+        this.#m_listWidget.setFocusPolicy(CFocusPolicy.StrongFocus);
+        this.#m_listWidget.setFocusProxy(this.#m_listWidget.widget());
 
 		this.#m_lineEdit.textChanged.connect(text => {
 			this.#lineEditTextChanged(text);

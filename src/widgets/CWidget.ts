@@ -37,6 +37,9 @@ export class CWidget extends CObject {
     #m_fontMetrics: CFontMetrics;
     #m_cursor: CCursorShape = CCursorShape.Arrow;
     #m_focusPolicy = CFocusPolicy.NoFocus;
+    #m_focusProxy: CWidget | null = null;
+    #m_focusProxyOwners = new Set<CWidget>();
+    #m_destroyed = false;
     #m_acceptDrops = false;
 
 	/** Creates a new instance. */
@@ -98,6 +101,7 @@ export class CWidget extends CObject {
         /** Provides if behavior. */
         if (parent === null)
             app.registerTopLevelWidget(this);
+        this.#refreshFocusProxyHierarchy();
     }
 
     /** Provides geometry behavior. */
@@ -283,23 +287,92 @@ export class CWidget extends CObject {
 		return this.#m_focusPolicy;
 	}
 
-	/** Sets the focus policy. */
-	setFocusPolicy(policy: CFocusPolicy): void {
-		/** Provides if behavior. */
-		if (this.#m_focusPolicy === policy)
-			return;
+    /** Sets the policy and propagates it to an assigned focus proxy. */
+    setFocusPolicy(policy: CFocusPolicy): void {
+        this.#m_focusProxy?.setFocusPolicy(policy);
+        if (this.#m_focusPolicy === policy) return;
+        this.#m_focusPolicy = policy;
+        if (policy === CFocusPolicy.NoFocus && this.hasFocus()) this.clearFocus();
+    }
 
-		this.#m_focusPolicy = policy;
+    /** Returns the direct focus proxy, or null. */
+    focusProxy(): CWidget | null { return this.#m_focusProxy; }
 
-		/** Provides if behavior. */
-		if (policy === CFocusPolicy.NoFocus
-			&& this.hasFocus())
-			this.clearFocus();
-	}
+    /**
+     * Redirects focus to another widget in the same parent hierarchy.
+     * Throws RangeError for self references, cycles, destroyed targets or
+     * targets in a different hierarchy. Null removes the redirection.
+     */
+    setFocusProxy(proxy: CWidget | null): void {
+        if (this.#m_destroyed) throw new RangeError("Cannot set a focus proxy on a destroyed widget.");
+        if (proxy === this.#m_focusProxy) return;
+        if (proxy !== null) {
+            if (proxy.#m_destroyed || this.#focusRoot() !== proxy.#focusRoot())
+                throw new RangeError("A focus proxy must be alive and in the same parent hierarchy.");
+            for (let target: CWidget | null = proxy; target !== null; target = target.#m_focusProxy) {
+                if (target === this) throw new RangeError("A focus proxy cannot create a cycle.");
+            }
+        }
+        const hadFocus = this.hasFocus();
+        if (this.#m_focusProxy !== null) this.#m_focusProxy.#m_focusProxyOwners.delete(this);
+        this.#m_focusProxy = proxy;
+        if (proxy !== null) proxy.#m_focusProxyOwners.add(this);
+        if (proxy !== null && this.#m_focusPolicy !== CFocusPolicy.NoFocus)
+            proxy.setFocusPolicy(this.#m_focusPolicy);
+        if (hadFocus) {
+            if (this.canReceiveFocus()) this.setFocus();
+            else CApplication.instance().setFocusWidget(null);
+        }
+        this.update();
+    }
+
+    /** @internal Returns the final widget in the proxy chain. */
+    focusTarget(): CWidget {
+        let target: CWidget = this;
+        while (target.#m_focusProxy !== null) target = target.#m_focusProxy;
+        return target;
+    }
+
+    /** @internal Whether programmatic focus can reach the final proxy target. */
+    canReceiveFocus(): boolean {
+        for (let target: CWidget | null = this; target !== null; target = target.#m_focusProxy) {
+            for (let owner: CWidget | null = target; owner !== null; owner = owner.parent()) {
+                if (owner.#m_destroyed || !owner.isVisible() || !owner.isEnabled()) return false;
+            }
+        }
+        return this.focusTarget().#m_focusPolicy !== CFocusPolicy.NoFocus;
+    }
+
+    #focusRoot(): CWidget {
+        let root: CWidget = this;
+        while (root.parent() !== null) root = root.parent()!;
+        return root;
+    }
+
+    #refreshFocusProxyHierarchy(): void {
+        if (this.#m_focusProxy !== null && this.#focusRoot() !== this.#m_focusProxy.#focusRoot())
+            this.setFocusProxy(null);
+        for (const owner of [...this.#m_focusProxyOwners]) {
+            if (owner.#focusRoot() !== this.#focusRoot()) owner.setFocusProxy(null);
+        }
+        for (const child of this.children()) {
+            if (child instanceof CWidget) child.#refreshFocusProxyHierarchy();
+        }
+    }
 
 	/** Releases resources owned by the widget. */
 	override destroy(): void
 	{
+        if (this.#m_destroyed) return;
+        if (this.hasFocus()) this.clearFocus();
+        this.#m_destroyed = true;
+        if (this.#m_focusProxy !== null) this.#m_focusProxy.#m_focusProxyOwners.delete(this);
+        this.#m_focusProxy = null;
+        for (const owner of this.#m_focusProxyOwners) {
+            owner.#m_focusProxy = null;
+            if (!owner.#m_destroyed) owner.update();
+        }
+        this.#m_focusProxyOwners.clear();
         super.destroy();
 		const app = CApplication.instance();
 
@@ -327,13 +400,13 @@ export class CWidget extends CObject {
 
 	/** Returns whether this object has focus. */
 	hasFocus(): boolean {
-		return CApplication.instance().focusWidget() === this;
+		return !this.#m_destroyed && CApplication.instance().focusWidget() === this.focusTarget();
 	}
 
     /** Sets the focus. */
     setFocus(): void {
 		/** Provides if behavior. */
-		if (!this.isEnabled() || this.#m_focusPolicy === CFocusPolicy.NoFocus)
+		if (!this.canReceiveFocus())
 			return;
 
 		CApplication.instance().setFocusWidget(this);

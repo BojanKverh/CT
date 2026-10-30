@@ -1,3 +1,5 @@
+import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
+import { CLabel } from "../../src/widgets/CLabel.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { CApplication } from "../../src/core/CApplication.js";
@@ -852,4 +854,83 @@ describe("CComboBox", () => {
 		combo.event(new CMouseEvent(CEventType.MouseRelease, 50, 15, CMouseButton.LeftButton));
 		expect(combo.popup().isOpen()).toBe(false);
 	});
+});
+
+describe("CComboBox focus proxy", () => {
+    beforeEach(() => {
+        Object.defineProperty(globalThis, "window", { value: createTestWindow(), configurable: true, writable: true });
+        new CApplication(createTestCanvas());
+    });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+    test("uses its line editor as the explicit focus proxy", () => {
+        const combo = new CComboBox(); expect(combo.focusProxy()).toBe(combo.lineEdit());
+        combo.setFocus(); expect(CApplication.instance().focusWidget()).toBe(combo.lineEdit());
+        expect(combo.hasFocus()).toBe(true); expect(combo.lineEdit().hasFocus()).toBe(true);
+    });
+    test("both editable and non-editable combos support programmatic focus", () => {
+        const combo = new CComboBox();
+        for (const editable of [true, false]) {
+            combo.setEditable(editable); combo.setFocus(); expect(combo.hasFocus()).toBe(true);
+            combo.clearFocus(); expect(combo.lineEdit().hasFocus()).toBe(false);
+        }
+    });
+    test("Tab visits the combo once and then continues to the next field", () => {
+        const app = CApplication.instance(); const root = new CWidget();
+        const first = new CWidget(root); first.setFocusPolicy(CFocusPolicy.StrongFocus);
+        const combo = new CComboBox(root);
+        const last = new CWidget(root); last.setFocusPolicy(CFocusPolicy.StrongFocus);
+        first.setFocus(); app.focusNextWidget(); expect(app.focusWidget()).toBe(combo.lineEdit());
+        app.focusNextWidget(); expect(app.focusWidget()).toBe(last);
+        app.focusNextWidget(false); expect(app.focusWidget()).toBe(combo.lineEdit());
+        app.focusNextWidget(false); expect(app.focusWidget()).toBe(first);
+    });
+    test("custom Tab order applies to the combo as one logical field", () => {
+        const app = CApplication.instance(); const root = new CWidget();
+        const first = new CWidget(root); first.setFocusPolicy(CFocusPolicy.StrongFocus);
+        const combo = new CComboBox(root);
+        const last = new CWidget(root); last.setFocusPolicy(CFocusPolicy.StrongFocus);
+        CWidget.setTabOrder(first, last); CWidget.setTabOrder(last, combo);
+        first.setFocus(); app.focusNextWidget(); expect(app.focusWidget()).toBe(last);
+        app.focusNextWidget(); expect(app.focusWidget()).toBe(combo.lineEdit());
+    });
+    test("a label buddy and Alt mnemonic focus the combo editor without opening its popup", () => {
+        const root = new CWidget(); const combo = new CComboBox(root); combo.addItems(["One", "Two"]);
+        const label = new CLabel(root); label.setText("&Country"); label.setBuddy(combo);
+        const preventDefault = vi.fn(); window.dispatchEvent({ type: "keydown", key: "c", altKey: true,
+            ctrlKey: false, shiftKey: false, metaKey: false, preventDefault } as unknown as KeyboardEvent);
+        expect(preventDefault).toHaveBeenCalledOnce(); expect(combo.hasFocus()).toBe(true);
+        expect(combo.lineEdit().hasFocus()).toBe(true); expect(combo.popup().isOpen()).toBe(false);
+    });
+    test("hidden and disabled combos cannot focus their inner editor", () => {
+        const combo = new CComboBox(); combo.setEnabled(false); combo.setFocus(); expect(combo.hasFocus()).toBe(false);
+        combo.setEnabled(true); combo.hide(); combo.setFocus(); expect(combo.hasFocus()).toBe(false);
+    });
+    test("opening and closing a popup restores logical combo focus", () => {
+        const combo = new CComboBox(); combo.addItems(["One", "Two"]); combo.setFocus(); combo.showPopup();
+        expect(combo.hasFocus()).toBe(false); expect(combo.listWidget().hasFocus()).toBe(true);
+        combo.hidePopup(); expect(combo.hasFocus()).toBe(true); expect(combo.lineEdit().hasFocus()).toBe(true);
+    });
+    test("popup list proxies focus to its actual content and has one Tab stop", () => {
+        const app = CApplication.instance(); const combo = new CComboBox(); combo.addItems(["One", "Two"]);
+        expect(combo.listWidget().widget() !== null).toBe(true);
+        expect(combo.listWidget().focusProxy()).toBe(combo.listWidget().widget());
+        combo.setFocus(); combo.showPopup();
+        const content = combo.listWidget().widget(); expect(app.focusWidget()).toBe(content);
+        app.focusNextWidget(); expect(app.focusWidget()).toBe(content);
+        app.focusNextWidget(false); expect(app.focusWidget()).toBe(content);
+        combo.hidePopup(); expect(app.focusWidget()).toBe(combo.lineEdit());
+    });
+    test("popup keyboard navigation selects an item and returns focus to the editor", () => {
+        const combo = new CComboBox(); combo.addItems(["One", "Two"]); combo.setFocus(); combo.showPopup();
+        for (const key of ["ArrowDown", "Enter"]) {
+            window.dispatchEvent({ type: "keydown", key, altKey: false, ctrlKey: false,
+                shiftKey: false, metaKey: false, preventDefault: vi.fn() } as unknown as KeyboardEvent);
+        }
+        expect(combo.currentText()).toBe("Two"); expect(combo.popup().isOpen()).toBe(false);
+        expect(combo.hasFocus()).toBe(true); expect(combo.lineEdit().hasFocus()).toBe(true);
+    });
+    test("destroying a focused combo clears the real editor focus", () => {
+        const app = CApplication.instance(); const combo = new CComboBox(); combo.setFocus(); combo.destroy();
+        expect(app.focusWidget()).toBeNull(); expect(combo.focusProxy()).toBeNull();
+    });
 });

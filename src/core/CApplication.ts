@@ -375,6 +375,7 @@ export class CApplication extends CObject {
  * @param widget Widget to focus, or `null` to clear focus.
  */
     setFocusWidget(widget: CWidget | null): void {
+        widget = widget?.focusTarget() ?? null;
 	    if (this.#m_focusWidget === widget)
 		    return;
 
@@ -627,7 +628,7 @@ export class CApplication extends CObject {
 			return false;
 
 		const current = this.#m_focusWidget;
-		let index = widgets.indexOf(current!);
+		let index = widgets.findIndex(widget => widget.focusTarget() === current);
 
 		if (index < 0)
             index = forward ? 0 : widgets.length - 1;
@@ -656,9 +657,11 @@ export class CApplication extends CObject {
 
     #labelBuddyFocusTarget(widget: CWidget): CWidget | null {
         if (!widget.isVisible() || !widget.isEnabled()) return null;
-        if (widget.focusPolicy() !== CFocusPolicy.NoFocus) return widget;
-        // Composite controls such as CComboBox delegate focus to an internal
-        // input. NoFocus on the outer widget must not disable its label buddy.
+        if (widget.focusProxy() !== null)
+            return widget.canReceiveFocus() ? widget.focusTarget() : null;
+        if (widget.focusPolicy() !== CFocusPolicy.NoFocus)
+            return widget.canReceiveFocus() ? widget : null;
+        // Compatibility for composite controls not migrated to explicit proxies yet.
         for (const child of widget.children()) {
             if (!(child instanceof CWidget) || this.isWindowWidget(child)
                 || this.#m_popupWidgets.includes(child as CPopupWidget)) continue;
@@ -670,11 +673,12 @@ export class CApplication extends CObject {
 
     #canFocusLabelBuddy(label: CWidget, buddy: CWidget): boolean {
         const scope = this.#labelScope(label);
-        if (scope !== this.#labelScope(buddy) || this.#labelBuddyFocusTarget(buddy) === null)
+        const target = this.#labelBuddyFocusTarget(buddy);
+        if (target === null || scope !== this.#labelScope(buddy) || scope !== this.#labelScope(target))
             return false;
         const boundary = this.#m_popupWidgets[this.#m_popupWidgets.length - 1] ?? this.topModalWidget();
         if (boundary !== null && (!this.#belongsToModal(label, boundary)
-            || !this.#belongsToModal(buddy, boundary))) return false;
+            || !this.#belongsToModal(buddy, boundary) || !this.#belongsToModal(target, boundary))) return false;
         for (const widget of [label, buddy]) {
             for (let current: CWidget | null = widget; current !== null; current = current.parent()) {
                 if (!current.isVisible() || !current.isEnabled()) return false;
@@ -1449,7 +1453,19 @@ export class CApplication extends CObject {
             // Parentless non-modal dialogs are registered as windows only.
             for (const widget of this.#m_windowWidgets) visit(widget);
         }
-        return this.#applyTabOrder(result);
+        const representatives = new Map<CWidget, CWidget>();
+        for (const widget of result) {
+            const target = widget.focusTarget();
+            if (!widget.canReceiveFocus() || this.#labelScope(widget) !== this.#labelScope(target)
+                || (boundary !== null && !this.#belongsToModal(target, boundary))) continue;
+            const existing = representatives.get(target);
+            // Prefer the logical composite over its internal input, before
+            // applying custom tab order. This keeps setTabOrder(combo, next) useful.
+            if (existing === undefined || (existing.focusProxy() === null && widget.focusProxy() !== null))
+                representatives.set(target, widget);
+        }
+        return this.#applyTabOrder(result.filter(widget =>
+            representatives.get(widget.focusTarget()) === widget));
     }
 
 	/** Opens a keyboard context menu at the focused widget's centre. */

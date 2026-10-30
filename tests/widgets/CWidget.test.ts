@@ -1537,3 +1537,101 @@ describe("CWidget.setTabOrder", () => {
         checkChain(app, [a, b, d, existing, c]);
     });
 });
+
+describe("CWidget focus proxies", () => {
+    function setup() {
+        const owner = new CWidget();
+        const editor = new CWidget(owner); editor.setFocusPolicy(CFocusPolicy.StrongFocus);
+        return { app: CApplication.instance(), owner, editor };
+    }
+    test("has no proxy by default", () => {
+        const { owner } = setup(); expect(owner.focusProxy()).toBeNull(); expect(owner.focusTarget()).toBe(owner);
+    });
+    test("setFocus redirects to the proxy and both widgets report logical focus", () => {
+        const { app, owner, editor } = setup(); owner.setFocusProxy(editor); owner.setFocus();
+        expect(owner.focusProxy()).toBe(editor); expect(app.focusWidget()).toBe(editor);
+        expect(owner.hasFocus()).toBe(true); expect(editor.hasFocus()).toBe(true);
+    });
+    test("clearFocus on the owner clears the real editor focus", () => {
+        const { app, owner, editor } = setup(); owner.setFocusProxy(editor); editor.setFocus(); owner.clearFocus();
+        expect(app.focusWidget()).toBeNull(); expect(editor.hasFocus()).toBe(false); expect(owner.hasFocus()).toBe(false);
+    });
+    test("proxy chains resolve to their final editor", () => {
+        const { app, owner, editor } = setup(); const middle = new CWidget(owner);
+        middle.setFocusProxy(editor); owner.setFocusProxy(middle); owner.setFocus();
+        expect(app.focusWidget()).toBe(editor); expect(owner.focusTarget()).toBe(editor);
+        expect(middle.hasFocus()).toBe(true);
+    });
+    test("rejects a proxy pointing to itself", () => {
+        const { owner } = setup(); expect(() => owner.setFocusProxy(owner)).toThrow(RangeError);
+        expect(owner.focusProxy()).toBeNull();
+    });
+    test("rejects direct and indirect cycles without changing the existing links", () => {
+        const { owner, editor } = setup(); const middle = new CWidget(owner);
+        owner.setFocusProxy(middle); middle.setFocusProxy(editor);
+        expect(() => editor.setFocusProxy(owner)).toThrow(RangeError);
+        expect(() => middle.setFocusProxy(owner)).toThrow(RangeError);
+        expect(editor.focusProxy()).toBeNull(); expect(owner.focusTarget()).toBe(editor);
+    });
+    test("rejects a proxy from another hierarchy", () => {
+        const { owner } = setup(); const outsider = new CWidget();
+        expect(() => owner.setFocusProxy(outsider)).toThrow(RangeError); expect(owner.focusProxy()).toBeNull();
+    });
+    test("changing the proxy while focused transfers focus to the new target", () => {
+        const { app, owner, editor } = setup(); owner.setFocusPolicy(CFocusPolicy.StrongFocus);
+        const replacement = new CWidget(owner); replacement.setFocusPolicy(CFocusPolicy.StrongFocus);
+        owner.setFocusProxy(editor); owner.setFocus(); owner.setFocusProxy(replacement);
+        expect(app.focusWidget()).toBe(replacement); expect(editor.hasFocus()).toBe(false);
+    });
+    test("removing a proxy restores direct focus to an eligible owner", () => {
+        const { app, owner, editor } = setup(); owner.setFocusPolicy(CFocusPolicy.StrongFocus);
+        owner.setFocusProxy(editor); owner.setFocus(); owner.setFocusProxy(null);
+        expect(owner.focusProxy()).toBeNull(); expect(app.focusWidget()).toBe(owner);
+    });
+    test("removing a proxy clears focus if the owner has NoFocus", () => {
+        const { app, owner, editor } = setup(); owner.setFocusProxy(editor); owner.setFocus(); owner.setFocusProxy(null);
+        expect(app.focusWidget()).toBeNull(); expect(owner.hasFocus()).toBe(false);
+    });
+    test("setting the same proxy does not repeat focus events", () => {
+        const { owner, editor } = setup(); owner.setFocusProxy(editor); owner.setFocus();
+        const event = vi.spyOn(editor, "event"); owner.setFocusProxy(editor); owner.setFocus();
+        expect(event).not.toHaveBeenCalled();
+    });
+    test("owner focus policies propagate along the proxy chain", () => {
+        const { owner, editor } = setup(); const middle = new CWidget(owner);
+        middle.setFocusProxy(editor); owner.setFocusProxy(middle); owner.setFocusPolicy(CFocusPolicy.ClickFocus);
+        expect(middle.focusPolicy()).toBe(CFocusPolicy.ClickFocus); expect(editor.focusPolicy()).toBe(CFocusPolicy.ClickFocus);
+        owner.setFocusPolicy(CFocusPolicy.NoFocus); expect(editor.focusPolicy()).toBe(CFocusPolicy.NoFocus);
+        owner.setFocus(); expect(editor.hasFocus()).toBe(false);
+    });
+    test("setting an unchanged NoFocus policy still propagates to a newly assigned proxy", () => {
+        const { owner, editor } = setup(); owner.setFocusProxy(editor); owner.setFocusPolicy(CFocusPolicy.NoFocus);
+        expect(editor.focusPolicy()).toBe(CFocusPolicy.NoFocus);
+    });
+    test("hidden or disabled targets and ancestors prevent focus transfer", () => {
+        const { app, owner, editor } = setup(); const other = new CWidget(); other.setFocusPolicy(CFocusPolicy.StrongFocus);
+        owner.setFocusProxy(editor); other.setFocus();
+        editor.hide(); owner.setFocus(); expect(app.focusWidget()).toBe(other);
+        editor.show(); editor.setEnabled(false); owner.setFocus(); expect(app.focusWidget()).toBe(other);
+        editor.setEnabled(true); owner.hide(); owner.setFocus(); expect(app.focusWidget()).toBe(other);
+        owner.show(); owner.setEnabled(false); owner.setFocus(); expect(app.focusWidget()).toBe(other);
+    });
+    test("destroying the proxy clears references and actual focus", () => {
+        const { app, owner, editor } = setup(); owner.setFocusProxy(editor); owner.setFocus(); editor.destroy();
+        expect(owner.focusProxy()).toBeNull(); expect(app.focusWidget()).toBeNull();
+        expect(() => owner.setFocusProxy(editor)).toThrow(RangeError);
+    });
+    test("destroying an owner does not destroy its sibling proxy", () => {
+        const root = new CWidget(); const owner = new CWidget(root); const editor = new CWidget(root);
+        editor.setFocusPolicy(CFocusPolicy.StrongFocus); owner.setFocusProxy(editor); owner.destroy();
+        editor.setFocus(); expect(editor.hasFocus()).toBe(true);
+    });
+    test("moving a target to another hierarchy removes its old proxy link", () => {
+        const { owner, editor } = setup(); const other = new CWidget(); owner.setFocusProxy(editor); editor.setParent(other);
+        expect(owner.focusProxy()).toBeNull();
+    });
+    test("moving the complete composite preserves its internal proxy", () => {
+        const { owner, editor } = setup(); owner.setFocusProxy(editor); const other = new CWidget(); owner.setParent(other);
+        expect(owner.focusProxy()).toBe(editor); owner.setFocus(); expect(editor.hasFocus()).toBe(true);
+    });
+});
