@@ -1,3 +1,4 @@
+import { CAlignment } from "../core/CAlignment.js";
 import { CSpacerItem } from "./CSpacerItem.js";
 import type { CLayoutItem } from "./CLayoutItem.js";
 import { CSizePolicy } from "../geometry/CSizePolicy.js";
@@ -26,10 +27,10 @@ export class CGridLayout extends CLayout
 	 */
 	override addWidget(widget: CWidget): void;
 	override addWidget(widget: CWidget, row: number, column: number,
-		rowSpan?: number, columnSpan?: number): void;
+		rowSpan?: number, columnSpan?: number, alignment?: CAlignment | 0): void;
 
 	override addWidget(widget: CWidget, row?: number, column?: number,
-		rowSpan = 1, columnSpan = 1): void
+		rowSpan = 1, columnSpan = 1, alignment: CAlignment | 0 = 0): void
 	{
 		if (row === undefined || column === undefined) {
 			row = this.rowCount();
@@ -42,8 +43,9 @@ export class CGridLayout extends CLayout
 		if (rowSpan < 1 || columnSpan < 1)
 			return;
 
-		this.addItem(new CGridLayoutItem(widget, row, column, rowSpan,
-				columnSpan));
+		const item = new CGridLayoutItem(widget, row, column, rowSpan, columnSpan);
+        item.setAlignment(alignment);
+        this.addItem(item);
 	}
 
     /** Adds a spacer at a grid position, optionally spanning several cells. */
@@ -241,12 +243,8 @@ export class CGridLayout extends CLayout
 				spacing
 			);
 
-            const horizontal = CLayout.layoutItemAxisBounds(item, true);
-            const actualWidth = Math.min(horizontal.maximum, Math.max(horizontal.minimum, width));
-            const vertical = CLayout.layoutItemAxisBounds(item, false, actualWidth);
-            item.setGeometry(columnPositions[gridItem.column()]!, rowPositions[gridItem.row()]!,
-                actualWidth,
-                Math.min(vertical.maximum, Math.max(vertical.minimum, height)));
+            CLayout.setAlignedItemGeometry(item, columnPositions[gridItem.column()]!,
+                rowPositions[gridItem.row()]!, width, height);
 		}
 	}
 
@@ -263,8 +261,7 @@ export class CGridLayout extends CLayout
             const span = horizontal ? item.columnSpan() : item.rowSpan();
             const cellWidth = columnSizes === undefined ? undefined
                 : this.#spanSize(columnSizes, item.column(), item.columnSpan(), this.spacing());
-            const xBounds = CLayout.layoutItemAxisBounds(entry, true);
-            const actualWidth = cellWidth === undefined ? undefined : Math.min(xBounds.maximum, Math.max(xBounds.minimum, cellWidth));
+            const actualWidth = cellWidth === undefined ? undefined : CLayout.itemWidth(entry, cellWidth);
             const bounds = CLayout.layoutItemAxisBounds(entry, horizontal, actualWidth);
             const spacing = (span - 1) * this.spacing();
             this.#ensureSpanSize(minimums, start, span, Math.max(0, bounds.minimum - spacing));
@@ -273,7 +270,7 @@ export class CGridLayout extends CLayout
             const axis = horizontal ? policy.horizontalPolicy() : policy.verticalPolicy();
             const stretch = horizontal ? policy.horizontalStretch() : policy.verticalStretch();
             for (let i = start; i < start + span; ++i) {
-                maximums[i] = Math.max(maximums[i]!, Math.max(0, bounds.maximum - spacing) / span);
+                maximums[i] = Math.max(maximums[i]!, Math.max(0, (CLayout.itemAxisAlignment(entry, horizontal) ? Number.MAX_SAFE_INTEGER : bounds.maximum) - spacing) / span);
                 weights[i] = Math.max(weights[i]!, stretch);
                 expanding[i] ||= CSizePolicy.isExpanding(axis);
             }

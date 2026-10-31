@@ -1,3 +1,4 @@
+import { CAlignment } from "../../src/core/CAlignment.js";
 import { CSpacerItem } from "../../src/layouts/CSpacerItem.js";
 import { CSizePolicyType } from "../../src/geometry/CSizePolicy.js";
 import { CSize } from "../../src/geometry/CSize.js";
@@ -995,5 +996,80 @@ describe("CGridLayout spacer items", () => {
         const { layout } = makeGrid(); layout.addWidget(new WidthDependentWidget(),0,0);
         layout.addSpacerItem(new CSpacerItem(0,15,CSizePolicyType.Minimum,CSizePolicyType.Fixed),1,0);
         expect(layout.heightForWidth(100)).toBe(55);
+    });
+});
+
+
+class AlignmentHintWidget extends CWidget { override sizeHint(): CSize { return new CSize(50,20); } }
+
+describe("CGridLayout widget alignment", () => {
+
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+
+    function alignedGrid() {
+        const root = new CWidget(); root.resize(200,100);
+        const layout = new CGridLayout(); layout.setContentsMargins(0,0,0,0); layout.setSpacing(0);
+        root.setLayout(layout); const field = new AlignmentHintWidget();
+        return { root, layout, field };
+    }
+    test("no alignment preserves cell filling", () => {
+        const { layout, field } = alignedGrid(); layout.addWidget(field,0,0);
+        expect(field.width()).toBe(200); expect(field.height()).toBe(100);
+    });
+    test("Center positions the preferred size inside the cell", () => {
+        const { layout, field } = alignedGrid(); layout.addWidget(field,0,0,1,1,CAlignment.Center);
+        expect(field.x()).toBe(75); expect(field.y()).toBe(40);
+        expect(field.width()).toBe(50); expect(field.height()).toBe(20);
+    });
+    test("Right alone leaves the vertical axis filling", () => {
+        const { layout, field } = alignedGrid(); layout.addWidget(field,0,0,1,1,CAlignment.Right);
+        expect(field.x()).toBe(150); expect(field.height()).toBe(100);
+    });
+    test("Bottom alone leaves horizontal filling", () => {
+        const { layout, field } = alignedGrid(); layout.addWidget(field,0,0,1,1,CAlignment.Bottom);
+        expect(field.y()).toBe(80); expect(field.width()).toBe(200);
+    });
+    test("Fixed widgets align without preventing cell growth", () => {
+        const { layout, field } = alignedGrid(); field.setSizePolicy(CSizePolicyType.Fixed,CSizePolicyType.Fixed);
+        layout.addWidget(field,0,0,1,1,CAlignment.Right | CAlignment.Bottom);
+        expect(field.x()).toBe(150); expect(field.y()).toBe(80);
+    });
+    test("alignment uses the whole spanned cell including internal spacing", () => {
+        const { layout, field } = alignedGrid(); layout.setSpacing(6);
+        layout.addWidget(field,0,0,2,2,CAlignment.Right | CAlignment.Bottom);
+        expect(field.x()).toBe(150); expect(field.y()).toBe(80);
+    });
+    test("setAlignment repositions and clearing it restores fill", () => {
+        const { layout, field } = alignedGrid(); layout.addWidget(field,0,0);
+        expect(layout.setAlignment(field,CAlignment.Center)).toBe(true); expect(field.x()).toBe(75);
+        layout.setAlignment(field,0); expect(field.width()).toBe(200); expect(field.height()).toBe(100);
+    });
+    test("minimum sizes remain authoritative", () => {
+        const { root, layout, field } = alignedGrid(); root.resize(10,10); field.setMinimumSize(40,30);
+        layout.addWidget(field,0,0,1,1,CAlignment.Right | CAlignment.Bottom);
+        expect(field.width()).toBe(40); expect(field.height()).toBe(30);
+        expect(field.x()).toBe(0); expect(field.y()).toBe(0);
+    });
+    test("aligned widget leaves its neighbors in their own cells", () => {
+        const { layout, field } = alignedGrid(); const next = new AlignmentHintWidget();
+        layout.addWidget(field,0,0,1,1,CAlignment.Center); layout.addWidget(next,0,1);
+        expect(field.x()).toBe(25); expect(next.x()).toBe(100);
+    });
+    test("width-dependent preferred height uses aligned width", () => {
+        const { layout } = alignedGrid(); const field = new WidthDependentWidget();
+        layout.addWidget(field,0,0,1,1,CAlignment.Center);
+        expect(layout.heightForWidth(400)).toBe(20); expect(layout.heightForWidth(100)).toBe(40);
+    });
+    test("spacers continue to consume space alongside aligned widgets", () => {
+        const { layout, field } = alignedGrid();
+        const spacer = new CSpacerItem(20,0,CSizePolicyType.Fixed,CSizePolicyType.Minimum);
+        layout.addSpacerItem(spacer,0,0); layout.addWidget(field,0,1,1,1,CAlignment.Right);
+        expect(spacer.geometry().width()).toBe(20); expect(field.x()).toBe(150);
+    });
+    test("removing and readding a widget does not retain alignment", () => {
+        const { layout, field } = alignedGrid(); layout.addWidget(field,0,0,1,1,CAlignment.Center);
+        layout.removeWidget(field); layout.addWidget(field,0,0);
+        expect(field.x()).toBe(0); expect(field.width()).toBe(200);
     });
 });

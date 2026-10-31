@@ -1,3 +1,4 @@
+import { CAlignment } from "../core/CAlignment.js";
 import { CSizePolicy } from "../geometry/CSizePolicy.js";
 import type { CWidget } from "../widgets/CWidget.js";
 import { CWidgetItem } from "./CWidgetItem.js";
@@ -54,6 +55,17 @@ export abstract class CLayout {
 	addWidget(widget: CWidget): void {
 		this.addItem(new CWidgetItem(widget));
 	}
+
+    /** Sets alignment for a directly managed widget; returns false when not found. */
+    setAlignment(widget: CWidget, alignment: CAlignment | 0): boolean {
+        const item = this.#m_items.find(item => item.widget() === widget);
+        if (!item) return false;
+        if (item.alignment() !== alignment) {
+            item.setAlignment(alignment);
+            this.update();
+        }
+        return true;
+    }
 
 	/** Adds an empty stretch item with the specified stretch factor. */
 	addStretch(stretch: number): void {
@@ -210,6 +222,32 @@ export abstract class CLayout {
             : horizontal ? hint.width() : hint.height()));
         return { minimum: CSizePolicy.canShrink(axis) ? minimum : preferred, preferred,
             maximum: CSizePolicy.canGrow(axis) ? maximum : preferred };
+    }
+
+    protected static itemAxisAlignment(item: CLayoutItem, horizontal: boolean): number {
+        return item.alignment() & (horizontal
+            ? CAlignment.Left | CAlignment.Right | CAlignment.HCenter
+            : CAlignment.Top | CAlignment.Bottom | CAlignment.VCenter);
+    }
+
+    /** Actual width within an allocated cell, respecting alignment and policy bounds. */
+    protected static itemWidth(item: CLayoutItem, available: number): number {
+        const bounds = CLayout.layoutItemAxisBounds(item, true);
+        return Math.min(bounds.maximum, Math.max(bounds.minimum,
+            CLayout.itemAxisAlignment(item, true) ? Math.min(available, bounds.preferred) : available));
+    }
+
+    /** Places the item inside a cell; flags only constrain their respective axis. */
+    protected static setAlignedItemGeometry(item: CLayoutItem, x: number, y: number, width: number, height: number): void {
+        const actualWidth = CLayout.itemWidth(item, width);
+        const vertical = CLayout.layoutItemAxisBounds(item, false, actualWidth);
+        const actualHeight = Math.min(vertical.maximum, Math.max(vertical.minimum,
+            CLayout.itemAxisAlignment(item, false) ? Math.min(height, vertical.preferred) : height));
+        const alignment = item.alignment();
+        const dx = Math.max(0, width - actualWidth), dy = Math.max(0, height - actualHeight);
+        x += (alignment & CAlignment.Right) ? dx : (alignment & CAlignment.HCenter) ? dx / 2 : 0;
+        y += (alignment & CAlignment.Bottom) ? dy : (alignment & CAlignment.VCenter) ? dy / 2 : 0;
+        item.setGeometry(x, y, actualWidth, actualHeight);
     }
 
 	/** Internal bounded allocation; larger priorities receive extra space first. */

@@ -1,3 +1,5 @@
+import { vi } from "vitest";
+import { CAlignment } from "../../src/core/CAlignment.js";
 import { CSpacerItem } from "../../src/layouts/CSpacerItem.js";
 import { CSizePolicy, CSizePolicyType } from "../../src/geometry/CSizePolicy.js";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -809,5 +811,95 @@ describe("CBoxLayout spacer items", () => {
         const { layout } = makeBox(CBoxLayoutDirection.TopToBottom);
         layout.addWidget(new WidthDependentWidget()); layout.addSpacing(15);
         expect(layout.heightForWidth(100)).toBe(55);
+    });
+});
+
+
+describe("CBoxLayout widget alignment", () => {
+
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+
+    function alignedBox(direction = CBoxLayoutDirection.LeftToRight) {
+        const root = new CWidget(); root.resize(200,100);
+        const layout = new CBoxLayout(direction); layout.setContentsMargins(0,0,0,0); layout.setSpacing(0);
+        root.setLayout(layout); const field = new HintWidget(50,20);
+        return { root, layout, field };
+    }
+    test("no alignment retains normal filling", () => {
+        const { layout, field } = alignedBox(); layout.addWidget(field);
+        expect(field.width()).toBe(200); expect(field.height()).toBe(100);
+    });
+    test("Right aligns the hint width and leaves height unconstrained", () => {
+        const { layout, field } = alignedBox(); layout.addWidget(field,0,CAlignment.Right);
+        expect(field.x()).toBe(150); expect(field.width()).toBe(50); expect(field.height()).toBe(100);
+    });
+    test("Center aligns the preferred size on both axes", () => {
+        const { layout, field } = alignedBox(); layout.addWidget(field,0,CAlignment.Center);
+        expect(field.x()).toBe(75); expect(field.y()).toBe(40);
+        expect(field.width()).toBe(50); expect(field.height()).toBe(20);
+    });
+    test("Bottom aligns height without limiting width", () => {
+        const { layout, field } = alignedBox(); layout.addWidget(field,0,CAlignment.Bottom);
+        expect(field.x()).toBe(0); expect(field.y()).toBe(80); expect(field.width()).toBe(200);
+    });
+    test("vertical boxes support Right and Bottom", () => {
+        const { layout, field } = alignedBox(CBoxLayoutDirection.TopToBottom);
+        layout.addWidget(field,0,CAlignment.Right | CAlignment.Bottom);
+        expect(field.x()).toBe(150); expect(field.y()).toBe(80);
+    });
+    test("Left and Top retain preferred dimensions at the leading edges", () => {
+        const { layout, field } = alignedBox(); layout.addWidget(field,0,CAlignment.Left | CAlignment.Top);
+        expect(field.x()).toBe(0); expect(field.y()).toBe(0);
+        expect(field.width()).toBe(50); expect(field.height()).toBe(20);
+    });
+    test("a Fixed widget aligns inside a larger slot", () => {
+        const { layout, field } = alignedBox(); field.setSizePolicy(CSizePolicyType.Fixed,CSizePolicyType.Fixed);
+        layout.addWidget(field,0,CAlignment.Center);
+        expect(field.x()).toBe(75); expect(field.y()).toBe(40); expect(field.width()).toBe(50);
+    });
+    test("setAlignment updates and zero restores filling", () => {
+        const { layout, field } = alignedBox(); layout.addWidget(field);
+        expect(layout.setAlignment(field,CAlignment.Center)).toBe(true); expect(field.x()).toBe(75);
+        expect(layout.setAlignment(field,0)).toBe(true); expect(field.width()).toBe(200); expect(field.y()).toBe(0);
+    });
+    test("setAlignment rejects widgets not directly managed", () => {
+        const { layout, field } = alignedBox();
+        expect(layout.setAlignment(field,CAlignment.Right)).toBe(false);
+        expect(layout.count()).toBe(0);
+    });
+    test("reapplying the same alignment does not relayout", () => {
+        const { layout, field } = alignedBox(); layout.addWidget(field,0,CAlignment.Right);
+        const update = vi.spyOn(layout,"update");
+        expect(layout.setAlignment(field,CAlignment.Right)).toBe(true); expect(update).not.toHaveBeenCalled();
+    });
+    test("aligned widgets keep their allocated slot before the next widget", () => {
+        const { layout, field } = alignedBox(); const next = new HintWidget(50,20);
+        layout.addWidget(field,0,CAlignment.Center); layout.addWidget(next);
+        expect(field.x()).toBe(25); expect(field.width()).toBe(50); expect(next.x()).toBe(100);
+    });
+    test("alignment respects explicit maximum sizes", () => {
+        const { layout, field } = alignedBox(); field.setMaximumSize(30,10);
+        layout.addWidget(field,0,CAlignment.Right | CAlignment.Bottom);
+        expect(field.width()).toBe(30); expect(field.height()).toBe(10);
+        expect(field.x()).toBe(170); expect(field.y()).toBe(90);
+    });
+    test("minimum sizes win over an undersized aligned cell", () => {
+        const { root, layout, field } = alignedBox(); root.resize(10,10); field.setMinimumSize(40,30);
+        layout.addWidget(field,0,CAlignment.Center);
+        expect(field.width()).toBe(40); expect(field.height()).toBe(30);
+        expect(field.x()).toBe(0); expect(field.y()).toBe(0);
+    });
+    test("width-dependent height uses the aligned actual width", () => {
+        const { layout } = alignedBox(); const field = new WidthDependentWidget();
+        layout.addWidget(field,0,CAlignment.Center);
+        expect(field.width()).toBe(200); expect(field.height()).toBe(20);
+        expect(layout.heightForWidth(400)).toBe(20);
+    });
+    test("vertical heightForWidth uses preferred aligned width", () => {
+        const { layout } = alignedBox(CBoxLayoutDirection.TopToBottom); const field = new WidthDependentWidget();
+        layout.addWidget(field,0,CAlignment.HCenter);
+        expect(layout.heightForWidth(400)).toBe(20);
+        expect(layout.heightForWidth(100)).toBe(40);
     });
 });

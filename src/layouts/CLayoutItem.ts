@@ -1,3 +1,4 @@
+import { CAlignment } from "../core/CAlignment.js";
 import { CSize } from "../geometry/CSize.js";
 import { CSizePolicy } from "../geometry/CSizePolicy.js";
 import { CRect } from "../geometry/CRect.js";
@@ -7,6 +8,13 @@ import type { CWidget } from "../widgets/CWidget.js";
  * Abstract base class for items managed by a layout.
  */
 export abstract class CLayoutItem {
+    #alignment: CAlignment | 0 = 0;
+
+    /** Zero preserves normal size-policy-driven filling on both axes. */
+    alignment(): CAlignment | 0 { return this.#alignment; }
+    /** Call the containing layout's update() after changing an item directly. */
+    setAlignment(alignment: CAlignment | 0): void { this.#alignment = alignment; }
+
 	/**
 	 * Returns the widget represented by this layout item, or `null` if the
 	 * item does not represent a widget.

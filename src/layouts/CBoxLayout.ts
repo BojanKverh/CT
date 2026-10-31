@@ -1,3 +1,4 @@
+import { CAlignment } from "../core/CAlignment.js";
 import { CSpacerItem } from "./CSpacerItem.js";
 import { CSizePolicyType } from "../geometry/CSizePolicy.js";
 import { CSizePolicy } from "../geometry/CSizePolicy.js";
@@ -34,8 +35,10 @@ export class CBoxLayout extends CLayout {
 	}
 
 	/** Adds a widget with an optional stretch factor. */
-	override addWidget(widget: CWidget, stretch = 0): void {
-		this.addItem(new CBoxLayoutItem(widget, stretch));
+	override addWidget(widget: CWidget, stretch = 0, alignment: CAlignment | 0 = 0): void {
+        const item = new CBoxLayoutItem(widget, stretch);
+        item.setAlignment(alignment);
+        this.addItem(item);
 	}
 
     /** Adds empty space with its own preferred size and axis policies. */
@@ -50,10 +53,10 @@ export class CBoxLayout extends CLayout {
     }
 
 	/** Adds all widgets from another layout with an optional stretch factor. */
-	addLayout(layout: CLayout, stretch = 0): void {
+	addLayout(layout: CLayout, stretch = 0, alignment: CAlignment | 0 = 0): void {
 		const widget = new CWidget();
 		widget.setLayout(layout);
-		this.addWidget(widget, stretch);
+		this.addWidget(widget, stretch, alignment);
 	}
 
 	/** Returns the preferred size required by the arranged items. */
@@ -132,12 +135,12 @@ export class CBoxLayout extends CLayout {
                 const widget = this.itemAt(i)?.widget();
                 const item = this.itemAt(i)!;
                 if (widget || item instanceof CSpacerItem) height = Math.max(height,
-                    CLayout.layoutItemAxisBounds(item, false, widths[i]!).preferred);
+                    CLayout.layoutItemAxisBounds(item, false, CLayout.itemWidth(item, widths[i]!)).preferred);
             }
         } else {
             for (const item of this.items()) {
                 const widget = item.widget();
-                if (widget) height += this.#bounds(widget, false, this.#crossSize(widget, contentWidth)).preferred;
+                if (widget) height += this.#bounds(widget, false, CLayout.itemWidth(item, contentWidth)).preferred;
                 else if (item instanceof CSpacerItem) height += CLayout.layoutItemAxisBounds(item, false).preferred;
             }
             height += spacing;
@@ -185,13 +188,8 @@ export class CBoxLayout extends CLayout {
 				const widget = item.widget();
 				const width = sizes[i]!;
 
-				if (widget !== null) {
-					const height = this.#crossSize(widget, crossAvailable, width);
-					widget.setGeometry(x, contentY, width, height);
-                } else if (item instanceof CSpacerItem) {
-                    const bounds = CLayout.layoutItemAxisBounds(item, false);
-                    item.setGeometry(x, contentY, width, Math.min(bounds.maximum, Math.max(bounds.minimum, crossAvailable)));
-				}
+                if (widget !== null || item instanceof CSpacerItem)
+                    CLayout.setAlignedItemGeometry(item, x, contentY, width, crossAvailable);
 
 				x += width + spacing;
 			}
@@ -207,13 +205,8 @@ export class CBoxLayout extends CLayout {
 				const widget = item.widget();
 				const height = sizes[i]!;
 
-				if (widget !== null) {
-					const width = this.#crossSize(widget, crossAvailable);
-					widget.setGeometry(contentX, y, width, height);
-                } else if (item instanceof CSpacerItem) {
-                    const bounds = CLayout.layoutItemAxisBounds(item, true);
-                    item.setGeometry(contentX, y, Math.min(bounds.maximum, Math.max(bounds.minimum, crossAvailable)), height);
-				}
+                if (widget !== null || item instanceof CSpacerItem)
+                    CLayout.setAlignedItemGeometry(item, contentX, y, crossAvailable, height);
 
 				y += height + spacing;
 			}
@@ -222,11 +215,6 @@ export class CBoxLayout extends CLayout {
 
     #bounds(widget: CWidget, horizontal: boolean, width?: number): { minimum: number; preferred: number; maximum: number } {
         return CLayout.layoutAxisBounds(widget, horizontal, false, width);
-    }
-
-    #crossSize(widget: CWidget, available: number, width?: number): number {
-        const bounds = this.#bounds(widget, this.#m_direction !== CBoxLayoutDirection.LeftToRight, width);
-        return Math.min(bounds.maximum, Math.max(bounds.minimum, available));
     }
 
     #calculateSizes(available: number, width?: number): number[] {
@@ -244,11 +232,11 @@ export class CBoxLayout extends CLayout {
             const widget = item.widget();
             const bounds = item instanceof CSpacerItem ? CLayout.layoutItemAxisBounds(item, horizontal)
                 : widget === null ? { minimum: 0, preferred: 0, maximum: Number.MAX_SAFE_INTEGER }
-                : this.#bounds(widget, horizontal, width === undefined ? undefined : this.#crossSize(widget, width));
+                : this.#bounds(widget, horizontal, width === undefined ? undefined : CLayout.itemWidth(item, width));
             const policy = item instanceof CSpacerItem ? item.sizePolicy() : widget?.sizePolicy();
             const axisPolicy = horizontal ? policy?.horizontalPolicy() : policy?.verticalPolicy();
             const stretch = item.stretch() || (horizontal ? policy?.horizontalStretch() : policy?.verticalStretch()) || 0;
-            minimums.push(bounds.minimum); preferred.push(bounds.preferred); maximums.push(bounds.maximum);
+            minimums.push(bounds.minimum); preferred.push(bounds.preferred); maximums.push(CLayout.itemAxisAlignment(item, horizontal) ? Number.MAX_SAFE_INTEGER : bounds.maximum);
             weights.push(stretch || 1);
             priorities.push(stretch > 0 ? 3
                 : axisPolicy !== undefined && CSizePolicy.isExpanding(axisPolicy) ? 2 : hasSpacer ? 0 : hasExpanding ? 1 : 3);
