@@ -1,3 +1,5 @@
+import { CSpacerItem } from "./CSpacerItem.js";
+import { CSizePolicyType } from "../geometry/CSizePolicy.js";
 import { CSizePolicy } from "../geometry/CSizePolicy.js";
 import { CLayout } from "./CLayout.js";
 import { CWidget } from "../widgets/CWidget.js";
@@ -36,6 +38,17 @@ export class CBoxLayout extends CLayout {
 		this.addItem(new CBoxLayoutItem(widget, stretch));
 	}
 
+    /** Adds empty space with its own preferred size and axis policies. */
+    addSpacerItem(spacer: CSpacerItem): void { this.addItem(spacer); }
+
+    /** Adds a fixed gap along this box's direction. */
+    addSpacing(size: number): void {
+        const horizontal = this.#m_direction === CBoxLayoutDirection.LeftToRight;
+        this.addSpacerItem(new CSpacerItem(horizontal ? size : 0, horizontal ? 0 : size,
+            horizontal ? CSizePolicyType.Fixed : CSizePolicyType.Minimum,
+            horizontal ? CSizePolicyType.Minimum : CSizePolicyType.Fixed));
+    }
+
 	/** Adds all widgets from another layout with an optional stretch factor. */
 	addLayout(layout: CLayout, stretch = 0): void {
 		const widget = new CWidget();
@@ -57,13 +70,13 @@ export class CBoxLayout extends CLayout {
 		for (let i = 0; i < count; ++i) {
 			const item = this.itemAt(i) as CBoxLayoutItem;
 			const widget = item.widget();
-			if (widget === null)
+			if (widget === null && !(item instanceof CSpacerItem))
 				continue;
 
-			const minimum = widget.minimumSize();
-			const maximum = widget.maximumSize();
-            const originalHint = widget.sizeHint();
-            const policy = widget.sizePolicy();
+			const minimum = item.minimumSize();
+			const maximum = item.maximumSize();
+            const originalHint = item.sizeHint();
+            const policy = item.sizePolicy();
             const hint = new CSize(
                 CSizePolicy.ignoresHint(policy.horizontalPolicy()) ? 0 : originalHint.width(),
                 CSizePolicy.ignoresHint(policy.verticalPolicy()) ? 0 : originalHint.height());
@@ -117,12 +130,15 @@ export class CBoxLayout extends CLayout {
             const widths = this.#calculateSizes(Math.max(0, contentWidth - spacing));
             for (let i = 0; i < this.count(); ++i) {
                 const widget = this.itemAt(i)?.widget();
-                if (widget) height = Math.max(height, this.#bounds(widget, false, widths[i]!).preferred);
+                const item = this.itemAt(i)!;
+                if (widget || item instanceof CSpacerItem) height = Math.max(height,
+                    CLayout.layoutItemAxisBounds(item, false, widths[i]!).preferred);
             }
         } else {
             for (const item of this.items()) {
                 const widget = item.widget();
                 if (widget) height += this.#bounds(widget, false, this.#crossSize(widget, contentWidth)).preferred;
+                else if (item instanceof CSpacerItem) height += CLayout.layoutItemAxisBounds(item, false).preferred;
             }
             height += spacing;
         }
@@ -172,6 +188,9 @@ export class CBoxLayout extends CLayout {
 				if (widget !== null) {
 					const height = this.#crossSize(widget, crossAvailable, width);
 					widget.setGeometry(x, contentY, width, height);
+                } else if (item instanceof CSpacerItem) {
+                    const bounds = CLayout.layoutItemAxisBounds(item, false);
+                    item.setGeometry(x, contentY, width, Math.min(bounds.maximum, Math.max(bounds.minimum, crossAvailable)));
 				}
 
 				x += width + spacing;
@@ -191,6 +210,9 @@ export class CBoxLayout extends CLayout {
 				if (widget !== null) {
 					const width = this.#crossSize(widget, crossAvailable);
 					widget.setGeometry(contentX, y, width, height);
+                } else if (item instanceof CSpacerItem) {
+                    const bounds = CLayout.layoutItemAxisBounds(item, true);
+                    item.setGeometry(contentX, y, Math.min(bounds.maximum, Math.max(bounds.minimum, crossAvailable)), height);
 				}
 
 				y += height + spacing;
@@ -213,16 +235,17 @@ export class CBoxLayout extends CLayout {
         const horizontal = this.#m_direction === CBoxLayoutDirection.LeftToRight;
         const hasSpacer = this.#hasStretchSpacer();
         const hasExpanding = this.items().some(item => {
-            const policy = item.widget()?.sizePolicy();
+            const policy = item.sizePolicy();
             const axis = horizontal ? policy?.horizontalPolicy() : policy?.verticalPolicy();
             return axis !== undefined && CSizePolicy.isExpanding(axis);
         });
         for (let i = 0; i < this.count(); ++i) {
             const item = this.itemAt(i) as CBoxLayoutItem;
             const widget = item.widget();
-            const bounds = widget === null ? { minimum: 0, preferred: 0, maximum: Number.MAX_SAFE_INTEGER }
+            const bounds = item instanceof CSpacerItem ? CLayout.layoutItemAxisBounds(item, horizontal)
+                : widget === null ? { minimum: 0, preferred: 0, maximum: Number.MAX_SAFE_INTEGER }
                 : this.#bounds(widget, horizontal, width === undefined ? undefined : this.#crossSize(widget, width));
-            const policy = widget?.sizePolicy();
+            const policy = item instanceof CSpacerItem ? item.sizePolicy() : widget?.sizePolicy();
             const axisPolicy = horizontal ? policy?.horizontalPolicy() : policy?.verticalPolicy();
             const stretch = item.stretch() || (horizontal ? policy?.horizontalStretch() : policy?.verticalStretch()) || 0;
             minimums.push(bounds.minimum); preferred.push(bounds.preferred); maximums.push(bounds.maximum);
@@ -262,6 +285,11 @@ export class CBoxLayout extends CLayout {
         for (let i = 0; i < this.count(); ++i) {
             const item = this.itemAt(i) as CBoxLayoutItem;
             if (item.widget() === null && item.stretch() > 0) return true;
+            if (item instanceof CSpacerItem) {
+                const policy = item.sizePolicy();
+                if (CSizePolicy.isExpanding(this.#m_direction === CBoxLayoutDirection.LeftToRight
+                    ? policy.horizontalPolicy() : policy.verticalPolicy())) return true;
+            }
         }
         return false;
     }

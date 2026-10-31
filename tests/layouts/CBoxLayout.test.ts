@@ -1,3 +1,4 @@
+import { CSpacerItem } from "../../src/layouts/CSpacerItem.js";
 import { CSizePolicy, CSizePolicyType } from "../../src/geometry/CSizePolicy.js";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
@@ -748,5 +749,65 @@ describe("CBoxLayout width-dependent height", () => {
         layout.addWidget(new WidthDependentWidget()); layout.addWidget(new WidthDependentWidget());
         expect(layout.heightForWidth(200)).toBe(40);
         expect(layout.heightForWidth(400)).toBe(20);
+    });
+});
+
+
+describe("CBoxLayout spacer items", () => {
+
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+
+    function makeBox(direction = CBoxLayoutDirection.LeftToRight) {
+        const root = new CWidget(); root.resize(200,100);
+        const layout = new CBoxLayout(direction); layout.setContentsMargins(0,0,0,0); layout.setSpacing(0);
+        root.setLayout(layout); return { root, layout };
+    }
+    test("addSpacing inserts a fixed horizontal gap", () => {
+        const { layout } = makeBox();
+        const a = new CWidget(), b = new CWidget(); a.setFixedSize(30,10); b.setFixedSize(30,10);
+        layout.addWidget(a); layout.addSpacing(20); layout.addWidget(b);
+        expect(b.x()).toBe(50); expect(layout.count()).toBe(3);
+        expect(layout.widgetAt(1)).toBeNull(); expect(layout.sizeHint().width()).toBe(80);
+    });
+    test("addSpacing inserts a fixed vertical gap", () => {
+        const { layout } = makeBox(CBoxLayoutDirection.TopToBottom);
+        const a = new CWidget(), b = new CWidget(); a.setFixedSize(10,20); b.setFixedSize(10,20);
+        layout.addWidget(a); layout.addSpacing(15); layout.addWidget(b);
+        expect(b.y()).toBe(35); expect(layout.sizeHint().height()).toBe(55);
+    });
+    test("expanding spacer receives space without enlarging a preferred widget", () => {
+        const { root, layout } = makeBox();
+        const field = new HintWidget(50,20); layout.addWidget(field);
+        const spacer = new CSpacerItem(0,0,CSizePolicyType.Expanding,CSizePolicyType.Minimum);
+        layout.addSpacerItem(spacer);
+        expect(field.width()).toBe(50); expect(spacer.geometry().width()).toBe(150);
+        expect(root.children().length).toBe(1);
+    });
+    test("fixed and expanding spacers coexist with legacy stretch", () => {
+        const { layout } = makeBox();
+        const spacer = new CSpacerItem(20,10,CSizePolicyType.Fixed,CSizePolicyType.Fixed);
+        layout.addSpacerItem(spacer); layout.addStretch(1);
+        expect(spacer.geometry().width()).toBe(20); expect(spacer.geometry().height()).toBe(10);
+    });
+    test("a spacer can be changed and explicitly relaid out", () => {
+        const { layout } = makeBox();
+        const spacer = new CSpacerItem(20,10,CSizePolicyType.Fixed,CSizePolicyType.Fixed); layout.addSpacerItem(spacer);
+        spacer.changeSize(40,30,CSizePolicyType.Fixed,CSizePolicyType.Fixed); layout.update();
+        expect(spacer.geometry().width()).toBe(40); expect(layout.sizeHint().height()).toBe(30);
+    });
+    test("adding the same spacer twice is ignored", () => {
+        const { layout } = makeBox(); const spacer = new CSpacerItem(20,10);
+        layout.addSpacerItem(spacer); layout.addSpacerItem(spacer); expect(layout.count()).toBe(1);
+    });
+    test("Fixed spacer does not shrink in an undersized container", () => {
+        const { root, layout } = makeBox(); root.resize(10,10);
+        const spacer = new CSpacerItem(30,20,CSizePolicyType.Fixed,CSizePolicyType.Fixed); layout.addSpacerItem(spacer);
+        expect(spacer.geometry().width()).toBe(30); expect(spacer.geometry().height()).toBe(20);
+    });
+    test("spacer height participates in heightForWidth", () => {
+        const { layout } = makeBox(CBoxLayoutDirection.TopToBottom);
+        layout.addWidget(new WidthDependentWidget()); layout.addSpacing(15);
+        expect(layout.heightForWidth(100)).toBe(55);
     });
 });

@@ -1,3 +1,4 @@
+import { CSpacerItem } from "../../src/layouts/CSpacerItem.js";
 import { CSizePolicyType } from "../../src/geometry/CSizePolicy.js";
 import { CSize } from "../../src/geometry/CSize.js";
 import {
@@ -937,5 +938,62 @@ describe("CGridLayout width-dependent height", () => {
         const field = new WidthDependentWidget(); layout.addWidget(field, 0, 0, 1, 2);
         expect(layout.heightForWidth(200)).toBe(20);
         expect(layout.heightForWidth(100)).toBe(40);
+    });
+});
+
+
+class SpacerGridHint extends CWidget { override sizeHint(): CSize { return new CSize(50,20); } }
+
+describe("CGridLayout spacer items", () => {
+
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+
+    function makeGrid() {
+        const root = new CWidget(); root.resize(200,100);
+        const layout = new CGridLayout(); layout.setContentsMargins(0,0,0,0); layout.setSpacing(0);
+        root.setLayout(layout); return { root, layout };
+    }
+    test("spacers occupy rows and columns without a widget", () => {
+        const { root, layout } = makeGrid(); const spacer = new CSpacerItem(20,10);
+        layout.addSpacerItem(spacer,1,2);
+        expect(layout.rowCount()).toBe(2); expect(layout.columnCount()).toBe(3);
+        expect(layout.widgetAt(0)).toBeNull(); expect(root.children().length).toBe(0);
+        expect(layout.sizeHint().width()).toBe(20); expect(layout.sizeHint().height()).toBe(10);
+    });
+    test("fixed spacer separates widget columns", () => {
+        const { layout } = makeGrid(); const a = new CWidget(), b = new CWidget();
+        a.setFixedSize(30,10); b.setFixedSize(30,10);
+        layout.addWidget(a,0,0); layout.addSpacerItem(new CSpacerItem(20,0,CSizePolicyType.Fixed,CSizePolicyType.Minimum),0,1);
+        layout.addWidget(b,0,2); expect(b.x()).toBe(50);
+    });
+    test("expanding spacer absorbs the remaining width", () => {
+        const { layout } = makeGrid(); const field = new SpacerGridHint(); layout.addWidget(field,0,0);
+        const spacer = new CSpacerItem(0,0,CSizePolicyType.Expanding,CSizePolicyType.Minimum);
+        layout.addSpacerItem(spacer,0,1);
+        expect(field.width()).toBe(50); expect(spacer.geometry().width()).toBe(150);
+    });
+    test("spanning spacer counts internal spacing once", () => {
+        const { layout } = makeGrid(); layout.setSpacing(6);
+        const spacer = new CSpacerItem(50,20,CSizePolicyType.Fixed,CSizePolicyType.Fixed);
+        layout.addSpacerItem(spacer,0,0,2,2);
+        expect(layout.sizeHint().width()).toBe(50); expect(layout.sizeHint().height()).toBe(20);
+        expect(spacer.geometry().width()).toBe(50); expect(spacer.geometry().height()).toBe(20);
+    });
+    test("invalid positions and duplicate insertion are ignored", () => {
+        const { layout } = makeGrid(); const spacer = new CSpacerItem(10,10);
+        layout.addSpacerItem(spacer,-1,0); layout.addSpacerItem(spacer,0,0,0,1);
+        layout.addSpacerItem(spacer,0.5,0); expect(layout.count()).toBe(0);
+        layout.addSpacerItem(spacer,0,0); layout.addSpacerItem(spacer,3,3); expect(layout.count()).toBe(1);
+    });
+    test("clear removes spacer positions before reuse", () => {
+        const { layout } = makeGrid(); const spacer = new CSpacerItem(10,10);
+        layout.addSpacerItem(spacer,4,4); layout.clear(); expect(layout.rowCount()).toBe(0);
+        layout.addSpacerItem(spacer,0,0); expect(layout.rowCount()).toBe(1);
+    });
+    test("heightForWidth includes a fixed spacer row", () => {
+        const { layout } = makeGrid(); layout.addWidget(new WidthDependentWidget(),0,0);
+        layout.addSpacerItem(new CSpacerItem(0,15,CSizePolicyType.Minimum,CSizePolicyType.Fixed),1,0);
+        expect(layout.heightForWidth(100)).toBe(55);
     });
 });

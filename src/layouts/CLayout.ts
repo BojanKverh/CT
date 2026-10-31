@@ -136,6 +136,7 @@ export abstract class CLayout {
 	protected insertItem(index: number, item: CLayoutItem): boolean {
 		const widget = item.widget();
 
+        if (this.#m_items.includes(item)) return false;
 		if (widget !== null && this.#indexOf(widget) !== -1)
 			return false;
 
@@ -195,6 +196,21 @@ export abstract class CLayout {
 	    return { minimum: CSizePolicy.canShrink(axis) ? minimum : preferred, preferred,
 	        maximum: CSizePolicy.canGrow(axis) ? maximum : preferred };
 	}
+
+    /** Axis constraints for widget items and non-widget spacer items. */
+    protected static layoutItemAxisBounds(item: CLayoutItem, horizontal: boolean, width?: number): CLayoutAxisBounds {
+        const widget = item.widget();
+        if (widget !== null) return CLayout.layoutAxisBounds(widget, horizontal, false, width);
+        const policy = item.sizePolicy();
+        const axis = horizontal ? policy.horizontalPolicy() : policy.verticalPolicy();
+        const hint = item.sizeHint(), min = item.minimumSize(), max = item.maximumSize();
+        const minimum = horizontal ? min.width() : min.height();
+        const maximum = horizontal ? max.width() : max.height();
+        const preferred = Math.min(maximum, Math.max(minimum, CSizePolicy.ignoresHint(axis) ? 0
+            : horizontal ? hint.width() : hint.height()));
+        return { minimum: CSizePolicy.canShrink(axis) ? minimum : preferred, preferred,
+            maximum: CSizePolicy.canGrow(axis) ? maximum : preferred };
+    }
 
 	/** Internal bounded allocation; larger priorities receive extra space first. */
 	protected static layoutAxisSizes(available: number, minimums: number[], preferred: number[], maximums: number[],

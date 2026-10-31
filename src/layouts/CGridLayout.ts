@@ -1,3 +1,5 @@
+import { CSpacerItem } from "./CSpacerItem.js";
+import type { CLayoutItem } from "./CLayoutItem.js";
 import { CSizePolicy } from "../geometry/CSizePolicy.js";
 import { CLayout } from "./CLayout.js";
 import { CGridLayoutItem } from "./CGridLayoutItem.js";
@@ -12,6 +14,7 @@ import type { CWidget } from "../widgets/CWidget.js";
  */
 export class CGridLayout extends CLayout
 {
+	#m_spacerPositions = new Map<CLayoutItem, { row(): number; column(): number; rowSpan(): number; columnSpan(): number }>();
 	#m_rowStretch = new Map<number, number>();
 	#m_columnStretch = new Map<number, number>();
 
@@ -43,12 +46,27 @@ export class CGridLayout extends CLayout
 				columnSpan));
 	}
 
+    /** Adds a spacer at a grid position, optionally spanning several cells. */
+    addSpacerItem(spacer: CSpacerItem, row: number, column: number, rowSpan = 1, columnSpan = 1): void {
+        if (![row, column, rowSpan, columnSpan].every(Number.isSafeInteger)
+            || row < 0 || column < 0 || rowSpan < 1 || columnSpan < 1 || this.items().includes(spacer)) return;
+        this.#m_spacerPositions.set(spacer, { row: () => row, column: () => column,
+            rowSpan: () => rowSpan, columnSpan: () => columnSpan });
+        this.addItem(spacer);
+    }
+
+    override clear(): void { this.#m_spacerPositions.clear(); super.clear(); }
+
+    #position(item: CLayoutItem) {
+        return this.#m_spacerPositions.get(item) ?? item as CGridLayoutItem;
+    }
+
 	/** Returns the number of rows currently occupied by grid items. */
 	rowCount(): number {
 		let count = 0;
 
 		for (const item of this.items()) {
-			const gridItem = item as CGridLayoutItem;
+			const gridItem = this.#position(item);
 
 			count = Math.max(count, gridItem.row() + gridItem.rowSpan());
 		}
@@ -61,7 +79,7 @@ export class CGridLayout extends CLayout
 		let count = 0;
 
 		for (const item of this.items()) {
-			const gridItem = item as CGridLayoutItem;
+			const gridItem = this.#position(item);
 
 			count = Math.max(count, gridItem.column() + gridItem.columnSpan());
 		}
@@ -208,9 +226,7 @@ export class CGridLayout extends CLayout
 		);
 
 		for (const item of this.items()) {
-			const gridItem = item as CGridLayoutItem;
-			const widget = gridItem.widget();
-
+			const gridItem = this.#position(item);
 			const width = this.#spanSize(
 				columnSizes,
 				gridItem.column(),
@@ -225,10 +241,10 @@ export class CGridLayout extends CLayout
 				spacing
 			);
 
-            const horizontal = CLayout.layoutAxisBounds(widget, true);
+            const horizontal = CLayout.layoutItemAxisBounds(item, true);
             const actualWidth = Math.min(horizontal.maximum, Math.max(horizontal.minimum, width));
-            const vertical = CLayout.layoutAxisBounds(widget, false, false, actualWidth);
-            widget.setGeometry(columnPositions[gridItem.column()]!, rowPositions[gridItem.row()]!,
+            const vertical = CLayout.layoutItemAxisBounds(item, false, actualWidth);
+            item.setGeometry(columnPositions[gridItem.column()]!, rowPositions[gridItem.row()]!,
                 actualWidth,
                 Math.min(vertical.maximum, Math.max(vertical.minimum, height)));
 		}
@@ -242,19 +258,18 @@ export class CGridLayout extends CLayout
         const weights = new Array<number>(count).fill(0);
         const expanding = new Array<boolean>(count).fill(false);
         for (const entry of this.items()) {
-            const item = entry as CGridLayoutItem;
-            const widget = item.widget();
+            const item = this.#position(entry);
             const start = horizontal ? item.column() : item.row();
             const span = horizontal ? item.columnSpan() : item.rowSpan();
             const cellWidth = columnSizes === undefined ? undefined
                 : this.#spanSize(columnSizes, item.column(), item.columnSpan(), this.spacing());
-            const xBounds = CLayout.layoutAxisBounds(widget, true);
+            const xBounds = CLayout.layoutItemAxisBounds(entry, true);
             const actualWidth = cellWidth === undefined ? undefined : Math.min(xBounds.maximum, Math.max(xBounds.minimum, cellWidth));
-            const bounds = CLayout.layoutAxisBounds(widget, horizontal, false, actualWidth);
+            const bounds = CLayout.layoutItemAxisBounds(entry, horizontal, actualWidth);
             const spacing = (span - 1) * this.spacing();
             this.#ensureSpanSize(minimums, start, span, Math.max(0, bounds.minimum - spacing));
             this.#ensureSpanSize(preferred, start, span, Math.max(0, bounds.preferred - spacing));
-            const policy = widget.sizePolicy();
+            const policy = entry.sizePolicy();
             const axis = horizontal ? policy.horizontalPolicy() : policy.verticalPolicy();
             const stretch = horizontal ? policy.horizontalStretch() : policy.verticalStretch();
             for (let i = start; i < start + span; ++i) {
