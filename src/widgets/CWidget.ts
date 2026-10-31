@@ -215,8 +215,10 @@ export class CWidget extends CObject {
 		}
 
 		/** Provides if behavior. */
-		if (changed)
+		if (changed) {
+            this.updateGeometry();
 			this.update();
+        }
 	}
 
     /** Provides palette behavior. */
@@ -623,6 +625,25 @@ export class CWidget extends CObject {
         this.setMaximumSize(width, height);
         this.setMinimumSize(width, height);
         this.resize(width, height);
+    }
+
+    /** Whether the preferred height depends on the available width. */
+    hasHeightForWidth(): boolean {
+        return this.#m_layout?.hasHeightForWidth() ?? this.#m_sizePolicy.hasHeightForWidth();
+    }
+
+    /** Preferred height at the supplied width, or -1 when independent. */
+    heightForWidth(width: number): number {
+        return this.#m_layout?.heightForWidth(width) ?? -1;
+    }
+
+    /** Notifies enclosing layouts after a change to preferred geometry. */
+    updateGeometry(): void {
+        const parent = this.parent();
+        if (parent instanceof CWidget) {
+            parent.layout()?.update();
+            parent.updateGeometry();
+        }
     }
 
     /** Returns the preferred size of the widget. */

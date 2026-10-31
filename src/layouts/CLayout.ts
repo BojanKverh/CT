@@ -165,18 +165,30 @@ export abstract class CLayout {
 		);
 	}
 
+    /** Whether any managed widget has a width-dependent preferred height. */
+    hasHeightForWidth(): boolean {
+        return this.items().some(item => item.widget()?.hasHeightForWidth() === true);
+    }
+
+    /** Layouts with width-dependent geometry override this calculation. */
+    heightForWidth(_width: number): number { return -1; }
+
 	/** Returns the preferred size required by the layout. */
 	abstract sizeHint(): CSize;
 	/** Recalculates and applies the geometry of managed widgets. */
 	abstract update(): void;
 
-	protected static layoutAxisBounds(widget: CWidget, horizontal: boolean, geometryFallback = false): CLayoutAxisBounds {
+	protected static layoutAxisBounds(widget: CWidget, horizontal: boolean, geometryFallback = false, width?: number): CLayoutAxisBounds {
 	    const policy = widget.sizePolicy();
 	    const axis = horizontal ? policy.horizontalPolicy() : policy.verticalPolicy();
 	    const minimum = horizontal ? widget.minimumWidth() : widget.minimumHeight();
 	    const maximum = horizontal ? widget.maximumWidth() : widget.maximumHeight();
 	    const hint = widget.sizeHint();
 	    let preferred = horizontal ? hint.width() : hint.height();
+        if (!horizontal && width !== undefined && widget.hasHeightForWidth()) {
+            const height = widget.heightForWidth(Math.max(0, width));
+            if (Number.isFinite(height) && height >= 0) preferred = height;
+        }
 	    if (CSizePolicy.ignoresHint(axis)) preferred = 0;
 	    else if (geometryFallback && preferred <= 0) preferred = horizontal ? widget.width() : widget.height();
 	    preferred = Math.min(maximum, Math.max(minimum, preferred));

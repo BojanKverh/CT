@@ -134,6 +134,15 @@ export class CGridLayout extends CLayout
 		return new CSize(width, height);
 	}
 
+    override heightForWidth(width: number): number {
+        if (!this.hasHeightForWidth()) return -1;
+        const margins = this.contentsMargins();
+        const widths = this.#calculateColumnSizes(Math.max(0, width - margins.left - margins.right
+            - Math.max(0, this.columnCount() - 1) * this.spacing()));
+        return this.#sum(this.#axisMetrics(false, widths).preferred)
+            + Math.max(0, this.rowCount() - 1) * this.spacing() + margins.top + margins.bottom;
+    }
+
 	/** Recalculates and applies grid-cell geometries. */
 	override update(): void {
 		const parent = this.parentWidget();
@@ -184,9 +193,7 @@ export class CGridLayout extends CLayout
 			availableWidth
 		);
 
-		const rowSizes = this.#calculateRowSizes(
-			availableHeight
-		);
+		const rowSizes = this.#axisSizes(availableHeight, false, columnSizes);
 
 		const columnPositions = this.#positions(
 			contentX,
@@ -219,14 +226,15 @@ export class CGridLayout extends CLayout
 			);
 
             const horizontal = CLayout.layoutAxisBounds(widget, true);
-            const vertical = CLayout.layoutAxisBounds(widget, false);
+            const actualWidth = Math.min(horizontal.maximum, Math.max(horizontal.minimum, width));
+            const vertical = CLayout.layoutAxisBounds(widget, false, false, actualWidth);
             widget.setGeometry(columnPositions[gridItem.column()]!, rowPositions[gridItem.row()]!,
-                Math.min(horizontal.maximum, Math.max(horizontal.minimum, width)),
+                actualWidth,
                 Math.min(vertical.maximum, Math.max(vertical.minimum, height)));
 		}
 	}
 
-    #axisMetrics(horizontal: boolean) {
+    #axisMetrics(horizontal: boolean, columnSizes?: number[]) {
         const count = horizontal ? this.columnCount() : this.rowCount();
         const minimums = new Array<number>(count).fill(0);
         const preferred = new Array<number>(count).fill(0);
@@ -238,7 +246,11 @@ export class CGridLayout extends CLayout
             const widget = item.widget();
             const start = horizontal ? item.column() : item.row();
             const span = horizontal ? item.columnSpan() : item.rowSpan();
-            const bounds = CLayout.layoutAxisBounds(widget, horizontal);
+            const cellWidth = columnSizes === undefined ? undefined
+                : this.#spanSize(columnSizes, item.column(), item.columnSpan(), this.spacing());
+            const xBounds = CLayout.layoutAxisBounds(widget, true);
+            const actualWidth = cellWidth === undefined ? undefined : Math.min(xBounds.maximum, Math.max(xBounds.minimum, cellWidth));
+            const bounds = CLayout.layoutAxisBounds(widget, horizontal, false, actualWidth);
             const spacing = (span - 1) * this.spacing();
             this.#ensureSpanSize(minimums, start, span, Math.max(0, bounds.minimum - spacing));
             this.#ensureSpanSize(preferred, start, span, Math.max(0, bounds.preferred - spacing));
@@ -265,10 +277,9 @@ export class CGridLayout extends CLayout
 
     #preferredRowSizes(): number[] { return this.#axisMetrics(false).preferred; }
     #preferredColumnSizes(): number[] { return this.#axisMetrics(true).preferred; }
-    #calculateRowSizes(available: number): number[] { return this.#axisSizes(available, false); }
     #calculateColumnSizes(available: number): number[] { return this.#axisSizes(available, true); }
-    #axisSizes(available: number, horizontal: boolean): number[] {
-        const axis = this.#axisMetrics(horizontal);
+    #axisSizes(available: number, horizontal: boolean, columnSizes?: number[]): number[] {
+        const axis = this.#axisMetrics(horizontal, columnSizes);
         return CLayout.layoutAxisSizes(available, axis.minimums, axis.preferred, axis.maximums, axis.weights, axis.priorities);
     }
 

@@ -199,3 +199,22 @@ describe("CLayout", () => {
 		expect(layout.contentsMargins().left).toBe(10);
 	});
 });
+
+describe("CLayout height-for-width discovery", () => {
+
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+
+    test("defaults to an unsupported height calculation", () => {
+        const layout = new TestLayout();
+        expect(layout.hasHeightForWidth()).toBe(false);
+        expect(layout.heightForWidth(100)).toBe(-1);
+    });
+    test("discovers changes to managed widget policies", () => {
+        const layout = new TestLayout(), widget = new CWidget(); layout.addWidget(widget);
+        const policy = widget.sizePolicy(); policy.setHeightForWidth(true); widget.setSizePolicy(policy);
+        expect(layout.hasHeightForWidth()).toBe(true);
+        layout.removeWidget(widget);
+        expect(layout.hasHeightForWidth()).toBe(false);
+    });
+});

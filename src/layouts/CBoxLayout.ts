@@ -107,6 +107,28 @@ export class CBoxLayout extends CLayout {
 		}
 	}
 
+    override heightForWidth(width: number): number {
+        if (!this.hasHeightForWidth()) return -1;
+        const margins = this.contentsMargins();
+        const contentWidth = Math.max(0, width - margins.left - margins.right);
+        const spacing = Math.max(0, this.count() - 1) * this.spacing();
+        let height = 0;
+        if (this.#m_direction === CBoxLayoutDirection.LeftToRight) {
+            const widths = this.#calculateSizes(Math.max(0, contentWidth - spacing));
+            for (let i = 0; i < this.count(); ++i) {
+                const widget = this.itemAt(i)?.widget();
+                if (widget) height = Math.max(height, this.#bounds(widget, false, widths[i]!).preferred);
+            }
+        } else {
+            for (const item of this.items()) {
+                const widget = item.widget();
+                if (widget) height += this.#bounds(widget, false, this.#crossSize(widget, contentWidth)).preferred;
+            }
+            height += spacing;
+        }
+        return height + margins.top + margins.bottom;
+    }
+
 	/** Recalculates and applies item geometries. */
 	override update(): void {
 		const parent = this.parentWidget();
@@ -148,7 +170,7 @@ export class CBoxLayout extends CLayout {
 				const width = sizes[i]!;
 
 				if (widget !== null) {
-					const height = this.#crossSize(widget, crossAvailable);
+					const height = this.#crossSize(widget, crossAvailable, width);
 					widget.setGeometry(x, contentY, width, height);
 				}
 
@@ -156,7 +178,7 @@ export class CBoxLayout extends CLayout {
 			}
 		} else {
 			const available = Math.max(0, contentHeight - totalSpacing);
-			const sizes = this.#calculateSizes(available);
+			const sizes = this.#calculateSizes(available, contentWidth);
 			const crossAvailable = contentWidth;
 
 			let y = contentY;
@@ -176,27 +198,16 @@ export class CBoxLayout extends CLayout {
 		}
 	}
 
-    #bounds(widget: CWidget, horizontal: boolean): { minimum: number; preferred: number; maximum: number } {
-        const sizePolicy = widget.sizePolicy();
-        const policy = horizontal ? sizePolicy.horizontalPolicy() : sizePolicy.verticalPolicy();
-        const minimum = horizontal ? widget.minimumWidth() : widget.minimumHeight();
-        const maximum = horizontal ? widget.maximumWidth() : widget.maximumHeight();
-        const hint = widget.sizeHint();
-        const preferred = Math.min(maximum, Math.max(minimum, CSizePolicy.ignoresHint(policy)
-            ? 0 : horizontal ? hint.width() : hint.height()));
-        return {
-            minimum: CSizePolicy.canShrink(policy) ? minimum : preferred,
-            preferred,
-            maximum: CSizePolicy.canGrow(policy) ? maximum : preferred
-        };
+    #bounds(widget: CWidget, horizontal: boolean, width?: number): { minimum: number; preferred: number; maximum: number } {
+        return CLayout.layoutAxisBounds(widget, horizontal, false, width);
     }
 
-    #crossSize(widget: CWidget, available: number): number {
-        const bounds = this.#bounds(widget, this.#m_direction !== CBoxLayoutDirection.LeftToRight);
+    #crossSize(widget: CWidget, available: number, width?: number): number {
+        const bounds = this.#bounds(widget, this.#m_direction !== CBoxLayoutDirection.LeftToRight, width);
         return Math.min(bounds.maximum, Math.max(bounds.minimum, available));
     }
 
-    #calculateSizes(available: number): number[] {
+    #calculateSizes(available: number, width?: number): number[] {
         const minimums: number[] = [], preferred: number[] = [], maximums: number[] = [];
         const weights: number[] = [], priorities: number[] = [];
         const horizontal = this.#m_direction === CBoxLayoutDirection.LeftToRight;
@@ -210,7 +221,7 @@ export class CBoxLayout extends CLayout {
             const item = this.itemAt(i) as CBoxLayoutItem;
             const widget = item.widget();
             const bounds = widget === null ? { minimum: 0, preferred: 0, maximum: Number.MAX_SAFE_INTEGER }
-                : this.#bounds(widget, horizontal);
+                : this.#bounds(widget, horizontal, width === undefined ? undefined : this.#crossSize(widget, width));
             const policy = widget?.sizePolicy();
             const axisPolicy = horizontal ? policy?.horizontalPolicy() : policy?.verticalPolicy();
             const stretch = item.stretch() || (horizontal ? policy?.horizontalStretch() : policy?.verticalStretch()) || 0;

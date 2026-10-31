@@ -13,12 +13,14 @@ export enum CSizePolicyType {
 export class CSizePolicy {
     #horizontal: CSizePolicyType;
     #vertical: CSizePolicyType;
+    #heightForWidth = false;
     #horizontalStretch = 0;
     #verticalStretch = 0;
 
     constructor(horizontal: CSizePolicyType | CSizePolicy = CSizePolicyType.Preferred,
         vertical = CSizePolicyType.Preferred) {
         if (horizontal instanceof CSizePolicy) {
+            this.#heightForWidth = horizontal.#heightForWidth;
             this.#horizontal = horizontal.#horizontal;
             this.#vertical = horizontal.#vertical;
             this.#horizontalStretch = horizontal.#horizontalStretch;
@@ -28,6 +30,9 @@ export class CSizePolicy {
             this.#vertical = vertical;
         }
     }
+
+    hasHeightForWidth(): boolean { return this.#heightForWidth; }
+    setHeightForWidth(enabled: boolean): void { this.#heightForWidth = enabled; }
 
     horizontalPolicy(): CSizePolicyType { return this.#horizontal; }
     verticalPolicy(): CSizePolicyType { return this.#vertical; }
@@ -42,7 +47,7 @@ export class CSizePolicy {
         if (Number.isFinite(stretch)) this.#verticalStretch = Math.max(0, Math.min(255, Math.floor(stretch)));
     }
     isEqual(other: CSizePolicy): boolean {
-        return this.#horizontal === other.#horizontal && this.#vertical === other.#vertical
+        return this.#heightForWidth === other.#heightForWidth && this.#horizontal === other.#horizontal && this.#vertical === other.#vertical
             && this.#horizontalStretch === other.#horizontalStretch && this.#verticalStretch === other.#verticalStretch;
     }
     static canGrow(policy: CSizePolicyType): boolean { return (policy & 1) !== 0; }

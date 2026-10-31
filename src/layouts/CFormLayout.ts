@@ -257,6 +257,28 @@ export class CFormLayout extends CLayout {
 		super.clear();
 	}
 
+    override heightForWidth(width: number): number {
+        if (!this.hasHeightForWidth()) return -1;
+        const margins = this.contentsMargins();
+        const contentWidth = Math.max(0, width - margins.left - margins.right);
+        // Asking for zero available height returns row minima, not preferred heights.
+        // Evaluate each row at its actual column width instead.
+        const labelWidth = this.labelColumnWidth();
+        const fieldWidth = Math.max(0, contentWidth - labelWidth - (labelWidth > 0 ? this.horizontalSpacing() : 0));
+        let height = margins.top + margins.bottom + Math.max(0, this.#m_rows.length - 1) * this.verticalSpacing();
+        for (const row of this.#m_rows) {
+            let rowHeight = 0;
+            for (const [item, available] of [[row.labelItem, labelWidth], [row.fieldItem, fieldWidth],
+                [row.spanningItem, contentWidth]] as const) {
+                const widget = item?.widget();
+                if (widget) rowHeight = Math.max(rowHeight,
+                    CLayout.layoutAxisBounds(widget, false, true, this.#fitWidth(widget, available)).preferred);
+            }
+            height += rowHeight;
+        }
+        return height;
+    }
+
 	/** Recalculates and applies the geometry of all form rows. */
 	override update(): void {
 		const parent = this.parentWidget();
@@ -289,7 +311,7 @@ export class CFormLayout extends CLayout {
 		);
 
         const heights = this.#rowHeights(Math.max(0, contentsRect.height() - margins.top - margins.bottom
-            - Math.max(0, this.#m_rows.length - 1) * verticalSpacing));
+            - Math.max(0, this.#m_rows.length - 1) * verticalSpacing), contentWidth);
         let rowIndex = 0;
 		let y = contentY;
 
@@ -298,7 +320,7 @@ export class CFormLayout extends CLayout {
 			const spanning = row.spanningItem?.widget() ?? null;
 
 			if (spanning !== null) {
-				const height = this.#fitHeight(spanning, allocatedHeight);
+				const height = this.#fitHeight(spanning, allocatedHeight, this.#fitWidth(spanning, contentWidth));
 
 				spanning.setGeometry(
 					contentX,
@@ -315,11 +337,11 @@ export class CFormLayout extends CLayout {
 			const field = row.fieldItem?.widget() ?? null;
 
 			const labelHeight = label !== null
-				? this.#fitHeight(label, allocatedHeight)
+				? this.#fitHeight(label, allocatedHeight, this.#fitWidth(label, labelWidth))
 				: 0;
 
 			const fieldHeight = field !== null
-				? this.#fitHeight(field, allocatedHeight)
+				? this.#fitHeight(field, allocatedHeight, this.#fitWidth(field, fieldWidth))
 				: 0;
 
 			const rowHeight = allocatedHeight;
@@ -454,13 +476,13 @@ export class CFormLayout extends CLayout {
         const bounds = CLayout.layoutAxisBounds(widget, true, true);
         return Math.min(bounds.maximum, Math.max(bounds.minimum, available));
     }
-    #fitHeight(widget: CWidget, available: number): number {
-        const bounds = CLayout.layoutAxisBounds(widget, false, true);
+    #fitHeight(widget: CWidget, available: number, width?: number): number {
+        const bounds = CLayout.layoutAxisBounds(widget, false, true, width);
         const policy = widget.sizePolicy();
         const canExpand = CSizePolicy.isExpanding(policy.verticalPolicy()) || policy.verticalStretch() > 0;
         return Math.min(canExpand ? bounds.maximum : bounds.preferred, Math.max(bounds.minimum, available));
     }
-    #rowHeights(available: number): number[] {
+    #rowHeights(available: number, contentWidth?: number): number[] {
         const minimums: number[] = [], preferred: number[] = [], maximums: number[] = [];
         const weights: number[] = [], priorities: number[] = [];
         for (const row of this.#m_rows) {
@@ -468,7 +490,12 @@ export class CFormLayout extends CLayout {
                 .filter((widget): widget is CWidget => widget !== null && widget !== undefined);
             let minimum = 0, hint = 0, maximum = 0, weight = 0, priority = 0;
             for (const widget of widgets) {
-                const bounds = CLayout.layoutAxisBounds(widget, false, true);
+                const labelWidth = this.labelColumnWidth();
+                const availableWidth = contentWidth === undefined ? undefined : widget === row.spanningItem?.widget() ? contentWidth
+                    : widget === row.labelItem?.widget() ? labelWidth
+                    : Math.max(0, contentWidth - labelWidth - (labelWidth > 0 ? this.horizontalSpacing() : 0));
+                const width = availableWidth === undefined ? undefined : this.#fitWidth(widget, availableWidth);
+                const bounds = CLayout.layoutAxisBounds(widget, false, true, width);
                 const policy = widget.sizePolicy();
                 const stretch = policy.verticalStretch();
                 const expanding = CSizePolicy.isExpanding(policy.verticalPolicy());

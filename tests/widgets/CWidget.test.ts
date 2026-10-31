@@ -1677,3 +1677,23 @@ describe("CWidget size policy", () => {
         expect(CSizePolicy.ignoresHint(CSizePolicyType.Ignored)).toBe(true);
     });
 });
+
+
+describe("CWidget height for width", () => {
+    test("an ordinary widget has no width-dependent height", () => {
+        const widget = new CWidget();
+        expect(widget.hasHeightForWidth()).toBe(false);
+        expect(widget.heightForWidth(100)).toBe(-1);
+    });
+    test("policy copies preserve the height-for-width flag", () => {
+        const widget = new CWidget();
+        const policy = widget.sizePolicy();
+        expect(policy.hasHeightForWidth()).toBe(false);
+        policy.setHeightForWidth(true);
+        expect(widget.hasHeightForWidth()).toBe(false);
+        widget.setSizePolicy(policy);
+        expect(widget.hasHeightForWidth()).toBe(true);
+        const copy = widget.sizePolicy(); copy.setHeightForWidth(false);
+        expect(widget.sizePolicy().hasHeightForWidth()).toBe(true);
+    });
+});

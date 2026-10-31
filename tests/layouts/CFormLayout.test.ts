@@ -797,3 +797,53 @@ describe("CFormLayout size policies", () => {
         expect(field.width()).toBe(250);
     });
 });
+
+
+// A deterministic width-dependent widget isolates layout allocation from font metrics.
+class WidthDependentWidget extends CWidget {
+    override hasHeightForWidth(): boolean { return true; }
+    override heightForWidth(width: number): number { return Math.ceil(200 / Math.max(1, width)) * 20; }
+    override sizeHint(): CSize { return new CSize(200, 20); }
+}
+
+describe("CFormLayout width-dependent height", () => {
+
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+
+    function setupWidthDependent() {
+        const root = new CWidget(); root.resize(100, 200);
+        const layout = new CFormLayout();
+        layout.setContentsMargins(0, 0, 0, 0); layout.setSpacing(0);
+        const first = new WidthDependentWidget(), second = new WidthDependentWidget();
+        layout.addRow(first); layout.addRow(second);
+        root.setLayout(layout);
+        return { root, layout, first, second };
+    }
+    test("preferred height responds to width without changing geometry", () => {
+        const { layout, first } = setupWidthDependent();
+        const oldWidth = first.width(), oldHeight = first.height();
+        expect(layout.heightForWidth(100)).toBe(80);
+        expect(layout.heightForWidth(200)).toBe(40);
+        expect(first.width()).toBe(oldWidth); expect(first.height()).toBe(oldHeight);
+    });
+    test("container widgets delegate height queries to their layout", () => {
+        const { root } = setupWidthDependent();
+        expect(root.hasHeightForWidth()).toBe(true);
+        expect(root.heightForWidth(100)).toBe(80);
+    });
+    test("Fixed vertical policy follows height for actual width", () => {
+        const { root, first, second } = setupWidthDependent();
+        first.setSizePolicy(CSizePolicyType.Preferred, CSizePolicyType.Fixed);
+        second.setSizePolicy(CSizePolicyType.Preferred, CSizePolicyType.Fixed);
+        root.layout()!.update();
+        expect(first.height()).toBe(40); expect(second.y()).toBe(40);
+        root.resize(200,200);
+        expect(first.height()).toBe(20); expect(second.y()).toBe(20);
+    });
+    test("margins and row spacing are counted once", () => {
+        const { layout } = setupWidthDependent();
+        layout.setContentsMargins(5, 7, 5, 9); layout.setSpacing(3);
+        expect(layout.heightForWidth(110)).toBe(99);
+    });
+});

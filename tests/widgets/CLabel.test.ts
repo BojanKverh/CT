@@ -1,3 +1,4 @@
+import { CFormLayout } from "../../src/layouts/CFormLayout.js";
 import { CWidget } from "../../src/widgets/CWidget.js";
 import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
 import { CStyleOptionLabel } from "../../src/gui/CStyleOptionLabel.js";
@@ -406,4 +407,104 @@ describe("CLabel buddies and mnemonics", () => {
                 (alignment & CAlignment.Bottom) ? 40 : (alignment & CAlignment.VCenter) ? 20 : 0);
         });
     }
+});
+
+
+describe("CLabel height for width and word wrapping", () => {
+
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+
+    test("word wrapping is optional", () => {
+        const label = new CLabel(); label.setText("Hello world");
+        expect(label.wordWrap()).toBe(false);
+        expect(label.hasHeightForWidth()).toBe(false);
+        expect(label.heightForWidth(20)).toBe(-1);
+        label.setWordWrap(true);
+        expect(label.wordWrap()).toBe(true);
+        expect(label.sizePolicy().hasHeightForWidth()).toBe(true);
+        label.setWordWrap(false);
+        expect(label.hasHeightForWidth()).toBe(false);
+    });
+    test("narrow text needs more lines and wide text returns to one line", () => {
+        const label = new CLabel(); label.setText("Hello world"); label.setWordWrap(true);
+        const width = label.fontMetrics().textWidth("Hello") + 12;
+        expect(label.heightForWidth(width)).toBe(2 * label.fontMetrics().height() + 6);
+        expect(label.heightForWidth(1000)).toBe(label.fontMetrics().height() + 6);
+    });
+    test("explicit newlines including empty lines contribute to height", () => {
+        const label = new CLabel(); label.setText("One\n\nTwo"); label.setWordWrap(true);
+        expect(label.heightForWidth(1000)).toBe(3 * label.fontMetrics().height() + 6);
+    });
+    test("zero width terminates and preserves complete Unicode characters", () => {
+        const label = new CLabel(); label.setText("😀č"); label.setWordWrap(true);
+        expect(label.heightForWidth(0)).toBe(2 * label.fontMetrics().height() + 6);
+    });
+    test("mnemonic markers are not measured as visible characters", () => {
+        const label = new CLabel(); label.setBuddy(new CWidget()); label.setText("&Hello world"); label.setWordWrap(true);
+        const width = label.fontMetrics().textWidth("Hello") + 12;
+        expect(label.heightForWidth(width)).toBe(2 * label.fontMetrics().height() + 6);
+    });
+    test("empty text still reserves one text line", () => {
+        const label = new CLabel(); label.setWordWrap(true);
+        expect(label.heightForWidth(100)).toBe(label.fontMetrics().height() + 6);
+    });
+    test("wrapped painting uses the same lines as height measurement", () => {
+        const label = new TestLabel(); label.setText("Hello world"); label.setWordWrap(true);
+        label.resize(label.fontMetrics().textWidth("Hello") + 12, label.heightForWidth(label.fontMetrics().textWidth("Hello") + 12));
+        const draw = vi.spyOn(label.style(), "drawLabel");
+        const painter = { save: vi.fn(), restore: vi.fn(), translate: vi.fn(), clipRect: vi.fn() };
+        // Observe style options without relying on a particular platform style.
+        draw.mockImplementation(() => {});
+        label.paint(painter as unknown as CPainter);
+        const texts = draw.mock.calls.map(call => call[1].text);
+        expect(texts).toEqual(["", "Hello", "world"]);
+        draw.mockRestore();
+    });
+});
+
+describe("CLabel wrapping geometry updates", () => {
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+    test("changing text updates enclosing form rows immediately", () => {
+        const root = new CWidget(); root.resize(80, 400);
+        const layout = new CFormLayout(); layout.setContentsMargins(0,0,0,0); layout.setSpacing(0);
+        const label = new CLabel(); label.setWordWrap(true); label.setText("Hi");
+        const next = new CLabel(); next.setText("Next");
+        layout.addRow(label); layout.addRow(next); root.setLayout(layout);
+        const oldY = next.y(); label.setText("A longer sentence that needs several lines");
+        expect(next.y()).toBeGreaterThan(oldY);
+        expect(label.height()).toBe(label.heightForWidth(label.width()));
+        label.setText("Hi"); expect(next.y()).toBe(oldY);
+    });
+    test("changing font updates the measured height", () => {
+        const label = new CLabel();
+        label.setText("Hello world");
+        label.setWordWrap(true);
+
+        vi.spyOn(label.fontMetrics(), "height").mockReturnValue(10);
+        vi.spyOn(label.fontMetrics(), "textWidth").mockImplementation(text => text.length * 5);
+
+        expect(label.heightForWidth(1000)).toBe(16);
+
+        const geometryChanged = vi.spyOn(label, "updateGeometry");
+        const font = new CFont(label.font());
+        font.setPixelSize(30);
+        label.setFont(font);
+
+        expect(label.font().pixelSize()).toBe(30);
+        expect(geometryChanged).toHaveBeenCalledOnce();
+
+        vi.spyOn(label.fontMetrics(), "height").mockReturnValue(30);
+        vi.spyOn(label.fontMetrics(), "textWidth").mockImplementation(text => text.length * 15);
+
+        expect(label.heightForWidth(1000)).toBe(36);
+    });
+    test("pixmap display disables width-dependent text height", () => {
+        const label = new CLabel(); label.setWordWrap(true);
+        label.setPixmap(new CPixmap({} as CanvasImageSource, 20, 20));
+        expect(label.hasHeightForWidth()).toBe(false);
+        expect(label.heightForWidth(100)).toBe(-1);
+        label.setPixmap(null); expect(label.hasHeightForWidth()).toBe(true);
+    });
 });
