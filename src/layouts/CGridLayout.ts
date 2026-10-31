@@ -1,3 +1,4 @@
+import { CSizePolicy } from "../geometry/CSizePolicy.js";
 import { CLayout } from "./CLayout.js";
 import { CGridLayoutItem } from "./CGridLayoutItem.js";
 import { CSize } from "../geometry/CSize.js";
@@ -217,290 +218,59 @@ export class CGridLayout extends CLayout
 				spacing
 			);
 
-			const minimum = widget.minimumSize();
-			const maximum = widget.maximumSize();
-
-			widget.setGeometry(
-				columnPositions[gridItem.column()]!,
-				rowPositions[gridItem.row()]!,
-				Math.min(
-					maximum.width(),
-					Math.max(width, minimum.width())
-				),
-				Math.min(
-					maximum.height(),
-					Math.max(height, minimum.height())
-				)
-			);
+            const horizontal = CLayout.layoutAxisBounds(widget, true);
+            const vertical = CLayout.layoutAxisBounds(widget, false);
+            widget.setGeometry(columnPositions[gridItem.column()]!, rowPositions[gridItem.row()]!,
+                Math.min(horizontal.maximum, Math.max(horizontal.minimum, width)),
+                Math.min(vertical.maximum, Math.max(vertical.minimum, height)));
 		}
 	}
 
-	#preferredRowSizes(): number[] {
-		const sizes =
-			new Array<number>(this.rowCount()).fill(0);
+    #axisMetrics(horizontal: boolean) {
+        const count = horizontal ? this.columnCount() : this.rowCount();
+        const minimums = new Array<number>(count).fill(0);
+        const preferred = new Array<number>(count).fill(0);
+        const maximums = new Array<number>(count).fill(0);
+        const weights = new Array<number>(count).fill(0);
+        const expanding = new Array<boolean>(count).fill(false);
+        for (const entry of this.items()) {
+            const item = entry as CGridLayoutItem;
+            const widget = item.widget();
+            const start = horizontal ? item.column() : item.row();
+            const span = horizontal ? item.columnSpan() : item.rowSpan();
+            const bounds = CLayout.layoutAxisBounds(widget, horizontal);
+            const spacing = (span - 1) * this.spacing();
+            this.#ensureSpanSize(minimums, start, span, Math.max(0, bounds.minimum - spacing));
+            this.#ensureSpanSize(preferred, start, span, Math.max(0, bounds.preferred - spacing));
+            const policy = widget.sizePolicy();
+            const axis = horizontal ? policy.horizontalPolicy() : policy.verticalPolicy();
+            const stretch = horizontal ? policy.horizontalStretch() : policy.verticalStretch();
+            for (let i = start; i < start + span; ++i) {
+                maximums[i] = Math.max(maximums[i]!, Math.max(0, bounds.maximum - spacing) / span);
+                weights[i] = Math.max(weights[i]!, stretch);
+                expanding[i] ||= CSizePolicy.isExpanding(axis);
+            }
+        }
+        const priorities = new Array<number>(count).fill(1);
+        for (let i = 0; i < count; ++i) {
+            preferred[i] = Math.max(preferred[i]!, minimums[i]!);
+            maximums[i] = Math.max(maximums[i]!, preferred[i]!);
+            const explicit = horizontal ? this.columnStretch(i) : this.rowStretch(i);
+            if (explicit > 0) weights[i] = explicit;
+            priorities[i] = weights[i]! > 0 ? 3 : expanding[i] ? 2 : 1;
+        }
+        for (let i = 0; i < count; ++i) if (weights[i] === 0) weights[i] = 1;
+        return { minimums, preferred, maximums, weights, priorities };
+    }
 
-		for (const item of this.items()) {
-			const gridItem = item as CGridLayoutItem;
-			const widget = gridItem.widget();
-
-			const minimum = widget.minimumSize();
-			const maximum = widget.maximumSize();
-			const hint = widget.sizeHint();
-
-			const preferred = Math.min(
-				maximum.height(),
-				Math.max(minimum.height(), hint.height())
-			);
-
-			this.#ensureSpanSize(
-				sizes,
-				gridItem.row(),
-				gridItem.rowSpan(),
-				preferred
-			);
-		}
-
-		return sizes;
-	}
-
-	#preferredColumnSizes(): number[] {
-		const sizes =
-			new Array<number>(this.columnCount()).fill(0);
-
-		for (const item of this.items()) {
-			const gridItem = item as CGridLayoutItem;
-			const widget = gridItem.widget();
-
-			const minimum = widget.minimumSize();
-			const maximum = widget.maximumSize();
-			const hint = widget.sizeHint();
-
-			const preferred = Math.min(
-				maximum.width(),
-				Math.max(minimum.width(), hint.width())
-			);
-
-			this.#ensureSpanSize(
-				sizes,
-				gridItem.column(),
-				gridItem.columnSpan(),
-				preferred
-			);
-		}
-
-		return sizes;
-	}
-
-	#minimumRowSizes(): number[] {
-		const sizes =
-			new Array<number>(this.rowCount()).fill(0);
-
-		for (const item of this.items()) {
-			const gridItem = item as CGridLayoutItem;
-			const widget = gridItem.widget();
-
-			this.#ensureSpanSize(
-				sizes,
-				gridItem.row(),
-				gridItem.rowSpan(),
-				widget.minimumSize().height()
-			);
-		}
-
-		return sizes;
-	}
-
-	#minimumColumnSizes(): number[] {
-		const sizes =
-			new Array<number>(this.columnCount()).fill(0);
-
-		for (const item of this.items()) {
-			const gridItem = item as CGridLayoutItem;
-			const widget = gridItem.widget();
-
-			this.#ensureSpanSize(
-				sizes,
-				gridItem.column(),
-				gridItem.columnSpan(),
-				widget.minimumSize().width()
-			);
-		}
-
-		return sizes;
-	}
-
-	#maximumRowSizes(): number[] {
-		const count = this.rowCount();
-		const sizes = new Array<number>(count).fill(
-			Number.MAX_SAFE_INTEGER
-		);
-
-		for (const item of this.items()) {
-			const gridItem = item as CGridLayoutItem;
-
-			if (gridItem.rowSpan() !== 1)
-				continue;
-
-			const widget = gridItem.widget();
-			const row = gridItem.row();
-
-			sizes[row] = Math.min(
-				sizes[row]!,
-				widget.maximumSize().height()
-			);
-		}
-
-		return sizes;
-	}
-
-	#maximumColumnSizes(): number[] {
-		const count = this.columnCount();
-		const sizes = new Array<number>(count).fill(
-			Number.MAX_SAFE_INTEGER
-		);
-
-		for (const item of this.items()) {
-			const gridItem = item as CGridLayoutItem;
-
-			if (gridItem.columnSpan() !== 1)
-				continue;
-
-			const widget = gridItem.widget();
-			const column = gridItem.column();
-
-			sizes[column] = Math.min(
-				sizes[column]!,
-				widget.maximumSize().width()
-			);
-		}
-
-		return sizes;
-	}
-
-	#calculateRowSizes(available: number): number[] {
-		return this.#calculateSizes(
-			available,
-			this.#minimumRowSizes(),
-			this.#preferredRowSizes(),
-			this.#maximumRowSizes(),
-			index => this.rowStretch(index)
-		);
-	}
-
-	#calculateColumnSizes(available: number): number[] {
-		return this.#calculateSizes(
-			available,
-			this.#minimumColumnSizes(),
-			this.#preferredColumnSizes(),
-			this.#maximumColumnSizes(),
-			index => this.columnStretch(index)
-		);
-	}
-
-	#calculateSizes(
-		available: number,
-		minimums: number[],
-		preferred: number[],
-		maximums: number[],
-		stretchAt: (index: number) => number
-	): number[]
-	{
-		const count = minimums.length;
-
-		const totalMinimum = this.#sum(minimums);
-		const totalPreferred = this.#sum(preferred);
-
-		if (available >= totalPreferred) {
-			const sizes = [...preferred];
-			const stretches: number[] = [];
-
-			let hasStretch = false;
-
-			for (let i = 0; i < count; ++i) {
-				const stretch = stretchAt(i);
-				stretches.push(stretch);
-
-				if (stretch > 0)
-					hasStretch = true;
-			}
-
-			if (!hasStretch) {
-				for (let i = 0; i < count; ++i)
-					stretches[i] = 1;
-			}
-
-			let extra = available - totalPreferred;
-
-			while (extra > 0) {
-				let totalStretch = 0;
-
-				for (let i = 0; i < count; ++i) {
-					if (
-						stretches[i]! > 0
-						&& sizes[i]! < maximums[i]!
-					)
-						totalStretch += stretches[i]!;
-				}
-
-				if (totalStretch === 0)
-					break;
-
-				let distributed = 0;
-
-				for (let i = 0; i < count; ++i) {
-					const stretch = stretches[i]!;
-
-					if (
-						stretch === 0
-						|| sizes[i]! >= maximums[i]!
-					)
-						continue;
-
-					const share =
-						extra * stretch / totalStretch;
-
-					const amount = Math.min(
-						share,
-						maximums[i]! - sizes[i]!
-					);
-
-					sizes[i]! += amount;
-					distributed += amount;
-				}
-
-				if (distributed <= 0)
-					break;
-
-				extra -= distributed;
-			}
-
-			return sizes;
-		}
-
-		if (available >= totalMinimum) {
-			const shrink = totalPreferred - available;
-
-			const capacities = preferred.map(
-				(size, index) =>
-					size - minimums[index]!
-			);
-
-			const totalCapacity = this.#sum(capacities);
-
-			if (totalCapacity === 0)
-				return [...minimums];
-
-			return preferred.map(
-				(size, index) =>
-					size
-					- shrink
-					* capacities[index]!
-					/ totalCapacity
-			);
-		}
-
-		return [...minimums];
-	}
+    #preferredRowSizes(): number[] { return this.#axisMetrics(false).preferred; }
+    #preferredColumnSizes(): number[] { return this.#axisMetrics(true).preferred; }
+    #calculateRowSizes(available: number): number[] { return this.#axisSizes(available, false); }
+    #calculateColumnSizes(available: number): number[] { return this.#axisSizes(available, true); }
+    #axisSizes(available: number, horizontal: boolean): number[] {
+        const axis = this.#axisMetrics(horizontal);
+        return CLayout.layoutAxisSizes(available, axis.minimums, axis.preferred, axis.maximums, axis.weights, axis.priorities);
+    }
 
 	#ensureSpanSize(
 		sizes: number[],

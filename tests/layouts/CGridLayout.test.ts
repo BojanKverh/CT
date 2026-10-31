@@ -1,3 +1,5 @@
+import { CSizePolicyType } from "../../src/geometry/CSizePolicy.js";
+import { CSize } from "../../src/geometry/CSize.js";
 import {
 	afterEach,
 	beforeEach,
@@ -793,4 +795,90 @@ describe("CGridLayout", () =>
 		expect(layout.rowCount()).toBe(0);
 		expect(layout.columnCount()).toBe(0);
 	});
+});
+describe("CGridLayout size policies", () => {
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+    class PolicyHintWidget extends CWidget {
+        override sizeHint(): CSize { return new CSize(50, 20); }
+    }
+    function setup() {
+        const root = new CWidget(); root.resize(300, 200); const grid = new CGridLayout();
+        grid.setContentsMargins(0, 0, 0, 0); grid.setSpacing(0); root.setLayout(grid);
+        const a = new PolicyHintWidget(), b = new PolicyHintWidget();
+        grid.addWidget(a, 0, 0); grid.addWidget(b, 0, 1); return { root, grid, a, b };
+    }
+    test("Fixed keeps its preferred size on both axes", () => {
+        const { a, b } = setup(); a.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed);
+        expect(a.width()).toBe(50); expect(a.height()).toBe(20); expect(b.width()).toBe(250);
+    });
+    test("an expanding column receives extra space before Preferred", () => {
+        const { a, b } = setup(); b.setSizePolicy(CSizePolicyType.Expanding, CSizePolicyType.Preferred);
+        expect(a.width()).toBe(50); expect(b.width()).toBe(250);
+    });
+    test("capped expanding columns redistribute unused space", () => {
+        const { a, b } = setup(); b.setMaximumSize(100, 500);
+        b.setSizePolicy(CSizePolicyType.Expanding, CSizePolicyType.Preferred);
+        expect(b.width()).toBe(100); expect(a.width()).toBe(200);
+    });
+    test("a fixed widget does not cap a growable neighbor in the same column", () => {
+        const { grid, a, b } = setup(); grid.clear();
+        a.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed);
+        grid.addWidget(a, 0, 0); grid.addWidget(b, 1, 0);
+        expect(a.width()).toBe(50); expect(b.width()).toBe(300);
+    });
+    test("Minimum keeps its hint when space is scarce", () => {
+        const { root, a, b } = setup(); a.setSizePolicy(CSizePolicyType.Minimum, CSizePolicyType.Preferred);
+        root.resize(60, 200); expect(a.width()).toBe(50); expect(b.width()).toBe(10);
+    });
+    test("Maximum cannot grow beyond the hint but may shrink", () => {
+        const { root, a, b } = setup(); a.setSizePolicy(CSizePolicyType.Maximum, CSizePolicyType.Preferred);
+        expect(a.width()).toBe(50); expect(b.width()).toBe(250);
+        root.resize(60, 200); expect(a.width()).toBe(30); expect(b.width()).toBe(30);
+    });
+    test("Ignored omits the hint but preserves the explicit minimum", () => {
+        const { grid, a } = setup(); a.setMinimumSize(10, 5);
+        a.setSizePolicy(CSizePolicyType.Ignored, CSizePolicyType.Ignored);
+        expect(grid.sizeHint().width()).toBe(60); expect(grid.sizeHint().height()).toBe(20);
+    });
+    test("row expansion is independent of column policy", () => {
+        const { grid, a, b } = setup(); grid.clear();
+        a.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Expanding);
+        grid.addWidget(a, 0, 0); grid.addWidget(b, 1, 0);
+        expect(a.width()).toBe(50); expect(a.height()).toBe(180); expect(b.height()).toBe(20);
+    });
+    test("widget stretch is used when the grid has no explicit stretch", () => {
+        const { a, b } = setup();
+        const pa = a.sizePolicy(); pa.setHorizontalStretch(1); a.setSizePolicy(pa);
+        const pb = b.sizePolicy(); pb.setHorizontalStretch(3); b.setSizePolicy(pb);
+        expect(a.width()).toBe(100); expect(b.width()).toBe(200);
+    });
+    test("explicit column stretch takes precedence over policy stretch", () => {
+        const { grid, a, b } = setup(); const policy = a.sizePolicy(); policy.setHorizontalStretch(9); a.setSizePolicy(policy);
+        grid.setColumnStretch(0, 1); grid.setColumnStretch(1, 3);
+        expect(a.width()).toBe(100); expect(b.width()).toBe(200);
+    });
+    test("explicit stretch cannot grow Fixed beyond its hint", () => {
+        const { grid, a, b } = setup(); a.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed);
+        grid.setColumnStretch(0, 5); expect(a.width()).toBe(50); expect(b.width()).toBe(250);
+    });
+    test("spanning Fixed widgets remain fixed as the grid grows", () => {
+        const { root, grid, a, b } = setup(); grid.clear();
+        a.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed);
+        grid.addWidget(a, 0, 0, 1, 2); grid.addWidget(b, 1, 0);
+        root.resize(500, 300); expect(a.width()).toBe(50); expect(a.height()).toBe(20);
+    });
+    test("span minimum includes internal spacing exactly once", () => {
+        const root = new CWidget(); const grid = new CGridLayout();
+        grid.setContentsMargins(0, 0, 0, 0); grid.setSpacing(10); root.setLayout(grid);
+        const a = new PolicyHintWidget(); a.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed);
+        grid.addWidget(a, 0, 0, 1, 2); expect(grid.sizeHint().width()).toBe(50);
+        root.resize(50, 20); expect(a.width()).toBe(50);
+    });
+    test("minimums win when Fixed tracks cannot fit the container", () => {
+        const { root, a, b } = setup();
+        a.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed);
+        b.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed);
+        root.resize(40, 10); expect(a.width()).toBe(50); expect(b.width()).toBe(50);
+    });
 });

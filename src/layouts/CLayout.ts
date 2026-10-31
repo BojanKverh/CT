@@ -1,8 +1,11 @@
+import { CSizePolicy } from "../geometry/CSizePolicy.js";
 import type { CWidget } from "../widgets/CWidget.js";
 import { CWidgetItem } from "./CWidgetItem.js";
 import type { CLayoutItem } from "./CLayoutItem.js";
 import { CBoxLayoutItem } from "./CBoxLayoutItem.js";
 import { CSize } from "../geometry/CSize.js";
+
+interface CLayoutAxisBounds { minimum: number; preferred: number; maximum: number; }
 
 /**
  * Margins around a layout's contents, in pixels.
@@ -166,4 +169,48 @@ export abstract class CLayout {
 	abstract sizeHint(): CSize;
 	/** Recalculates and applies the geometry of managed widgets. */
 	abstract update(): void;
+
+	protected static layoutAxisBounds(widget: CWidget, horizontal: boolean, geometryFallback = false): CLayoutAxisBounds {
+	    const policy = widget.sizePolicy();
+	    const axis = horizontal ? policy.horizontalPolicy() : policy.verticalPolicy();
+	    const minimum = horizontal ? widget.minimumWidth() : widget.minimumHeight();
+	    const maximum = horizontal ? widget.maximumWidth() : widget.maximumHeight();
+	    const hint = widget.sizeHint();
+	    let preferred = horizontal ? hint.width() : hint.height();
+	    if (CSizePolicy.ignoresHint(axis)) preferred = 0;
+	    else if (geometryFallback && preferred <= 0) preferred = horizontal ? widget.width() : widget.height();
+	    preferred = Math.min(maximum, Math.max(minimum, preferred));
+	    return { minimum: CSizePolicy.canShrink(axis) ? minimum : preferred, preferred,
+	        maximum: CSizePolicy.canGrow(axis) ? maximum : preferred };
+	}
+
+	/** Internal bounded allocation; larger priorities receive extra space first. */
+	protected static layoutAxisSizes(available: number, minimums: number[], preferred: number[], maximums: number[],
+	    weights: number[], priorities: number[]): number[] {
+	    const totalMinimum = minimums.reduce((a, b) => a + b, 0);
+	    const totalPreferred = preferred.reduce((a, b) => a + b, 0);
+	    if (available <= totalMinimum) return [...minimums];
+	    if (available < totalPreferred) {
+	        return preferred.map((size, i) => size - (totalPreferred - available)
+	            * (size - minimums[i]!) / (totalPreferred - totalMinimum));
+	    }
+	    const sizes = [...preferred];
+	    let extra = available - totalPreferred;
+	    for (const priority of [3, 2, 1]) {
+	        while (extra > 1e-9) {
+	            const active = sizes.map((_, i) => i).filter(i => priorities[i] === priority
+	                && weights[i]! > 0 && sizes[i]! < maximums[i]! - 1e-9);
+	            if (active.length === 0) break;
+	            const totalWeight = active.reduce((sum, i) => sum + weights[i]!, 0);
+	            let distributed = 0;
+	            for (const i of active) {
+	                const amount = Math.min(extra * weights[i]! / totalWeight, maximums[i]! - sizes[i]!);
+	                sizes[i]! += amount; distributed += amount;
+	            }
+	            if (distributed <= 1e-9) break;
+	            extra -= distributed;
+	        }
+	    }
+	    return sizes;
+	}
 }

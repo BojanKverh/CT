@@ -1,3 +1,4 @@
+import { CSizePolicyType } from "../../src/geometry/CSizePolicy.js";
 import { vi } from "vitest";
 import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
 import { CEventType } from "../../src/events/CEvent.js";
@@ -719,5 +720,80 @@ describe("CFormLayout automatic label buddies", () => {
         const { layout, field } = setup(); layout.addRow("&Name", field); field.setEnabled(false);
         expect(press("n")).not.toHaveBeenCalled(); expect(field.hasFocus()).toBe(false);
         field.setEnabled(true); expect(press("n")).toHaveBeenCalledOnce(); expect(field.hasFocus()).toBe(true);
+    });
+});
+
+describe("CFormLayout size policies", () => {
+    beforeEach(() => {
+        Object.defineProperty(globalThis, "window", { value: createTestWindow(), writable: true, configurable: true });
+        new CApplication(createTestCanvas());
+    });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+    function setup() {
+        const root = new CWidget(); root.resize(300, 200); const form = new CFormLayout();
+        form.setContentsMargins(0, 0, 0, 0); form.setSpacing(0); root.setLayout(form);
+        const label = new HintWidget(50, 20), field = new HintWidget(50, 20);
+        form.addRow(label, field); return { root, form, label, field };
+    }
+    test("default fields grow horizontally but retain preferred height", () => {
+        const { field } = setup(); expect(field.width()).toBe(250); expect(field.height()).toBe(20);
+    });
+    test("Fixed field uses the hint instead of filling its column", () => {
+        const { field } = setup(); field.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed);
+        expect(field.width()).toBe(50); expect(field.height()).toBe(20); expect(field.x()).toBe(50);
+    });
+    test("Minimum field does not shrink below its hint", () => {
+        const { root, field } = setup(); field.setSizePolicy(CSizePolicyType.Minimum, CSizePolicyType.Fixed);
+        root.resize(70, 200); expect(field.width()).toBe(50);
+    });
+    test("Maximum field does not grow but may shrink", () => {
+        const { root, field } = setup(); field.setSizePolicy(CSizePolicyType.Maximum, CSizePolicyType.Fixed);
+        expect(field.width()).toBe(50); root.resize(70, 200); expect(field.width()).toBe(20);
+    });
+    test("Ignored does not fall back to previously assigned geometry", () => {
+        const { form, field } = setup(); field.setSizePolicy(CSizePolicyType.Ignored, CSizePolicyType.Ignored);
+        expect(form.sizeHint().width()).toBe(50); form.update(); expect(form.sizeHint().width()).toBe(50);
+    });
+    test("vertically Expanding fields take unused row space", () => {
+        const { field, label } = setup(); field.setSizePolicy(CSizePolicyType.Preferred, CSizePolicyType.Expanding);
+        expect(field.height()).toBe(200); expect(label.height()).toBe(20); expect(label.y()).toBe(90);
+    });
+    test("spanning Expanding rows receive extra height before ordinary rows", () => {
+        const { form, field } = setup(); const spanning = new HintWidget(100, 30);
+        spanning.setSizePolicy(CSizePolicyType.Expanding, CSizePolicyType.Expanding); form.addRow(spanning);
+        expect(field.height()).toBe(20); expect(spanning.height()).toBe(180); expect(spanning.y()).toBe(20);
+        expect(spanning.width()).toBe(300);
+    });
+    test("capped expanding rows pass remaining space to another expanding row", () => {
+        const { form, field } = setup(); field.setMaximumSize(500, 60);
+        field.setSizePolicy(CSizePolicyType.Preferred, CSizePolicyType.Expanding);
+        const other = new HintWidget(50, 20); other.setSizePolicy(CSizePolicyType.Preferred, CSizePolicyType.Expanding);
+        form.addRow(other); expect(field.height()).toBe(60); expect(other.height()).toBe(140);
+    });
+    test("vertical stretch divides extra height proportionally", () => {
+        const { form, field } = setup(); const other = new HintWidget(50, 20); form.addRow(other);
+        const a = field.sizePolicy(); a.setVerticalStretch(1); field.setSizePolicy(a);
+        const b = other.sizePolicy(); b.setVerticalStretch(3); other.setSizePolicy(b);
+        expect(field.height()).toBe(60); expect(other.height()).toBe(140);
+    });
+    test("Fixed spanning rows respect both policies", () => {
+        const { form } = setup(); const spanning = new HintWidget(80, 30);
+        spanning.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed); form.addRow(spanning);
+        expect(spanning.width()).toBe(80); expect(spanning.height()).toBe(30);
+    });
+    test("explicit minimum size overrides a Fixed hint", () => {
+        const { field } = setup(); field.setMinimumSize(80, 30);
+        field.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed);
+        expect(field.width()).toBe(80); expect(field.height()).toBe(30);
+    });
+    test("Fixed labels align inside a wider configured label column", () => {
+        const { form, label } = setup(); form.setLabelColumnWidth(100);
+        label.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed);
+        expect(label.width()).toBe(50); expect(label.x()).toBe(50);
+    });
+    test("changing policy immediately updates geometry", () => {
+        const { field } = setup(); field.setSizePolicy(CSizePolicyType.Fixed, CSizePolicyType.Fixed);
+        expect(field.width()).toBe(50); field.setSizePolicy(CSizePolicyType.Expanding, CSizePolicyType.Fixed);
+        expect(field.width()).toBe(250);
     });
 });

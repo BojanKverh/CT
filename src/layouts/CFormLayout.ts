@@ -1,3 +1,4 @@
+import { CSizePolicy } from "../geometry/CSizePolicy.js";
 import { CAlignment } from "../core/CAlignment.js";
 import { CSize } from "../geometry/CSize.js";
 import { CLabel } from "../widgets/CLabel.js";
@@ -287,25 +288,26 @@ export class CFormLayout extends CLayout {
 				(hasLabelColumn ? horizontalSpacing : 0)
 		);
 
+        const heights = this.#rowHeights(Math.max(0, contentsRect.height() - margins.top - margins.bottom
+            - Math.max(0, this.#m_rows.length - 1) * verticalSpacing));
+        let rowIndex = 0;
 		let y = contentY;
 
 		for (const row of this.#m_rows) {
+            const allocatedHeight = heights[rowIndex++]!;
 			const spanning = row.spanningItem?.widget() ?? null;
 
 			if (spanning !== null) {
-				const height = this.#preferredHeight(spanning);
+				const height = this.#fitHeight(spanning, allocatedHeight);
 
 				spanning.setGeometry(
 					contentX,
 					y,
-					Math.min(
-						contentWidth,
-						spanning.maximumSize().width()
-					),
+					this.#fitWidth(spanning, contentWidth),
 					height
 				);
 
-				y += height + verticalSpacing;
+				y += allocatedHeight + verticalSpacing;
 				continue;
 			}
 
@@ -313,23 +315,23 @@ export class CFormLayout extends CLayout {
 			const field = row.fieldItem?.widget() ?? null;
 
 			const labelHeight = label !== null
-				? this.#preferredHeight(label)
+				? this.#fitHeight(label, allocatedHeight)
 				: 0;
 
 			const fieldHeight = field !== null
-				? this.#preferredHeight(field)
+				? this.#fitHeight(field, allocatedHeight)
 				: 0;
 
-			const rowHeight = Math.max(
-				labelHeight,
-				fieldHeight
-			);
+			const rowHeight = allocatedHeight;
 
 			if (label !== null) {
+                const actualLabelWidth = this.#fitWidth(label, labelWidth);
+                const labelOffset = (this.#m_labelAlignment & CAlignment.Right) !== 0 ? labelWidth - actualLabelWidth
+                    : (this.#m_labelAlignment & CAlignment.HCenter) !== 0 ? (labelWidth - actualLabelWidth) / 2 : 0;
 				label.setGeometry(
-					contentX,
+					contentX + labelOffset,
 					y + (rowHeight - labelHeight) / 2,
-					labelWidth,
+                    actualLabelWidth,
 					labelHeight
 				);
 			}
@@ -338,10 +340,7 @@ export class CFormLayout extends CLayout {
 				field.setGeometry(
 					fieldX,
 					y + (rowHeight - fieldHeight) / 2,
-					Math.min(
-						fieldWidth,
-						field.maximumSize().width()
-					),
+					this.#fitWidth(field, fieldWidth),
 					fieldHeight
 				);
 			}
@@ -449,31 +448,37 @@ export class CFormLayout extends CLayout {
 		return index;
 	}
 
-	#preferredWidth(widget: CWidget): number {
-		const minimum = widget.minimumSize().width();
-		const maximum = widget.maximumSize().width();
-		const hint = widget.sizeHint().width();
-
-		if (hint > 0)
-			return Math.min(maximum, Math.max(minimum, hint));
-
-		return Math.min(
-			maximum,
-			Math.max(minimum, widget.width())
-		);
-	}
-
-	#preferredHeight(widget: CWidget): number {
-		const minimum = widget.minimumSize().height();
-		const maximum = widget.maximumSize().height();
-		const hint = widget.sizeHint().height();
-
-		if (hint > 0)
-			return Math.min(maximum, Math.max(minimum, hint));
-
-		return Math.min(
-			maximum,
-			Math.max(minimum, widget.height())
-		);
-	}
+    #preferredWidth(widget: CWidget): number { return CLayout.layoutAxisBounds(widget, true, true).preferred; }
+    #preferredHeight(widget: CWidget): number { return CLayout.layoutAxisBounds(widget, false, true).preferred; }
+    #fitWidth(widget: CWidget, available: number): number {
+        const bounds = CLayout.layoutAxisBounds(widget, true, true);
+        return Math.min(bounds.maximum, Math.max(bounds.minimum, available));
+    }
+    #fitHeight(widget: CWidget, available: number): number {
+        const bounds = CLayout.layoutAxisBounds(widget, false, true);
+        const policy = widget.sizePolicy();
+        const canExpand = CSizePolicy.isExpanding(policy.verticalPolicy()) || policy.verticalStretch() > 0;
+        return Math.min(canExpand ? bounds.maximum : bounds.preferred, Math.max(bounds.minimum, available));
+    }
+    #rowHeights(available: number): number[] {
+        const minimums: number[] = [], preferred: number[] = [], maximums: number[] = [];
+        const weights: number[] = [], priorities: number[] = [];
+        for (const row of this.#m_rows) {
+            const widgets = [row.labelItem?.widget(), row.fieldItem?.widget(), row.spanningItem?.widget()]
+                .filter((widget): widget is CWidget => widget !== null && widget !== undefined);
+            let minimum = 0, hint = 0, maximum = 0, weight = 0, priority = 0;
+            for (const widget of widgets) {
+                const bounds = CLayout.layoutAxisBounds(widget, false, true);
+                const policy = widget.sizePolicy();
+                const stretch = policy.verticalStretch();
+                const expanding = CSizePolicy.isExpanding(policy.verticalPolicy());
+                minimum = Math.max(minimum, bounds.minimum); hint = Math.max(hint, bounds.preferred);
+                maximum = Math.max(maximum, expanding || stretch > 0 ? bounds.maximum : bounds.preferred);
+                weight = Math.max(weight, stretch); priority = Math.max(priority, stretch > 0 ? 3 : expanding ? 2 : 0);
+            }
+            minimums.push(minimum); preferred.push(hint); maximums.push(maximum);
+            weights.push(weight || 1); priorities.push(priority);
+        }
+        return CLayout.layoutAxisSizes(available, minimums, preferred, maximums, weights, priorities);
+    }
 }
