@@ -130,3 +130,4 @@ export { CNumberItemDelegate } from "./widgets/CNumberItemDelegate.js";
 export { CShortcut } from "./core/CShortcut.js";
 export { CPlainTextEdit } from "./widgets/CPlainTextEdit.js";
 export { CListViewMode } from "./widgets/CListViewHelper.js";
+export { CSplashScreen } from "./widgets/CSplashScreen.js";

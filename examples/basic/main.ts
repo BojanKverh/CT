@@ -15,9 +15,45 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
 	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut, CPlainTextEdit, CTextEditFindFlag,
-    CSize, CListViewMode
+    CSize, CListViewMode, CSplashScreen
 } from "../../src/index.js";
 import { CEchoMode } from "../../src/widgets/CLineEdit.js";
+
+function createSplashPixmap(): CPixmap {
+	const canvas = document.createElement("canvas");
+	canvas.width = 560;
+	canvas.height = 300;
+
+	const ctx = canvas.getContext("2d");
+	if (ctx === null)
+		throw new Error("Canvas 2D context is unavailable.");
+
+	const background = ctx.createLinearGradient(0, 0, 560, 300);
+	background.addColorStop(0, "#10243a");
+	background.addColorStop(1, "#245b78");
+	ctx.fillStyle = background;
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+	ctx.fillStyle = "#38c9cf";
+	ctx.fillRect(40, 55, 72, 72);
+
+	ctx.fillStyle = "#10243a";
+	ctx.font = "bold 34px sans-serif";
+	ctx.textAlign = "center";
+	ctx.textBaseline = "middle";
+	ctx.fillText("CT", 76, 91);
+
+	ctx.textAlign = "left";
+	ctx.fillStyle = "#ffffff";
+	ctx.font = "bold 36px sans-serif";
+	ctx.fillText("Canvas Toolkit", 132, 91);
+
+	ctx.fillStyle = "#b8d6e5";
+	ctx.font = "17px sans-serif";
+	ctx.fillText("Made with imagination. Built with care.", 40, 168);
+
+	return new CPixmap(canvas, canvas.width, canvas.height);
+}
 
 class RedWidget extends CWidget {
 	#m_color: string = "#ffa0a0";
@@ -2051,3 +2087,17 @@ setInterval(() => {
 	if (pb.value() < 100)
 		pb.setValue(pb.value() + 1)
 }, 50);
+
+mainWindow.hide();
+
+const splash = new CSplashScreen(createSplashPixmap());
+splash.showMessage(
+	"Nalagam …",
+	CAlignment.Left | CAlignment.Bottom,
+	"#ffffff"
+);
+splash.show();
+
+setTimeout(() => {
+	splash.finish(mainWindow);
+}, 2000);
