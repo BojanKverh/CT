@@ -1,3 +1,9 @@
+import { vi } from "vitest";
+import { CListViewMode } from "../../src/widgets/CListViewHelper.js";
+import { CSize } from "../../src/geometry/CSize.js";
+import { CPoint } from "../../src/geometry/CPoint.js";
+import type { CIcon } from "../../src/gui/CIcon.js";
+import type { CPainter } from "../../src/painting/CPainter.js";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
 import { CEventType } from "../../src/events/CEvent.js";
@@ -790,4 +796,126 @@ describe("CListView", () => {
 		expect(delegate.createEditorCalls).toHaveLength(0);
 		expect(event.isAccepted()).toBe(false);
 	});
+});
+
+
+describe("CListView IconMode", () => {
+
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+
+    function grid(count = 8, width = 260, height = 300) {
+        const view = new CListView(); view.resize(width,height);
+        view.setGridSize(new CSize(70,80)); view.setSpacing(10); view.setViewMode(CListViewMode.IconMode);
+        const model = new TestListModel(Array.from({length:count},(_,i)=>`Item ${i}`)); view.setModel(model);
+        return { view, model };
+    }
+    test("list mode remains the default", () => { expect(new CListView().viewMode()).toBe(CListViewMode.ListMode); });
+    test("arranges items across columns before starting another line", () => {
+        const { view, model } = grid();
+        expect(view.visualRect(model.index(1,0)).x()).toBe(80);
+        expect(view.visualRect(model.index(3,0)).y()).toBe(90);
+    });
+    test("hit testing uses both coordinates", () => {
+        const { view } = grid(); expect(view.indexAt(new CPoint(85,5)).row()).toBe(1);
+        expect(view.indexAt(new CPoint(5,95)).row()).toBe(3);
+    });
+    test("gaps, negative positions and empty final cells do not select items", () => {
+        const { view } = grid(4);
+        for (const point of [new CPoint(75,5),new CPoint(5,85),new CPoint(-1,0),new CPoint(85,95)])
+            expect(view.indexAt(point).isValid()).toBe(false);
+    });
+    test("resizing reflows the grid without changing current item", () => {
+        const { view, model } = grid(); view.setCurrentIndex(model.index(3,0)); view.resize(180,500);
+        expect(view.visualRect(model.index(3,0)).x()).toBe(80);
+        expect(view.visualRect(model.index(3,0)).y()).toBe(90);
+        expect(view.currentIndex().row()).toBe(3);
+    });
+    test("switching modes restores list geometry and selection", () => {
+        const { view, model } = grid(); view.setCurrentIndex(model.index(2,0)); view.selectionModel()!.select(model.index(2,0)); view.setViewMode(CListViewMode.ListMode);
+        expect(view.visualRect(model.index(2,0)).y()).toBe(2*CListView.ItemHeight);
+        expect(view.selectionModel()?.isSelected(model.index(2,0))).toBe(true);
+    });
+    test("returns size copies and ignores invalid geometry settings", () => {
+        const { view } = grid(); expect(view.gridSize()).not.toBe(view.gridSize());
+        view.setGridSize(new CSize(0,NaN)); expect(view.gridSize().width()).toBe(70);
+        view.setSpacing(-1); expect(view.spacing()).toBe(10);
+        view.setIconSize(new CSize(32,24)); expect(view.iconSize().height()).toBe(24);
+    });
+    test("vertical keys move by a grid line", () => {
+        const { view, model } = grid(); view.setCurrentIndex(model.index(1,0));
+        view.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress,"ArrowDown")); expect(view.currentIndex().row()).toBe(4);
+        view.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress,"ArrowUp")); expect(view.currentIndex().row()).toBe(1);
+    });
+    test("horizontal keys stop at line boundaries", () => {
+        const { view, model } = grid(); view.setCurrentIndex(model.index(2,0));
+        view.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress,"ArrowRight")); expect(view.currentIndex().row()).toBe(2);
+        view.setCurrentIndex(model.index(3,0)); view.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress,"ArrowLeft"));
+        expect(view.currentIndex().row()).toBe(3);
+    });
+    test("unknown keys do not create a current item", () => {
+        const { view } = grid(); const event = new CKeyEvent(CEventType.KeyPress,"x"); view.contentKeyPressEvent(event);
+        expect(event.isAccepted()).toBe(false); expect(view.currentIndex().isValid()).toBe(false);
+    });
+    test("Enter activates instead of opening an editor", () => {
+        const { view, model } = grid(); const activated = vi.fn(); view.activated.connect(activated);
+        view.setCurrentIndex(model.index(1,0)); view.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress,"Enter"));
+        expect(activated).toHaveBeenCalledOnce(); expect(activated.mock.calls[0]![0].row()).toBe(1);
+    });
+    test("double click activates the hit item", () => {
+        const { view } = grid(); const activated = vi.fn(); view.activated.connect(activated);
+        view.contentMouseDoubleClickEvent(mouseDoubleClick(85,5));
+        expect(view.currentIndex().row()).toBe(1); expect(activated).toHaveBeenCalledOnce();
+    });
+    test("a narrow viewport scrolls horizontally for a cell that cannot fit", () => {
+        const { view } = grid(4,50,100); expect(view.horizontalScrollBar().isVisible()).toBe(true);
+        expect(view.verticalScrollBar().isVisible()).toBe(true);
+    });
+    test("vertical scrollbar width is included when calculating columns", () => {
+        const { view, model } = grid(8,163,100);
+        expect(view.verticalScrollBar().isVisible()).toBe(true);
+        expect(view.visualRect(model.index(1,0)).y()).toBe(90);
+        expect(view.horizontalScrollBar().isVisible()).toBe(false);
+    });
+    test("growing the viewport removes stale scrollbars and restores columns", () => {
+        const { view, model } = grid(8,100,100); view.resize(260,500);
+        expect(view.verticalScrollBar().isVisible()).toBe(false); expect(view.horizontalScrollBar().isVisible()).toBe(false);
+        expect(view.visualRect(model.index(1,0)).x()).toBe(80);
+    });
+    test("End navigates to and reveals the last icon", () => {
+        const { view, model } = grid(30,260,100); view.setCurrentIndex(model.index(0,0));
+        view.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress,"End"));
+        expect(view.currentIndex().row()).toBe(29); expect(view.scrollY()).toBeGreaterThan(0);
+    });
+    test("model reset recalculates the number of grid lines", () => {
+        const { view, model } = grid(30,260,100); model.setItems(["One"]);
+        expect(view.verticalScrollBar().isVisible()).toBe(false);
+    });
+    test("painting obtains icons from the provider and draws captions", () => {
+        const { view } = grid(2); const pixmap = {width:()=>48,height:()=>48};
+        const icon = {pixmap:vi.fn(()=>pixmap)} as unknown as CIcon; const provider = vi.fn(()=>icon); view.setIconProvider(provider);
+        const painter = {setBrush:vi.fn(),setPen:vi.fn(),drawRect:vi.fn(),setFont:vi.fn(),setTextBaseline:vi.fn(),
+            setTextAlign:vi.fn(),save:vi.fn(),restore:vi.fn(),clipRect:vi.fn(),drawText:vi.fn(),drawPixmap:vi.fn()};
+        view.paintItems(painter as unknown as CPainter);
+        expect(provider).toHaveBeenCalledTimes(2); expect(painter.drawPixmap).toHaveBeenCalledTimes(2);
+        expect(painter.drawText.mock.calls.some(call=>call[0]==="Item 0")).toBe(true);
+    });
+});
+
+describe("CListView icon editing compatibility", () => {
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+    test("F2 still opens the configured editor in icon mode", () => {
+        const view=new CListView(); view.resize(300,300); view.setViewMode(CListViewMode.IconMode);
+        const model=new EditableListModel(); const delegate=new TestItemDelegate(); view.setModel(model); view.setItemDelegate(delegate);
+        view.setCurrentIndex(model.index(1,0)); view.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress,"F2"));
+        expect(delegate.createEditorCalls).toHaveLength(1);
+        const expected=view.visualRect(model.index(1,0)), actual=delegate.updateEditorGeometryCalls[0]!.rect;
+        expect(actual.x()).toBe(expected.x()); expect(actual.y()).toBe(expected.y()); expect(actual.width()).toBe(expected.width());
+    });
+    test("Enter with no current icon does not activate", () => {
+        const view=new CListView(); view.setViewMode(CListViewMode.IconMode); view.setModel(new TestListModel());
+        const activated=vi.fn(); view.activated.connect(activated); view.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress,"Enter"));
+        expect(activated).not.toHaveBeenCalled();
+    });
 });

@@ -1,3 +1,6 @@
+import { CSize } from "../geometry/CSize.js";
+import { CListViewHelper, CListViewMode } from "./CListViewHelper.js";
+export { CListViewMode } from "./CListViewHelper.js";
 import { CSignal } from "../core/CSignal.js";
 import type { CKeyEvent } from "../events/CKeyEvent.js";
 import type { CMouseEvent } from "../events/CMouseEvent.js";
@@ -38,7 +41,7 @@ class CListContentWidget extends CWidget
 	protected override mouseMoveEvent(event: CMouseEvent): void
 	{
 		this.#m_listWidget.setHoveredRow(
-			this.#m_listWidget.rowAt(event.y())
+			this.#m_listWidget.rowAt(event.y(), event.x())
 		);
 
 		event.accept();
@@ -51,6 +54,17 @@ class CListContentWidget extends CWidget
 		event.accept();
 	}
 
+    protected override keyPressEvent(event: CKeyEvent): void { this.#m_listWidget.contentKeyPressEvent(event); }
+    protected override mouseDoubleClickEvent(event: CMouseEvent): void {
+        if (event.button() !== CMouseButton.LeftButton || this.#m_listWidget.viewMode() !== CListViewMode.IconMode) { event.ignore(); return; }
+        const row = this.#m_listWidget.rowAt(event.y(), event.x());
+        const item = this.#m_listWidget.item(row);
+        if (!item?.isEnabled()) { event.ignore(); return; }
+        this.setFocus();
+        this.#m_listWidget.activateRow(row, event.modifiers());
+        this.#m_listWidget.itemActivated.emit(item); event.accept();
+    }
+
 	protected override mousePressEvent(event: CMouseEvent): void
 	{
 		if (event.button() !== CMouseButton.LeftButton) {
@@ -58,9 +72,10 @@ class CListContentWidget extends CWidget
 			return;
 		}
 
-		const row = this.#m_listWidget.rowAt(event.y());
+		const row = this.#m_listWidget.rowAt(event.y(), event.x());
 
-		this.#m_listWidget.setFocus();
+		if (this.#m_listWidget.viewMode() === CListViewMode.IconMode) this.setFocus();
+        else this.#m_listWidget.setFocus();
 		this.#m_listWidget.activateRow(row, event.modifiers());
 
 		event.accept();
@@ -74,6 +89,9 @@ export class CListWidget extends CScrollArea
 	static readonly HorizontalPadding = 8;
 
 	#m_items: CListWidgetItem[] = [];
+    #m_itemLayout = new CListViewHelper(CListWidget.ItemHeight);
+    #m_itemConnections = new Map<CListWidgetItem, () => void>();
+    readonly itemActivated = new CSignal<[CListWidgetItem]>();
 
 	#m_currentRow = -1;
 	#m_hoveredRow = -1;
@@ -103,6 +121,37 @@ export class CListWidget extends CScrollArea
 		this.#updateContentGeometry();
 	}
 
+    viewMode(): CListViewMode { return this.#m_itemLayout.mode; }
+    setViewMode(mode: CListViewMode): void {
+        if (mode !== CListViewMode.ListMode && mode !== CListViewMode.IconMode) return;
+        if (this.#m_itemLayout.mode === mode) return;
+        this.#m_itemLayout.mode = mode;
+        this.#m_hoveredRow = -1;
+        this.scrollTo(0, 0);
+        this.#updateContentGeometry();
+    }
+    gridSize(): CSize { return this.#m_itemLayout.gridSize(); }
+    setGridSize(size: CSize): void { this.#m_itemLayout.setGridSize(size); this.#updateContentGeometry(); }
+    iconSize(): CSize { return this.#m_itemLayout.iconSize(); }
+    setIconSize(size: CSize): void { this.#m_itemLayout.setIconSize(size); this.#updateContentGeometry(); }
+    spacing(): number { return this.#m_itemLayout.spacing(); }
+    setSpacing(spacing: number): void { this.#m_itemLayout.setSpacing(spacing); this.#updateContentGeometry(); }
+
+    visualItemRect(item: CListWidgetItem): CRect {
+        const row = this.row(item);
+        return row < 0 ? new CRect() : this.#m_itemLayout.rect(row, this.#m_contentWidget.width());
+    }
+    #connectItem(item: CListWidgetItem): void {
+        if (this.#m_itemConnections.has(item)) return;
+        this.#m_itemConnections.set(item, item.changed.connect(() => this.#m_contentWidget.update()));
+    }
+    override destroy(): void {
+        for (const disconnect of this.#m_itemConnections.values()) disconnect();
+        this.#m_itemConnections.clear(); super.destroy();
+    }
+    /** Forwards keyboard input from the content widget to the owning list. */
+    contentKeyPressEvent(event: CKeyEvent): void { this.keyPressEvent(event); }
+
 	/** Sets the geometry and updates the scrollable item area. */
 	override setGeometry(
 		x: number,
@@ -130,6 +179,7 @@ export class CListWidget extends CScrollArea
 			: item;
 
 		this.#m_items.push(listItem);
+        this.#connectItem(listItem);
 
 		this.#updateContentGeometry();
 
@@ -153,6 +203,7 @@ export class CListWidget extends CScrollArea
 			: item;
 
 		this.#m_items.splice(index, 0, listItem);
+        this.#connectItem(listItem);
 
 		/** Provides if behavior. */
 		if (this.#m_currentRow >= index)
@@ -190,6 +241,7 @@ export class CListWidget extends CScrollArea
 			return null;
 
 		const item = this.#m_items.splice(index, 1)[0]!;
+        if (!this.#m_items.includes(item)) { this.#m_itemConnections.get(item)?.(); this.#m_itemConnections.delete(item); }
 
 		const selectionChanged = this.#m_selectedRows.has(index);
 
@@ -244,7 +296,9 @@ export class CListWidget extends CScrollArea
 		const hadSelection = this.#m_selectedRows.size !== 0;
 		const hadCurrent = this.#m_currentRow !== -1;
 
-		this.#m_items = [];
+		for (const disconnect of this.#m_itemConnections.values()) disconnect();
+        this.#m_itemConnections.clear();
+        this.#m_items = [];
 		this.#m_selectedRows.clear();
 
 		this.#m_currentRow = -1;
@@ -324,6 +378,7 @@ export class CListWidget extends CScrollArea
 		}
 
 		this.#m_contentWidget.update();
+        if (this.viewMode() === CListViewMode.IconMode) this.#ensureCurrentVisible();
 		this.currentRowChanged.emit(row);
 	}
 
@@ -443,20 +498,14 @@ export class CListWidget extends CScrollArea
 	}
 
 	/** Provides row at behavior. */
-	rowAt(y: number): number
-	{
-		/** Provides if behavior. */
-		if (y < 0)
-			return -1;
-
-		const row = Math.floor(y / CListWidget.ItemHeight);
-
-		/** Provides if behavior. */
-		if (row >= this.#m_items.length)
-			return -1;
-
-		return row;
-	}
+    /** Content coordinates; IconMode also requires x to identify a column. */
+    rowAt(y: number, x = 0): number {
+        if (this.viewMode() === CListViewMode.IconMode)
+            return this.#m_itemLayout.rowAt(x, y, this.#m_contentWidget.width(), this.count());
+        if (y < 0) return -1;
+        const row = Math.floor(y / CListWidget.ItemHeight);
+        return row < this.count() ? row : -1;
+    }
 
 	/** Sets the hovered row. */
 	setHoveredRow(row: number): void
@@ -548,7 +597,10 @@ export class CListWidget extends CScrollArea
 		/** Provides for behavior. */
 		for (let row = 0; row < this.#m_items.length; ++row) {
 			const item = this.#m_items[row]!;
-			const y = row * CListWidget.ItemHeight;
+			const rect = this.#m_itemLayout.rect(row, this.#m_contentWidget.width());
+            if (this.viewMode() === CListViewMode.IconMode && (rect.y() + rect.height() <= this.scrollY()
+                || rect.y() >= this.scrollY() + this.viewport().height())) continue;
+            const y = rect.y();
 
 			const selected = this.#m_selectedRows.has(row);
 			const hovered = (row === this.#m_hoveredRow);
@@ -561,14 +613,7 @@ export class CListWidget extends CScrollArea
 				else
 					painter.setBrush(palette.color(CPaletteColorRole.Hover).toCss());
 
-				painter.fillRect(
-					new CRect(
-						0,
-						y,
-						this.#m_contentWidget.width(),
-						CListWidget.ItemHeight
-					)
-				);
+                painter.fillRect(rect);
 			}
 
 			const textRole = !item.isEnabled()
@@ -581,6 +626,10 @@ export class CListWidget extends CScrollArea
 				palette.color(textRole).toCss()
 			);
 
+            if (this.viewMode() === CListViewMode.IconMode) {
+                this.#m_itemLayout.paintContents(painter, this, rect, item.text(), item.icon(), item.isEnabled());
+                continue;
+            }
 			painter.drawText(
 				item.text(),
 				CListWidget.HorizontalPadding,
@@ -592,6 +641,31 @@ export class CListWidget extends CScrollArea
 	/** Handles the key press event. */
 	protected override keyPressEvent(event: CKeyEvent): void
 	{
+        if (this.viewMode() === CListViewMode.IconMode) {
+            if (event.key() === "Enter") {
+                const item = this.currentItem();
+                if (!item?.isEnabled()) { event.ignore(); return; }
+                this.itemActivated.emit(item); event.accept(); return;
+            }
+            let row = this.#m_currentRow < 0 ? 0 : this.#m_currentRow;
+            const next = this.#m_itemLayout.navigate(row, event.key(), this.count(), this.#m_contentWidget.width(), this.viewport().height());
+            if (next === null || this.count() === 0) { event.ignore(); return; }
+            if (this.#m_currentRow < 0) row = this.#firstSelectableRow();
+            else if (event.key() === "Home") row = this.#firstSelectableRow();
+            else if (event.key() === "End") row = this.#lastSelectableRow();
+            else {
+                row = next;
+                const direction = next < this.#m_currentRow ? -1 : 1;
+                while (row >= 0 && row < this.count() && !this.#isSelectableRow(row) && next !== this.#m_currentRow) {
+                    const candidate = this.#m_itemLayout.navigate(row, event.key(), this.count(), this.#m_contentWidget.width(), this.viewport().height());
+                    if (candidate === null || candidate === row || (direction < 0 ? candidate > row : candidate < row)) { row = this.#m_currentRow; break; }
+                    row = candidate;
+                }
+            }
+            if (this.#isSelectableRow(row)) this.setCurrentRow(row);
+            this.#ensureCurrentVisible(); event.accept(); return;
+        }
+
 		/** Provides switch behavior. */
 		switch (event.key()) {
 			case "ArrowDown":
@@ -724,6 +798,14 @@ export class CListWidget extends CScrollArea
 	}
 
 	#updateContentGeometry(): void {
+        if (this.viewMode() === CListViewMode.IconMode) {
+            const frame = this.frameWidth();
+            const size = this.#m_itemLayout.contentSize(this.count(), Math.max(0, this.width() - 2 * frame),
+                Math.max(0, this.height() - 2 * frame), CScrollArea.ScrollBarExtent);
+            this.#m_contentWidget.resize(size.width(), size.height()); this.updateScrollBars();
+            this.#ensureCurrentVisible(); this.#m_contentWidget.update(); return;
+        }
+
 		const height = this.#m_items.length * CListWidget.ItemHeight;
 		this.#m_contentWidget.resize(this.viewport().width(), height);
 		this.updateScrollBars();
@@ -731,4 +813,15 @@ export class CListWidget extends CScrollArea
 		this.updateScrollBars();
 		this.#m_contentWidget.update();
 	}
+    #ensureCurrentVisible(): void {
+        const item = this.currentItem(); if (item === null) return;
+        const rect = this.visualItemRect(item);
+        let x = this.scrollX(), y = this.scrollY();
+        if (rect.x() < x) x = rect.x();
+        else if (rect.x() + rect.width() > x + this.viewport().width()) x = rect.x() + rect.width() - this.viewport().width();
+        if (rect.y() < y) y = rect.y();
+        else if (rect.y() + rect.height() > y + this.viewport().height()) y = rect.y() + rect.height() - this.viewport().height();
+        this.scrollTo(x, y);
+    }
+
 }

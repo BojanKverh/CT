@@ -1,3 +1,8 @@
+import { CMouseEvent, CMouseButton } from "../../src/events/CMouseEvent.js";
+import { CListViewMode } from "../../src/widgets/CListViewHelper.js";
+import { CSize } from "../../src/geometry/CSize.js";
+import type { CIcon } from "../../src/gui/CIcon.js";
+import type { CPainter } from "../../src/painting/CPainter.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { CApplication } from "../../src/core/CApplication.js";
@@ -779,4 +784,126 @@ describe("CListWidget", () =>
 		expect(list.widget()?.width()).toBe(list.viewport().width());
 		expect(list.horizontalScrollBar().isVisible()).toBe(false);
 	});
+});
+
+
+describe("CListWidget IconMode", () => {
+
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+
+    function grid(count = 8, width = 260, height = 300) {
+        const list = new CListWidget(); list.resize(width,height); list.setGridSize(new CSize(70,80));
+        list.setSpacing(10); list.setViewMode(CListViewMode.IconMode);
+        for (let i=0;i<count;++i) list.addItem(`Item ${i}`);
+        return list;
+    }
+    test("retains default list mode", () => { expect(new CListWidget().viewMode()).toBe(CListViewMode.ListMode); });
+    test("uses both axes for rectangles and hit testing", () => {
+        const list = grid(); expect(list.visualItemRect(list.item(1)!).x()).toBe(80);
+        expect(list.rowAt(5,85)).toBe(1); expect(list.rowAt(95,5)).toBe(3);
+    });
+    test("does not hit gaps or unused final cells", () => {
+        const list = grid(4); expect(list.rowAt(5,75)).toBe(-1); expect(list.rowAt(85,5)).toBe(-1);
+        expect(list.rowAt(95,85)).toBe(-1);
+    });
+    test("reflows on resize and retains selected item", () => {
+        const list = grid(); const selected = list.item(3)!; list.setCurrentRow(3); list.resize(180,500);
+        expect(list.visualItemRect(selected).x()).toBe(80); expect(list.currentItem()).toBe(selected);
+    });
+    test("switching to list mode restores the old row height", () => {
+        const list = grid(); list.setViewMode(CListViewMode.ListMode);
+        expect(list.visualItemRect(list.item(2)!).y()).toBe(2*CListWidget.ItemHeight);
+    });
+    test("arrow keys navigate spatially without wrapping lines", () => {
+        const list = grid(); list.setCurrentRow(1); list.event(new CKeyEvent(CEventType.KeyPress,"ArrowDown"));
+        expect(list.currentRow()).toBe(4); list.event(new CKeyEvent(CEventType.KeyPress,"ArrowLeft")); expect(list.currentRow()).toBe(3);
+        list.event(new CKeyEvent(CEventType.KeyPress,"ArrowLeft")); expect(list.currentRow()).toBe(3);
+    });
+    test("navigation skips disabled icons in the direction of travel", () => {
+        const list = grid(); list.item(4)!.setEnabled(false); list.setCurrentRow(1);
+        list.event(new CKeyEvent(CEventType.KeyPress,"ArrowDown")); expect(list.currentRow()).toBe(7);
+    });
+    test("Enter activates an enabled item", () => {
+        const list = grid(); const activated=vi.fn(); list.itemActivated.connect(activated);
+        list.event(new CKeyEvent(CEventType.KeyPress,"Enter")); expect(activated).toHaveBeenCalledWith(list.item(0));
+    });
+    test("disabled current items cannot activate", () => {
+        const list = grid(); const activated=vi.fn(); list.itemActivated.connect(activated); list.item(0)!.setEnabled(false);
+        list.event(new CKeyEvent(CEventType.KeyPress,"Enter")); expect(activated).not.toHaveBeenCalled();
+    });
+    test("End reveals the last item", () => {
+        const list = grid(30,260,100); list.event(new CKeyEvent(CEventType.KeyPress,"End"));
+        expect(list.currentRow()).toBe(29); expect(list.scrollY()).toBeGreaterThan(0);
+    });
+    test("icons can be supplied in the constructor or replaced", () => {
+        const icon={pixmap:vi.fn(()=>null)} as unknown as CIcon; const item=new CListWidgetItem("Folder",icon);
+        expect(item.icon()).toBe(icon); item.setIcon(null); expect(item.icon()).toBeNull();
+    });
+    test("item changes repaint and taking the item disconnects notifications", () => {
+        const list=grid(0); const item=new CListWidgetItem("Folder"); list.addItem(item);
+        const update=vi.spyOn(list.widget()!,"update"); item.setText("Renamed"); expect(update).toHaveBeenCalled();
+        list.takeItem(0); update.mockClear(); item.setText("Detached"); expect(update).not.toHaveBeenCalled();
+    });
+    test("clearing items removes scrolling", () => {
+        const list=grid(30,260,100); list.clear(); expect(list.verticalScrollBar().isVisible()).toBe(false);
+    });
+    test("paint draws each item icon below its selected tile background", () => {
+        const list=grid(1); const pixmap={width:()=>32,height:()=>32};
+        const icon={pixmap:vi.fn(()=>pixmap)} as unknown as CIcon; list.item(0)!.setIcon(icon);
+        const painter={setBrush:vi.fn(),setPen:vi.fn(),fillRect:vi.fn(),setFont:vi.fn(),setTextAlign:vi.fn(),
+            setTextBaseline:vi.fn(),save:vi.fn(),restore:vi.fn(),clipRect:vi.fn(),drawText:vi.fn(),drawPixmap:vi.fn()};
+        list.paintItems(painter as unknown as CPainter); expect(painter.drawPixmap).toHaveBeenCalledOnce();
+        expect(painter.drawText.mock.calls.some(call=>call[0]==="Item 0")).toBe(true);
+    });
+    test("grid sizes are returned as independent values", () => {
+        const list=grid(); expect(list.gridSize()).not.toBe(list.gridSize());
+        list.setGridSize(new CSize(-1,0)); expect(list.gridSize().width()).toBe(70);
+    });
+});
+
+describe("CListWidget icon interaction", () => {
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+    function makeList() {
+        const list=new CListWidget(); list.resize(260,300); list.setGridSize(new CSize(70,80)); list.setSpacing(10);
+        list.setViewMode(CListViewMode.IconMode); for(let i=0;i<8;++i) list.addItem(`Item ${i}`); return list;
+    }
+    test("mouse press selects the icon and focuses the content", () => {
+        const list=makeList(); const content=list.widget()!;
+        content.event(new CMouseEvent(CEventType.MousePress,85,5,CMouseButton.LeftButton));
+        expect(list.currentRow()).toBe(1); expect(list.selectedRows()).toEqual([1]); expect(content.hasFocus()).toBe(true);
+    });
+    test("double click activates and gaps do not", () => {
+        const list=makeList(); const activated=vi.fn(); list.itemActivated.connect(activated);
+        list.widget()!.event(new CMouseEvent(CEventType.MouseDoubleClick,85,5,CMouseButton.LeftButton));
+        expect(activated).toHaveBeenCalledWith(list.item(1)); activated.mockClear();
+        list.widget()!.event(new CMouseEvent(CEventType.MouseDoubleClick,75,5,CMouseButton.LeftButton));
+        expect(activated).not.toHaveBeenCalled();
+    });
+    test("Home and End find the first and last enabled icon", () => {
+        const list=makeList(); list.item(0)!.setEnabled(false); list.item(7)!.setEnabled(false); list.setCurrentRow(4);
+        list.event(new CKeyEvent(CEventType.KeyPress,"Home")); expect(list.currentRow()).toBe(1);
+        list.event(new CKeyEvent(CEventType.KeyPress,"End")); expect(list.currentRow()).toBe(6);
+    });
+    test("multi-selection remains available in icon mode", () => {
+        const list=makeList(); list.setSelectionMode(CSelectionMode.MultiSelection); list.clearSelection();
+        list.activateRow(1,0); list.activateRow(4,0); expect(list.selectedRows()).toEqual([1,4]);
+    });
+    test("long captions use at most two lines and end with an ellipsis", () => {
+        const list=makeList(); list.clear(); list.addItem("A".repeat(100));
+        const painter={setBrush:vi.fn(),setPen:vi.fn(),fillRect:vi.fn(),setFont:vi.fn(),setTextAlign:vi.fn(),
+            setTextBaseline:vi.fn(),save:vi.fn(),restore:vi.fn(),clipRect:vi.fn(),drawText:vi.fn(),drawPixmap:vi.fn()};
+        list.paintItems(painter as unknown as CPainter);
+        expect(painter.drawText).toHaveBeenCalledTimes(2);
+        expect(String(painter.drawText.mock.calls[1]![0]).endsWith("…")).toBe(true);
+    });
+    test("icon painting preserves the pixmap aspect ratio", () => {
+        const list=makeList(); list.clear(); const pixmap={width:()=>100,height:()=>50};
+        list.addItem(new CListWidgetItem("Wide",{pixmap:()=>pixmap} as unknown as CIcon));
+        const painter={setBrush:vi.fn(),setPen:vi.fn(),fillRect:vi.fn(),setFont:vi.fn(),setTextAlign:vi.fn(),
+            setTextBaseline:vi.fn(),save:vi.fn(),restore:vi.fn(),clipRect:vi.fn(),drawText:vi.fn(),drawPixmap:vi.fn()};
+        list.paintItems(painter as unknown as CPainter); const call=painter.drawPixmap.mock.calls[0]!;
+        expect(call[3]/call[4]).toBeCloseTo(2);
+    });
 });

@@ -14,7 +14,8 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CMemorySqlTableAdapter, CSqlEditStrategy, CSqlFilterOperator, CSqlRelation,
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
-	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut, CPlainTextEdit, CTextEditFindFlag
+	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut, CPlainTextEdit, CTextEditFindFlag,
+    CSize, CListViewMode
 } from "../../src/index.js";
 import { CEchoMode } from "../../src/widgets/CLineEdit.js";
 
@@ -514,6 +515,171 @@ function createSqlEmployees(): Array<Record<string, unknown>> {
 
 function createSqlCountries(): Array<Record<string, unknown>> {
 	return sqlCountries.map((name, index) => ({ id: index + 1, name }));
+}
+
+type DemoListIconKind = "folder" | "document" | "image" | "sheet";
+
+/** Generates local demo artwork so the icon view needs no extra image files. */
+function createListDemoIcon(kind: DemoListIconKind): CIcon {
+    const surface = document.createElement("canvas");
+    surface.width = 64;
+    surface.height = 64;
+    const context = surface.getContext("2d");
+    if (context === null)
+        throw new Error("Cannot create icon demo canvas.");
+
+    if (kind === "folder") {
+        context.fillStyle = "#d99a20";
+        context.beginPath();
+        context.moveTo(5, 14); context.lineTo(26, 14); context.lineTo(32, 21);
+        context.lineTo(59, 21); context.lineTo(59, 53); context.lineTo(5, 53);
+        context.closePath(); context.fill();
+        context.fillStyle = "#ffd366";
+        context.fillRect(5, 25, 54, 28);
+        context.strokeStyle = "#bd8618";
+        context.lineWidth = 2;
+        context.strokeRect(5, 25, 54, 28);
+    } else {
+        context.fillStyle = "#d5dde5";
+        context.fillRect(12, 6, 43, 54);
+        context.fillStyle = "#ffffff";
+        context.fillRect(9, 3, 43, 54);
+        context.strokeStyle = "#8797a6";
+        context.lineWidth = 2;
+        context.strokeRect(9, 3, 43, 54);
+        if (kind === "image") {
+            context.fillStyle = "#b6e4ff";
+            context.fillRect(15, 12, 31, 31);
+            context.fillStyle = "#ffcc4d";
+            context.beginPath(); context.arc(37, 20, 5, 0, 2 * Math.PI); context.fill();
+            context.fillStyle = "#4c9b6b";
+            context.beginPath(); context.moveTo(15, 43); context.lineTo(27, 25);
+            context.lineTo(37, 38); context.lineTo(42, 32); context.lineTo(46, 43);
+            context.closePath(); context.fill();
+        } else if (kind === "sheet") {
+            context.fillStyle = "#249664";
+            context.fillRect(9, 3, 43, 12);
+            context.strokeStyle = "#c0d6c8";
+            context.lineWidth = 1;
+            for (let x = 16; x <= 44; x += 9) {
+                context.beginPath(); context.moveTo(x, 21); context.lineTo(x, 49); context.stroke();
+            }
+            for (let y = 21; y <= 49; y += 7) {
+                context.beginPath(); context.moveTo(16, y); context.lineTo(44, y); context.stroke();
+            }
+        } else {
+            context.fillStyle = "#d95757";
+            context.fillRect(9, 3, 43, 12);
+            context.fillStyle = "#a8b4c0";
+            for (let y = 23; y <= 44; y += 7)
+                context.fillRect(17, y, y === 44 ? 18 : 27, 3);
+        }
+    }
+    return new CIcon(new CPixmap(surface, 64, 64));
+}
+
+function showIconGridDemo(parent: CWidget): void {
+    const dialog = new CDialog(parent);
+    dialog.setGeometry(70, 60, 760, 570);
+    dialog.setWindowTitle("Icon grid — CListWidget");
+
+    const intro = new CLabel(dialog);
+    intro.setGeometry(16, 12, 720, 26);
+    intro.setText("Double-click an item or press Enter to activate it. Arrow keys navigate.");
+
+    const modeLabel = new CLabel(dialog);
+    modeLabel.setGeometry(16, 48, 46, 28); modeLabel.setText("View:");
+    const mode = new CComboBox(dialog);
+    mode.setGeometry(64, 48, 138, 28);
+    mode.addItems(["Large icons", "List"]);
+
+    const sizeLabel = new CLabel(dialog);
+    sizeLabel.setGeometry(222, 48, 62, 28); sizeLabel.setText("Icon size:");
+    const iconSize = new CSpinBox(dialog);
+    iconSize.setGeometry(286, 48, 78, 28);
+    iconSize.setRange(24, 80); iconSize.setValue(48);
+
+    const widthLabel = new CLabel(dialog);
+    widthLabel.setGeometry(384, 48, 90, 28); widthLabel.setText("View width:");
+    const viewWidth = new CSpinBox(dialog);
+    viewWidth.setGeometry(476, 48, 90, 28);
+    viewWidth.setRange(240, 700); viewWidth.setValue(700);
+
+    const multiSelect = new CCheckBox(dialog);
+    multiSelect.setGeometry(592, 48, 144, 28); multiSelect.setText("Multi-select");
+
+    const list = new CListWidget(dialog);
+    list.setGeometry(16, 92, 700, 360);
+    list.setViewMode(CListViewMode.IconMode);
+    list.setIconSize(new CSize(48, 48));
+    list.setGridSize(new CSize(112, 112));
+    list.setSpacing(8);
+
+    const icons: Record<DemoListIconKind, CIcon> = {
+        folder: createListDemoIcon("folder"), document: createListDemoIcon("document"),
+        image: createListDemoIcon("image"), sheet: createListDemoIcon("sheet")
+    };
+    const entries: Array<{ name: string; kind: DemoListIconKind; enabled?: boolean }> = [
+        { name: "Documents", kind: "folder" },
+        { name: "Pictures", kind: "folder" },
+        { name: "Reports", kind: "folder" },
+        { name: "Invoices", kind: "folder" },
+        { name: "Partners", kind: "folder" },
+        { name: "Archive (disabled)", kind: "folder", enabled: false },
+        { name: "Invoice 2026-001.pdf", kind: "document" },
+        { name: "Invoice 2026-002.pdf", kind: "document" },
+        { name: "Annual report 2026 and supporting documents.pdf", kind: "document" },
+        { name: "Price list.xlsx", kind: "sheet" },
+        { name: "Payments November.xlsx", kind: "sheet" },
+        { name: "Company logo.png", kind: "image" },
+        { name: "Office photo.jpg", kind: "image" },
+        { name: "Contract - Example partner.pdf", kind: "document" },
+        { name: "Balance sheet.xlsx", kind: "sheet" },
+        { name: "Cash flow.xlsx", kind: "sheet" },
+        { name: "Product photo 01.jpg", kind: "image" },
+        { name: "Product photo 02.jpg", kind: "image" },
+        { name: "Meeting notes.pdf", kind: "document" },
+        { name: "Receipts", kind: "folder" },
+        { name: "VAT report.xlsx", kind: "sheet" },
+        { name: "Inventory.xlsx", kind: "sheet" },
+        { name: "Presentation cover.png", kind: "image" },
+        { name: "Read me first.pdf", kind: "document" }
+    ];
+    for (const entry of entries) {
+        const item = new CListWidgetItem(entry.name, icons[entry.kind]);
+        item.setEnabled(entry.enabled !== false);
+        list.addItem(item);
+    }
+
+    const status = new CLabel(dialog);
+    status.setGeometry(16, 462, 720, 26);
+    const showSelection = () => status.setText(
+        `${list.selectedItems().length} selected — ${list.currentItem()?.text() ?? "No current item"}`);
+    list.currentRowChanged.connect(showSelection);
+    list.itemSelectionChanged.connect(showSelection);
+    list.itemActivated.connect(item => status.setText(`Activated: ${item.text()}`));
+    showSelection();
+
+    const hint = new CLabel(dialog);
+    hint.setGeometry(16, 490, 720, 22);
+    hint.setText("Change View width to see reflow. The grey Archive item is disabled. No files are opened.");
+
+    mode.currentIndexChanged.connect(index => {
+        list.setViewMode(index === 0 ? CListViewMode.IconMode : CListViewMode.ListMode);
+    });
+    iconSize.valueChanged.connect(size => {
+        list.setIconSize(new CSize(size, size));
+        list.setGridSize(new CSize(size + 64, size + 64));
+    });
+    viewWidth.valueChanged.connect(width => list.setGeometry(16, 92, width, 360));
+    multiSelect.toggled.connect(enabled => list.setSelectionMode(enabled
+        ? CSelectionMode.MultiSelection : CSelectionMode.SingleSelection));
+
+    const buttons = new CDialogButtonBox(CStandardButton.Ok, dialog);
+    buttons.setGeometry(16, 526, 720, 30);
+    buttons.accepted.connect(() => dialog.accept());
+    dialog.exec();
+    list.widget()?.setFocus();
 }
 
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas");
@@ -1784,6 +1950,10 @@ showGridAction.setChecked(true);
 
 viewMenu.addAction(showGridAction);
 viewMenu.addSeparator();
+
+const iconGridDemoAction = new CAction("Icon grid demo…", mainWindow);
+iconGridDemoAction.triggered.connect(() => showIconGridDemo(parent));
+viewMenu.addAction(iconGridDemoAction);
 
 const panelsMenu = new CMenu();
 panelsMenu.addAction(new CAction("Properties"));

@@ -1,3 +1,8 @@
+import { CSignal } from "../core/CSignal.js";
+import type { CIcon } from "../gui/CIcon.js";
+import type { CPoint } from "../geometry/CPoint.js";
+import { CListViewHelper, CListViewMode } from "./CListViewHelper.js";
+export { CListViewMode } from "./CListViewHelper.js";
 import { CEventType } from "../events/CEvent.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
@@ -48,6 +53,10 @@ class CListViewContentWidget extends CWidget {
 /** Implements the list view widget. */
 export class CListView extends CAbstractItemView {
 	static readonly ItemHeight = 24;
+    #m_itemLayout = new CListViewHelper(CListView.ItemHeight);
+    #m_iconProvider: ((index: CModelIndex) => CIcon | null) | null = null;
+    /** Emitted by Enter or double click in IconMode. F2 remains the editing trigger. */
+    readonly activated = new CSignal<[CModelIndex]>();
 
 	#m_scrollArea: CListScrollArea;
 	#m_contentWidget: CListViewContentWidget;
@@ -65,17 +74,38 @@ export class CListView extends CAbstractItemView {
 		this.#updateGeometry();
 	}
 
+    viewMode(): CListViewMode { return this.#m_itemLayout.mode; }
+    setViewMode(mode: CListViewMode): void {
+        if (mode !== CListViewMode.ListMode && mode !== CListViewMode.IconMode) return;
+        if (this.#m_itemLayout.mode === mode) return;
+        this.#m_itemLayout.mode = mode;
+        this.scrollTo(0, 0);
+        this.#updateContentGeometry();
+    }
+    gridSize(): CSize { return this.#m_itemLayout.gridSize(); }
+    setGridSize(size: CSize): void { this.#m_itemLayout.setGridSize(size); this.#updateContentGeometry(); }
+    iconSize(): CSize { return this.#m_itemLayout.iconSize(); }
+    setIconSize(size: CSize): void { this.#m_itemLayout.setIconSize(size); this.#updateContentGeometry(); }
+    spacing(): number { return this.#m_itemLayout.spacing(); }
+    setSpacing(spacing: number): void { this.#m_itemLayout.setSpacing(spacing); this.#updateContentGeometry(); }
+
+    /** Supplies icons without imposing a new data-role API on the model. */
+    setIconProvider(provider: ((index: CModelIndex) => CIcon | null) | null): void {
+        this.#m_iconProvider = provider;
+        this.#m_contentWidget.update();
+    }
+    /** Returns the index at a content-widget coordinate; gaps return an invalid index. */
+    indexAt(point: CPoint): CModelIndex {
+        const model = this.model();
+        const row = this.#m_itemLayout.rowAt(point.x(), point.y(), this.#m_contentWidget.width(), model?.rowCount() ?? 0);
+        return model !== null && row >= 0 ? model.index(row, 0) : new CModelIndex();
+    }
+
 	/** Returns the item rectangle in content-widget coordinates. */
 	visualRect(index: CModelIndex): CRect {
 		if (!index.isValid() || index.model() !== this.model())
-			return new CRect();
-
-		return new CRect(
-			0,
-			index.row() * CListView.ItemHeight,
-			this.#m_contentWidget.width(),
-			CListView.ItemHeight
-		);
+	        if (index.row() >= (this.model()?.rowCount() ?? 0) || index.column() !== 0) return new CRect();
+        return this.#m_itemLayout.rect(index.row(), this.#m_contentWidget.width());
 	}
 
 	/** Returns the viewport widget. */
@@ -176,14 +206,23 @@ export class CListView extends CAbstractItemView {
 
 		for (let row = 0; row < model.rowCount(); row++) {
 			const index = model.index(row, 0);
-			const y = row * CListView.ItemHeight;
+			const rect = this.visualRect(index);
+            if (this.viewMode() === CListViewMode.IconMode && (rect.y() + rect.height() <= this.scrollY()
+                || rect.y() >= this.scrollY() + this.viewport().height())) continue;
+            const y = rect.y();
 			const selected = this.selectionModel()?.isSelected(index) ?? false;
 
 			painter.setBrush(selected ? highlight : base);
 			painter.setPen(selected ? highlightedText : text);
-			painter.drawRect(0, y, width, CListView.ItemHeight);
+			painter.drawRect(rect.x(), rect.y(), rect.width(), rect.height());
 
 			const value = model.data(index);
+            if (this.viewMode() === CListViewMode.IconMode) {
+                this.#m_itemLayout.paintContents(painter, this, rect,
+                    value === null || value === undefined ? "" : String(value), this.#m_iconProvider?.(index) ?? null);
+                continue;
+            }
+
 
 			painter.save();
 			painter.clipRect(new CRect(0, y, width, CListView.ItemHeight));
@@ -211,8 +250,8 @@ export class CListView extends CAbstractItemView {
 
 		this.#m_contentWidget.setFocus();
 
-		const row = Math.floor(event.pos().y() / CListView.ItemHeight);
-		const index = model.index(row, 0);
+		const index = this.viewMode() === CListViewMode.IconMode ? this.indexAt(event.pos())
+            : model.index(Math.floor(event.pos().y() / CListView.ItemHeight), 0);
 
 		if (!index.isValid()) {
 			event.ignore();
@@ -240,8 +279,8 @@ export class CListView extends CAbstractItemView {
 			return;
 		}
 
-		const row = Math.floor(event.pos().y() / CListView.ItemHeight);
-		const index = model.index(row, 0);
+		const index = this.viewMode() === CListViewMode.IconMode ? this.indexAt(event.pos())
+            : model.index(Math.floor(event.pos().y() / CListView.ItemHeight), 0);
 
 		if (!index.isValid()) {
 			event.ignore();
@@ -252,7 +291,8 @@ export class CListView extends CAbstractItemView {
 		selectionModel.select(index);
 		selectionModel.setCurrentIndex(index);
 		this.#m_contentWidget.update();
-		this.edit(index);
+        if (this.viewMode() === CListViewMode.IconMode) this.activated.emit(index);
+        else this.edit(index);
 		event.accept();
 	}
 
@@ -266,6 +306,10 @@ export class CListView extends CAbstractItemView {
 			return;
 		}
 
+        if (event.key() === "Enter" && this.viewMode() === CListViewMode.IconMode) {
+            if (!this.currentIndex().isValid()) { event.ignore(); return; }
+            this.activated.emit(this.currentIndex()); event.accept(); return;
+        }
 		if (event.key() === "F2" || event.key() === "Enter") {
 			if (this.edit(this.currentIndex())) {
 				event.accept();
@@ -280,7 +324,14 @@ export class CListView extends CAbstractItemView {
 			return;
 		}
 
-		let row = this.currentIndex().row();
+        let row = this.currentIndex().row();
+        if (this.viewMode() === CListViewMode.IconMode) {
+            const next = this.#m_itemLayout.navigate(Math.max(0, row), event.key(), rows,
+                this.#m_contentWidget.width(), this.viewport().height());
+            if (next === null) { event.ignore(); return; }
+            row = this.currentIndex().isValid() ? next : 0;
+        } else {
+
 
 		if (!this.currentIndex().isValid()) {
 			row = 0;
@@ -316,6 +367,7 @@ export class CListView extends CAbstractItemView {
 			}
 		}
 
+        }
 		const index = model.index(row, 0);
 
 		selectionModel.clearSelection();
@@ -384,6 +436,17 @@ export class CListView extends CAbstractItemView {
 	}
 
 	#updateContentGeometry(): void {
+        if (this.viewMode() === CListViewMode.IconMode) {
+            const frame = this.#m_scrollArea.frameWidth();
+            const size = this.#m_itemLayout.contentSize(this.model()?.rowCount() ?? 0,
+                Math.max(0, this.width() - 2 * frame), Math.max(0, this.height() - 2 * frame), CScrollArea.ScrollBarExtent);
+            this.#m_contentWidget.resize(size.width(), size.height());
+            this.#m_scrollArea.updateListScrollBars();
+            this.#m_contentWidget.resize(size.width(), Math.max(size.height(), this.viewport().height()));
+            this.#m_scrollArea.updateListScrollBars();
+            this.updateEditorGeometry(); this.#ensureIndexVisible(this.currentIndex()); this.#m_contentWidget.update(); return;
+        }
+
 		const height = (this.model()?.rowCount() ?? 0) * CListView.ItemHeight;
 
 		this.#m_contentWidget.resize(
@@ -403,8 +466,14 @@ export class CListView extends CAbstractItemView {
 		if (!index.isValid())
 			return;
 
-		const y = index.row() * CListView.ItemHeight;
-		const bottom = y + CListView.ItemHeight;
+		const rect = this.visualRect(index);
+        const y = rect.y(), bottom = y + rect.height();
+        if (this.viewMode() === CListViewMode.IconMode) {
+            let x = this.scrollX();
+            if (rect.x() < x) x = rect.x();
+            else if (rect.x() + rect.width() > x + this.viewport().width()) x = rect.x() + rect.width() - this.viewport().width();
+            this.setScrollX(x);
+        }
 		const viewportHeight = this.viewport().height();
 		let scrollY = this.scrollY();
 
