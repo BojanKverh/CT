@@ -15,10 +15,11 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
 	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut, CPlainTextEdit, CTextEditFindFlag,
-    CSize, CListViewMode, CSplashScreen, CImageView, CWizardDialog, CWizardPage, CVariantAnimation, CAnimationState, CVBoxLayout, CParallelAnimationGroup
+    CSize, CListViewMode, CSplashScreen, CImageView, CWizardDialog, CWizardPage, CVariantAnimation, CAnimationState, CVBoxLayout, CParallelAnimationGroup, CSequentialAnimationGroup, CEasingCurveType
 } from "../../src/index.js";
 import { CEchoMode } from "../../src/widgets/CLineEdit.js";
 import { CSizePolicyType } from "../../src/geometry/CSizePolicy.js";
+import { CEasingCurve } from "../../src/animation/CEasingCurve.js";
 
 const toolkitLogo = new Image();
 
@@ -93,6 +94,7 @@ function showAboutCanvasToolkit(parent: CWidget): void {
 class AnimatedToolkitLogoWidget extends CWidget {
     #rotation = 0;
     #scale = 0.25;
+    #horizontalStretch = 1;
     #surface = document.createElement("canvas");
     #context: CanvasRenderingContext2D;
     #frame: CPixmap;
@@ -114,6 +116,10 @@ class AnimatedToolkitLogoWidget extends CWidget {
     setScale(scale: number): void {
         this.#scale = Math.max(0, Math.min(1, scale)); this.update();
     }
+    setHorizontalStretch(stretch: number): void {
+        this.#horizontalStretch = Math.max(0.05, Math.min(4, stretch)); this.update();
+    }
+    horizontalStretch(): number { return this.#horizontalStretch; }
     rotation(): number { return this.#rotation; }
     logoScale(): number { return this.#scale; }
     protected override paintEvent(painter: CPainter): void {
@@ -137,12 +143,13 @@ class AnimatedToolkitLogoWidget extends CWidget {
         ctx.strokeStyle = "rgba(184, 214, 229, 0.18)"; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.arc(width / 2, height / 2, maximumSize / 2, 0, 2 * Math.PI); ctx.stroke();
         const size = maximumSize * this.logoScale();
+        const imageWidth = size * this.#horizontalStretch;
         ctx.save();
         try {
             ctx.translate(width / 2, height / 2);
             ctx.rotate(this.#rotation * Math.PI / 180);
             ctx.shadowColor = "rgba(48, 215, 211, 0.35)"; ctx.shadowBlur = 24;
-            ctx.drawImage(toolkitLogo, -size / 2, -size / 2, size, size);
+            ctx.drawImage(toolkitLogo, -imageWidth / 2, -size / 2, imageWidth, size);
         } finally { ctx.restore(); }
         painter.drawPixmap(this.#frame, 0, 0, this.width(), this.height());
     }
@@ -150,7 +157,7 @@ class AnimatedToolkitLogoWidget extends CWidget {
 
 /** Owns its animation explicitly so closing with a button, Esc or X stops the loop. */
 class ToolkitLogoAnimationDialog extends CDialog {
-    #animation = new CParallelAnimationGroup();
+    #animation = new CSequentialAnimationGroup();
 
     constructor(parent: CWidget) {
         super(parent);
@@ -168,7 +175,7 @@ class ToolkitLogoAnimationDialog extends CDialog {
         const font = title.font(); font.setPixelSize(20); title.setFont(font);
         title.setText("Canvas Toolkit in motion");
         const hint = new CLabel(this); hint.setWordWrap(true);
-        hint.setText("CParallelAnimationGroup: rotation (4 s) and size pulse (2 s) start together. Size finishes first.");
+        hint.setText("Parallel (3 s) → horizontal stretch (0.9 s) → elastic release (0.6 s). Pause or restart the whole sequence.");
         const logo = new AnimatedToolkitLogoWidget(this);
         const progress = new CProgressBar(this); fixedHeight(progress, 20);
         progress.setValue(0);
@@ -178,19 +185,44 @@ class ToolkitLogoAnimationDialog extends CDialog {
         const controls = new CWidget(this); fixedHeight(controls, 32);
         const buttons = new CHBoxLayout(); buttons.setContentsMargins(0, 0, 0, 0); buttons.setSpacing(8);
         const rotation = new CVariantAnimation();
-        rotation.setStartValue(0); rotation.setEndValue(360); rotation.setDuration(4000);
+        rotation.setStartValue(0); rotation.setEndValue(360); rotation.setDuration(3000);
         const scale = new CVariantAnimation();
-        scale.setStartValue(0); scale.setEndValue(1); scale.setDuration(2000);
-        this.#animation.addAnimation(rotation); this.#animation.addAnimation(scale);
+        scale.setStartValue(0); scale.setEndValue(1); scale.setDuration(2500);
+        const parallel = new CParallelAnimationGroup();
+        parallel.addAnimation(rotation); parallel.addAnimation(scale);
+        const stretch = new CVariantAnimation();
+        stretch.setStartValue(1); stretch.setEndValue(2.6); stretch.setDuration(900);
+        stretch.setEasingCurve(CEasingCurveType.OutCubic);
+        const elastic = new CVariantAnimation();
+        elastic.setStartValue(0); elastic.setEndValue(1); elastic.setDuration(600);
+		this.#animation.addAnimation(parallel);
+        this.#animation.addAnimation(stretch);
+        this.#animation.addAnimation(elastic);
+        let stage = "Parallel";
         const updateStatus = (): void => {
-            status.setText(`Rotation: ${Math.round(logo.rotation())}°   |   Scale: ${Math.round(logo.logoScale() * 100)}%   |   Group: 4 s`);
+            progress.setValue(Math.round(this.#animation.currentTime() / this.#animation.duration() * 100));
+            status.setText(`${stage}   |   Rotation: ${Math.round(logo.rotation())}°   |   Scale: ${Math.round(logo.logoScale() * 100)}%   |   Width: ${Math.round(logo.horizontalStretch() * 100)}%`);
         };
-        rotation.valueChanged.connect(degrees => {
-            logo.setRotation(degrees); progress.setValue(Math.round(degrees / 360 * 100)); updateStatus();
-        });
+        rotation.valueChanged.connect(degrees => { logo.setRotation(degrees); updateStatus(); });
         scale.valueChanged.connect(phase => {
-            // One complete pulse returns to its starting size, allowing a seamless loop.
             logo.setScale(0.25 + 0.75 * (1 - Math.cos(phase * 2 * Math.PI)) / 2);
+            updateStatus();
+        });
+        stretch.valueChanged.connect(value => { logo.setHorizontalStretch(value); updateStatus(); });
+        elastic.valueChanged.connect(phase => {
+            // A damped spring released from rest: width oscillates around 1.
+            // Force the exact endpoint so the next loop starts without a jump.
+            const oscillations = 15; // število nihajev nastaviš tukaj
+			const damping = 6;
+			const frequency = 2 * Math.PI * oscillations;
+            const displacement = phase >= 1 ? 0 : Math.exp(-damping * phase)
+                * (Math.cos(frequency * phase) + damping / frequency * Math.sin(frequency * phase));
+            logo.setHorizontalStretch(1 + 1.6 * displacement);
+            updateStatus();
+        });
+        this.#animation.currentAnimationChanged.connect(animation => {
+            stage = animation === stretch ? "Stretch X" : animation === elastic ? "Elastic" : "Parallel";
+            if (animation === parallel) logo.setHorizontalStretch(1);
             updateStatus();
         });
         this.#animation.finished.connect(() => {

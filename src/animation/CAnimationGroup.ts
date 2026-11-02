@@ -10,6 +10,13 @@ export abstract class CAnimationGroup extends CAbstractAnimation {
     animationCount(): number { return this.#members.length; }
     animationAt(index: number): CAbstractAnimation | null { return this.#members[index] ?? null; }
     protected animations(): readonly CAbstractAnimation[] { return [...this.#members]; }
+    /** @internal Propagates a containing group's clock policy to nested members. */
+    override setExternalClock(external: boolean): void {
+        super.setExternalClock(external);
+        for (const animation of this.animations()) animation.setExternalClock(external);
+    }
+    /** Allows derived groups to discard references after membership changes. */
+    protected updateAnimations(): void {}
     abstract override duration(): number;
     /** A group's duration is derived from its members. */
     override setDuration(_duration: number): void { throw new Error("Set durations on the group's animations."); }
@@ -26,12 +33,14 @@ export abstract class CAnimationGroup extends CAbstractAnimation {
             throw new Error("Take the animation out of its current group first.");
         animation.setParent(this);
         this.#members.push(animation);
+        if (this.isExternallyDriven()) animation.setExternalClock(true);
         this.#disconnect.set(animation, animation.destroyed.connect(() => {
             if (this.#destroying) return;
             // A destroyed member cannot continue participating in this run.
             this.stop();
             this.#detach(animation);
         }));
+        this.updateAnimations();
     }
 
     takeAnimation(index: number): CAbstractAnimation | null {
@@ -54,6 +63,8 @@ export abstract class CAnimationGroup extends CAbstractAnimation {
         this.#disconnect.get(animation)?.(); this.#disconnect.delete(animation);
         this.#members = this.#members.filter(member => member !== animation);
         if (animation.parent() === this) animation.setParent(null);
+        animation.setExternalClock(false);
+        this.updateAnimations();
     }
     #checkEditable(): void {
         if (this.#destroying || this.isDestroyed()) throw new Error("Animation group has been destroyed.");

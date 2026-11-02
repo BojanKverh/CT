@@ -13,11 +13,26 @@ export abstract class CAbstractAnimation extends CObject {
     #generation = 0;
     #removeTick: (() => void) | null = null;
     #disposed = false;
+    #externalClock = false;
     readonly stateChanged = new CSignal<[CAnimationState, CAnimationState]>();
     readonly finished = new CSignal<[]>();
     readonly destroyed = new CSignal<[]>();
 
     isDestroyed(): boolean { return this.#disposed; }
+    /** @internal Groups may supply time instead of scheduling an independent clock. */
+    isExternallyDriven(): boolean { return this.#externalClock; }
+    setExternalClock(external: boolean): void {
+        if (this.#disposed || external === this.#externalClock) return;
+        this.#externalClock = external; ++this.#generation; this.#detach();
+        if (!external && this.#state === CAnimationState.Running) {
+            this.#origin = CAnimationDriver.now() - this.#time;
+            this.#attach();
+        }
+    }
+    /** Reapplies the current value without changing playback time or state. */
+    applyCurrentValue(): void {
+        if (!this.#disposed) this.updateCurrentTime(this.#time);
+    }
     state(): CAnimationState { return this.#state; }
     duration(): number { return this.#duration; }
     currentTime(): number { return this.#time; }
@@ -70,6 +85,7 @@ export abstract class CAbstractAnimation extends CObject {
         ++this.#generation; this.#detach(); this.#setState(CAnimationState.Stopped);
     }
     #attach(): void {
+        if (this.#externalClock) return;
         const generation = this.#generation;
         this.#removeTick = CAnimationDriver.add(now => {
             if (this.#disposed || generation !== this.#generation || this.#state !== CAnimationState.Running) return;

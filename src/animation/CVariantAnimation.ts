@@ -24,6 +24,10 @@ export class CVariantAnimation extends CAbstractAnimation {
         this.#curve = new CEasingCurve(typeof curve === "number" ? curve : curve.type());
         this.updateCurrentTime(this.currentTime());
     }
+    /** Explicitly re-emits the current value, useful when sequential members share a target. */
+    override applyCurrentValue(): void {
+        if (!this.isDestroyed()) this.valueChanged.emit(this.#value);
+    }
     #checkValue(value: number): void {
         if (!Number.isFinite(value)) throw new RangeError("Animation values must be finite numbers.");
     }

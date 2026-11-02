@@ -16,6 +16,10 @@ export class CParallelAnimationGroup extends CAnimationGroup {
         for (const animation of this.animations()) duration = Math.max(duration, animation.duration());
         return duration;
     }
+    override applyCurrentValue(): void {
+        if (this.isDestroyed()) return;
+        for (const animation of this.animations()) animation.applyCurrentValue();
+    }
     override start(): void {
         if (this.isDestroyed()) return;
         if (this.state() !== CAnimationState.Stopped) this.stop();
@@ -23,6 +27,7 @@ export class CParallelAnimationGroup extends CAnimationGroup {
     }
     override stop(): void { ++this.#run; super.stop(); }
 
+    override destroy(): void { super.destroy(); this.#started.clear(); }
     protected override updateState(state: CAnimationState, previous: CAnimationState): void {
         if (state === CAnimationState.Running && previous === CAnimationState.Stopped) this.#started.clear();
         for (const animation of this.animations()) {
