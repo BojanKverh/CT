@@ -19,6 +19,17 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 } from "../../src/index.js";
 import { CEchoMode } from "../../src/widgets/CLineEdit.js";
 
+const toolkitLogo = new Image();
+
+/** Load the shared logo before constructing widgets or painting the splash. */
+function loadToolkitLogo(): Promise<void> {
+    return new Promise((resolve, reject) => {
+        toolkitLogo.onload = () => resolve();
+        toolkitLogo.onerror = () => reject(new Error("Cannot load assets/canvas-toolkit.png"));
+        toolkitLogo.src = new URL("./assets/canvas-toolkit.png", import.meta.url).href;
+    });
+}
+
 function createSplashPixmap(): CPixmap {
 	const canvas = document.createElement("canvas");
 	canvas.width = 560;
@@ -34,25 +45,47 @@ function createSplashPixmap(): CPixmap {
 	ctx.fillStyle = background;
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-	ctx.fillStyle = "#38c9cf";
-	ctx.fillRect(40, 55, 72, 72);
-
-	ctx.fillStyle = "#10243a";
-	ctx.font = "bold 34px sans-serif";
-	ctx.textAlign = "center";
-	ctx.textBaseline = "middle";
-	ctx.fillText("CT", 76, 91);
+    ctx.drawImage(toolkitLogo, 36, 43, 96, 96);
+    ctx.textBaseline = "middle";
 
 	ctx.textAlign = "left";
 	ctx.fillStyle = "#ffffff";
 	ctx.font = "bold 36px sans-serif";
-	ctx.fillText("Canvas Toolkit", 132, 91);
+	ctx.fillText("Canvas Toolkit", 148, 91);
 
 	ctx.fillStyle = "#b8d6e5";
 	ctx.font = "17px sans-serif";
 	ctx.fillText("Made with imagination. Built with care.", 40, 168);
 
 	return new CPixmap(canvas, canvas.width, canvas.height);
+}
+
+/** Uses the same round PNG as the favicon and splash. */
+class ToolkitLogoWidget extends CWidget {
+    protected override paintEvent(painter: CPainter): void {
+        const size = Math.min(this.width(), this.height());
+        painter.drawPixmap(new CPixmap(toolkitLogo, toolkitLogo.naturalWidth, toolkitLogo.naturalHeight),
+            (this.width() - size) / 2, (this.height() - size) / 2, size, size);
+    }
+}
+
+function showAboutCanvasToolkit(parent: CWidget): void {
+    const dialog = new CDialog(parent);
+    dialog.setGeometry(130, 120, 540, 260);
+    dialog.setWindowTitle("About Canvas Toolkit");
+    const logo = new ToolkitLogoWidget(dialog); logo.setGeometry(24, 30, 112, 112);
+    const title = new CLabel(dialog); title.setGeometry(156, 32, 360, 38);
+    const font = title.font(); font.setPixelSize(28); title.setFont(font);
+    title.setText("Canvas Toolkit");
+    const description = new CLabel(dialog); description.setGeometry(156, 82, 360, 28);
+    description.setText("A TypeScript UI toolkit for HTML Canvas.");
+    const tagline = new CLabel(dialog); tagline.setGeometry(156, 120, 360, 26);
+    tagline.setText("Made with imagination. Built with care.");
+    const author = new CLabel(dialog); author.setGeometry(24, 172, 492, 26);
+    author.setText("Created by Bojan Kverh");
+    const buttons = new CDialogButtonBox(CStandardButton.Ok, dialog);
+    buttons.setGeometry(24, 214, 492, 30); buttons.accepted.connect(() => dialog.accept());
+    dialog.exec();
 }
 
 class RedWidget extends CWidget {
@@ -802,6 +835,7 @@ function showIconGridDemo(parent: CWidget): void {
     list.widget()?.setFocus();
 }
 
+function startDemo(): void {
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas");
 
 if (canvas === null)
@@ -2093,7 +2127,9 @@ toolsMenu.addAction(new CAction("Customize"));
 const helpMenu = new CMenu();
 helpMenu.addAction(new CAction("Documentation"));
 helpMenu.addSeparator();
-helpMenu.addAction(new CAction("About Clara Toolkit"));
+const aboutToolkitAction = new CAction("About Canvas Toolkit…", mainWindow);
+aboutToolkitAction.triggered.connect(() => showAboutCanvasToolkit(parent));
+helpMenu.addAction(aboutToolkitAction);
 
 menuBar.addMenu("File", fileMenu);
 menuBar.addMenu("Edit", editMenu);
@@ -2189,3 +2225,11 @@ splash.show();
 setTimeout(() => {
 	splash.finish(mainWindow, 1000);
 }, 2000);
+
+
+
+}
+
+void loadToolkitLogo().then(startDemo).catch((error: unknown) => {
+    console.error("Canvas Toolkit demo failed to start:", error);
+});
