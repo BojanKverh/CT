@@ -1,3 +1,4 @@
+import { CVariantAnimation } from "../animation/CVariantAnimation.js";
 import { CApplication } from "../core/CApplication.js";
 import { CAlignment } from "../core/CAlignment.js";
 import { CSignal } from "../core/CSignal.js";
@@ -19,8 +20,7 @@ export class CSplashScreen extends CWidget {
     #messageColor: string | null = null;
     #disposed = false;
     #opacity = 1;
-    #fadeFrame: number | null = null;
-    #fadeGeneration = 0;
+    #fade: CVariantAnimation | null = null;
 
     readonly messageChanged = new CSignal<[string]>();
 
@@ -97,25 +97,24 @@ export class CSplashScreen extends CWidget {
         if (this.#disposed || !this.isVisible()) return;
         this.#cancelFade();
         if (!Number.isFinite(duration) || duration <= 0) { this.hide(); return; }
-        const generation = this.#fadeGeneration;
-        const started = performance.now();
-        const initialOpacity = this.#opacity;
-        const step = (now: number): void => {
-            if (generation !== this.#fadeGeneration || this.#disposed) return;
-            this.#fadeFrame = null;
-            const progress = Math.max(0, Math.min(1, (now - started) / duration));
-            if (progress >= 1) { this.hide(); return; }
-            this.#opacity = initialOpacity * (1 - progress);
+        const fade = new CVariantAnimation();
+        fade.setStartValue(this.#opacity);
+        fade.setEndValue(0);
+        fade.setDuration(duration);
+        this.#fade = fade;
+        fade.valueChanged.connect(value => {
+            if (this.#fade !== fade) return;
+            this.#opacity = value;
             this.update();
-            this.#fadeFrame = requestAnimationFrame(step);
-        };
-        this.#fadeFrame = requestAnimationFrame(step);
+        });
+        fade.finished.connect(() => { if (this.#fade === fade) this.hide(); });
+        fade.start();
     }
 
     #cancelFade(): void {
-        ++this.#fadeGeneration;
-        if (this.#fadeFrame !== null) cancelAnimationFrame(this.#fadeFrame);
-        this.#fadeFrame = null;
+        const fade = this.#fade;
+        this.#fade = null;
+        fade?.destroy();
     }
 
     /** Fades this window and all its contents without changing other windows. */

@@ -1,3 +1,7 @@
+import { CSize } from "../geometry/CSize.js";
+import type { CLayout } from "../layouts/CLayout.js";
+import { CSizeGrip } from "../widgets/CSizeGrip.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CPushButton } from "../widgets/CPushButton.js";
 import { CSignal } from "../core/CSignal.js";
 import type { CKeyEvent } from "../events/CKeyEvent.js";
@@ -40,6 +44,11 @@ export class CDialog extends CWidget
     #m_dragOffsetX = 0;
     #m_dragOffsetY = 0;
     #m_closeButtonHovered = false;
+    #m_sizeGripMode: boolean | null = null;
+    #m_sizeGrip: CSizeGrip | null = null;
+    #m_sizeGripReservation = 0;
+    #m_disposed = false;
+    static readonly #SizeGripExtent = 16;
 
 /**
  * Emitted when the dialog is accepted.
@@ -90,8 +99,93 @@ export class CDialog extends CWidget
  * @returns The content rectangle.
  */
 	override contentsRect(): CRect {
-		return new CRect(0, 0, this.width(), this.height());
+		return new CRect(0, 0, this.width(), Math.max(0, this.height()
+            - (this.isSizeGripEnabled() ? CDialog.#SizeGripExtent : 0)));
 	}
+
+    override sizeHint(): CSize {
+        const hint = super.sizeHint();
+        return this.layout() !== null && this.isSizeGripEnabled()
+            ? new CSize(hint.width(), hint.height() + CDialog.#SizeGripExtent) : hint;
+    }
+
+    override heightForWidth(width: number): number {
+        const height = super.heightForWidth(width);
+        return height < 0 ? height : height + (this.isSizeGripEnabled() ? CDialog.#SizeGripExtent : 0);
+    }
+
+    override setVisible(visible: boolean): void {
+        if (!visible) this.#m_sizeGrip?.hide();
+        super.setVisible(visible);
+        if (visible) this.#syncSizeGrip();
+    }
+
+    /** Effective setting: automatic with a layout, unless explicitly overridden.
+     * A dialog fixed on both axes never exposes a resize grip. */
+    isSizeGripEnabled(): boolean {
+        return !this.#m_disposed && (this.#m_sizeGripMode ?? this.layout() !== null)
+            && (this.minimumWidth() < this.maximumWidth() || this.minimumHeight() < this.maximumHeight());
+    }
+
+    /** Overrides automatic behavior. The grip occupies its own bottom strip. */
+    setSizeGripEnabled(enabled: boolean): void {
+        if (this.#m_disposed) return;
+        this.#m_sizeGripMode = enabled;
+        this.#syncSizeGrip();
+    }
+
+    /** Restores automatic enabling whenever this dialog has a layout. */
+    resetSizeGripEnabled(): void {
+        if (this.#m_disposed) return;
+        this.#m_sizeGripMode = null;
+        this.#syncSizeGrip();
+    }
+
+    override setLayout(layout: CLayout): void {
+        super.setLayout(layout);
+        this.#syncSizeGrip();
+    }
+
+    override setGeometry(x: number, y: number, width: number, height: number): void {
+        super.setGeometry(x, y, width, height);
+        this.#syncSizeGrip();
+    }
+
+    override setMinimumSize(width: number, height: number): void {
+        super.setMinimumSize(width, height);
+        this.#syncSizeGrip();
+    }
+
+    override setMaximumSize(width: number, height: number): void {
+        super.setMaximumSize(width, height);
+        this.#syncSizeGrip();
+    }
+
+    #syncSizeGrip(): void {
+        if (this.#m_disposed) return;
+        const enabled = this.isSizeGripEnabled();
+        const reservation = enabled ? CDialog.#SizeGripExtent : 0;
+        const changed = reservation !== this.#m_sizeGripReservation;
+        this.#m_sizeGripReservation = reservation;
+        if (enabled && this.#m_sizeGrip === null) {
+            this.#m_sizeGrip = new CSizeGrip(this);
+            this.#m_sizeGrip.setFocusPolicy(CFocusPolicy.NoFocus);
+        }
+        const grip = this.#m_sizeGrip;
+        if (grip !== null) {
+            grip.move(Math.max(0, this.width() - grip.width()), Math.max(0, this.height() - grip.height()));
+            grip.setVisible(enabled && this.width() >= grip.width() && this.height() >= grip.height());
+        }
+        if (changed) this.layout()?.update();
+        this.update();
+    }
+
+    override destroy(): void {
+        if (this.#m_disposed) return;
+        this.#m_disposed = true;
+        super.destroy();
+        this.#m_sizeGrip = null;
+    }
 
 /**
  * Returns the offset applied to child widgets below the title bar.

@@ -1010,3 +1010,492 @@ describe("CWizardDialog step list", () => {
         w.setStepListVisible(false); expect(w.currentPage()!.width()).toBe(60);
     });
 });
+
+// Deterministic animation frames: no real timers survive application teardown.
+describe("CSplashScreen fading", () => {
+    let frames: Map<number, FrameRequestCallback>;
+    let next: number;
+    let now: number;
+    let restoreClock: () => void;
+    let oldRequest: PropertyDescriptor | undefined;
+    let oldCancel: PropertyDescriptor | undefined;
+    beforeEach(() => {
+        new CApplication(createTestCanvas());
+        frames = new Map(); next = 0; now = 0;
+        const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+        restoreClock = () => clock.mockRestore();
+        oldRequest = Object.getOwnPropertyDescriptor(globalThis, "requestAnimationFrame");
+        oldCancel = Object.getOwnPropertyDescriptor(globalThis, "cancelAnimationFrame");
+        Object.defineProperty(globalThis, "requestAnimationFrame", { configurable: true, writable: true,
+            value: (callback: FrameRequestCallback) => { frames.set(++next, callback); return next; } });
+        Object.defineProperty(globalThis, "cancelAnimationFrame", { configurable: true, writable: true,
+            value: (id: number) => { frames.delete(id); } });
+    });
+    afterEach(() => {
+        if (CApplication.exists()) CApplication.instance().destroy();
+        restoreClock();
+        if (oldRequest) Object.defineProperty(globalThis, "requestAnimationFrame", oldRequest);
+        else Reflect.deleteProperty(globalThis, "requestAnimationFrame");
+        if (oldCancel) Object.defineProperty(globalThis, "cancelAnimationFrame", oldCancel);
+        else Reflect.deleteProperty(globalThis, "cancelAnimationFrame");
+    });
+    function tick(time: number): void {
+        now = time; const pending = [...frames.values()]; frames.clear();
+        for (const callback of pending) callback(time);
+    }
+    function visibleSplash(): CSplashScreen { const splash = new CSplashScreen(); splash.show(); return splash; }
+    function paintedOpacity(splash: CSplashScreen, inherited = 1): number {
+        let alpha = inherited; const stack: number[] = [];
+        const p = { ...splashPainter().painter, translate: vi.fn(),
+            opacity: () => alpha, setOpacity: (value: number) => { alpha = value; },
+            save: () => { stack.push(alpha); }, restore: () => { alpha = stack.pop()!; } };
+        let drawn = -1; p.fillRect = vi.fn(() => { drawn = alpha; });
+        splash.render(p as unknown as CPainter);
+        expect(alpha).toBe(inherited);
+        return drawn;
+    }
+    test("fade keeps the splash visible until its duration elapses", () => {
+        const splash = visibleSplash(); splash.fadeOut(300);
+        tick(150); expect(splash.isVisible()).toBe(true); expect(paintedOpacity(splash)).toBeCloseTo(0.5);
+        tick(300); expect(splash.isVisible()).toBe(false); expect(frames.size).toBe(0);
+        expect(CApplication.instance().isWindowWidget(splash)).toBe(false);
+    });
+    test("finish shows the main window immediately and fades for 300 ms by default", () => {
+        const main = new CWidget(); main.hide(); const splash = visibleSplash(); splash.finish(main);
+        expect(main.isVisible()).toBe(true); expect(splash.isVisible()).toBe(true);
+        tick(299); expect(splash.isVisible()).toBe(true); tick(300); expect(splash.isVisible()).toBe(false);
+    });
+    test("fade multiplies inherited painter opacity and restores it", () => {
+        const splash = visibleSplash(); splash.fadeOut(200); tick(100);
+        expect(paintedOpacity(splash, 0.4)).toBeCloseTo(0.2);
+    });
+    test("hide cancels a running fade immediately", () => {
+        const splash = visibleSplash(); splash.fadeOut(); tick(100); splash.hide();
+        expect(splash.isVisible()).toBe(false); expect(frames.size).toBe(0);
+    });
+    test("show cancels fading and restores full opacity", () => {
+        const splash = visibleSplash(); splash.fadeOut(); tick(100); splash.show();
+        expect(frames.size).toBe(0); expect(paintedOpacity(splash)).toBe(1);
+        tick(1000); expect(splash.isVisible()).toBe(true);
+    });
+    test("restarting a fade continues from its current opacity", () => {
+        const splash = visibleSplash(); splash.fadeOut(200); tick(100); splash.fadeOut(200);
+        expect(frames.size).toBe(1); tick(200); expect(paintedOpacity(splash)).toBeCloseTo(0.25);
+        tick(300); expect(splash.isVisible()).toBe(false);
+    });
+    test("destroy cancels pending animation frames", () => {
+        const splash = visibleSplash(); splash.fadeOut(); splash.destroy();
+        expect(frames.size).toBe(0); tick(1000); expect(splash.isVisible()).toBe(false);
+    });
+    test("a canceled callback cannot hide a subsequently shown splash", () => {
+        const splash = visibleSplash(); splash.fadeOut(); const stale = [...frames.values()][0]!;
+        splash.show(); stale(1000); expect(splash.isVisible()).toBe(true); expect(frames.size).toBe(0);
+    });
+    test("nonpositive and nonfinite durations hide without scheduling", () => {
+        for (const duration of [0, -1, NaN, Infinity]) {
+            const splash = visibleSplash(); splash.fadeOut(duration);
+            expect(splash.isVisible()).toBe(false); expect(frames.size).toBe(0);
+        }
+    });
+    test("fading a hidden splash schedules nothing", () => {
+        const splash = new CSplashScreen(); splash.fadeOut(); expect(frames.size).toBe(0);
+    });
+    test("a left click cancels fading", () => {
+        const splash = visibleSplash(); splash.fadeOut();
+        splash.event(new CMouseEvent(CEventType.MousePress, 5, 5, CMouseButton.LeftButton));
+        expect(splash.isVisible()).toBe(false); expect(frames.size).toBe(0);
+    });
+    test("rendering a hidden splash draws nothing", () => {
+        expect(paintedOpacity(new CSplashScreen())).toBe(-1);
+    });
+});
+
+
+import { CVariantAnimation } from "../../src/animation/CVariantAnimation.js";
+
+describe("CWizardDialog animated page transitions", () => {
+    let frames: Map<number, FrameRequestCallback>;
+    let next: number, now: number;
+    let oldRequest: PropertyDescriptor | undefined, oldCancel: PropertyDescriptor | undefined;
+    let restoreClock: () => void;
+    beforeEach(() => {
+        new CApplication(createTestCanvas());
+        frames = new Map(); next = 0; now = 0;
+        const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+        restoreClock = () => clock.mockRestore();
+        oldRequest = Object.getOwnPropertyDescriptor(globalThis, "requestAnimationFrame");
+        oldCancel = Object.getOwnPropertyDescriptor(globalThis, "cancelAnimationFrame");
+        Object.defineProperty(globalThis, "requestAnimationFrame", { configurable: true, writable: true,
+            value: (callback: FrameRequestCallback) => { frames.set(++next, callback); return next; } });
+        Object.defineProperty(globalThis, "cancelAnimationFrame", { configurable: true, writable: true,
+            value: (id: number) => { frames.delete(id); } });
+    });
+    afterEach(() => {
+        if (CApplication.exists()) CApplication.instance().destroy();
+        expect(frames.size).toBe(0);
+        restoreClock();
+        if (oldRequest) Object.defineProperty(globalThis, "requestAnimationFrame", oldRequest);
+        else Reflect.deleteProperty(globalThis, "requestAnimationFrame");
+        if (oldCancel) Object.defineProperty(globalThis, "cancelAnimationFrame", oldCancel);
+        else Reflect.deleteProperty(globalThis, "cancelAnimationFrame");
+    });
+    function tick(time: number): void {
+        now = time; const pending = [...frames.values()]; frames.clear();
+        for (const callback of pending) callback(time);
+    }
+    function wizard(count = 3): CWizardDialog {
+        const w = new CWizardDialog(); w.setTransitionDuration(200);
+        for (let i = 0; i < count; ++i) w.addPage(new CWizardPage());
+        w.open(); return w;
+    }
+    function settled(w: CWizardDialog): void {
+        for (const id of w.pageIds()) {
+            expect(w.page(id)!.x()).toBe(0); expect(w.page(id)!.y()).toBe(0);
+            expect(w.page(id)!.isVisible()).toBe(id === w.currentId());
+        }
+    }
+    test("opening the first page does not animate", () => {
+        const w = wizard(); expect(w.transitionsEnabled()).toBe(true);
+        expect(frames.size).toBe(0); settled(w);
+    });
+    test("Next moves the old page left and brings the new page from the right", () => {
+        const w = wizard(), first = w.page(0)!, second = w.page(1)!;
+        const width = first.width(); w.next();
+        expect(w.currentId()).toBe(1); expect(w.visitedIds()).toEqual([0, 1]);
+        expect(first.x()).toBe(0); expect(second.x()).toBe(width);
+        expect(first.isVisible()).toBe(true); expect(second.isVisible()).toBe(true);
+        tick(100); expect(first.x()).toBeCloseTo(-width / 2); expect(second.x()).toBeCloseTo(width / 2);
+        tick(200); settled(w); expect(frames.size).toBe(0);
+    });
+    test("Back reverses the direction", () => {
+        const w = wizard(); w.next(); tick(200); const width = w.currentPage()!.width(); w.back();
+        expect(w.currentId()).toBe(0); expect(w.page(0)!.x()).toBe(-width);
+        tick(300); expect(w.page(0)!.x()).toBeCloseTo(-width / 2); expect(w.page(1)!.x()).toBeCloseTo(width / 2);
+        tick(400); settled(w);
+    });
+    test("Skip uses the forward transition and retains its deferred queue", () => {
+        const w = wizard(); w.page(0)!.setDeferrable(true); w.skipForNow();
+        expect(w.deferredPageIds()).toEqual([0]); expect(w.currentId()).toBe(1);
+        expect(w.page(1)!.x()).toBeGreaterThan(0); tick(200); settled(w);
+    });
+    test("logical page-change signals are synchronous and emitted once", () => {
+        const w = wizard(), changed = vi.fn(); w.currentIdChanged.connect(changed); w.next();
+        expect(changed).toHaveBeenCalledOnce(); expect(changed).toHaveBeenCalledWith(1);
+        tick(200); expect(changed).toHaveBeenCalledOnce();
+    });
+    test("both pages reject focus during motion and focus reaches the incoming field afterwards", () => {
+        const w = wizard(), field = new CLineEdit(w.page(1)!); w.next();
+        expect(w.page(0)!.isEnabled()).toBe(false); expect(w.page(1)!.isEnabled()).toBe(false);
+        expect(field.canReceiveFocus()).toBe(false); expect(field.hasFocus()).toBe(false);
+        tick(200); expect(w.page(0)!.isEnabled()).toBe(true); expect(w.page(1)!.isEnabled()).toBe(true);
+        expect(field.hasFocus()).toBe(true);
+    });
+    test("pointer hit testing cannot reach moving page contents", () => {
+        const w = wizard(), field = new CLineEdit(w.page(1)!);
+        field.setGeometry(0, 0, 100, 30); w.next();
+        const stack = w.page(1)!.parent()!;
+        expect(stack.widgetAt(10, 10)).toBe(stack);
+        expect(stack.widgetAt(-1, 10)).toBeNull();
+        tick(200); expect(field.canReceiveFocus()).toBe(true);
+    });
+    test("rapid Next settles the previous transition before starting another", () => {
+        const w = wizard(); w.next(); tick(50); w.next();
+        expect(w.currentId()).toBe(2); expect(w.page(0)!.isVisible()).toBe(false);
+        expect(w.page(0)!.x()).toBe(0); expect(frames.size).toBe(1);
+        tick(250); settled(w);
+    });
+    test("Back can interrupt a forward transition", () => {
+        const w = wizard(); w.next(); tick(50); w.back();
+        expect(w.currentId()).toBe(0); expect(w.page(0)!.x()).toBeLessThan(0);
+        tick(250); settled(w); expect(w.visitedIds()).toEqual([0]);
+    });
+    test("a stale frame cannot move pages after restart", () => {
+        const w = wizard(); w.next(); const stale = [...frames.values()][0]!;
+        w.restart(); stale(1000); settled(w); expect(w.currentId()).toBe(0); expect(frames.size).toBe(0);
+    });
+    test("resizing settles the transition and fits the current page to the new width", () => {
+        const w = wizard(); w.next(); tick(50); w.resize(800, 500);
+        settled(w); expect(w.currentPage()!.width()).toBe(568); expect(frames.size).toBe(0);
+    });
+    test("changing sidebar visibility during a transition restores full page geometry", () => {
+        const w = wizard(); w.next(); tick(50); w.setStepListVisible(false);
+        settled(w); expect(w.currentPage()!.width()).toBe(600); expect(frames.size).toBe(0);
+    });
+    test("disabling transitions settles the active animation and keeps subsequent navigation immediate", () => {
+        const w = wizard(); w.next(); tick(50); w.setTransitionsEnabled(false); settled(w);
+        w.next(); settled(w); expect(w.currentId()).toBe(2); expect(frames.size).toBe(0);
+    });
+    test("zero duration gives immediate transitions", () => {
+        const w = wizard(); w.setTransitionDuration(0); w.next(); settled(w); expect(frames.size).toBe(0);
+    });
+    test("negative and nonfinite durations are rejected", () => {
+        const w = wizard();
+        for (const duration of [-1, NaN, Infinity]) expect(() => w.setTransitionDuration(duration)).toThrow(RangeError);
+    });
+    test("incomplete pages and rejected validation never start a transition", () => {
+        const w = wizard(); w.page(0)!.setComplete(false); w.next();
+        expect(w.currentId()).toBe(0); expect(frames.size).toBe(0); settled(w);
+        w.page(0)!.setComplete(true); vi.spyOn(w.page(0)!, "validatePage").mockImplementation(() => false);
+        w.next(); expect(w.currentId()).toBe(0); expect(frames.size).toBe(0);
+    });
+    test("reaching Finish during motion closes immediately and cancels pending frames", () => {
+        const w = wizard(2); w.next(); tick(50); w.accept();
+        expect(w.isOpen()).toBe(false); expect(w.result()).toBe(CDialogResult.Accepted);
+        expect(frames.size).toBe(0); settled(w);
+    });
+    test("Cancel settles geometry and cancels frames", () => {
+        const w = wizard(); w.next(); w.reject();
+        expect(w.isOpen()).toBe(false); expect(frames.size).toBe(0); settled(w);
+    });
+    test("hide settles the pages and a later open restarts normally", () => {
+        const w = wizard(); w.next(); w.hide(); settled(w); expect(frames.size).toBe(0);
+        w.close(); w.open(); expect(w.currentId()).toBe(0); settled(w);
+    });
+    test("destroy cancels all transition frames", () => {
+        const w = wizard(); w.next(); w.destroy(); expect(frames.size).toBe(0); tick(1000);
+    });
+    test("removing a page during motion detaches it without leaving offsets or disabled state", () => {
+        const w = wizard(); w.next(); tick(50); const detached = w.removePage(0)!;
+        expect(detached.parent()).toBeNull(); expect(detached.x()).toBe(0); expect(detached.isEnabled()).toBe(true);
+        settled(w); expect(frames.size).toBe(0);
+    });
+    test("transition cleanup preserves an explicitly disabled page", () => {
+        const w = wizard(); w.page(1)!.setEnabled(false); w.next(); tick(200);
+        expect(w.page(1)!.isEnabled()).toBe(false); expect(w.page(0)!.isEnabled()).toBe(true); settled(w);
+    });
+    test("page initialization and entered values survive Back and forward motion", () => {
+        const w = wizard(), field = new CLineEdit(w.page(0)!); field.setText("Bojan");
+        const initialize = vi.spyOn(w.page(1)!, "initializePage");
+        w.next(); tick(200); w.back(); tick(400); w.next(); tick(600);
+        expect(field.text()).toBe("Bojan"); expect(initialize).toHaveBeenCalledOnce(); settled(w);
+    });
+    test("separate wizards share one frame and can finish independently", () => {
+        const first = wizard(), second = wizard(); second.setTransitionDuration(400);
+        first.next(); second.next(); expect(frames.size).toBe(1);
+        tick(200); settled(first); expect(second.page(1)!.x()).toBeGreaterThan(0); expect(frames.size).toBe(1);
+        tick(400); settled(second); expect(frames.size).toBe(0);
+    });
+    test("splash fade and wizard transition use the same driver", () => {
+        const w = wizard(), splash = new CSplashScreen(); splash.show();
+        w.next(); splash.fadeOut(400); expect(frames.size).toBe(1);
+        tick(200); settled(w); expect(splash.isVisible()).toBe(true); expect(frames.size).toBe(1);
+        tick(400); expect(splash.isVisible()).toBe(false); expect(frames.size).toBe(0);
+    });
+    test("destroying a wizard does not cancel an unrelated animation", () => {
+        const w = wizard(), animation = new CVariantAnimation();
+        try {
+            animation.setDuration(400); animation.start(); w.next(); w.destroy();
+            expect(frames.size).toBe(1); tick(200); expect(animation.currentValue()).toBe(0.5);
+        } finally { animation.destroy(); }
+    });
+});
+
+import { CSizeGrip } from "../../src/widgets/CSizeGrip.js";
+import { CVBoxLayout } from "../../src/layouts/CVBoxLayout.js";
+
+describe("CDialog size grip", () => {
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+    function grips(dialog: CDialog): CSizeGrip[] {
+        return dialog.children().filter((child): child is CSizeGrip => child instanceof CSizeGrip);
+    }
+    function create(): CDialog {
+        const dialog = new CDialog(); dialog.setGeometry(40, 50, 400, 300); return dialog;
+    }
+    function addLayout(dialog: CDialog): CWidget {
+        const content = new CWidget(dialog), layout = new CVBoxLayout();
+        layout.setContentsMargins(0, 0, 0, 0); layout.setSpacing(0);
+        layout.addWidget(content, 1); dialog.setLayout(layout); return content;
+    }
+    function press(grip: CSizeGrip): void {
+        const event = new CMouseEvent(CEventType.MousePress, 8, 8, CMouseButton.LeftButton);
+        expect(grip.event(event)).toBe(true);
+    }
+    function dragBy(grip: CSizeGrip, dx: number, dy: number): void {
+        const pointer = grip.mapToCanvas(8, 8);
+        const local = grip.mapFromCanvas(pointer.x() + dx, pointer.y() + dy);
+        grip.event(new CMouseEvent(CEventType.MouseMove, local.x(), local.y(), CMouseButton.LeftButton));
+    }
+    test("plain dialogs retain their full content area and have no automatic grip", () => {
+        const dialog = create(); expect(dialog.isSizeGripEnabled()).toBe(false);
+        expect(grips(dialog)).toHaveLength(0); expect(dialog.contentsRect().height()).toBe(300);
+    });
+    test("setting a layout enables and creates one direct child grip", () => {
+        const dialog = create(); addLayout(dialog);
+        expect(dialog.isSizeGripEnabled()).toBe(true); expect(grips(dialog)).toHaveLength(1);
+        expect(grips(dialog)[0]!.parent()).toBe(dialog); expect(grips(dialog)[0]!.isVisible()).toBe(true);
+    });
+    test("automatic grips do not add keyboard or click focus stops", () => {
+        const dialog = create(); addLayout(dialog); const grip = grips(dialog)[0]!;
+        expect(grip.focusPolicy()).toBe(CFocusPolicy.NoFocus);
+        expect(grip.acceptsTabFocus()).toBe(false); expect(grip.acceptsClickFocus()).toBe(false);
+    });
+    test("a dedicated bottom strip keeps layout contents clear of the grip", () => {
+        const dialog = create(), content = addLayout(dialog), grip = grips(dialog)[0]!;
+        expect(dialog.contentsRect().width()).toBe(400);
+        expect(dialog.contentsRect().height()).toBe(300 - grip.height());
+        expect(content.height()).toBe(dialog.contentsRect().height());
+        expect(content.y() + content.height()).toBe(grip.y());
+    });
+    test("the preferred size includes the reserved grip strip", () => {
+        const dialog = create(), content = addLayout(dialog); content.setFixedSize(80, 40);
+        expect(dialog.sizeHint().height()).toBe(56); expect(dialog.sizeHint().width()).toBe(80);
+        dialog.setSizeGripEnabled(false); expect(dialog.sizeHint().height()).toBe(40);
+    });
+    test("wrapped layout height includes the grip strip", () => {
+        const dialog = create(), layout = new CVBoxLayout(), label = new CLabel(dialog);
+        label.setText("A long line that wraps across multiple rows in a narrow dialog"); label.setWordWrap(true);
+        layout.addWidget(label); dialog.setLayout(layout);
+        expect(dialog.heightForWidth(120)).toBe(layout.heightForWidth(120) + 16);
+        dialog.setSizeGripEnabled(false); expect(dialog.heightForWidth(120)).toBe(layout.heightForWidth(120));
+    });
+    test("the full window rectangle still includes the complete content and title bar", () => {
+        const dialog = create(); addLayout(dialog);
+        expect(dialog.rect().height()).toBe(300 + CDialog.TitleBarHeight);
+    });
+    test("the grip tracks the bottom right corner after programmatic resize", () => {
+        const dialog = create(); addLayout(dialog); const grip = grips(dialog)[0]!;
+        dialog.resize(650, 480);
+        expect(grip.x()).toBe(650 - grip.width()); expect(grip.y()).toBe(480 - grip.height());
+        expect(grip.mapToCanvas(0, 0).y()).toBe(dialog.y() + CDialog.TitleBarHeight + grip.y());
+    });
+    test("moving the window retains the local grip position", () => {
+        const dialog = create(); addLayout(dialog); const grip = grips(dialog)[0]!;
+        const x = grip.x(), y = grip.y(); dialog.move(150, 170);
+        expect(grip.x()).toBe(x); expect(grip.y()).toBe(y);
+    });
+    test("an explicit false before setting the layout disables automatic creation", () => {
+        const dialog = create(); dialog.setSizeGripEnabled(false); const content = addLayout(dialog);
+        expect(dialog.isSizeGripEnabled()).toBe(false); expect(grips(dialog)).toHaveLength(0);
+        expect(content.height()).toBe(300);
+    });
+    test("disabling an existing grip hides it and restores layout space", () => {
+        const dialog = create(), content = addLayout(dialog), grip = grips(dialog)[0]!;
+        dialog.setSizeGripEnabled(false); expect(grip.isVisible()).toBe(false);
+        expect(dialog.contentsRect().height()).toBe(300); expect(content.height()).toBe(300);
+    });
+    test("enabling again reuses the existing grip", () => {
+        const dialog = create(); addLayout(dialog); const grip = grips(dialog)[0]!;
+        dialog.setSizeGripEnabled(false); dialog.setSizeGripEnabled(true); dialog.setSizeGripEnabled(true);
+        expect(grips(dialog)).toEqual([grip]); expect(grip.isVisible()).toBe(true);
+    });
+    test("explicit true creates a grip even without a layout", () => {
+        const dialog = create(); dialog.setSizeGripEnabled(true);
+        expect(dialog.isSizeGripEnabled()).toBe(true); expect(grips(dialog)).toHaveLength(1);
+        expect(grips(dialog)[0]!.x()).toBe(384); expect(grips(dialog)[0]!.y()).toBe(284);
+    });
+    test("replacing a layout preserves an explicit false", () => {
+        const dialog = create(); addLayout(dialog); dialog.setSizeGripEnabled(false); addLayout(dialog);
+        expect(dialog.isSizeGripEnabled()).toBe(false); expect(grips(dialog)).toHaveLength(1);
+        expect(grips(dialog)[0]!.isVisible()).toBe(false);
+    });
+    test("replacing a layout in automatic mode does not duplicate the grip", () => {
+        const dialog = create(); addLayout(dialog); const grip = grips(dialog)[0]!; addLayout(dialog);
+        expect(grips(dialog)).toEqual([grip]); expect(grip.isVisible()).toBe(true);
+    });
+    test("reset restores automatic enabling with a layout", () => {
+        const dialog = create(); dialog.setSizeGripEnabled(false); addLayout(dialog); dialog.resetSizeGripEnabled();
+        expect(dialog.isSizeGripEnabled()).toBe(true); expect(grips(dialog)[0]!.isVisible()).toBe(true);
+    });
+    test("reset removes explicit enabling without a layout", () => {
+        const dialog = create(); dialog.setSizeGripEnabled(true); dialog.resetSizeGripEnabled();
+        expect(dialog.isSizeGripEnabled()).toBe(false); expect(grips(dialog)[0]!.isVisible()).toBe(false);
+        expect(dialog.contentsRect().height()).toBe(300);
+    });
+    test("a fixed-size dialog hides the grip even when explicitly enabled", () => {
+        const dialog = create(); addLayout(dialog); dialog.setFixedSize(400, 300); dialog.setSizeGripEnabled(true);
+        expect(dialog.isSizeGripEnabled()).toBe(false); expect(grips(dialog)[0]!.isVisible()).toBe(false);
+        expect(dialog.contentsRect().height()).toBe(300);
+    });
+    test("fixed dialogs with a layout do not create a grip until constraints allow resizing", () => {
+        const dialog = create(); dialog.setFixedSize(400, 300); addLayout(dialog);
+        expect(grips(dialog)).toHaveLength(0); dialog.setMaximumSize(600, 500);
+        expect(dialog.isSizeGripEnabled()).toBe(true); expect(grips(dialog)).toHaveLength(1);
+    });
+    test("a grip is available when only one axis can resize", () => {
+        const dialog = create(); dialog.setMinimumSize(400, 100); dialog.setMaximumSize(400, 600); addLayout(dialog);
+        expect(dialog.isSizeGripEnabled()).toBe(true); const grip = grips(dialog)[0]!;
+        press(grip); dragBy(grip, 100, 50); expect(dialog.width()).toBe(400); expect(dialog.height()).toBe(350);
+    });
+    test("unlocking a fixed dialog restores the previous explicit disabling", () => {
+        const dialog = create(); addLayout(dialog); dialog.setSizeGripEnabled(false);
+        dialog.setFixedSize(400, 300); dialog.setMaximumSize(600, 500);
+        expect(dialog.isSizeGripEnabled()).toBe(false); expect(grips(dialog)[0]!.isVisible()).toBe(false);
+    });
+    test("dragging the grip enlarges the window and updates its layout", () => {
+        const dialog = create(), content = addLayout(dialog), grip = grips(dialog)[0]!;
+        press(grip); dragBy(grip, 80, 60);
+        expect(dialog.width()).toBe(480); expect(dialog.height()).toBe(360);
+        expect(content.width()).toBe(480); expect(content.height()).toBe(344);
+        expect(grip.x()).toBe(464); expect(grip.y()).toBe(344);
+    });
+    test("dragging clamps both dimensions to their minimums", () => {
+        const dialog = create(); dialog.setMinimumSize(320, 220); addLayout(dialog); const grip = grips(dialog)[0]!;
+        press(grip); dragBy(grip, -1000, -1000); expect(dialog.width()).toBe(320); expect(dialog.height()).toBe(220);
+    });
+    test("dragging clamps both dimensions to their maximums", () => {
+        const dialog = create(); dialog.setMaximumSize(500, 400); addLayout(dialog); const grip = grips(dialog)[0]!;
+        press(grip); dragBy(grip, 1000, 1000); expect(dialog.width()).toBe(500); expect(dialog.height()).toBe(400);
+    });
+    test("subsequent drag events use canvas coordinates after the grip itself moves", () => {
+        const dialog = create(); addLayout(dialog); const grip = grips(dialog)[0]!; press(grip);
+        const origin = grip.mapToCanvas(8, 8);
+        for (const delta of [20, 40, -20]) {
+            const local = grip.mapFromCanvas(origin.x() + delta, origin.y() + delta);
+            grip.event(new CMouseEvent(CEventType.MouseMove, local.x(), local.y(), CMouseButton.LeftButton));
+            expect(dialog.width()).toBe(400 + delta); expect(dialog.height()).toBe(300 + delta);
+        }
+    });
+    test("releasing the mouse ends resizing", () => {
+        const dialog = create(); addLayout(dialog); const grip = grips(dialog)[0]!;
+        press(grip); grip.event(new CMouseEvent(CEventType.MouseRelease, 8, 8, CMouseButton.LeftButton));
+        dragBy(grip, 100, 100); expect(dialog.width()).toBe(400); expect(dialog.height()).toBe(300);
+    });
+    test("disabling the grip during dragging cancels resizing and releases mouse capture", () => {
+        const dialog = create(); addLayout(dialog); const grip = grips(dialog)[0]!; press(grip);
+        CApplication.instance().grabMouse(grip); dialog.setSizeGripEnabled(false);
+        expect(CApplication.instance().mouseGrabber()).toBeNull(); dragBy(grip, 100, 100);
+        expect(dialog.width()).toBe(400); expect(dialog.height()).toBe(300);
+    });
+    test("making the dialog fixed during dragging cancels resizing", () => {
+        const dialog = create(); addLayout(dialog); const grip = grips(dialog)[0]!; press(grip);
+        dialog.setFixedSize(400, 300); dialog.setMaximumSize(800, 600); dragBy(grip, 100, 100);
+        expect(dialog.width()).toBe(400); expect(dialog.height()).toBe(300);
+    });
+    test("disabling a standalone grip cancels its active resize", () => {
+        const dialog = create(), grip = new CSizeGrip(dialog); press(grip);
+        CApplication.instance().grabMouse(grip); grip.setEnabled(false);
+        expect(CApplication.instance().mouseGrabber()).toBeNull(); grip.setEnabled(true); dragBy(grip, 100, 100);
+        expect(dialog.width()).toBe(400); expect(dialog.height()).toBe(300);
+    });
+    test("very small dialogs hide the grip without negative content geometry", () => {
+        const dialog = create(); addLayout(dialog); dialog.resize(5, 5);
+        expect(grips(dialog)[0]!.isVisible()).toBe(false); expect(dialog.contentsRect().height()).toBe(0);
+        expect(grips(dialog)[0]!.x()).toBe(0); expect(grips(dialog)[0]!.y()).toBe(0);
+        dialog.resize(400, 300); expect(grips(dialog)[0]!.isVisible()).toBe(true);
+    });
+    test("open, close and reopen retain a single correctly positioned grip", () => {
+        const dialog = create(); addLayout(dialog); const grip = grips(dialog)[0]!;
+        dialog.open(); dialog.close(); dialog.open(); expect(grips(dialog)).toEqual([grip]);
+        expect(grip.x()).toBe(384); expect(grip.y()).toBe(284);
+    });
+    test("hiding or closing the dialog cancels an active resize", () => {
+        for (const close of [false, true]) {
+            const dialog = create(); addLayout(dialog); dialog.open(); const grip = grips(dialog)[0]!;
+            press(grip); CApplication.instance().grabMouse(grip);
+            if (close) dialog.close(); else dialog.hide();
+            expect(CApplication.instance().mouseGrabber()).toBeNull();
+            expect(grip.isVisible()).toBe(false); dragBy(grip, 100, 100);
+            expect(dialog.width()).toBe(400); expect(dialog.height()).toBe(300);
+            if (close) dialog.open(); else dialog.show();
+            expect(grip.isVisible()).toBe(true);
+        }
+    });
+    test("destroy destroys its child grip and releases pointer capture", () => {
+        const dialog = create(); addLayout(dialog); const grip = grips(dialog)[0]!;
+        CApplication.instance().grabMouse(grip); dialog.destroy();
+        expect(grip.parent()).toBeNull(); expect(grip.isVisible()).toBe(false);
+        expect(CApplication.instance().mouseGrabber()).toBeNull();
+        dialog.setSizeGripEnabled(true); expect(grips(dialog)).toHaveLength(0);
+    });
+});

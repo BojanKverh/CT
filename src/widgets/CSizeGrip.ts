@@ -1,3 +1,4 @@
+import { CApplication } from "../core/CApplication.js";
 import { CWidget } from "./CWidget.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CSize } from "../geometry/CSize.js";
@@ -26,6 +27,23 @@ export class CSizeGrip extends CWidget
         this.setFixedSize(sz.width(), sz.height());
         this.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
+
+    /** Hiding or disabling a grip terminates any active pointer resize. */
+    override setVisible(visible: boolean): void {
+        if (!visible) this.#cancelResize();
+        super.setVisible(visible);
+    }
+
+    override setEnabled(enabled: boolean): void {
+        if (!enabled) this.#cancelResize();
+        super.setEnabled(enabled);
+    }
+
+    #cancelResize(): void {
+        this.#m_pressed = false;
+        if (CApplication.exists() && CApplication.instance().mouseGrabber() === this)
+            CApplication.instance().releaseMouse();
+    }
 
 	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize

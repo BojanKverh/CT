@@ -15,9 +15,10 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
 	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut, CPlainTextEdit, CTextEditFindFlag,
-    CSize, CListViewMode, CSplashScreen, CImageView, CWizardDialog, CWizardPage
+    CSize, CListViewMode, CSplashScreen, CImageView, CWizardDialog, CWizardPage, CVariantAnimation, CAnimationState, CVBoxLayout
 } from "../../src/index.js";
 import { CEchoMode } from "../../src/widgets/CLineEdit.js";
+import { CSizePolicyType } from "../../src/geometry/CSizePolicy.js";
 
 const toolkitLogo = new Image();
 
@@ -86,6 +87,131 @@ function showAboutCanvasToolkit(parent: CWidget): void {
     const buttons = new CDialogButtonBox(CStandardButton.Ok, dialog);
     buttons.setGeometry(24, 214, 492, 30); buttons.accepted.connect(() => dialog.accept());
     dialog.exec();
+}
+
+/** Demo-only image surface; CVariantAnimation supplies the phase, canvas paints the rotation. */
+class AnimatedToolkitLogoWidget extends CWidget {
+    #progress = 0;
+    #surface = document.createElement("canvas");
+    #context: CanvasRenderingContext2D;
+    #frame: CPixmap;
+
+    constructor(parent: CWidget) {
+        super(parent);
+        this.#surface.width = 1; this.#surface.height = 1;
+        this.setMinimumSize(260, 240);
+        this.setSizePolicy(CSizePolicyType.Expanding, CSizePolicyType.Expanding);
+        const context = this.#surface.getContext("2d");
+        if (context === null) throw new Error("Canvas 2D context is unavailable.");
+        this.#context = context;
+        this.#frame = new CPixmap(this.#surface, 1, 1);
+    }
+    override sizeHint(): CSize { return new CSize(720, 360); }
+    setProgress(progress: number): void {
+        this.#progress = Math.max(0, Math.min(1, progress));
+        this.update();
+    }
+    logoScale(): number {
+        return 0.25 + 0.75 * (1 - Math.cos(this.#progress * 2 * Math.PI)) / 2;
+    }
+    protected override paintEvent(painter: CPainter): void {
+        const ctx = this.#context, width = Math.max(1, this.width()), height = Math.max(1, this.height());
+        // Keep the backing canvas proportional to the layout's available space.
+        // Drawing in logical coordinates preserves a round logo at any aspect ratio.
+        const pixelWidth = Math.ceil(width * 2), pixelHeight = Math.ceil(height * 2);
+        if (this.#surface.width !== pixelWidth || this.#surface.height !== pixelHeight) {
+            this.#surface.width = pixelWidth; this.#surface.height = pixelHeight;
+            // The paint engine uses pixmap dimensions as the source crop in pixels.
+            this.#frame = new CPixmap(this.#surface, pixelWidth, pixelHeight);
+        }
+        ctx.setTransform(2, 0, 0, 2, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+        const background = ctx.createLinearGradient(0, 0, width, height);
+        background.addColorStop(0, "#10243a"); background.addColorStop(1, "#245b78");
+        ctx.fillStyle = background; ctx.fillRect(0, 0, width, height);
+
+        // A fixed ring makes changes in size easy to see.
+        const maximumSize = Math.min(width, height) * 0.82;
+        ctx.strokeStyle = "rgba(184, 214, 229, 0.18)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(width / 2, height / 2, maximumSize / 2, 0, 2 * Math.PI); ctx.stroke();
+        const size = maximumSize * this.logoScale();
+        ctx.save();
+        try {
+            ctx.translate(width / 2, height / 2);
+            ctx.rotate(this.#progress * 2 * Math.PI);
+            ctx.shadowColor = "rgba(48, 215, 211, 0.35)"; ctx.shadowBlur = 24;
+            ctx.drawImage(toolkitLogo, -size / 2, -size / 2, size, size);
+        } finally { ctx.restore(); }
+        painter.drawPixmap(this.#frame, 0, 0, this.width(), this.height());
+    }
+}
+
+/** Owns its animation explicitly so closing with a button, Esc or X stops the loop. */
+class ToolkitLogoAnimationDialog extends CDialog {
+    #animation = new CVariantAnimation();
+
+    constructor(parent: CWidget) {
+        super(parent);
+        this.setMinimumSize(560, 500);
+        this.setGeometry(70, 45, 820, 620);
+        this.setWindowTitle("CT logo — Animation demo");
+        const layout = new CVBoxLayout();
+        layout.setContentsMargins(18, 16, 18, 16); layout.setSpacing(10);
+        const fixedHeight = (widget: CWidget, height: number): void => {
+            widget.setMinimumSize(0, height);
+            widget.setMaximumSize(Number.MAX_SAFE_INTEGER, height);
+            widget.setSizePolicy(CSizePolicyType.Expanding, CSizePolicyType.Fixed);
+        };
+        const title = new CLabel(this); fixedHeight(title, 32);
+        const font = title.font(); font.setPixelSize(20); title.setFont(font);
+        title.setText("Canvas Toolkit in motion");
+        const hint = new CLabel(this); hint.setWordWrap(true);
+        hint.setText("One animation drives rotation and size. Pause or restart it below.");
+        const logo = new AnimatedToolkitLogoWidget(this);
+        const progress = new CProgressBar(this); fixedHeight(progress, 20);
+        progress.setValue(0);
+        const status = new CLabel(this); fixedHeight(status, 24);
+        layout.addWidget(title); layout.addWidget(hint); layout.addWidget(logo, 1);
+        layout.addWidget(progress); layout.addWidget(status);
+        const controls = new CWidget(this); fixedHeight(controls, 32);
+        const buttons = new CHBoxLayout(); buttons.setContentsMargins(0, 0, 0, 0); buttons.setSpacing(8);
+        const update = (value: number): void => {
+            logo.setProgress(value); progress.setValue(Math.round(value * 100));
+            status.setText(`Rotation: ${Math.round(value * 360)}°   |   Scale: ${Math.round(logo.logoScale() * 100)}%   |   Cycle: 4 s`);
+        };
+        this.#animation.setDuration(4000);
+        this.#animation.valueChanged.connect(update);
+        this.#animation.finished.connect(() => {
+            if (this.isOpen() && this.isVisible()) this.#animation.start();
+        });
+        update(0);
+
+        const pause = new CPushButton(controls); pause.setFixedSize(110, 32); pause.setText("Pause");
+        pause.clicked.connect(() => {
+            if (this.#animation.state() === CAnimationState.Running) this.#animation.pause();
+            else if (this.#animation.state() === CAnimationState.Paused) this.#animation.resume();
+            else this.#animation.start();
+        });
+        this.#animation.stateChanged.connect(state => pause.setText(
+            state === CAnimationState.Paused ? "Resume" : state === CAnimationState.Running ? "Pause" : "Play"));
+        const restart = new CPushButton(controls); restart.setFixedSize(110, 32); restart.setText("Restart");
+        restart.clicked.connect(() => { update(0); this.#animation.start(); });
+        const close = new CPushButton(controls); close.setFixedSize(110, 32); close.setText("Close");
+        close.clicked.connect(() => this.accept());
+        buttons.addWidget(pause); buttons.addWidget(restart); buttons.addStretch(1); buttons.addWidget(close);
+        controls.setLayout(buttons); layout.addWidget(controls);
+        this.setLayout(layout);
+    }
+    play(): void {
+        if (this.isOpen() && this.isVisible()) this.#animation.start();
+    }
+    override close(): void { this.#animation.stop(); super.close(); }
+    override destroy(): void { this.#animation.destroy(); super.destroy(); }
+}
+
+function showLogoAnimationDemo(parent: CWidget): void {
+    const dialog = new ToolkitLogoAnimationDialog(parent);
+    dialog.exec(); dialog.play();
 }
 
 class RedWidget extends CWidget {
@@ -2194,6 +2320,9 @@ toolsMenu.addSeparator();
 const wizardDemoAction = new CAction("Wizard demo…", mainWindow);
 wizardDemoAction.triggered.connect(() => showWizardDemo(parent));
 toolsMenu.addAction(wizardDemoAction);
+const logoAnimationDemoAction = new CAction("CT logo animation…", mainWindow);
+logoAnimationDemoAction.triggered.connect(() => showLogoAnimationDemo(parent));
+toolsMenu.addAction(logoAnimationDemoAction);
 
 const helpMenu = new CMenu();
 helpMenu.addAction(new CAction("Documentation"));

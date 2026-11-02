@@ -1,3 +1,5 @@
+import { CVariantAnimation } from "../animation/CVariantAnimation.js";
+import { CEasingCurveType } from "../animation/CEasingCurve.js";
 import { CRect } from "../geometry/CRect.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
@@ -19,7 +21,7 @@ type Visit = { id: number; deferred: number[]; completed: number[] };
 export class CWizardDialog extends CDialog {
     #pages = new Map<number, CWizardPage>();
     #disconnect = new Map<number, Array<() => void>>();
-    #stack: CStackedWidget;
+    #stack: CWizardPageStack;
     #stepListVisible = true;
     #stepList: CScrollArea;
     #stepContent: CWizardStepListContent;
@@ -33,6 +35,10 @@ export class CWizardDialog extends CDialog {
     #completed = new Set<number>();
     #initialized = new Set<number>();
     #busy = false;
+    #transitionsEnabled = true;
+    #transitionDuration = 280;
+    #transition: { animation: CVariantAnimation; outgoing: CWizardPage; incoming: CWizardPage;
+        outgoingEnabled: boolean; incomingEnabled: boolean } | null = null;
     readonly currentIdChanged = new CSignal<[number]>();
     readonly pageDeferred = new CSignal<[number]>();
 
@@ -41,7 +47,7 @@ export class CWizardDialog extends CDialog {
         this.#title = new CLabel(this);
         const font = this.#title.font(); font.setPixelSize(22); this.#title.setFont(font);
         this.#subTitle = new CLabel(this); this.#subTitle.setWordWrap(true);
-        this.#stack = new CStackedWidget(this);
+        this.#stack = new CWizardPageStack(this);
         this.#stepList = new CScrollArea(this);
         this.#stepList.setFocusPolicy(CFocusPolicy.NoFocus);
         this.#stepContent = new CWizardStepListContent(this.#stepList, () => this.#stepEntries());
@@ -61,6 +67,18 @@ export class CWizardDialog extends CDialog {
         this.#refresh();
     }
     override sizeHint(): CSize { return new CSize(640, 440); }
+    transitionsEnabled(): boolean { return this.#transitionsEnabled; }
+    setTransitionsEnabled(enabled: boolean): void {
+        this.#transitionsEnabled = enabled;
+        if (!enabled) this.#finishTransition();
+    }
+    transitionDuration(): number { return this.#transitionDuration; }
+    /** Milliseconds; zero disables motion while keeping navigation synchronous. */
+    setTransitionDuration(duration: number): void {
+        if (!Number.isFinite(duration) || duration < 0) throw new RangeError("Transition duration must be finite and nonnegative.");
+        this.#transitionDuration = duration;
+        if (duration === 0) this.#finishTransition();
+    }
     stepListVisible(): boolean { return this.#stepListVisible; }
     /** Hiding the informational step list restores the full page width. */
     setStepListVisible(visible: boolean): void {
@@ -99,6 +117,7 @@ export class CWizardDialog extends CDialog {
     /** Detaches a page without destroying it. Removing a page restarts navigation. */
     removePage(id: number): CWizardPage | null {
         const page = this.page(id); if (page === null) return null;
+        this.#finishTransition();
         for (const disconnect of this.#disconnect.get(id) ?? []) disconnect();
         this.#disconnect.delete(id); this.#pages.delete(id);
         this.#stack.removeWidget(this.#stack.indexOf(page)); page.attachWizard(null);
@@ -108,6 +127,7 @@ export class CWizardDialog extends CDialog {
     /** Starts a new navigation run; page widgets retain their data. */
     restart(): void {
         if (this.#busy) return;
+        this.#finishTransition();
         this.#history = []; this.#deferred = []; this.#completed.clear(); this.#initialized.clear();
         this.#showPage(this.startId());
     }
@@ -126,7 +146,7 @@ export class CWizardDialog extends CDialog {
             this.#saveVisit();
             this.#completed.add(this.#current);
             this.#deferred = this.#deferred.filter(id => id !== this.#current);
-            this.#showPage(target);
+            this.#showPage(target, 1);
         });
     }
     /** Finish cannot bypass completeness, validation, a normal next step or deferred steps. */
@@ -142,7 +162,7 @@ export class CWizardDialog extends CDialog {
         this.#navigate(() => {
             const visit = this.#history.pop(); if (visit === undefined) return;
             this.#deferred = [...visit.deferred]; this.#completed = new Set(visit.completed);
-            this.#showPage(visit.id);
+            this.#showPage(visit.id, -1);
         });
     }
     skipForNow(): void {
@@ -153,7 +173,7 @@ export class CWizardDialog extends CDialog {
             const id = this.#current;
             this.#saveVisit();
             this.#deferred = [...this.#deferred.filter(other => other !== id), id];
-            this.#showPage(target); this.pageDeferred.emit(id);
+            this.#showPage(target, 1); this.pageDeferred.emit(id);
         });
     }
     #navigate(action: () => void): void {
@@ -180,15 +200,61 @@ export class CWizardDialog extends CDialog {
         }
         return this.#deferred.find(id => id !== this.#current && this.#pages.has(id)) ?? -1;
     }
-    #showPage(id: number): void {
+    #showPage(id: number, direction = 0): void {
+        this.#finishTransition();
+        const outgoing = this.currentPage();
         const previous = this.#current; this.#current = id;
         const page = this.currentPage();
         if (page !== null) {
             this.#stack.setCurrentWidget(page);
             if (!this.#initialized.has(id)) { this.#initialized.add(id); page.initializePage(); }
         }
+        if (page !== null && outgoing !== null && page !== outgoing && direction !== 0
+            && this.isOpen() && this.isVisible() && this.#transitionsEnabled && this.#transitionDuration > 0
+            && this.#stack.width() > 0 && typeof requestAnimationFrame === "function"
+            && typeof cancelAnimationFrame === "function") this.#startTransition(outgoing, page, direction);
         this.#refresh(); this.#focusPage();
         if (id !== previous) this.currentIdChanged.emit(id);
+    }
+    #startTransition(outgoing: CWizardPage, incoming: CWizardPage, direction: number): void {
+        const animation = new CVariantAnimation();
+        animation.setDuration(this.#transitionDuration);
+        animation.setEasingCurve(CEasingCurveType.InOutQuad);
+        const transition = { animation, outgoing, incoming,
+            outgoingEnabled: outgoing.isEnabled(), incomingEnabled: incoming.isEnabled() };
+        this.#transition = transition;
+        this.#stack.setTransitioning(true);
+        // Keep both pages inside the stack's existing paint clip. Neither page accepts
+        // input during motion; the dialog buttons remain available for rapid navigation.
+        outgoing.setEnabled(false); incoming.setEnabled(false); outgoing.show();
+        const width = this.#stack.width();
+        incoming.move(direction * width, 0);
+        animation.valueChanged.connect(progress => {
+            if (this.#transition !== transition) return;
+            outgoing.move(-direction * width * progress || 0, 0);
+            incoming.move(direction * width * (1 - progress) || 0, 0);
+        });
+        animation.finished.connect(() => {
+            if (this.#transition === transition) this.#finishTransition();
+        });
+        animation.start();
+    }
+    #finishTransition(): void {
+        const transition = this.#transition;
+        if (transition === null) return;
+        this.#transition = null;
+        this.#stack.setTransitioning(false);
+        transition.animation.destroy();
+        transition.outgoing.hide(); transition.outgoing.move(0, 0);
+        transition.incoming.move(0, 0);
+        transition.outgoing.setEnabled(transition.outgoingEnabled);
+        transition.incoming.setEnabled(transition.incomingEnabled);
+        this.#focusPage();
+    }
+    override close(): void { this.#finishTransition(); super.close(); }
+    override setVisible(visible: boolean): void {
+        if (!visible && #transition in this) this.#finishTransition();
+        super.setVisible(visible);
     }
     #focusPage(): void {
         if (!this.isOpen()) return;
@@ -251,6 +317,7 @@ export class CWizardDialog extends CDialog {
         this.#updateStepList();
     }
     #layoutContents(): void {
+        this.#finishTransition();
         const width = this.width(), height = this.height();
         this.#title.setGeometry(20, 16, Math.max(0, width - 40), 32);
         this.#subTitle.setGeometry(20, 52, Math.max(0, width - 40), 44);
@@ -267,10 +334,22 @@ export class CWizardDialog extends CDialog {
         this.button(CWizardButton.CancelButton).setGeometry(Math.max(344, width - 20 - buttonWidth), yButton, buttonWidth, 30);
     }
     override destroy(): void {
+        this.#finishTransition();
         for (const connections of this.#disconnect.values()) for (const disconnect of connections) disconnect();
         this.#disconnect.clear();
         for (const page of this.#pages.values()) page.attachWizard(null);
         super.destroy();
+    }
+}
+
+
+/** Keeps pointer events out of moving page contents without changing their children. */
+class CWizardPageStack extends CStackedWidget {
+    #transitioning = false;
+    setTransitioning(transitioning: boolean): void { this.#transitioning = transitioning; }
+    override widgetAt(x: number, y: number): CWidget | null {
+        if (!this.#transitioning) return super.widgetAt(x, y);
+        return this.isVisible() && x >= 0 && y >= 0 && x < this.width() && y < this.height() ? this : null;
     }
 }
 
