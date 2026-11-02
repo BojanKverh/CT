@@ -15,7 +15,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
 	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut, CPlainTextEdit, CTextEditFindFlag,
-    CSize, CListViewMode, CSplashScreen, CImageView, CWizardDialog, CWizardPage, CVariantAnimation, CAnimationState, CVBoxLayout
+    CSize, CListViewMode, CSplashScreen, CImageView, CWizardDialog, CWizardPage, CVariantAnimation, CAnimationState, CVBoxLayout, CParallelAnimationGroup
 } from "../../src/index.js";
 import { CEchoMode } from "../../src/widgets/CLineEdit.js";
 import { CSizePolicyType } from "../../src/geometry/CSizePolicy.js";
@@ -89,9 +89,10 @@ function showAboutCanvasToolkit(parent: CWidget): void {
     dialog.exec();
 }
 
-/** Demo-only image surface; CVariantAnimation supplies the phase, canvas paints the rotation. */
+/** Demo-only surface with independent rotation and scale animation properties. */
 class AnimatedToolkitLogoWidget extends CWidget {
-    #progress = 0;
+    #rotation = 0;
+    #scale = 0.25;
     #surface = document.createElement("canvas");
     #context: CanvasRenderingContext2D;
     #frame: CPixmap;
@@ -107,13 +108,14 @@ class AnimatedToolkitLogoWidget extends CWidget {
         this.#frame = new CPixmap(this.#surface, 1, 1);
     }
     override sizeHint(): CSize { return new CSize(720, 360); }
-    setProgress(progress: number): void {
-        this.#progress = Math.max(0, Math.min(1, progress));
-        this.update();
+    setRotation(degrees: number): void {
+        this.#rotation = degrees; this.update();
     }
-    logoScale(): number {
-        return 0.25 + 0.75 * (1 - Math.cos(this.#progress * 2 * Math.PI)) / 2;
+    setScale(scale: number): void {
+        this.#scale = Math.max(0, Math.min(1, scale)); this.update();
     }
+    rotation(): number { return this.#rotation; }
+    logoScale(): number { return this.#scale; }
     protected override paintEvent(painter: CPainter): void {
         const ctx = this.#context, width = Math.max(1, this.width()), height = Math.max(1, this.height());
         // Keep the backing canvas proportional to the layout's available space.
@@ -138,7 +140,7 @@ class AnimatedToolkitLogoWidget extends CWidget {
         ctx.save();
         try {
             ctx.translate(width / 2, height / 2);
-            ctx.rotate(this.#progress * 2 * Math.PI);
+            ctx.rotate(this.#rotation * Math.PI / 180);
             ctx.shadowColor = "rgba(48, 215, 211, 0.35)"; ctx.shadowBlur = 24;
             ctx.drawImage(toolkitLogo, -size / 2, -size / 2, size, size);
         } finally { ctx.restore(); }
@@ -148,7 +150,7 @@ class AnimatedToolkitLogoWidget extends CWidget {
 
 /** Owns its animation explicitly so closing with a button, Esc or X stops the loop. */
 class ToolkitLogoAnimationDialog extends CDialog {
-    #animation = new CVariantAnimation();
+    #animation = new CParallelAnimationGroup();
 
     constructor(parent: CWidget) {
         super(parent);
@@ -166,7 +168,7 @@ class ToolkitLogoAnimationDialog extends CDialog {
         const font = title.font(); font.setPixelSize(20); title.setFont(font);
         title.setText("Canvas Toolkit in motion");
         const hint = new CLabel(this); hint.setWordWrap(true);
-        hint.setText("One animation drives rotation and size. Pause or restart it below.");
+        hint.setText("CParallelAnimationGroup: rotation (4 s) and size pulse (2 s) start together. Size finishes first.");
         const logo = new AnimatedToolkitLogoWidget(this);
         const progress = new CProgressBar(this); fixedHeight(progress, 20);
         progress.setValue(0);
@@ -175,16 +177,26 @@ class ToolkitLogoAnimationDialog extends CDialog {
         layout.addWidget(progress); layout.addWidget(status);
         const controls = new CWidget(this); fixedHeight(controls, 32);
         const buttons = new CHBoxLayout(); buttons.setContentsMargins(0, 0, 0, 0); buttons.setSpacing(8);
-        const update = (value: number): void => {
-            logo.setProgress(value); progress.setValue(Math.round(value * 100));
-            status.setText(`Rotation: ${Math.round(value * 360)}°   |   Scale: ${Math.round(logo.logoScale() * 100)}%   |   Cycle: 4 s`);
+        const rotation = new CVariantAnimation();
+        rotation.setStartValue(0); rotation.setEndValue(360); rotation.setDuration(4000);
+        const scale = new CVariantAnimation();
+        scale.setStartValue(0); scale.setEndValue(1); scale.setDuration(2000);
+        this.#animation.addAnimation(rotation); this.#animation.addAnimation(scale);
+        const updateStatus = (): void => {
+            status.setText(`Rotation: ${Math.round(logo.rotation())}°   |   Scale: ${Math.round(logo.logoScale() * 100)}%   |   Group: 4 s`);
         };
-        this.#animation.setDuration(4000);
-        this.#animation.valueChanged.connect(update);
+        rotation.valueChanged.connect(degrees => {
+            logo.setRotation(degrees); progress.setValue(Math.round(degrees / 360 * 100)); updateStatus();
+        });
+        scale.valueChanged.connect(phase => {
+            // One complete pulse returns to its starting size, allowing a seamless loop.
+            logo.setScale(0.25 + 0.75 * (1 - Math.cos(phase * 2 * Math.PI)) / 2);
+            updateStatus();
+        });
         this.#animation.finished.connect(() => {
             if (this.isOpen() && this.isVisible()) this.#animation.start();
         });
-        update(0);
+        updateStatus();
 
         const pause = new CPushButton(controls); pause.setFixedSize(110, 32); pause.setText("Pause");
         pause.clicked.connect(() => {
@@ -195,7 +207,7 @@ class ToolkitLogoAnimationDialog extends CDialog {
         this.#animation.stateChanged.connect(state => pause.setText(
             state === CAnimationState.Paused ? "Resume" : state === CAnimationState.Running ? "Pause" : "Play"));
         const restart = new CPushButton(controls); restart.setFixedSize(110, 32); restart.setText("Restart");
-        restart.clicked.connect(() => { update(0); this.#animation.start(); });
+        restart.clicked.connect(() => this.#animation.start());
         const close = new CPushButton(controls); close.setFixedSize(110, 32); close.setText("Close");
         close.clicked.connect(() => this.accept());
         buttons.addWidget(pause); buttons.addWidget(restart); buttons.addStretch(1); buttons.addWidget(close);

@@ -137,3 +137,4 @@ export { CWizardPage } from "./widgets/CWizardPage.js";
 export { CWizardDialog } from "./dialogs/CWizardDialog.js";
 export { CVariantAnimation } from "./animation/CVariantAnimation.js";
 export { CAnimationState } from "./animation/CAbstractAnimation.js";
+export { CParallelAnimationGroup } from "./animation/CParallelAnimationGroup.js";
