@@ -19,9 +19,9 @@ export class CVariantAnimation extends CAbstractAnimation {
     setEndValue(value: number): void {
         this.#checkValue(value); this.#end = value; this.updateCurrentTime(this.currentTime());
     }
-    easingCurve(): CEasingCurve { return new CEasingCurve(this.#curve.type()); }
+    easingCurve(): CEasingCurve { return new CEasingCurve(this.#curve); }
     setEasingCurve(curve: CEasingCurve | CEasingCurveType): void {
-        this.#curve = new CEasingCurve(typeof curve === "number" ? curve : curve.type());
+        this.#curve = new CEasingCurve(curve);
         this.updateCurrentTime(this.currentTime());
     }
     /** Explicitly re-emits the current value, useful when sequential members share a target. */
@@ -33,9 +33,20 @@ export class CVariantAnimation extends CAbstractAnimation {
     }
     protected override updateCurrentTime(time: number): void {
         const progress = this.duration() === 0 ? 1 : this.#curve.valueForProgress(time / this.duration());
-        // The weighted sum avoids overflowing end - start for opposite, large endpoints.
-        const value = progress === 0 ? this.#start : progress === 1 ? this.#end
-            : this.#start * (1 - progress) + this.#end * progress;
+        // Interpolate inside the interval without overflowing end - start.
+        // Outside it, extrapolate from the nearest endpoint so elastic curves
+        // preserve their overshoot, including when both endpoints are negative.
+        let value: number;
+        if (progress === 0 || this.#start === this.#end) value = this.#start;
+        else if (progress === 1) value = this.#end;
+        else if (progress > 0 && progress < 1)
+            value = this.#start * (1 - progress) + this.#end * progress;
+        else {
+            const delta = this.#end - this.#start;
+            value = progress > 1 ? this.#end + delta * (progress - 1) : this.#start + delta * progress;
+            // A true extrapolation can exceed the finite numeric range.
+            value = Math.max(-Number.MAX_VALUE, Math.min(Number.MAX_VALUE, value));
+        }
         if (value === this.#value) return;
         this.#value = value; this.valueChanged.emit(value);
     }

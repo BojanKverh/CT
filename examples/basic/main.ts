@@ -194,7 +194,11 @@ class ToolkitLogoAnimationDialog extends CDialog {
         stretch.setStartValue(1); stretch.setEndValue(2.6); stretch.setDuration(900);
         stretch.setEasingCurve(CEasingCurveType.OutCubic);
         const elastic = new CVariantAnimation();
-        elastic.setStartValue(0); elastic.setEndValue(1); elastic.setDuration(600);
+        elastic.setStartValue(2.6); elastic.setEndValue(1); elastic.setDuration(600);
+        const elasticCurve = new CEasingCurve(CEasingCurveType.OutElastic);
+        elasticCurve.setOscillations(15);
+        elasticCurve.setDamping(6);
+        elastic.setEasingCurve(elasticCurve);
 		this.#animation.addAnimation(parallel);
         this.#animation.addAnimation(stretch);
         this.#animation.addAnimation(elastic);
@@ -209,15 +213,8 @@ class ToolkitLogoAnimationDialog extends CDialog {
             updateStatus();
         });
         stretch.valueChanged.connect(value => { logo.setHorizontalStretch(value); updateStatus(); });
-        elastic.valueChanged.connect(phase => {
-            // A damped spring released from rest: width oscillates around 1.
-            // Force the exact endpoint so the next loop starts without a jump.
-            const oscillations = 15; // število nihajev nastaviš tukaj
-			const damping = 6;
-			const frequency = 2 * Math.PI * oscillations;
-            const displacement = phase >= 1 ? 0 : Math.exp(-damping * phase)
-                * (Math.cos(frequency * phase) + damping / frequency * Math.sin(frequency * phase));
-            logo.setHorizontalStretch(1 + 1.6 * displacement);
+        elastic.valueChanged.connect(width => {
+            logo.setHorizontalStretch(width);
             updateStatus();
         });
         this.#animation.currentAnimationChanged.connect(animation => {
