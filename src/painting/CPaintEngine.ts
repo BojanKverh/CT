@@ -11,6 +11,14 @@ export abstract class CPaintEngine {
     /** Restores the most recently saved rendering state. */
     abstract restore(): void;
 
+    /** Returns opacity. Backends without transparency retain full opacity. */
+    opacity(): number { return 1; }
+
+    /** Backends supporting transparency override this method. */
+    setOpacity(opacity: number): void {
+        if (opacity !== 1) throw new Error("This paint engine does not support opacity.");
+    }
+
     /** Translates the current coordinate system. */
     abstract translate(x: number, y: number): void;
 

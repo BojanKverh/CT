@@ -15,7 +15,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
 	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut, CPlainTextEdit, CTextEditFindFlag,
-    CSize, CListViewMode, CSplashScreen
+    CSize, CListViewMode, CSplashScreen, CImageView
 } from "../../src/index.js";
 import { CEchoMode } from "../../src/widgets/CLineEdit.js";
 
@@ -612,6 +612,90 @@ function createListDemoIcon(kind: DemoListIconKind): CIcon {
         }
     }
     return new CIcon(new CPixmap(surface, 64, 64));
+}
+
+/** A locally drawn image with transparent margins for testing the checkerboard. */
+function createImageViewDemoPixmap(): CPixmap {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1400; canvas.height = 900;
+    const ctx = canvas.getContext("2d");
+    if (ctx === null) throw new Error("Canvas 2D context is unavailable.");
+
+    const sky = ctx.createLinearGradient(0, 60, 0, 780);
+    sky.addColorStop(0, "#163b68"); sky.addColorStop(0.65, "#68c9d3"); sky.addColorStop(1, "#d5f0e8");
+    ctx.fillStyle = sky;
+    ctx.fillRect(70, 60, 1260, 720);
+    ctx.fillStyle = "#ffe6a0";
+    ctx.beginPath(); ctx.arc(1090, 235, 85, 0, Math.PI * 2); ctx.fill();
+
+    const mountain = (points: number[][], color: string): void => {
+        ctx.fillStyle = color; ctx.beginPath();
+        points.forEach((point, index) => {
+            if (index === 0) ctx.moveTo(point[0]!, point[1]!);
+            else ctx.lineTo(point[0]!, point[1]!);
+        });
+        ctx.closePath(); ctx.fill();
+    };
+    mountain([[70, 590], [310, 260], [570, 600], [800, 310], [1100, 640], [1330, 430], [1330, 780], [70, 780]], "#4d7e9b");
+    mountain([[70, 740], [460, 355], [840, 780]], "#28556b");
+    mountain([[350, 464], [460, 355], [570, 466], [502, 441], [464, 478], [429, 430]], "#eff9f5");
+    mountain([[650, 780], [1030, 420], [1330, 720], [1330, 780]], "#216b70");
+    mountain([[951, 495], [1030, 420], [1113, 503], [1052, 478], [1028, 503], [1003, 466]], "#d8f3ee");
+
+    const water = ctx.createLinearGradient(0, 630, 0, 780);
+    water.addColorStop(0, "#399b9f"); water.addColorStop(1, "#133e5a");
+    ctx.fillStyle = water; ctx.fillRect(70, 685, 1260, 95);
+    ctx.strokeStyle = "#8dddd5"; ctx.lineWidth = 3;
+    for (let y = 706; y < 775; y += 17) {
+        ctx.beginPath(); ctx.moveTo(600 - (y - 700) * 2, y); ctx.lineTo(960 + (y - 700), y); ctx.stroke();
+    }
+    ctx.fillStyle = "#ffffff"; ctx.font = "bold 54px sans-serif";
+    ctx.fillText("A little room to explore", 125, 158);
+    ctx.font = "24px sans-serif"; ctx.fillStyle = "#d2eff3";
+    ctx.fillText("CANVAS TOOLKIT  /  IMAGE VIEW", 128, 205);
+    ctx.fillStyle = "#277d92"; ctx.font = "22px sans-serif";
+    ctx.fillText("1400 × 900 px • transparent margins • zoom in to inspect the details", 70, 842);
+    return new CPixmap(canvas, canvas.width, canvas.height);
+}
+
+function showImageViewDemo(parent: CWidget): void {
+    const dialog = new CDialog(parent);
+    dialog.setGeometry(60, 45, 780, 590);
+    dialog.setWindowTitle("Image viewer — CImageView");
+
+    const imageView = new CImageView(dialog);
+    imageView.setGeometry(16, 58, 748, 414);
+    const status = new CLabel(dialog); status.setGeometry(16, 480, 748, 24);
+    const updateStatus = (): void => {
+        const image = imageView.pixmap();
+        status.setText(`${image?.width() ?? 0} × ${image?.height() ?? 0} px  |  Zoom: ${(imageView.zoomFactor() * 100).toFixed(1)} %`);
+    };
+    imageView.zoomChanged.connect(updateStatus);
+
+    const button = (text: string, x: number, width: number, callback: () => void): void => {
+        const control = new CPushButton(dialog); control.setGeometry(x, 16, width, 28); control.setText(text);
+        control.clicked.connect(() => { callback(); updateStatus(); imageView.setFocus(); });
+    };
+    button("−", 16, 34, () => imageView.zoomOut());
+    button("+", 56, 34, () => imageView.zoomIn());
+    button("100 %", 98, 72, () => imageView.actualSize());
+    button("Fit to window", 178, 118, () => imageView.fitToWindow());
+    const checker = new CCheckBox(dialog); checker.setGeometry(308, 16, 140, 28);
+    checker.setText("Checkerboard"); checker.setChecked(true);
+    checker.toggled.connect(checked => imageView.setCheckerboardVisible(checked));
+    const source = new CComboBox(dialog); source.setGeometry(464, 16, 300, 28);
+    source.addItems(["Landscape (transparent margins)", "Canvas Toolkit splash"]);
+    const landscape = createImageViewDemoPixmap(), splash = createSplashPixmap();
+    source.currentIndexChanged.connect(index => {
+        imageView.setPixmap(index === 0 ? landscape : splash); updateStatus();
+    });
+    imageView.setPixmap(landscape); updateStatus();
+
+    const hint = new CLabel(dialog); hint.setGeometry(16, 508, 748, 22);
+    hint.setText("Wheel: zoom at pointer • Drag: pan • Double-click: fit / 100 % • Keys: + − 0 F and arrows");
+    const buttons = new CDialogButtonBox(CStandardButton.Ok, dialog);
+    buttons.setGeometry(16, 544, 748, 30); buttons.accepted.connect(() => dialog.accept());
+    dialog.exec(); imageView.setFocus();
 }
 
 function showIconGridDemo(parent: CWidget): void {
@@ -1991,6 +2075,10 @@ const iconGridDemoAction = new CAction("Icon grid demo…", mainWindow);
 iconGridDemoAction.triggered.connect(() => showIconGridDemo(parent));
 viewMenu.addAction(iconGridDemoAction);
 
+const imageViewDemoAction = new CAction("Image viewer demo…", mainWindow);
+imageViewDemoAction.triggered.connect(() => showImageViewDemo(parent));
+viewMenu.addAction(imageViewDemoAction);
+
 const panelsMenu = new CMenu();
 panelsMenu.addAction(new CAction("Properties"));
 panelsMenu.addAction(new CAction("Inspector"));
@@ -2088,7 +2176,7 @@ setInterval(() => {
 		pb.setValue(pb.value() + 1)
 }, 50);
 
-mainWindow.hide();
+//mainWindow.hide();
 
 const splash = new CSplashScreen(createSplashPixmap());
 splash.showMessage(
@@ -2099,5 +2187,5 @@ splash.showMessage(
 splash.show();
 
 setTimeout(() => {
-	splash.finish(mainWindow);
+	splash.finish(mainWindow, 1000);
 }, 2000);

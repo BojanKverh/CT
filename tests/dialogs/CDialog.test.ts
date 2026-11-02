@@ -606,12 +606,12 @@ describe("CSplashScreen", () => {
         expect(splash.isVisible()).toBe(true); expect(CApplication.instance().isWindowWidget(splash)).toBe(true);
     });
     test("finish shows the main window and closes the splash", () => {
-        const window = new CWidget(); window.hide(); const splash = new CSplashScreen(); splash.show(); splash.finish(window);
+        const window = new CWidget(); window.hide(); const splash = new CSplashScreen(); splash.show(); splash.finish(window, 0);
         expect(window.isVisible()).toBe(true); expect(splash.isVisible()).toBe(false);
         expect(CApplication.instance().isWindowWidget(splash)).toBe(false);
     });
     test("finish does not destroy the reusable splash", () => {
-        const splash=new CSplashScreen(pixmap()); splash.showMessage("Ready"); splash.show(); splash.finish(new CWidget()); splash.show();
+        const splash=new CSplashScreen(pixmap()); splash.showMessage("Ready"); splash.show(); splash.finish(new CWidget(), 0); splash.show();
         expect(splash.isVisible()).toBe(true); expect(splash.message()).toBe("Ready");
     });
     test("destroy unregisters the window and is idempotent", () => {

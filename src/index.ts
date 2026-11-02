@@ -131,3 +131,4 @@ export { CShortcut } from "./core/CShortcut.js";
 export { CPlainTextEdit } from "./widgets/CPlainTextEdit.js";
 export { CListViewMode } from "./widgets/CListViewHelper.js";
 export { CSplashScreen } from "./widgets/CSplashScreen.js";
+export { CImageView } from "./widgets/CImageView.js";

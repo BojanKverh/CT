@@ -32,6 +32,14 @@ export class CPainter {
         this.#m_engine.restore();
     }
 
+    /** Returns current drawing opacity, from zero to one. */
+    opacity(): number { return this.#m_engine.opacity(); }
+
+    /** Sets drawing opacity, clamped to zero through one; ignores non-finite values. */
+    setOpacity(opacity: number): void {
+        if (Number.isFinite(opacity)) this.#m_engine.setOpacity(Math.max(0, Math.min(1, opacity)));
+    }
+
     /** Translates the current coordinate system. */
     translate(x: number, y: number): void {
         this.#m_engine.translate(x, y);

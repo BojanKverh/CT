@@ -26,6 +26,12 @@ export class CCanvasPaintEngine extends CPaintEngine {
         this.#m_context.restore();
     }
 
+    override opacity(): number { return this.#m_context.globalAlpha; }
+
+    override setOpacity(opacity: number): void {
+        if (Number.isFinite(opacity)) this.#m_context.globalAlpha = Math.max(0, Math.min(1, opacity));
+    }
+
     /** Translates the canvas coordinate system. */
     translate(x: number, y: number): void {
         this.#m_context.translate(x, y);

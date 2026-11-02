@@ -18,6 +18,9 @@ export class CSplashScreen extends CWidget {
     #alignment: CAlignment = CAlignment.Left | CAlignment.Bottom;
     #messageColor: string | null = null;
     #disposed = false;
+    #opacity = 1;
+    #fadeFrame: number | null = null;
+    #fadeGeneration = 0;
 
     readonly messageChanged = new CSignal<[string]>();
 
@@ -71,6 +74,8 @@ export class CSplashScreen extends CWidget {
     /** Uses the existing window stack; no modal scope or focus change is introduced. */
     override setVisible(visible: boolean): void {
         if (this.#disposed && visible) return;
+        this.#cancelFade();
+        this.#opacity = 1;
         const app = CApplication.instance();
         if (visible) {
             if (this.x() === 0 && this.y() === 0) {
@@ -87,11 +92,48 @@ export class CSplashScreen extends CWidget {
 
     close(): void { this.hide(); }
 
-    /** Shows the ready main window and closes this splash, which may be reused. */
-    finish(mainWindow: CWidget): void {
+    /** Fades out over duration milliseconds. Zero/invalid durations hide immediately. */
+    fadeOut(duration = 300): void {
+        if (this.#disposed || !this.isVisible()) return;
+        this.#cancelFade();
+        if (!Number.isFinite(duration) || duration <= 0) { this.hide(); return; }
+        const generation = this.#fadeGeneration;
+        const started = performance.now();
+        const initialOpacity = this.#opacity;
+        const step = (now: number): void => {
+            if (generation !== this.#fadeGeneration || this.#disposed) return;
+            this.#fadeFrame = null;
+            const progress = Math.max(0, Math.min(1, (now - started) / duration));
+            if (progress >= 1) { this.hide(); return; }
+            this.#opacity = initialOpacity * (1 - progress);
+            this.update();
+            this.#fadeFrame = requestAnimationFrame(step);
+        };
+        this.#fadeFrame = requestAnimationFrame(step);
+    }
+
+    #cancelFade(): void {
+        ++this.#fadeGeneration;
+        if (this.#fadeFrame !== null) cancelAnimationFrame(this.#fadeFrame);
+        this.#fadeFrame = null;
+    }
+
+    /** Fades this window and all its contents without changing other windows. */
+    override render(painter: CPainter): void {
+        if (!this.isVisible()) return;
+        if (this.#opacity === 1) { super.render(painter); return; }
+        painter.save();
+        try {
+            painter.setOpacity(painter.opacity() * this.#opacity);
+            super.render(painter);
+        } finally { painter.restore(); }
+    }
+
+    /** Shows the main window, then fades out. Pass zero for immediate dismissal. */
+    finish(mainWindow: CWidget, duration = 300): void {
         if (mainWindow === this) return;
         mainWindow.show();
-        this.close();
+        this.fadeOut(duration);
     }
 
     override destroy(): void {
