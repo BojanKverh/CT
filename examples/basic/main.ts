@@ -837,7 +837,7 @@ function showIconGridDemo(parent: CWidget): void {
 
 function showWizardDemo(parent: CWidget): void {
     const wizard = new CWizardDialog(parent);
-    wizard.setGeometry(90, 65, 680, 470);
+    wizard.setGeometry(90, 65, 820, 470);
     wizard.setWindowTitle("Company setup — Wizard demo");
 
     const company = new CWizardPage();

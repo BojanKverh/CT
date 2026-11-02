@@ -870,7 +870,7 @@ describe("CWizardDialog", () => {
         const w = wizard(); w.pageIds().pop(); w.deferredPageIds().push(99); expect(w.pageIds()).toEqual([0, 1, 2]); expect(w.deferredPageIds()).toEqual([]);
     });
     test("resizing lays out the current page and navigation buttons", () => {
-        const w = wizard(); w.resize(800, 600); expect(w.page(0)!.width()).toBe(760);
+        const w = wizard(); w.resize(800, 600); expect(w.page(0)!.width()).toBe(568);
         expect(w.page(0)!.height()).toBe(428); expect(w.button(CWizardButton.CancelButton).x()).toBe(690);
     });
     test("Enter advances and then finishes through the default button", () => {
@@ -895,4 +895,118 @@ describe("CWizardDialog", () => {
         expect(w.button(CWizardButton.FinishButton).isVisible()).toBe(true);
     });
 
+});
+
+import { CScrollArea } from "../../src/widgets/CScrollArea.js";
+
+describe("CWizardDialog step list", () => {
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+    function create(count = 3): CWizardDialog {
+        const w = new CWizardDialog();
+        for (let i = 0; i < count; ++i) { const page = new CWizardPage(); page.setTitle(`Page ${i}`); w.addPage(page); }
+        return w;
+    }
+    function sidebar(w: CWizardDialog): CScrollArea {
+        return w.children().find(child => child instanceof CScrollArea) as CScrollArea;
+    }
+    function paintRows(w: CWizardDialog): Array<{ text: string; y: number; pen: string }> {
+        let pen = ""; const draws: Array<{ text: string; y: number; pen: string }> = [];
+        const painter = { save: vi.fn(), restore: vi.fn(), translate: vi.fn(), clipRect: vi.fn(),
+            setBrush: vi.fn(), fillRect: vi.fn(), setFont: vi.fn(), setTextAlign: vi.fn(), setTextBaseline: vi.fn(),
+            setPen: (value: string) => { pen = value; }, drawText: (text: string, _x: number, y: number) => { draws.push({ text, y, pen }); } };
+        sidebar(w).widget()!.render(painter as unknown as CPainter); return draws;
+    }
+    function texts(w: CWizardDialog): string[] { return paintRows(w).map(draw => draw.text); }
+    test("step list is visible by default and reserves space beside the page", () => {
+        const w = create(); expect(w.stepListVisible()).toBe(true); expect(sidebar(w).isVisible()).toBe(true);
+        expect(w.currentPage()!.parent()!.x()).toBe(212); expect(w.currentPage()!.width()).toBe(408);
+    });
+    test("hiding restores full page width and showing reserves space again", () => {
+        const w = create(); w.setStepListVisible(false); expect(sidebar(w).isVisible()).toBe(false);
+        expect(w.currentPage()!.width()).toBe(600); w.setStepListVisible(true); expect(w.currentPage()!.width()).toBe(408);
+    });
+    test("toggling the list preserves navigation and deferred pages", () => {
+        const w = create(); w.page(0)!.setDeferrable(true); w.open(); w.skipForNow();
+        w.setStepListVisible(false); w.setStepListVisible(true);
+        expect(w.currentId()).toBe(1); expect(w.deferredPageIds()).toEqual([0]); expect(w.visitedIds()).toEqual([0, 1]);
+    });
+    test("rows initially show current and pending steps", () => {
+        const w = create(); expect(texts(w)).toContain("●"); expect(texts(w)).toContain("Current step");
+        expect(texts(w).filter(text => text === "Not visited")).toHaveLength(2);
+        expect(texts(w)).toContain("Page 0"); expect(texts(w)).toContain("Page 2");
+    });
+    test("Next changes the old step to completed and highlights the new step", () => {
+        const w = create(); w.open(); w.next(); const rows = paintRows(w);
+        expect(rows.find(draw => draw.text === "Completed")!.y).toBe(28);
+        expect(rows.find(draw => draw.text === "Current step")!.y).toBe(80);
+        expect(texts(w)).toContain("✓");
+    });
+    test("current title uses the highlighted text palette role", () => {
+        const w = create(); const row = paintRows(w).find(draw => draw.text === "Page 0")!;
+        expect(row.pen).toBe(sidebar(w).widget()!.palette().color(CPaletteColorRole.HighlightedText).toCss());
+    });
+    test("Skip marks the old page as deferred", () => {
+        const w = create(); w.page(0)!.setDeferrable(true); w.open(); w.skipForNow();
+        expect(texts(w)).toContain("↷"); expect(texts(w)).toContain("Deferred"); expect(texts(w)).not.toContain("Completed");
+    });
+    test("returning to a deferred page shows both current and deferred status", () => {
+        const w = create(2); w.page(0)!.setDeferrable(true); w.open(); w.skipForNow(); w.next();
+        expect(texts(w)).toContain("Current · deferred"); expect(texts(w)).toContain("Completed");
+    });
+    test("Back restores pending and current markers after ordinary navigation", () => {
+        const w = create(); w.open(); w.next(); w.back(); expect(texts(w)).not.toContain("Completed");
+        expect(texts(w).filter(text => text === "Not visited")).toHaveLength(2);
+    });
+    test("Back undoes the visual deferred marker", () => {
+        const w = create(); w.page(0)!.setDeferrable(true); w.open(); w.skipForNow(); w.back();
+        expect(texts(w)).not.toContain("Deferred"); expect(texts(w)).not.toContain("↷"); expect(texts(w)).toContain("Current step");
+    });
+    test("restart clears completed and deferred markers", () => {
+        const w = create(); w.page(0)!.setDeferrable(true); w.open(); w.skipForNow(); w.next(); w.restart();
+        expect(texts(w)).not.toContain("Completed"); expect(texts(w)).not.toContain("Deferred");
+    });
+    test("finishing marks the final step completed", () => {
+        const w = create(1); w.open(); w.accept(); expect(texts(w)).toContain("Completed"); expect(texts(w)).not.toContain("Current step");
+    });
+    test("changing a page title immediately changes its row", () => {
+        const w = create(); w.page(1)!.setTitle("Updated"); expect(texts(w)).toContain("Updated"); expect(texts(w)).not.toContain("Page 1");
+    });
+    test("untitled pages get a readable sequential title", () => {
+        const w = create(0); w.setPage(10, new CWizardPage()); expect(texts(w)).toContain("Step 1");
+    });
+    test("adding and removing pages updates the row count", () => {
+        const w = create(2); const page = new CWizardPage(); page.setTitle("Extra"); const id = w.addPage(page);
+        expect(texts(w)).toContain("Extra"); w.removePage(id); expect(texts(w)).not.toContain("Extra");
+    });
+    test("long titles are elided without horizontal scrolling", () => {
+        const w = create(1); w.page(0)!.setTitle("An extremely long wizard step title ".repeat(8));
+        expect(texts(w).some(text => text.endsWith("…"))).toBe(true); expect(sidebar(w).horizontalScrollBar().isVisible()).toBe(false);
+    });
+    test("many steps scroll vertically and keep the current row visible", () => {
+        const w = create(15); w.open(); for (let i = 0; i < 12; ++i) w.next();
+        expect(sidebar(w).verticalScrollBar().isVisible()).toBe(true); expect(sidebar(w).scrollY()).toBeGreaterThan(0);
+        expect(texts(w)).toContain("Page 12"); expect(sidebar(w).horizontalScrollBar().isVisible()).toBe(false);
+        w.restart(); expect(sidebar(w).scrollY()).toBe(0);
+    });
+    test("sidebar contents do not introduce Tab stops", () => {
+        const w = create(); expect(sidebar(w).acceptsTabFocus()).toBe(false);
+        expect(sidebar(w).widget()!.acceptsTabFocus()).toBe(false); expect(sidebar(w).verticalScrollBar().acceptsTabFocus()).toBe(false);
+    });
+    test("clicking a row does not navigate", () => {
+        const w = create(); w.open();
+        sidebar(w).widget()!.event(new CMouseEvent(CEventType.MousePress, 40, 115, CMouseButton.LeftButton));
+        expect(w.currentId()).toBe(0); expect(w.visitedIds()).toEqual([0]);
+    });
+    test("unchosen branch pages are not marked completed", () => {
+        class Branch extends CWizardPage { override nextId(): number { return 2; } }
+        const w = create(0); const p = new Branch(); p.setTitle("Start"); w.addPage(p);
+        const omitted = new CWizardPage(); omitted.setTitle("Unchosen"); w.addPage(omitted); w.addPage(new CWizardPage());
+        w.open(); w.next(); const rows = paintRows(w);
+        expect(rows.find(draw => draw.text === "Not visited")!.y).toBe(80);
+    });
+    test("very narrow geometry never produces a negative page width", () => {
+        const w = create(); w.resize(100, 180); expect(w.currentPage()!.width()).toBeGreaterThanOrEqual(0);
+        w.setStepListVisible(false); expect(w.currentPage()!.width()).toBe(60);
+    });
 });

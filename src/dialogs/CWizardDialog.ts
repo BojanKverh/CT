@@ -1,3 +1,8 @@
+import { CRect } from "../geometry/CRect.js";
+import { CFocusPolicy } from "../gui/CFocusPolicy.js";
+import { CPaletteColorRole } from "../gui/CPalette.js";
+import type { CPainter } from "../painting/CPainter.js";
+import { CScrollArea } from "../widgets/CScrollArea.js";
 import { CSignal } from "../core/CSignal.js";
 import { CSize } from "../geometry/CSize.js";
 import { CLabel } from "../widgets/CLabel.js";
@@ -15,6 +20,9 @@ export class CWizardDialog extends CDialog {
     #pages = new Map<number, CWizardPage>();
     #disconnect = new Map<number, Array<() => void>>();
     #stack: CStackedWidget;
+    #stepListVisible = true;
+    #stepList: CScrollArea;
+    #stepContent: CWizardStepListContent;
     #title: CLabel;
     #subTitle: CLabel;
     #buttons = new Map<CWizardButton, CPushButton>();
@@ -34,6 +42,10 @@ export class CWizardDialog extends CDialog {
         const font = this.#title.font(); font.setPixelSize(22); this.#title.setFont(font);
         this.#subTitle = new CLabel(this); this.#subTitle.setWordWrap(true);
         this.#stack = new CStackedWidget(this);
+        this.#stepList = new CScrollArea(this);
+        this.#stepList.setFocusPolicy(CFocusPolicy.NoFocus);
+        this.#stepContent = new CWizardStepListContent(this.#stepList, () => this.#stepEntries());
+        this.#stepList.setWidget(this.#stepContent);
         const definitions: Array<[CWizardButton, string, () => void]> = [
             [CWizardButton.BackButton, "Back", () => this.back()],
             [CWizardButton.NextButton, "Next", () => this.next()],
@@ -49,6 +61,13 @@ export class CWizardDialog extends CDialog {
         this.#refresh();
     }
     override sizeHint(): CSize { return new CSize(640, 440); }
+    stepListVisible(): boolean { return this.#stepListVisible; }
+    /** Hiding the informational step list restores the full page width. */
+    setStepListVisible(visible: boolean): void {
+        if (visible === this.#stepListVisible) return;
+        this.#stepListVisible = visible;
+        this.#layoutContents(); this.#updateStepList();
+    }
     button(role: CWizardButton): CPushButton { return this.#buttons.get(role)!; }
     pageIds(): number[] { return [...this.#pages.keys()].sort((a, b) => a - b); }
     page(id: number): CWizardPage | null { return this.#pages.get(id) ?? null; }
@@ -144,6 +163,7 @@ export class CWizardDialog extends CDialog {
     #completeCurrent(): void {
         this.#completed.add(this.#current);
         this.#deferred = this.#deferred.filter(id => id !== this.#current);
+        this.#updateStepList();
     }
     #saveVisit(): void {
         this.#history.push({ id: this.#current, deferred: [...this.#deferred], completed: [...this.#completed] });
@@ -197,12 +217,47 @@ export class CWizardDialog extends CDialog {
         skip.setVisible(page?.isDeferrable() ?? false);
         skip.setEnabled(page !== null && page.isDeferrable() && target !== null && target !== -1 && target !== this.#current);
         this.setDefaultButton(target === -1 ? finish : next);
+        this.#updateStepList();
+    }
+    #stepEntries(): WizardStepEntry[] {
+        return this.pageIds().map((id, index) => ({ id,
+            title: this.page(id)!.title() || `Step ${index + 1}`,
+            status: this.#completed.has(id) ? "completed" : id === this.#current ? "current"
+                : this.#deferred.includes(id) ? "deferred" : "pending",
+            deferred: this.#deferred.includes(id) }));
+    }
+    #updateStepList(): void {
+        this.#stepList.setVisible(this.#stepListVisible);
+        const count = this.#pages.size;
+        const height = count * CWizardStepListContent.RowHeight;
+        // The content never requests horizontal scrolling; long titles are elided.
+        this.#stepContent.resize(0, height);
+        this.#stepList.resize(this.#stepList.width(), this.#stepList.height());
+        this.#stepContent.resize(this.#stepList.viewport().width(), height);
+        this.#stepList.resize(this.#stepList.width(), this.#stepList.height());
+        const index = this.pageIds().indexOf(this.#current);
+        if (index >= 0) {
+            const top = index * CWizardStepListContent.RowHeight;
+            const bottom = top + CWizardStepListContent.RowHeight;
+            if (top < this.#stepList.scrollY()) this.#stepList.setScrollY(top);
+            else if (bottom > this.#stepList.scrollY() + this.#stepList.viewport().height())
+                this.#stepList.setScrollY(bottom - this.#stepList.viewport().height());
+        }
+        this.#stepContent.update();
     }
     override setGeometry(x: number, y: number, width: number, height: number): void {
         super.setGeometry(x, y, width, height);
+        this.#layoutContents();
+        this.#updateStepList();
+    }
+    #layoutContents(): void {
+        const width = this.width(), height = this.height();
         this.#title.setGeometry(20, 16, Math.max(0, width - 40), 32);
         this.#subTitle.setGeometry(20, 52, Math.max(0, width - 40), 44);
-        this.#stack.setGeometry(20, 108, Math.max(0, width - 40), Math.max(0, height - 172));
+        const sideWidth = this.#stepListVisible ? Math.min(176, Math.max(0, width - 360)) : 0;
+        const pageX = 20 + (sideWidth > 0 ? sideWidth + 16 : 0);
+        this.#stepList.setGeometry(20, 108, sideWidth, Math.max(0, height - 172));
+        this.#stack.setGeometry(pageX, 108, Math.max(0, width - pageX - 20), Math.max(0, height - 172));
         const yButton = Math.max(0, height - 48), gap = 8, buttonWidth = 90;
         this.button(CWizardButton.SkipButton).setGeometry(20, yButton, 120, 30);
         this.button(CWizardButton.BackButton).setGeometry(Math.max(148, width - 20 - 3 * buttonWidth - 2 * gap), yButton, buttonWidth, 30);
@@ -216,5 +271,60 @@ export class CWizardDialog extends CDialog {
         this.#disconnect.clear();
         for (const page of this.#pages.values()) page.attachWizard(null);
         super.destroy();
+    }
+}
+
+
+type WizardStepEntry = {
+    id: number; title: string; status: "current" | "completed" | "deferred" | "pending"; deferred: boolean;
+};
+
+/** Informational sidebar: no click actions or keyboard focus, with vertical scrolling. */
+class CWizardStepListContent extends CWidget {
+    static readonly RowHeight = 52;
+    constructor(private readonly area: CScrollArea, private readonly entries: () => WizardStepEntry[]) {
+        super(area.viewport());
+        this.setFocusPolicy(CFocusPolicy.NoFocus);
+    }
+    protected override paintEvent(painter: CPainter): void {
+        const entries = this.entries(), rowHeight = CWizardStepListContent.RowHeight;
+        const palette = this.palette(), metrics = this.fontMetrics();
+        const first = Math.max(0, Math.floor(this.area.scrollY() / rowHeight));
+        const last = Math.min(entries.length, Math.ceil((this.area.scrollY() + this.area.viewport().height()) / rowHeight));
+        painter.save();
+        try {
+            painter.setBrush(palette.color(CPaletteColorRole.Base).toCss());
+            painter.fillRect(new CRect(0, this.area.scrollY(), this.width(), this.area.viewport().height()));
+            painter.setFont(this.font()); painter.setTextAlign("left"); painter.setTextBaseline("top");
+            for (let index = first; index < last; ++index) {
+                const entry = entries[index]!, top = index * rowHeight, current = entry.status === "current";
+                if (current) {
+                    painter.setBrush(palette.color(CPaletteColorRole.Highlight).toCss());
+                    painter.fillRect(new CRect(2, top + 2, Math.max(0, this.width() - 4), rowHeight - 4));
+                }
+                const textColor = palette.color(current ? CPaletteColorRole.HighlightedText : CPaletteColorRole.Text).toCss();
+                const glyph = { current: "●", completed: "✓", deferred: "↷", pending: "○" }[entry.status];
+                painter.setPen(current ? textColor : entry.status === "completed" ? "#22834a"
+                    : entry.status === "deferred" ? "#a36a13" : textColor);
+                painter.drawText(glyph, 10, top + 10);
+                painter.setPen(textColor);
+                const available = Math.max(0, this.width() - 40);
+                let title = entry.title;
+                if (metrics.textWidth(title) > available) {
+                    const chars = Array.from(title);
+                    while (chars.length > 0 && metrics.textWidth(chars.join("") + "…") > available) chars.pop();
+                    title = metrics.textWidth("…") <= available ? chars.join("") + "…" : "";
+                }
+                painter.drawText(title, 32, top + 8);
+                const label = current ? (entry.deferred ? "Current · deferred" : "Current step")
+                    : entry.status === "completed" ? "Completed" : entry.status === "deferred" ? "Deferred" : "Not visited";
+                // Clip the complete row, including status text, to the sidebar viewport.
+                painter.save();
+                try {
+                    painter.clipRect(new CRect(32, top + 27, available, rowHeight - 29));
+                    painter.drawText(label, 32, top + 28);
+                } finally { painter.restore(); }
+            }
+        } finally { painter.restore(); }
     }
 }
