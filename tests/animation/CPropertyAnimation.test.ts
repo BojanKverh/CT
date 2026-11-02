@@ -1,3 +1,6 @@
+import { CPoint } from "../../src/geometry/CPoint.js";
+import { CSize } from "../../src/geometry/CSize.js";
+import { CRect } from "../../src/geometry/CRect.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CObject } from "../../src/core/CObject.js";
 import { CAbstractAnimation, CAnimationState } from "../../src/animation/CAbstractAnimation.js";
@@ -161,4 +164,53 @@ describe("CPropertyAnimation", () => {
         const group = new CSequentialAnimationGroup(); animations.push(group); group.addAnimation(first); group.addAnimation(second);
         group.setCurrentTime(150); expect(value).toBe(15); group.setCurrentTime(25); expect(value).toBe(2.5);
     });
+    test("a point setter receives every interpolated coordinate", () => {
+        let value = new CPoint(99, 99); const a = new CPropertyAnimation<CPoint>(p => { value = p; }); animations.push(a);
+        a.setStartValue(new CPoint(10, 20)); a.setEndValue(new CPoint(30, 60)); a.setDuration(100);
+        expect(value.x()).toBe(99); a.start(); expect(value.x()).toBe(10); tick(50);
+        expect([value.x(), value.y()]).toEqual([20, 40]); tick(100); expect([value.x(), value.y()]).toEqual([30, 60]);
+    });
+    test("a size setter can mutate its argument without changing animation data", () => {
+        const a = new CPropertyAnimation<CSize>(s => { s.resize(999, 999); }); animations.push(a);
+        a.setStartValue(new CSize(10, 20)); a.setEndValue(new CSize(30, 60)); a.setDuration(100); a.start(); tick(50);
+        expect([a.currentValue().width(), a.currentValue().height()]).toEqual([20, 40]);
+        expect([a.startValue().width(), a.endValue().height()]).toEqual([10, 60]);
+    });
+    test("a rectangle setter updates all geometry components", () => {
+        let value = new CRect(); const a = new CPropertyAnimation<CRect>(r => { value = r; }); animations.push(a);
+        a.setStartValue(new CRect(20, 20, 100, 60)); a.setEndValue(new CRect(300, 100, 200, 120));
+        a.setDuration(100); a.start(); tick(50);
+        expect([value.x(), value.y(), value.width(), value.height()]).toEqual([160, 60, 150, 90]);
+    });
+    test("unchanged geometry still restores an externally modified target", () => {
+        let value = new CPoint(99, 99); const a = new CPropertyAnimation<CPoint>(p => { value = p; }); animations.push(a);
+        a.setStartValue(new CPoint(2, 4)); a.setEndValue(new CPoint(2, 4)); a.setDuration(100);
+        a.start(); value.move(90, 90); a.setCurrentTime(50); expect([value.x(), value.y()]).toEqual([2, 4]);
+        value.move(90, 90); a.applyCurrentValue(); expect([value.x(), value.y()]).toEqual([2, 4]);
+    });
+    test("geometry sequential stages restore targets across boundaries and backwards seeks", () => {
+        let value = new CPoint(); const first = new CPropertyAnimation<CPoint>(p => { value = p; });
+        const second = new CPropertyAnimation<CPoint>(p => { value = p; }); animations.push(first, second);
+        first.setStartValue(new CPoint()); first.setEndValue(new CPoint(10, 20)); first.setDuration(100);
+        second.setStartValue(new CPoint(10, 20)); second.setEndValue(new CPoint(20, 40)); second.setDuration(100);
+        const group = new CSequentialAnimationGroup(); animations.push(group); group.addAnimation(first); group.addAnimation(second);
+        group.start(); tick(50); expect([value.x(), value.y()]).toEqual([5, 10]);
+        tick(150); expect([value.x(), value.y()]).toEqual([15, 30]); group.setCurrentTime(25);
+        expect([value.x(), value.y()]).toEqual([2.5, 5]);
+    });
+    test("parallel groups accept numeric and geometry animations together", () => {
+        let point = new CPoint(); let opacity = -1;
+        const position = new CPropertyAnimation<CPoint>(p => { point = p; }); animations.push(position);
+        position.setStartValue(new CPoint()); position.setEndValue(new CPoint(20, 40)); position.setDuration(100);
+        const alpha = make(v => { opacity = v; }, 0, 1);
+        const group = new CParallelAnimationGroup(); animations.push(group); group.addAnimation(position); group.addAnimation(alpha);
+        group.start(); tick(50); expect([point.x(), point.y(), opacity]).toEqual([10, 20, .5]); expect(frames.size).toBe(1);
+    });
+    test("geometry property changes are visible to valueChanged observers", () => {
+        let value = new CRect(); const a = new CPropertyAnimation<CRect>(r => { value = r; }); animations.push(a);
+        a.setStartValue(new CRect()); a.setEndValue(new CRect(10, 20, 30, 40)); a.setDuration(100);
+        const observed: number[] = []; a.valueChanged.connect(r => { observed.push(value.x()); expect(value.equals(r)).toBe(true); });
+        a.start(); tick(50); expect(observed).toEqual([5]);
+    });
+
 });

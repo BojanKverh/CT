@@ -1,32 +1,34 @@
 import type { CObject } from "../core/CObject.js";
 import { CAnimationState } from "./CAbstractAnimation.js";
 import { CEasingCurve, CEasingCurveType } from "./CEasingCurve.js";
-import { CVariantAnimation } from "./CVariantAnimation.js";
+import { CVariantAnimation, type CAnimationValue } from "./CVariantAnimation.js";
 
 /**
- * Numeric animation bound to a setter, for example value => widget.setOpacity(value).
+ * Animation bound to a setter, for example value => widget.setOpacity(value).
  * Configuration while stopped does not touch the target. Starting, seeking and
  * applyCurrentValue() write it explicitly, even when the numeric value is unchanged.
  * Stop or destroy the animation before disposing of a target captured by the setter.
  */
-export class CPropertyAnimation extends CVariantAnimation {
-    #setter: ((value: number) => void) | null;
+export class CPropertyAnimation<T extends CAnimationValue = number> extends CVariantAnimation<T> {
+    #setter: ((value: T) => void) | null;
     #configurationDepth = 0;
+    #valueRevision = 0;
 
-    constructor(setter: (value: number) => void, parent: CObject | null = null) {
+    constructor(setter: (value: T) => void, parent: CObject | null = null) {
         if (typeof setter !== "function") throw new TypeError("A property setter is required.");
         super(parent);
         this.#setter = setter;
         // Installed before client listeners so they observe the updated property.
         this.valueChanged.connect(() => {
+            ++this.#valueRevision;
             if (this.#configurationDepth === 0) this.#writeValue();
         });
     }
 
-    override setStartValue(value: number): void {
+    override setStartValue(value: T): void {
         this.#configure(() => super.setStartValue(value));
     }
-    override setEndValue(value: number): void {
+    override setEndValue(value: T): void {
         this.#configure(() => super.setEndValue(value));
     }
     override setDuration(duration: number): void {
@@ -37,11 +39,11 @@ export class CPropertyAnimation extends CVariantAnimation {
     }
 
     protected override updateCurrentTime(time: number): void {
-        const previous = this.currentValue();
+        const previous = this.#valueRevision;
         super.updateCurrentTime(time);
         // CVariantAnimation emits only on a change. Constant values must also
         // restore the target when a new sequential stage starts or is sought.
-        if (previous === this.currentValue() && this.#configurationDepth === 0)
+        if (previous === this.#valueRevision && this.#configurationDepth === 0)
             this.#writeValue();
     }
 

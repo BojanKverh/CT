@@ -1,3 +1,6 @@
+import { CPoint } from "../../src/geometry/CPoint.js";
+import { CSize } from "../../src/geometry/CSize.js";
+import { CRect } from "../../src/geometry/CRect.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CObject } from "../../src/core/CObject.js";
 import { CAbstractAnimation, CAnimationState } from "../../src/animation/CAbstractAnimation.js";
@@ -434,5 +437,105 @@ describe("CEasingCurve elastic and bounce", () => {
             const curve = new CEasingCurve(type), expected = curve.valueForProgress(0.4);
             curve.setOscillations(20); curve.setDamping(0); expect(curve.valueForProgress(0.4)).toBe(expected);
         }
+    });
+});
+
+describe("CVariantAnimation geometry values", () => {
+    function point(p: CPoint): number[] { return [p.x(), p.y()]; }
+    function size(s: CSize): number[] { return [s.width(), s.height()]; }
+    function rect(r: CRect): number[] { return [r.x(), r.y(), r.width(), r.height()]; }
+    test("interpolates both point coordinates including fractions and negative positions", () => {
+        const a = new CVariantAnimation<CPoint>(); a.setStartValue(new CPoint(-10, 5)); a.setEndValue(new CPoint(11, 20));
+        a.setDuration(100); a.setCurrentTime(25); expect(point(a.currentValue())).toEqual([-4.75, 8.75]); a.destroy();
+    });
+    test("interpolates size components independently", () => {
+        const a = new CVariantAnimation<CSize>(); a.setStartValue(new CSize(10, 40)); a.setEndValue(new CSize(50, 20));
+        a.setDuration(100); a.setCurrentTime(50); expect(size(a.currentValue())).toEqual([30, 30]); a.destroy();
+    });
+    test("interpolates all four rectangle components", () => {
+        const a = new CVariantAnimation<CRect>(); a.setStartValue(new CRect(20, 20, 100, 60)); a.setEndValue(new CRect(300, 100, 200, 120));
+        a.setDuration(100); a.setCurrentTime(50); expect(rect(a.currentValue())).toEqual([160, 60, 150, 90]); a.destroy();
+    });
+    test("preserves exact endpoints and clamps seeking", () => {
+        const a = new CVariantAnimation<CRect>(); a.setStartValue(new CRect(-2, 3, 10, 20)); a.setEndValue(new CRect(11, 19, 30, 40));
+        a.setCurrentTime(-100); expect(rect(a.currentValue())).toEqual([-2, 3, 10, 20]);
+        a.setCurrentTime(1000); expect(rect(a.currentValue())).toEqual([11, 19, 30, 40]); a.destroy();
+    });
+    test("applies easing equally to every component", () => {
+        const a = new CVariantAnimation<CRect>(); a.setStartValue(new CRect()); a.setEndValue(new CRect(10, 20, 40, 80));
+        a.setDuration(100); a.setEasingCurve(CEasingCurveType.InQuad); a.setCurrentTime(50);
+        expect(rect(a.currentValue())).toEqual([2.5, 5, 10, 20]); a.destroy();
+    });
+    test("elastic extrapolation is preserved rather than clamped to endpoints", () => {
+        const a = new CVariantAnimation<CSize>(); a.setStartValue(new CSize(10, 10)); a.setEndValue(new CSize(0, 20));
+        const curve = new CEasingCurve(CEasingCurveType.OutElastic); curve.setOscillations(2); curve.setDamping(2);
+        a.setDuration(100); a.setEasingCurve(curve); a.setCurrentTime(25);
+        expect(a.currentValue().width()).toBeLessThan(0); expect(a.currentValue().height()).toBeGreaterThan(20); a.destroy();
+    });
+    test("zero duration yields the geometry endpoint", () => {
+        const a = new CVariantAnimation<CPoint>(); a.setStartValue(new CPoint(1, 2)); a.setEndValue(new CPoint(3, 4));
+        a.setDuration(0); expect(point(a.currentValue())).toEqual([3, 4]); a.destroy();
+    });
+    test("a first geometry start supplies a matching unit end", () => {
+        const a = new CVariantAnimation<CPoint>(); a.setStartValue(new CPoint(4, 8));
+        expect(point(a.endValue())).toEqual([1, 1]); expect(point(a.currentValue())).toEqual([4, 8]); a.destroy();
+    });
+    test("a first geometry end supplies a matching zero start", () => {
+        const a = new CVariantAnimation<CRect>(); a.setEndValue(new CRect(1, 2, 3, 4));
+        expect(rect(a.startValue())).toEqual([0, 0, 0, 0]); a.destroy();
+    });
+    test("copies point endpoint inputs and getter results", () => {
+        const a = new CVariantAnimation<CPoint>(); const from = new CPoint(2, 4), to = new CPoint(10, 12);
+        a.setStartValue(from); a.setEndValue(to); from.move(100, 100); to.moveBy(100, 100);
+        a.startValue().move(200, 200); a.endValue().move(300, 300); a.currentValue().move(400, 400);
+        expect(point(a.startValue())).toEqual([2, 4]); expect(point(a.endValue())).toEqual([10, 12]);
+        expect(point(a.currentValue())).toEqual([2, 4]); a.destroy();
+    });
+    test("copies size endpoint inputs and getter results", () => {
+        const a = new CVariantAnimation<CSize>(); const from = new CSize(2, 4), to = new CSize(10, 12);
+        a.setStartValue(from); a.setEndValue(to); from.resize(100, 100); to.resize(100, 100);
+        a.startValue().resize(200, 200); a.endValue().resize(300, 300); a.currentValue().resize(400, 400);
+        expect(size(a.startValue())).toEqual([2, 4]); expect(size(a.endValue())).toEqual([10, 12]);
+        expect(size(a.currentValue())).toEqual([2, 4]); a.destroy();
+    });
+    test("copies rectangle endpoint inputs and getter results", () => {
+        const a = new CVariantAnimation<CRect>(); const from = new CRect(1, 2, 3, 4), to = new CRect(5, 6, 7, 8);
+        a.setStartValue(from); a.setEndValue(to); from.setGeometry(90, 90, 90, 90); to.setGeometry(90, 90, 90, 90);
+        a.startValue().setGeometry(90, 90, 90, 90); a.endValue().setGeometry(90, 90, 90, 90); a.currentValue().setGeometry(90, 90, 90, 90);
+        expect(rect(a.startValue())).toEqual([1, 2, 3, 4]); expect(rect(a.endValue())).toEqual([5, 6, 7, 8]);
+        expect(rect(a.currentValue())).toEqual([1, 2, 3, 4]); a.destroy();
+    });
+    test("mutating an emitted geometry cannot corrupt cached values or subsequent reapplication", () => {
+        const a = new CVariantAnimation<CPoint>(); a.setStartValue(new CPoint()); a.setEndValue(new CPoint(10, 20)); a.setDuration(100);
+        const values: number[][] = []; a.valueChanged.connect(v => { values.push(point(v)); v.move(99, 99); });
+        a.setCurrentTime(50); expect(point(a.currentValue())).toEqual([5, 10]); a.applyCurrentValue();
+        expect(values).toEqual([[5, 10], [5, 10]]); expect(point(a.currentValue())).toEqual([5, 10]); a.destroy();
+    });
+    test("unchanged components do not emit redundant valueChanged signals", () => {
+        const a = new CVariantAnimation<CPoint>(); a.setStartValue(new CPoint(2, 4)); a.setEndValue(new CPoint(2, 4));
+        const changed = vi.fn(); a.valueChanged.connect(changed); a.setCurrentTime(50); a.setCurrentTime(100);
+        expect(changed).not.toHaveBeenCalled(); a.applyCurrentValue(); expect(changed).toHaveBeenCalledOnce(); a.destroy();
+    });
+    test("rejects mismatched endpoint kinds without damaging valid endpoints", () => {
+        const a = new CVariantAnimation<CPoint | CSize>(); a.setStartValue(new CPoint(1, 2));
+        expect(() => a.setEndValue(new CSize(3, 4))).toThrow(TypeError);
+        a.setEndValue(new CPoint(3, 4)); a.setDuration(100); a.setCurrentTime(50);
+        expect(point(a.currentValue() as CPoint)).toEqual([2, 3]); a.destroy();
+    });
+    test("rejects non-finite geometry components before adopting the value kind", () => {
+        const a = new CVariantAnimation<CRect>();
+        for (const bad of [new CRect(NaN, 0, 0, 0), new CRect(0, Infinity, 0, 0), new CRect(0, 0, -Infinity, 0), new CRect(0, 0, 0, NaN)])
+            expect(() => a.setStartValue(bad)).toThrow(RangeError);
+        a.setStartValue(new CRect(1, 2, 3, 4)); expect(rect(a.currentValue())).toEqual([1, 2, 3, 4]); a.destroy();
+    });
+    test("rejects unsupported runtime values", () => {
+        const a = new CVariantAnimation();
+        expect(() => a.setStartValue({ x: 1, y: 2 } as unknown as number)).toThrow(TypeError);
+        expect(() => a.setStartValue(null as unknown as number)).toThrow(TypeError); a.destroy();
+    });
+    test("stable interpolation also applies to extreme geometry coordinates", () => {
+        const a = new CVariantAnimation<CPoint>(); a.setStartValue(new CPoint(-Number.MAX_VALUE, Number.MAX_VALUE));
+        a.setEndValue(new CPoint(Number.MAX_VALUE, -Number.MAX_VALUE)); a.setDuration(100); a.setCurrentTime(50);
+        expect(point(a.currentValue())).toEqual([0, 0]); a.destroy();
     });
 });
