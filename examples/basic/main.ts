@@ -15,7 +15,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
 	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut, CPlainTextEdit, CTextEditFindFlag,
-    CSize, CListViewMode, CSplashScreen, CImageView
+    CSize, CListViewMode, CSplashScreen, CImageView, CWizardDialog, CWizardPage
 } from "../../src/index.js";
 import { CEchoMode } from "../../src/widgets/CLineEdit.js";
 
@@ -833,6 +833,73 @@ function showIconGridDemo(parent: CWidget): void {
     buttons.accepted.connect(() => dialog.accept());
     dialog.exec();
     list.widget()?.setFocus();
+}
+
+function showWizardDemo(parent: CWidget): void {
+    const wizard = new CWizardDialog(parent);
+    wizard.setGeometry(90, 65, 680, 470);
+    wizard.setWindowTitle("Company setup — Wizard demo");
+
+    const company = new CWizardPage();
+    company.setTitle("Company details");
+    company.setSubTitle("Enter a company name, or use Skip for now to return to this step later.");
+    company.setDeferrable(true); company.setComplete(false);
+    const companyLabel = new CLabel(company); companyLabel.setGeometry(0, 16, 140, 28);
+    companyLabel.setText("Company name:");
+    const companyName = new CLineEdit(company); companyName.setGeometry(152, 16, 430, 28);
+    companyLabel.setBuddy(companyName);
+    const companyHint = new CLabel(company); companyHint.setGeometry(0, 64, 600, 56);
+    companyHint.setWordWrap(true);
+    companyHint.setText("Try skipping this page while the name is empty. Your text is retained when you go Back or return to a deferred step.");
+    companyName.textChanged.connect(() => company.setComplete(companyName.text().trim().length > 0));
+    wizard.addPage(company);
+
+    const contact = new CWizardPage();
+    contact.setTitle("Contact details");
+    contact.setSubTitle("Enter an email containing @, or defer this step with Skip for now.");
+    contact.setDeferrable(true); contact.setComplete(false);
+    const emailLabel = new CLabel(contact); emailLabel.setGeometry(0, 16, 140, 28); emailLabel.setText("Email:");
+    const email = new CLineEdit(contact); email.setGeometry(152, 16, 430, 28); emailLabel.setBuddy(email);
+    const emailHint = new CLabel(contact); emailHint.setGeometry(0, 64, 600, 28);
+    emailHint.setText("For this demo you can enter demo@example.com.");
+    email.textChanged.connect(() => contact.setComplete(email.text().trim().includes("@")));
+    wizard.addPage(contact);
+
+    const preferences = new CWizardPage();
+    preferences.setTitle("Preferences"); preferences.setSubTitle("Choose demo preferences, then continue to the review.");
+    const currencyLabel = new CLabel(preferences); currencyLabel.setGeometry(0, 16, 140, 28); currencyLabel.setText("Currency:");
+    const currency = new CComboBox(preferences); currency.setGeometry(152, 16, 230, 28);
+    currency.addItems(["EUR", "USD", "GBP"]); currencyLabel.setBuddy(currency);
+    const notifications = new CCheckBox(preferences); notifications.setGeometry(0, 66, 450, 28);
+    notifications.setText("Enable notifications"); notifications.setChecked(true);
+    wizard.addPage(preferences);
+
+    const review = new CWizardPage(); review.setTitle("Review");
+    review.setSubTitle("Deferred steps must still be completed before Finish becomes available.");
+    const summary = new CLabel(review); summary.setGeometry(0, 8, 620, 190);
+    summary.setAlignment(CAlignment.Left | CAlignment.Top); summary.setWordWrap(true);
+    wizard.addPage(review);
+    const refreshSummary = (): void => {
+        const deferred = wizard.deferredPageIds().map(id => wizard.page(id)?.title() ?? String(id));
+        summary.setText([
+            `Company: ${companyName.text().trim() || "(not entered yet)"}`,
+            `Email: ${email.text().trim() || "(not entered yet)"}`,
+            `Currency: ${currency.currentText()}`,
+            `Notifications: ${notifications.isChecked() ? "enabled" : "disabled"}`,
+            "",
+            deferred.length > 0 ? `Deferred steps: ${deferred.join(", ")}. Press Next to return to them.` : "Everything is ready. Press Finish."
+        ].join("\n"));
+    };
+    wizard.currentIdChanged.connect(refreshSummary);
+    wizard.accepted.connect(() => {
+        const result = new CDialog(parent); result.setGeometry(160, 140, 540, 270); result.setWindowTitle("Wizard completed");
+        const label = new CLabel(result); label.setGeometry(20, 16, 500, 180);
+        label.setAlignment(CAlignment.Left | CAlignment.Top); label.setWordWrap(true);
+        label.setText(`Demo setup completed.\n\nCompany: ${companyName.text().trim()}\nEmail: ${email.text().trim()}\nCurrency: ${currency.currentText()}\nNotifications: ${notifications.isChecked() ? "enabled" : "disabled"}\n\nThese values are only used in this demo.`);
+        const buttons = new CDialogButtonBox(CStandardButton.Ok, result); buttons.setGeometry(20, 222, 500, 30);
+        buttons.accepted.connect(() => result.accept()); result.exec();
+    });
+    wizard.exec();
 }
 
 function startDemo(): void {
@@ -2123,6 +2190,10 @@ viewMenu.addMenu("Panels", panelsMenu);
 const toolsMenu = new CMenu();
 toolsMenu.addAction(new CAction("Options"));
 toolsMenu.addAction(new CAction("Customize"));
+toolsMenu.addSeparator();
+const wizardDemoAction = new CAction("Wizard demo…", mainWindow);
+wizardDemoAction.triggered.connect(() => showWizardDemo(parent));
+toolsMenu.addAction(wizardDemoAction);
 
 const helpMenu = new CMenu();
 helpMenu.addAction(new CAction("Documentation"));

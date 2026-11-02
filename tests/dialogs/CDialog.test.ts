@@ -683,3 +683,216 @@ describe("CSplashScreen", () => {
         expect(child.mapToCanvas(0,0).x()).toBe(23); expect(child.mapToCanvas(0,0).y()).toBe(34);
     });
 });
+
+import { CWizardDialog, CWizardButton } from "../../src/dialogs/CWizardDialog.js";
+import { CWizardPage } from "../../src/widgets/CWizardPage.js";
+import { CLineEdit } from "../../src/widgets/CLineEdit.js";
+import { CLabel } from "../../src/widgets/CLabel.js";
+
+describe("CWizardDialog", () => {
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+    function wizard(count = 3): CWizardDialog {
+        const result = new CWizardDialog();
+        for (let i = 0; i < count; ++i) { const page = new CWizardPage(); page.setTitle(`Step ${i}`); result.addPage(page); }
+        return result;
+    }
+    test("empty wizard cannot advance or finish", () => {
+        const w = wizard(0); w.open(); w.next(); w.accept();
+        expect(w.currentId()).toBe(-1); expect(w.isOpen()).toBe(true);
+        expect(w.button(CWizardButton.NextButton).isEnabled()).toBe(false);
+    });
+    test("pages default to complete and not deferrable", () => {
+        const page = new CWizardPage(); expect(page.isComplete()).toBe(true); expect(page.isDeferrable()).toBe(false);
+        expect(page.wizard()).toBeNull(); expect(page.nextId()).toBe(-1);
+    });
+    test("generated IDs and default route follow ascending page IDs", () => {
+        const w = wizard(0); w.setPage(10, new CWizardPage()); w.setPage(3, new CWizardPage());
+        expect(w.addPage(new CWizardPage())).toBe(11); expect(w.pageIds()).toEqual([3, 10, 11]);
+        w.open(); expect(w.currentId()).toBe(3); w.next(); expect(w.currentId()).toBe(10);
+    });
+    test("normal navigation switches the visible page", () => {
+        const w = wizard(); w.open(); w.next(); expect(w.currentId()).toBe(1);
+        expect(w.page(0)!.isVisible()).toBe(false); expect(w.page(1)!.isVisible()).toBe(true);
+    });
+    test("Back follows visited pages and does not validate", () => {
+        const w = wizard(); w.open(); w.next(); const validate = vi.spyOn(w.page(1)!, "validatePage"); w.back();
+        expect(w.currentId()).toBe(0); expect(validate).not.toHaveBeenCalled(); expect(w.visitedIds()).toEqual([0]);
+    });
+    test("incomplete pages disable Next and block programmatic navigation", () => {
+        const w = wizard(); w.page(0)!.setComplete(false); w.open(); w.next();
+        expect(w.currentId()).toBe(0); expect(w.button(CWizardButton.NextButton).isEnabled()).toBe(false);
+        w.page(0)!.setComplete(true); expect(w.button(CWizardButton.NextButton).isEnabled()).toBe(true);
+    });
+    test("overridden completeness is refreshed by completeChanged", () => {
+        let ready = false; class Page extends CWizardPage { override isComplete(): boolean { return ready; } }
+        const w = wizard(0), p = new Page(); w.addPage(p); w.open();
+        expect(w.button(CWizardButton.FinishButton).isEnabled()).toBe(false);
+        ready = true; p.completeChanged.emit(); expect(w.button(CWizardButton.FinishButton).isEnabled()).toBe(true);
+    });
+    test("failed validation keeps the current page", () => {
+        class Page extends CWizardPage { override validatePage(): boolean { return false; } }
+        const w = wizard(0); w.addPage(new Page()); w.addPage(new CWizardPage()); w.open(); w.next(); expect(w.currentId()).toBe(0);
+    });
+    test("Finish validates exactly once and emits accepted", () => {
+        const w = wizard(1); const accepted = vi.fn(); w.accepted.connect(accepted); w.open();
+        const validate = vi.spyOn(w.page(0)!, "validatePage"); w.accept();
+        expect(validate).toHaveBeenCalledOnce(); expect(accepted).toHaveBeenCalledOnce(); expect(w.isOpen()).toBe(false);
+    });
+    test("accept cannot bypass a non-final page", () => {
+        const w = wizard(); w.open(); w.accept(); expect(w.isOpen()).toBe(true); expect(w.currentId()).toBe(0);
+    });
+    test("incomplete final page cannot finish", () => {
+        const w = wizard(1); w.open(); w.page(0)!.setComplete(false); w.accept();
+        expect(w.isOpen()).toBe(true); expect(w.button(CWizardButton.FinishButton).isEnabled()).toBe(false);
+    });
+    test("failed final validation cannot finish", () => {
+        class Page extends CWizardPage { override validatePage(): boolean { return false; } }
+        const w = wizard(0); w.addPage(new Page()); w.open(); w.accept(); expect(w.isOpen()).toBe(true);
+    });
+    test("custom start ID and restart reset history", () => {
+        const w = wizard(); w.setStartId(1); w.open(); expect(w.currentId()).toBe(1); w.next(); w.restart();
+        expect(w.currentId()).toBe(1); expect(w.visitedIds()).toEqual([1]);
+    });
+    test("branching skips unchosen pages", () => {
+        class Branch extends CWizardPage { override nextId(): number { return 2; } }
+        const w = wizard(0); w.addPage(new Branch()); w.addPage(new CWizardPage()); w.addPage(new CWizardPage());
+        w.open(); w.next(); expect(w.currentId()).toBe(2); w.back(); expect(w.currentId()).toBe(0);
+    });
+    test("branch choice can change after Back", () => {
+        let target = 1; class Branch extends CWizardPage { override nextId(): number { return target; } }
+        const w = wizard(0); w.addPage(new Branch()); w.addPage(new CWizardPage()); w.addPage(new CWizardPage());
+        w.open(); w.next(); w.back(); target = 2; w.next(); expect(w.currentId()).toBe(2);
+    });
+    test("invalid route disables navigation without accepting", () => {
+        class Page extends CWizardPage { override nextId(): number { return 999; } }
+        const w = wizard(0); w.addPage(new Page()); w.open(); w.next(); w.accept();
+        expect(w.currentId()).toBe(0); expect(w.isOpen()).toBe(true); expect(w.button(CWizardButton.NextButton).isEnabled()).toBe(false);
+    });
+    test("a self-loop cannot be followed", () => {
+        class Page extends CWizardPage { override nextId(): number { return 0; } }
+        const w = wizard(0); w.addPage(new Page()); w.open(); w.next(); expect(w.visitedIds()).toEqual([0]);
+    });
+    test("Skip for now defers an incomplete page without validation", () => {
+        const w = wizard(); const p = w.page(0)!; p.setDeferrable(true); p.setComplete(false);
+        const validate = vi.spyOn(p, "validatePage"); const deferred = vi.fn(); w.pageDeferred.connect(deferred); w.open();
+        w.skipForNow(); expect(w.currentId()).toBe(1); expect(w.deferredPageIds()).toEqual([0]);
+        expect(validate).not.toHaveBeenCalled(); expect(deferred).toHaveBeenCalledWith(0);
+    });
+    test("deferred pages appear after all normal remaining steps", () => {
+        const w = wizard(); w.page(0)!.setDeferrable(true); w.open(); w.skipForNow(); w.next();
+        expect(w.currentId()).toBe(2); expect(w.button(CWizardButton.FinishButton).isVisible()).toBe(false);
+        w.next(); expect(w.currentId()).toBe(0); expect(w.button(CWizardButton.FinishButton).isVisible()).toBe(true);
+    });
+    test("Finish cannot bypass deferred pages", () => {
+        const w = wizard(2); w.page(0)!.setDeferrable(true); w.open(); w.skipForNow(); w.accept();
+        expect(w.isOpen()).toBe(true); expect(w.currentId()).toBe(1);
+    });
+    test("multiple deferred pages are revisited in FIFO order", () => {
+        const w = wizard(); w.page(0)!.setDeferrable(true); w.page(1)!.setDeferrable(true); w.open();
+        w.skipForNow(); w.skipForNow(); expect(w.deferredPageIds()).toEqual([0, 1]);
+        w.next(); expect(w.currentId()).toBe(0); w.next(); expect(w.currentId()).toBe(1);
+        expect(w.deferredPageIds()).toEqual([1]); w.accept(); expect(w.result()).toBe(CDialogResult.Accepted); expect(w.deferredPageIds()).toEqual([]);
+    });
+    test("a deferred page can move behind another deferred page", () => {
+        const w = wizard(); w.page(0)!.setDeferrable(true); w.page(1)!.setDeferrable(true); w.open();
+        w.skipForNow(); w.skipForNow(); w.next(); w.skipForNow();
+        expect(w.currentId()).toBe(1); expect(w.deferredPageIds()).toEqual([1, 0]);
+    });
+    test("the last remaining deferred page cannot skip itself", () => {
+        const w = wizard(2); w.page(0)!.setDeferrable(true); w.open(); w.skipForNow(); w.next();
+        expect(w.currentId()).toBe(0); expect(w.button(CWizardButton.SkipButton).isEnabled()).toBe(false);
+        w.skipForNow(); expect(w.currentId()).toBe(0);
+    });
+    test("Back restores the queue before a skip", () => {
+        const w = wizard(); w.page(0)!.setDeferrable(true); w.open(); w.skipForNow(); w.back();
+        expect(w.currentId()).toBe(0); expect(w.deferredPageIds()).toEqual([]);
+        w.next(); w.next(); expect(w.currentId()).toBe(2); expect(w.button(CWizardButton.FinishButton).isVisible()).toBe(true);
+    });
+    test("Back from deferred processing returns to the actual previous step", () => {
+        const w = wizard(); w.page(0)!.setDeferrable(true); w.open(); w.skipForNow(); w.next(); w.next();
+        expect(w.currentId()).toBe(0); w.back(); expect(w.currentId()).toBe(2); expect(w.deferredPageIds()).toEqual([0]);
+    });
+    test("Back from the second deferred step restores the first as unfinished", () => {
+        const w = wizard(); w.page(0)!.setDeferrable(true); w.page(1)!.setDeferrable(true); w.open();
+        w.skipForNow(); w.skipForNow(); w.next(); w.next(); w.back();
+        expect(w.currentId()).toBe(0); expect(w.deferredPageIds()).toEqual([0, 1]);
+    });
+    test("page fields retain values across deferral and Back", () => {
+        const w = wizard(2); const field = new CLineEdit(w.page(0)!); field.setText("Bojan");
+        w.page(0)!.setDeferrable(true); w.open(); w.skipForNow(); w.next(); expect(field.text()).toBe("Bojan");
+        w.back(); expect(field.text()).toBe("Bojan");
+    });
+    test("nondeferrable pages hide Skip and ignore the API", () => {
+        const w = wizard(); w.open(); expect(w.button(CWizardButton.SkipButton).isVisible()).toBe(false);
+        w.skipForNow(); expect(w.currentId()).toBe(0);
+    });
+    test("initialization occurs only on first visit per run", () => {
+        const w = wizard(); const initialize = vi.spyOn(w.page(0)!, "initializePage");
+        w.open(); w.next(); w.back(); expect(initialize).toHaveBeenCalledOnce();
+        w.restart(); expect(initialize).toHaveBeenCalledTimes(2);
+    });
+    test("reopening restarts the route and clears deferrals", () => {
+        const w = wizard(); w.page(0)!.setDeferrable(true); w.open(); w.skipForNow(); w.reject(); w.open();
+        expect(w.currentId()).toBe(0); expect(w.deferredPageIds()).toEqual([]); expect(w.visitedIds()).toEqual([0]);
+    });
+    test("Cancel rejects without validating", () => {
+        const w = wizard(); w.open(); const validate = vi.spyOn(w.page(0)!, "validatePage");
+        w.button(CWizardButton.CancelButton).clicked.emit(); expect(w.isOpen()).toBe(false); expect(validate).not.toHaveBeenCalled();
+    });
+    test("Next and Finish are the active default buttons", () => {
+        const w = wizard(2); w.open(); expect(w.defaultButton()).toBe(w.button(CWizardButton.NextButton));
+        w.next(); expect(w.defaultButton()).toBe(w.button(CWizardButton.FinishButton));
+    });
+    test("titles update when the current page changes its metadata", () => {
+        const w = wizard(); w.page(0)!.setTitle("Company"); w.page(0)!.setSubTitle("Enter details");
+        const texts = w.children().filter(child => child instanceof CLabel).map(child => (child as CLabel).text());
+        expect(texts).toContain("Company"); expect(texts).toContain("Enter details");
+    });
+    test("duplicate pages and invalid IDs are rejected", () => {
+        const w = wizard(), p = w.page(0)!; expect(() => w.setPage(-1, new CWizardPage())).toThrow();
+        expect(() => w.setPage(0, new CWizardPage())).toThrow(); expect(() => w.addPage(p)).toThrow();
+        expect(() => new CWizardDialog().addPage(p)).toThrow(); expect(() => w.setStartId(100)).toThrow();
+    });
+    test("removal detaches ownership and resets navigation", () => {
+        const w = wizard(); w.open(); w.next(); const p = w.removePage(1)!;
+        expect(p.wizard()).toBeNull(); expect(p.parent()).toBeNull(); expect(w.pageIds()).toEqual([0, 2]); expect(w.currentId()).toBe(0);
+        expect(w.visitedIds()).toEqual([0]);
+    });
+    test("currentIdChanged reports actual transitions", () => {
+        const w = wizard(); const changed = vi.fn(); w.currentIdChanged.connect(changed); w.open(); w.next(); w.back();
+        expect(changed).toHaveBeenCalledTimes(2); expect(changed).toHaveBeenCalledWith(1); expect(changed).toHaveBeenCalledWith(0);
+    });
+    test("reentrant Next from a currentIdChanged listener is ignored", () => {
+        const w = wizard(); w.open(); w.currentIdChanged.connect(() => w.next()); w.next(); expect(w.currentId()).toBe(1);
+    });
+    test("returned page and queue arrays cannot mutate wizard state", () => {
+        const w = wizard(); w.pageIds().pop(); w.deferredPageIds().push(99); expect(w.pageIds()).toEqual([0, 1, 2]); expect(w.deferredPageIds()).toEqual([]);
+    });
+    test("resizing lays out the current page and navigation buttons", () => {
+        const w = wizard(); w.resize(800, 600); expect(w.page(0)!.width()).toBe(760);
+        expect(w.page(0)!.height()).toBe(428); expect(w.button(CWizardButton.CancelButton).x()).toBe(690);
+    });
+    test("Enter advances and then finishes through the default button", () => {
+        const w = wizard(2); w.open(); w.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+        expect(w.currentId()).toBe(1); w.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+        expect(w.isOpen()).toBe(false); expect(w.result()).toBe(CDialogResult.Accepted);
+    });
+    test("Escape cancels without completing deferred pages", () => {
+        const w = wizard(2); w.page(0)!.setDeferrable(true); w.open(); w.skipForNow();
+        w.event(new CKeyEvent(CEventType.KeyPress, "Escape")); expect(w.isOpen()).toBe(false);
+        expect(w.result()).toBe(CDialogResult.Rejected);
+    });
+    test("focus moves from an old field to the next page's navigation button", () => {
+        const w = wizard(2); const field = new CLineEdit(w.page(0)!); w.open(); expect(field.hasFocus()).toBe(true);
+        w.next(); expect(field.hasFocus()).toBe(false); expect(w.button(CWizardButton.FinishButton).hasFocus()).toBe(true);
+    });
+    test("branching still returns deferred pages at the end", () => {
+        class Branch extends CWizardPage { override nextId(): number { return 2; } }
+        const w = wizard(0); const p = new Branch(); p.setDeferrable(true); w.addPage(p);
+        w.addPage(new CWizardPage()); w.addPage(new CWizardPage()); w.open(); w.skipForNow();
+        expect(w.currentId()).toBe(2); w.next(); expect(w.currentId()).toBe(0);
+        expect(w.button(CWizardButton.FinishButton).isVisible()).toBe(true);
+    });
+
+});

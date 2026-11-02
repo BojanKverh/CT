@@ -132,3 +132,5 @@ export { CPlainTextEdit } from "./widgets/CPlainTextEdit.js";
 export { CListViewMode } from "./widgets/CListViewHelper.js";
 export { CSplashScreen } from "./widgets/CSplashScreen.js";
 export { CImageView } from "./widgets/CImageView.js";
+export { CWizardPage } from "./widgets/CWizardPage.js";
+export { CWizardDialog } from "./dialogs/CWizardDialog.js";
