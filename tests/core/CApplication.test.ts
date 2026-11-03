@@ -1447,6 +1447,7 @@ describe("CApplication", () => {
 
 		const dialog = new CDialog(parent);
 		dialog.setGeometry(100, 100, 300, 200);
+        dialog.setCenterOnOpen(false);
 
 		class ClickWidget extends CWidget {
 			clicked = false;
@@ -1469,6 +1470,43 @@ describe("CApplication", () => {
 
 		expect(child.clicked).toBe(true);
 	});
+
+    test("dispatches mouse events to a child after centering an owned modal dialog", () => {
+        const canvas = createTestCanvas();
+        const app = new CApplication(canvas);
+        vi.spyOn(app.paintDevice(), "width").mockReturnValue(1200);
+        vi.spyOn(app.paintDevice(), "height").mockReturnValue(800);
+        const owner = new CWidget();
+        owner.setGeometry(50, 40, 700, 500);
+        const dialog = new CDialog(owner);
+        dialog.setGeometry(100, 100, 300, 200);
+        class ClickWidget extends CWidget {
+            clicked = false;
+            protected override mousePressEvent(event: CMouseEvent): void {
+                this.clicked = true;
+                event.accept();
+            }
+        }
+        const child = new ClickWidget(dialog);
+        child.setGeometry(20, 30, 100, 40);
+        dialog.exec();
+        const origin = child.mapToCanvas(0, 0);
+        const bounds = canvas.getBoundingClientRect();
+        const logicalWidth = app.paintDevice().width();
+        const logicalHeight = app.paintDevice().height();
+        canvas.dispatchEvent({
+            type: "pointerdown",
+            clientX: bounds.left + (canvas.clientLeft || 0) +
+                (origin.x() + 10) * (canvas.clientWidth || bounds.width) / logicalWidth,
+            clientY: bounds.top + (canvas.clientTop || 0) +
+                (origin.y() + 10) * (canvas.clientHeight || bounds.height) / logicalHeight,
+            button: 0, pointerId: 1
+        } as PointerEvent);
+        expect(child.clicked).toBe(true);
+        const dialogOrigin = dialog.mapToCanvas(0, 0);
+        expect(dialogOrigin.x()).toBe(450);
+        expect(dialogOrigin.y()).toBe(290);
+    });
 
 	test("mouse press does not focus NoFocus widget", () => {
 		const canvas = createTestCanvas();

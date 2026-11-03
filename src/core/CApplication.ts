@@ -45,6 +45,13 @@ export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
 
 	#m_paintDevice: CCanvasPaintDevice;
+    #m_canvasObserver: ResizeObserver | null = null;
+    #syncCanvasSize = (): void => {
+        const canvas = this.canvas();
+        if (!canvas.hasAttribute?.("data-ct-auto-resize")) return;
+        if (canvas.clientWidth > 0 && canvas.clientHeight > 0)
+            this.resizeCanvas(canvas.clientWidth, canvas.clientHeight);
+    };
 	#m_topLevelWidgets = new Set<CWidget>();
 	#m_mouseGrabber: CWidget | null = null;
 	#m_hoverWidget: CWidget | null = null;
@@ -153,7 +160,13 @@ export class CApplication extends CObject {
 			void this.#showToolTip();
 		});
 
-		canvas.addEventListener("pointerdown", this.#onPointerDown);
+		if (typeof ResizeObserver !== "undefined") {
+            this.#m_canvasObserver = new ResizeObserver(this.#syncCanvasSize);
+            this.#m_canvasObserver.observe(canvas);
+        }
+        if (typeof window !== "undefined") window.addEventListener("resize", this.#syncCanvasSize);
+
+        canvas.addEventListener("pointerdown", this.#onPointerDown);
 		canvas.addEventListener("dblclick", this.#onDoubleClick);
 		canvas.addEventListener("pointerup", this.#onPointerUp);
 		canvas.addEventListener("pointermove", this.#onPointerMove);
@@ -170,6 +183,22 @@ export class CApplication extends CObject {
         }
 	}
 
+    /** Resizes the logical viewport and its high resolution bitmap.
+     * Only top-level widgets already filling the old viewport follow its size.
+     */
+    resizeCanvas(width: number, height: number,
+        pixelRatio = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1): void {
+        const oldWidth = this.#m_paintDevice.width();
+        const oldHeight = this.#m_paintDevice.height();
+        if (!this.#m_paintDevice.resize(width, height, pixelRatio)) return;
+        for (const widget of this.#m_topLevelWidgets) {
+            if (widget.x() === 0 && widget.y() === 0 &&
+                widget.width() === oldWidth && widget.height() === oldHeight)
+                widget.setGeometry(0, 0, width, height);
+        }
+        this.requestRepaint();
+    }
+
 /**
  * Destroys the application, removes browser event listeners and clears application-managed state.
  */
@@ -178,6 +207,9 @@ export class CApplication extends CObject {
 			return;
 
 		this.stopUpdates();
+        this.#m_canvasObserver?.disconnect();
+        this.#m_canvasObserver = null;
+        if (typeof window !== "undefined") window.removeEventListener("resize", this.#syncCanvasSize);
 
 		const canvas = this.#m_paintDevice.canvas();
 		canvas.removeEventListener("pointerdown", this.#onPointerDown);
@@ -401,6 +433,7 @@ export class CApplication extends CObject {
 			return;
 
 		this.#m_updatesEnabled = true;
+        this.#syncCanvasSize();
 		this.requestRepaint();
 	}
 
@@ -830,8 +863,8 @@ export class CApplication extends CObject {
 		const rect = canvas.getBoundingClientRect();
 
 		return new CPoint(
-			(event.clientX - rect.left) * canvas.width / rect.width,
-			(event.clientY - rect.top) * canvas.height / rect.height
+			(event.clientX - rect.left - (canvas.clientLeft || 0)) * this.#m_paintDevice.width() / (canvas.clientWidth || rect.width || 1),
+			(event.clientY - rect.top - (canvas.clientTop || 0)) * this.#m_paintDevice.height() / (canvas.clientHeight || rect.height || 1)
 		);
 	}
 
@@ -1339,11 +1372,11 @@ export class CApplication extends CObject {
 		toolTipWidget.setText(target.toolTip());
 		let x = this.#m_mouseX + CApplication.#TOOL_TIP_OFFSET_X;
 		let y = this.#m_mouseY + CApplication.#TOOL_TIP_OFFSET_Y;
-		const canvas = this.canvas();
+		const canvas = this.#m_paintDevice;
 
-		if (x + toolTipWidget.width() > canvas.width)
-			x = canvas.width - toolTipWidget.width();
-		if (y + toolTipWidget.height() > canvas.height)
+		if (x + toolTipWidget.width() > canvas.width())
+			x = canvas.width() - toolTipWidget.width();
+		if (y + toolTipWidget.height() > canvas.height())
 			y = this.#m_mouseY - toolTipWidget.height() - 8;
 
 		x = Math.max(0, x);

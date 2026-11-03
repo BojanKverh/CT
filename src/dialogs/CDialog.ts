@@ -38,7 +38,7 @@ export class CDialog extends CWidget
 	#m_open = false;
 	#m_modal = false;
 	#m_result = CDialogResult.Rejected;
-	#m_owner: CWidget | null = null;
+	#m_centerOnOpen = true;
     static readonly TitleBarHeight = 20;
     #m_dragging = false;
     #m_dragOffsetX = 0;
@@ -70,7 +70,6 @@ export class CDialog extends CWidget
 	{
 		super(parent);
 
-		this.#m_owner = parent;
 		this.hide();
 
 		// A parentless dialog is visually managed by the window/overlay stack,
@@ -317,8 +316,8 @@ export class CDialog extends CWidget
 		if (this.#m_open)
 			return;
 
-		if (this.x() === 0 && this.y() === 0)
-			this.#center();
+		if (this.#m_centerOnOpen)
+			this.centerOnCanvas();
 		
 		this.#m_open = true;
 		this.#m_result = CDialogResult.Rejected;
@@ -542,20 +541,27 @@ export class CDialog extends CWidget
 		    y < CDialog.TitleBarHeight;
     }
 
-	#center(): void
-	{
-		if (this.#m_owner !== null) {
-			this.move(
-				Math.floor((this.#m_owner.width() - this.width()) / 2),
-				Math.floor((this.#m_owner.height() - this.rect().height()) / 2)
-			);
-			return;
-		}
+    /** Whether opening the dialog centers it on the logical canvas. Defaults to true. */
+    isCenterOnOpen(): boolean {
+        return this.#m_centerOnOpen;
+    }
 
-		const canvas = CApplication.instance().canvas();
-		this.move(
-			Math.floor((canvas.width - this.width()) / 2),
-			Math.floor((canvas.height - this.rect().height()) / 2)
-		);
-	}
+    /** Disable before open()/exec() to preserve an explicitly configured position. */
+    setCenterOnOpen(enabled: boolean): void {
+        this.#m_centerOnOpen = enabled;
+    }
+
+    /** Centers the complete window, including its title bar, on the logical canvas.
+     * Owner offsets are removed because dialog geometry uses parent coordinates.
+     */
+    centerOnCanvas(): void {
+        const device = CApplication.instance().paintDevice();
+        const origin = this.mapToCanvas(0, 0);
+        const parentX = origin.x() - this.x();
+        const parentY = origin.y() - this.y();
+        this.move(
+            Math.max(0, Math.floor((device.width() - this.width()) / 2)) - parentX,
+            Math.max(0, Math.floor((device.height() - this.rect().height()) / 2)) - parentY
+        );
+    }
 }

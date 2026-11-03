@@ -79,9 +79,9 @@ export class CSplashScreen extends CWidget {
         const app = CApplication.instance();
         if (visible) {
             if (this.x() === 0 && this.y() === 0) {
-                const canvas = app.canvas();
-                this.move(Math.max(0, Math.floor((canvas.width - this.width()) / 2)),
-                    Math.max(0, Math.floor((canvas.height - this.height()) / 2)));
+                const device = app.paintDevice();
+                this.move(Math.max(0, Math.floor((device.width() - this.width()) / 2)),
+                    Math.max(0, Math.floor((device.height() - this.height()) / 2)));
             }
             app.registerWindowWidget(this);
         } else {

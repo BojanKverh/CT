@@ -29,6 +29,96 @@ describe("CDialog", () =>
 			CApplication.instance().destroy();
 	});
 
+
+    // Canvas centering: use logical dimensions, independently of bitmap DPI and owner geometry.
+    test("centers on open by default even with an explicit initial position", () => {
+        const app = CApplication.instance();
+        vi.spyOn(app.paintDevice(), "width").mockReturnValue(1200);
+        vi.spyOn(app.paintDevice(), "height").mockReturnValue(800);
+        const dialog = new CDialog();
+        dialog.setGeometry(100, 100, 400, 250);
+        expect(dialog.isCenterOnOpen()).toBe(true);
+        dialog.open();
+        expect(dialog.x()).toBe(400);
+        expect(dialog.y()).toBe(265);
+    });
+
+    test("centers on logical dimensions rather than the physical bitmap", () => {
+        const app = CApplication.instance();
+        app.canvas().width = 2400;
+        app.canvas().height = 1600;
+        vi.spyOn(app.paintDevice(), "width").mockReturnValue(1200);
+        vi.spyOn(app.paintDevice(), "height").mockReturnValue(800);
+        const dialog = new CDialog();
+        dialog.setGeometry(20, 30, 400, 250);
+        dialog.exec();
+        expect(dialog.mapToCanvas(0, 0).x()).toBe(400);
+        expect(dialog.mapToCanvas(0, 0).y()).toBe(265);
+    });
+
+    test("centers on the canvas with nested offset owners", () => {
+        const device = CApplication.instance().paintDevice();
+        vi.spyOn(device, "width").mockReturnValue(1200);
+        vi.spyOn(device, "height").mockReturnValue(800);
+        const owner = new CWidget(); owner.setGeometry(110, 80, 700, 500);
+        const nested = new CWidget(owner); nested.setGeometry(35, 25, 500, 400);
+        const dialog = new CDialog(nested); dialog.setGeometry(100, 100, 400, 250);
+        dialog.open();
+        const origin = dialog.mapToCanvas(0, 0);
+        expect(origin.x()).toBe(400); expect(origin.y()).toBe(265);
+    });
+
+    test("centering a nested dialog accounts for the owner title bar", () => {
+        const device = CApplication.instance().paintDevice();
+        vi.spyOn(device, "width").mockReturnValue(1200);
+        vi.spyOn(device, "height").mockReturnValue(800);
+        const owner = new CDialog(); owner.setGeometry(90, 60, 600, 400);
+        owner.setCenterOnOpen(false); owner.open();
+        const dialog = new CDialog(owner); dialog.setGeometry(30, 40, 400, 250);
+        dialog.exec();
+        const origin = dialog.mapToCanvas(0, 0);
+        expect(origin.x()).toBe(400); expect(origin.y()).toBe(265);
+    });
+
+    test("disabled centering preserves the configured position", () => {
+        const dialog = new CDialog(); dialog.setGeometry(100, 80, 400, 250);
+        dialog.setCenterOnOpen(false); dialog.open();
+        expect(dialog.isCenterOnOpen()).toBe(false);
+        expect(dialog.x()).toBe(100); expect(dialog.y()).toBe(80);
+    });
+
+    test("reopening centers against the current viewport but open while open does not move", () => {
+        const device = CApplication.instance().paintDevice();
+        const width = vi.spyOn(device, "width").mockReturnValue(1200);
+        const height = vi.spyOn(device, "height").mockReturnValue(800);
+        const dialog = new CDialog(); dialog.setGeometry(0, 0, 400, 250); dialog.open();
+        dialog.move(10, 20); dialog.open();
+        expect(dialog.x()).toBe(10); expect(dialog.y()).toBe(20);
+        dialog.close(); width.mockReturnValue(1600); height.mockReturnValue(1000);
+        dialog.open();
+        expect(dialog.x()).toBe(600); expect(dialog.y()).toBe(365);
+    });
+
+    test("centerOnCanvas works explicitly when automatic centering is disabled", () => {
+        const device = CApplication.instance().paintDevice();
+        vi.spyOn(device, "width").mockReturnValue(1200);
+        vi.spyOn(device, "height").mockReturnValue(800);
+        const dialog = new CDialog(); dialog.setGeometry(10, 20, 400, 250);
+        dialog.setCenterOnOpen(false); dialog.open(); dialog.centerOnCanvas();
+        expect(dialog.x()).toBe(400); expect(dialog.y()).toBe(265);
+        expect(dialog.isCenterOnOpen()).toBe(false);
+    });
+
+    test("an oversized owned dialog keeps its title bar at the canvas origin", () => {
+        const device = CApplication.instance().paintDevice();
+        vi.spyOn(device, "width").mockReturnValue(300);
+        vi.spyOn(device, "height").mockReturnValue(200);
+        const owner = new CWidget(); owner.setGeometry(80, 50, 500, 400);
+        const dialog = new CDialog(owner); dialog.setGeometry(0, 0, 600, 500); dialog.open();
+        const origin = dialog.mapToCanvas(0, 0);
+        expect(origin.x()).toBe(0); expect(origin.y()).toBe(0);
+    });
+
 	test("is closed by default", () =>
 	{
 		const dialog = new CDialog();
@@ -363,6 +453,7 @@ describe("CDialog", () =>
 		const dialog = new CDialog();
 
 		dialog.setGeometry(100, 100, 400, 250);
+        dialog.setCenterOnOpen(false);
 		dialog.exec();
 
 		dialog.event(new CMouseEvent(
