@@ -107,6 +107,7 @@ export { CTextBrowser } from "./widgets/CTextBrowser.js";
 export { CValidator } from "./util/CValidator.js"
 export { CIntValidator } from "./util/CIntValidator.js"
 export { CDoubleValidator } from "./util/CDoubleValidator.js"
+export { CRegularExpressionValidator } from "./util/CRegularExpressionValidator.js";
 export { CIntItemDelegate } from "./widgets/CIntItemDelegate.js"
 export { CDoubleItemDelegate } from "./widgets/CDoubleItemDelegate.js"
 export { CComboBoxItemDelegate } from "./widgets/CComboBoxItemDelegate.js";
