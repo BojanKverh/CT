@@ -1,4 +1,4 @@
-import { CAbstractAnimation, CAnimationState } from "./CAbstractAnimation.js";
+import { CAbstractAnimation, CAnimationState, CAnimationDirection } from "./CAbstractAnimation.js";
 import { CAnimationGroup } from "./CAnimationGroup.js";
 import { CSignal } from "../core/CSignal.js";
 
@@ -16,7 +16,7 @@ export class CSequentialAnimationGroup extends CAnimationGroup {
 
     override duration(): number {
         let total = 0;
-        for (const animation of this.animations()) total += animation.duration();
+        for (const animation of this.animations()) total += this.memberDuration(animation);
         if (!Number.isFinite(total)) {
             // Invalid changes to member durations must not leave clocks running.
             if (this.state() !== CAnimationState.Stopped) this.stop();
@@ -25,7 +25,7 @@ export class CSequentialAnimationGroup extends CAnimationGroup {
         return total;
     }
     override addAnimation(animation: CAbstractAnimation): void {
-        if (!this.animations().includes(animation) && !Number.isFinite(this.duration() + animation.duration()))
+        if (!this.animations().includes(animation) && !Number.isFinite(this.duration() + this.memberDuration(animation)))
             throw new RangeError("The total animation duration must be finite.");
         super.addAnimation(animation);
     }
@@ -33,7 +33,10 @@ export class CSequentialAnimationGroup extends CAnimationGroup {
         return !this.isDestroyed() && this.#current !== null && this.animations().includes(this.#current)
             ? this.#current : null;
     }
-    override applyCurrentValue(): void { this.currentAnimation()?.applyCurrentValue(); }
+    override applyCurrentValue(): void {
+        const current = this.currentAnimation();
+        if (current !== null && current.loopCount() !== 0) current.applyCurrentValue();
+    }
     override start(): void {
         if (this.isDestroyed()) return;
         this.duration(); // Validate before starting any member.
@@ -57,6 +60,14 @@ export class CSequentialAnimationGroup extends CAnimationGroup {
         if (this.#current !== null && !this.animations().includes(this.#current)) this.#select(null);
     }
     override destroy(): void { super.destroy(); this.#started.clear(); this.#current = null; }
+    protected override updateCurrentLoop(_loop: number, _previous: number): void {
+        const run = ++this.#run;
+        for (const animation of this.animations()) {
+            animation.stop();
+            if (run !== this.#run || this.isDestroyed()) return;
+        }
+        this.#started.clear(); this.#select(null);
+    }
     protected override updateState(state: CAnimationState, previous: CAnimationState): void {
         if (state === CAnimationState.Running) {
             const run = this.#run;
@@ -65,7 +76,7 @@ export class CSequentialAnimationGroup extends CAnimationGroup {
                 if (!this.#valid(run) || this.state() !== state) return;
             }
             for (const animation of this.animations()) animation.setExternalClock(true);
-            this.updateCurrentTime(this.currentTime());
+            this.updateCurrentTime(this.currentLoopTime());
         } else {
             for (const animation of this.animations()) {
                 if (this.state() !== state) break;
@@ -80,31 +91,35 @@ export class CSequentialAnimationGroup extends CAnimationGroup {
         this.#current = animation; this.currentAnimationChanged.emit(animation); return true;
     }
     protected override updateCurrentTime(time: number): void {
-        const run = this.#run, members = this.animations();
+        const run = this.#run, members = this.animations().filter(animation => animation.loopCount() !== 0);
         let offset = 0;
         const segments = members.map(animation => {
-            const start = offset; offset += animation.duration();
+            const start = offset; offset += this.memberDuration(animation);
             return { animation, start, end: offset };
         });
-        const activeIndex = segments.findIndex(segment => time < segment.end);
+        const reverse = this.currentDirection() === CAnimationDirection.Backward;
+        const order = segments.map((_segment, index) => index);
+        if (reverse) order.reverse();
+        const activeIndex = order.find(index => reverse ? time > segments[index]!.start : time < segments[index]!.end) ?? -1;
         // Future members must not overwrite a target shared with the active member.
         if (activeIndex >= 0) {
-            for (let index = activeIndex + 1; index < segments.length; ++index) {
+            for (const index of order.slice(order.indexOf(activeIndex) + 1)) {
                 const animation = segments[index]!.animation;
                 this.#started.delete(animation); animation.stop();
                 if (!this.#valid(run)) return;
             }
         }
-        for (let index = 0; index < segments.length; ++index) {
+        for (const index of order) {
             if (!this.#valid(run)) return;
             const { animation, start, end } = segments[index]!;
-            const passed = time >= end;
+            const passed = reverse ? time <= start : time >= end;
             if (!passed && index !== activeIndex) break;
             let activated = false;
             if (!passed || (this.state() !== CAnimationState.Stopped && !this.#started.has(animation))) {
                 activated = this.#select(animation);
                 if (!this.#valid(run)) return;
             }
+            animation.setDrivenBackward(reverse);
             if (this.state() !== CAnimationState.Stopped) {
                 animation.setExternalClock(true);
                 if ((!passed || this.state() === CAnimationState.Running)
@@ -116,7 +131,7 @@ export class CSequentialAnimationGroup extends CAnimationGroup {
                 if (this.state() === CAnimationState.Paused) animation.pause();
             }
             if (!this.#valid(run)) return;
-            animation.setCurrentTime(passed ? animation.duration() : Math.max(0, time - start));
+            animation.setCurrentTime(passed ? (reverse ? 0 : this.memberDuration(animation)) : Math.max(0, time - start));
             if (!this.#valid(run)) return;
             if (passed && this.state() === CAnimationState.Paused) this.#started.add(animation);
             if (activated) animation.applyCurrentValue();
@@ -124,7 +139,7 @@ export class CSequentialAnimationGroup extends CAnimationGroup {
             if (!passed) break;
         }
         if (activeIndex < 0) {
-            const last = members[members.length - 1] ?? null;
+            const last = (reverse ? members[0] : members[members.length - 1]) ?? null;
             const changed = this.#select(last);
             if (this.#valid(run) && (changed || this.#seeking)) last?.applyCurrentValue();
         }

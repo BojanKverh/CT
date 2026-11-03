@@ -13,16 +13,26 @@ export abstract class CAnimationGroup extends CAbstractAnimation {
     /** @internal Propagates a containing group's clock policy to nested members. */
     override setExternalClock(external: boolean): void {
         super.setExternalClock(external);
-        for (const animation of this.animations()) animation.setExternalClock(external);
+        for (const animation of this.animations()) animation.setExternalClock(external || this.state() !== CAnimationState.Stopped);
     }
     /** Allows derived groups to discard references after membership changes. */
     protected updateAnimations(): void {}
+    /** Groups have finite members; repeat the containing group for an endless show. */
+    protected memberDuration(animation: CAbstractAnimation): number {
+        const duration = animation.totalDuration();
+        if (duration < 0) {
+            if (this.state() !== CAnimationState.Stopped) this.stop();
+            throw new RangeError("Group members must have finite total durations. Loop the containing group instead.");
+        }
+        return duration;
+    }
     abstract override duration(): number;
     /** A group's duration is derived from its members. */
     override setDuration(_duration: number): void { throw new Error("Set durations on the group's animations."); }
 
     addAnimation(animation: CAbstractAnimation): void {
         this.#checkEditable();
+        this.memberDuration(animation);
         if (this.#members.includes(animation)) return;
         if (animation.isDestroyed()) throw new Error("Cannot add a destroyed animation.");
         if (animation.state() !== CAnimationState.Stopped) throw new Error("Stop the animation before adding it.");

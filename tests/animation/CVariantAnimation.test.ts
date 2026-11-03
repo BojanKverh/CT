@@ -3,7 +3,7 @@ import { CSize } from "../../src/geometry/CSize.js";
 import { CRect } from "../../src/geometry/CRect.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CObject } from "../../src/core/CObject.js";
-import { CAbstractAnimation, CAnimationState } from "../../src/animation/CAbstractAnimation.js";
+import { CAbstractAnimation, CAnimationState, CAnimationDirection } from "../../src/animation/CAbstractAnimation.js";
 import { CVariantAnimation } from "../../src/animation/CVariantAnimation.js";
 import { CEasingCurve, CEasingCurveType } from "../../src/animation/CEasingCurve.js";
 
@@ -538,4 +538,169 @@ describe("CVariantAnimation geometry values", () => {
         a.setEndValue(new CPoint(Number.MAX_VALUE, -Number.MAX_VALUE)); a.setDuration(100); a.setCurrentTime(50);
         expect(point(a.currentValue())).toEqual([0, 0]); a.destroy();
     });
+});
+
+describe("animation playback loops and direction", () => {
+    let frames: Map<number, FrameRequestCallback>;
+    let next: number, now: number;
+    let oldRequest: PropertyDescriptor | undefined, oldCancel: PropertyDescriptor | undefined;
+    let restoreClock: () => void;
+    let animations: CAbstractAnimation[];
+    beforeEach(() => {
+        frames = new Map(); next = 0; now = 0; animations = [];
+        const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+        restoreClock = () => clock.mockRestore();
+        oldRequest = Object.getOwnPropertyDescriptor(globalThis, "requestAnimationFrame");
+        oldCancel = Object.getOwnPropertyDescriptor(globalThis, "cancelAnimationFrame");
+        Object.defineProperty(globalThis, "requestAnimationFrame", { configurable: true, writable: true,
+            value: (callback: FrameRequestCallback) => { frames.set(++next, callback); return next; } });
+        Object.defineProperty(globalThis, "cancelAnimationFrame", { configurable: true, writable: true,
+            value: (id: number) => { frames.delete(id); } });
+    });
+    afterEach(() => {
+        for (const animation of animations) animation.destroy();
+        expect(frames.size).toBe(0);
+        restoreClock();
+        if (oldRequest) Object.defineProperty(globalThis, "requestAnimationFrame", oldRequest);
+        else Reflect.deleteProperty(globalThis, "requestAnimationFrame");
+        if (oldCancel) Object.defineProperty(globalThis, "cancelAnimationFrame", oldCancel);
+        else Reflect.deleteProperty(globalThis, "cancelAnimationFrame");
+    });
+    function tick(time: number): void {
+        now = time; const pending = [...frames.values()]; frames.clear();
+        for (const callback of pending) callback(time);
+    }
+    function make(duration = 100): CVariantAnimation {
+        const a = new CVariantAnimation(); animations.push(a); a.setDuration(duration); a.setEndValue(10); return a;
+    }
+    test("playback defaults retain single forward execution", () => {
+        const a = make(); expect(a.loopCount()).toBe(1); expect(a.direction()).toBe(CAnimationDirection.Forward);
+        expect(a.autoReverse()).toBe(false); expect(a.currentLoop()).toBe(0); expect(a.totalDuration()).toBe(100);
+    });
+    test("finite repeats restart at each boundary and finish only once", () => {
+        const a = make(); a.setLoopCount(3); const done = vi.fn(); a.finished.connect(done); a.start();
+        tick(100); expect(a.currentTime()).toBe(100); expect(a.currentLoop()).toBe(1); expect(a.currentLoopTime()).toBe(0);
+        expect(a.currentValue()).toBe(0); expect(done).not.toHaveBeenCalled();
+        tick(250); expect(a.currentLoop()).toBe(2); expect(a.currentValue()).toBe(5);
+        tick(300); expect(a.currentLoopTime()).toBe(100); expect(a.currentValue()).toBe(10); expect(done).toHaveBeenCalledOnce();
+    });
+    test("a long frame skips loops arithmetically and signals the resulting loop", () => {
+        const a = make(); a.setLoopCount(1000000); const loops: number[] = []; a.currentLoopChanged.connect(n => loops.push(n));
+        a.start(); tick(12345678); expect(a.currentLoop()).toBe(123456); expect(a.currentValue()).toBeCloseTo(7.8);
+        expect(loops).toEqual([123456]); expect(frames.size).toBe(1);
+    });
+    test("endless playback continues across a long frame and stops explicitly", () => {
+        const a = make(); a.setLoopCount(-1); const done = vi.fn(); a.finished.connect(done); a.start(); tick(100000050);
+        expect(a.totalDuration()).toBe(-1); expect(a.currentLoop()).toBe(1000000); expect(a.currentValue()).toBe(5);
+        expect(a.state()).toBe(CAnimationState.Running); a.stop(); expect(frames.size).toBe(0); expect(done).not.toHaveBeenCalled();
+    });
+    test("zero loop count does not run or finish", () => {
+        const a = make(); a.setLoopCount(0); const done = vi.fn(); a.finished.connect(done); a.start();
+        expect(a.totalDuration()).toBe(0); expect(a.state()).toBe(CAnimationState.Stopped); expect(frames.size).toBe(0); expect(done).not.toHaveBeenCalled();
+    });
+    test("backward direction starts at the end and finishes at the start", () => {
+        const a = make(); a.setDirection(CAnimationDirection.Backward); a.start(); expect(a.currentValue()).toBe(10);
+        expect(a.currentLoopTime()).toBe(100); tick(25); expect(a.currentValue()).toBe(7.5); expect(a.currentTime()).toBe(25);
+        tick(100); expect(a.currentValue()).toBe(0); expect(a.state()).toBe(CAnimationState.Stopped);
+    });
+    test("backward repeats reset to the end of the next leg", () => {
+        const a = make(); a.setLoopCount(2); a.setDirection(CAnimationDirection.Backward); a.start();
+        tick(100); expect(a.currentLoop()).toBe(1); expect(a.currentValue()).toBe(10); tick(150); expect(a.currentValue()).toBe(5);
+        tick(200); expect(a.currentValue()).toBe(0);
+    });
+    test("auto reverse counts each leg and joins endpoints continuously", () => {
+        const a = make(); a.setLoopCount(2); a.setAutoReverse(true); a.start(); tick(100);
+        expect(a.currentValue()).toBe(10); expect(a.currentDirection()).toBe(CAnimationDirection.Backward);
+        tick(150); expect(a.currentValue()).toBe(5); tick(200); expect(a.currentValue()).toBe(0); expect(a.currentLoop()).toBe(1);
+    });
+    test("odd auto reverse leg count ends at the final forward value", () => {
+        const a = make(); a.setLoopCount(3); a.setAutoReverse(true); a.start(); tick(300);
+        expect(a.currentValue()).toBe(10); expect(a.currentLoop()).toBe(2);
+    });
+    test("backward auto reverse starts backwards then runs forwards", () => {
+        const a = make(); a.setLoopCount(2); a.setAutoReverse(true); a.setDirection(CAnimationDirection.Backward); a.start();
+        expect(a.currentValue()).toBe(10); tick(100); expect(a.currentValue()).toBe(0); tick(150); expect(a.currentValue()).toBe(5);
+        tick(200); expect(a.currentValue()).toBe(10);
+    });
+    test("endless alternating playback does not finish", () => {
+        const a = make(); a.setLoopCount(-1); a.setAutoReverse(true); a.start(); tick(175);
+        expect(a.currentLoop()).toBe(1); expect(a.currentValue()).toBe(2.5); tick(225); expect(a.currentValue()).toBe(2.5);
+        expect(a.currentDirection()).toBe(CAnimationDirection.Forward);
+    });
+    test("pause and resume exclude time spent paused across loop boundaries", () => {
+        const a = make(); a.setLoopCount(3); a.setAutoReverse(true); a.start(); tick(125); a.pause(); tick(1000);
+        expect(a.currentValue()).toBe(7.5); a.resume(); tick(1025); expect(a.currentTime()).toBe(150); expect(a.currentValue()).toBe(5);
+    });
+    test("seeking across loops while stopped and paused uses directed loop time", () => {
+        const a = make(); a.setLoopCount(3); a.setAutoReverse(true); a.setCurrentTime(125);
+        expect(a.currentLoop()).toBe(1); expect(a.currentLoopTime()).toBe(75); expect(a.currentValue()).toBe(7.5);
+        a.start(); a.pause(); a.setCurrentTime(250); expect(a.currentValue()).toBe(5); expect(a.state()).toBe(CAnimationState.Paused);
+    });
+    test("running seek to the total endpoint finishes once", () => {
+        const a = make(); a.setLoopCount(2); a.setAutoReverse(true); const done = vi.fn(); a.finished.connect(done);
+        a.start(); a.setCurrentTime(999); expect(a.currentTime()).toBe(200); expect(a.currentValue()).toBe(0); expect(done).toHaveBeenCalledOnce();
+    });
+    test("live direction changes preserve displayed position and reverse subsequent travel", () => {
+        const a = make(); const changed = vi.fn(); a.directionChanged.connect(changed); a.start(); tick(25);
+        a.setDirection(CAnimationDirection.Backward); expect(a.currentValue()).toBe(2.5); expect(a.currentLoopTime()).toBe(25);
+        tick(50); expect(a.currentValue()).toBe(0); expect(a.state()).toBe(CAnimationState.Stopped); expect(changed).toHaveBeenCalledWith(CAnimationDirection.Backward);
+    });
+    test("paused direction changes retain the position without scheduling frames", () => {
+        const a = make(); a.start(); tick(25); a.pause(); a.setDirection(CAnimationDirection.Backward);
+        expect(a.currentValue()).toBe(2.5); expect(frames.size).toBe(0); a.resume(); tick(50); expect(a.currentValue()).toBe(0);
+    });
+    test("changing auto reverse during an odd loop preserves the position", () => {
+        const a = make(); a.setLoopCount(3); a.start(); tick(125); a.setAutoReverse(true);
+        expect(a.currentValue()).toBe(2.5); tick(150); expect(a.currentValue()).toBe(0);
+    });
+    test("shortening a live loop count clamps and finishes", () => {
+        const a = make(); a.setLoopCount(3); const done = vi.fn(); a.finished.connect(done); a.start(); tick(250); a.setLoopCount(2);
+        expect(a.currentTime()).toBe(200); expect(a.currentValue()).toBe(10); expect(done).toHaveBeenCalledOnce();
+    });
+    test("invalid repeat counts leave the old count unchanged", () => {
+        const a = make();
+        for (const count of [-2, .5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) expect(() => a.setLoopCount(count)).toThrow(RangeError);
+        expect(a.loopCount()).toBe(1);
+    });
+    test("invalid directions are rejected", () => {
+        const a = make(); expect(() => a.setDirection(999 as CAnimationDirection)).toThrow(RangeError);
+        expect(a.direction()).toBe(CAnimationDirection.Forward);
+    });
+    test("unbounded zero-duration repetition is rejected", () => {
+        const a = make(0); expect(() => a.setLoopCount(-1)).toThrow(RangeError); expect(a.loopCount()).toBe(1);
+        const b = make(); b.setLoopCount(-1); expect(() => b.setDuration(0)).toThrow(RangeError); expect(b.duration()).toBe(100);
+    });
+    test("finite zero-duration loops settle immediately at the last leg", () => {
+        const a = make(0); a.setLoopCount(2); a.setAutoReverse(true); const done = vi.fn(); a.finished.connect(done); a.start();
+        expect(a.currentLoop()).toBe(1); expect(a.currentValue()).toBe(0); expect(done).toHaveBeenCalledOnce(); expect(frames.size).toBe(0);
+    });
+    test("zero-duration backward playback ends at its start value", () => {
+        const a = make(0); a.setDirection(CAnimationDirection.Backward); a.start(); expect(a.currentValue()).toBe(0);
+    });
+    test("restart resets loop position but retains repeat settings", () => {
+        const a = make(); a.setLoopCount(3); a.setAutoReverse(true); a.start(); tick(250); a.start();
+        expect(a.currentLoop()).toBe(0); expect(a.currentValue()).toBe(0); expect(a.loopCount()).toBe(3); expect(frames.size).toBe(1);
+    });
+    test("a loop callback may stop playback without stale target updates", () => {
+        const a = make(); a.setLoopCount(3); a.currentLoopChanged.connect(() => a.stop()); a.start(); tick(125);
+        expect(a.state()).toBe(CAnimationState.Stopped); expect(frames.size).toBe(0);
+    });
+    test("a loop callback may destroy the animation", () => {
+        const a = make(); a.setLoopCount(3); a.currentLoopChanged.connect(() => a.destroy()); a.start(); tick(125);
+        expect(a.isDestroyed()).toBe(true); expect(frames.size).toBe(0);
+    });
+    test("destroying an endless animation cancels its frame", () => {
+        const a = make(); a.setLoopCount(-1); a.start(); a.destroy(); tick(1000); expect(frames.size).toBe(0);
+    });
+    test("fractional durations retain an exact finite endpoint", () => {
+        const a = make(.7); a.setLoopCount(3); a.start(); tick(10); expect(a.currentValue()).toBe(10);
+    });
+    test("finite total duration overflow is rejected", () => {
+        const a = make(Number.MAX_VALUE); expect(() => a.setLoopCount(2)).toThrow(RangeError); expect(a.loopCount()).toBe(1);
+    });
+    test("an unrepresentable endless loop index is rejected without leaving a frame", () => {
+        const a = make(); a.setLoopCount(-1); a.start(); expect(() => a.setCurrentTime(Number.MAX_VALUE)).toThrow(RangeError);
+        expect(a.state()).toBe(CAnimationState.Stopped); expect(frames.size).toBe(0);
+    });
+
 });

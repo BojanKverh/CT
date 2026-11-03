@@ -1,5 +1,5 @@
 import type { CObject } from "../core/CObject.js";
-import { CAnimationState } from "./CAbstractAnimation.js";
+import { CAnimationState, CAnimationDirection } from "./CAbstractAnimation.js";
 import { CEasingCurve, CEasingCurveType } from "./CEasingCurve.js";
 import { CVariantAnimation, type CAnimationValue } from "./CVariantAnimation.js";
 
@@ -37,6 +37,10 @@ export class CPropertyAnimation<T extends CAnimationValue = number> extends CVar
     override setEasingCurve(curve: CEasingCurve | CEasingCurveType): void {
         this.#configure(() => super.setEasingCurve(curve));
     }
+
+    override setLoopCount(count: number): void { this.#configure(() => super.setLoopCount(count)); }
+    override setDirection(direction: CAnimationDirection): void { this.#configure(() => super.setDirection(direction)); }
+    override setAutoReverse(enabled: boolean): void { this.#configure(() => super.setAutoReverse(enabled)); }
 
     protected override updateCurrentTime(time: number): void {
         const previous = this.#valueRevision;

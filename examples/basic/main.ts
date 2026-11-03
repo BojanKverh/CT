@@ -15,7 +15,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
 	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut, CPlainTextEdit, CTextEditFindFlag,
-    CSize, CListViewMode, CSplashScreen, CImageView, CWizardDialog, CWizardPage, CVariantAnimation, CAnimationState, CVBoxLayout, CParallelAnimationGroup, CSequentialAnimationGroup, CEasingCurveType
+    CSize, CListViewMode, CSplashScreen, CImageView, CWizardDialog, CWizardPage, CVariantAnimation, CAnimationState, CAnimationDirection, CVBoxLayout, CParallelAnimationGroup, CSequentialAnimationGroup, CEasingCurveType
 } from "../../src/index.js";
 import { CEchoMode } from "../../src/widgets/CLineEdit.js";
 import { CSizePolicyType } from "../../src/geometry/CSizePolicy.js";
@@ -161,8 +161,8 @@ class ToolkitLogoAnimationDialog extends CDialog {
 
     constructor(parent: CWidget) {
         super(parent);
-        this.setMinimumSize(560, 500);
-        this.setGeometry(70, 45, 820, 620);
+        this.setMinimumSize(560, 560);
+        this.setGeometry(70, 45, 820, 680);
         this.setWindowTitle("CT logo — Animation demo");
         const layout = new CVBoxLayout();
         layout.setContentsMargins(18, 16, 18, 16); layout.setSpacing(10);
@@ -175,11 +175,11 @@ class ToolkitLogoAnimationDialog extends CDialog {
         const font = title.font(); font.setPixelSize(20); title.setFont(font);
         title.setText("Canvas Toolkit in motion");
         const hint = new CLabel(this); hint.setWordWrap(true);
-        hint.setText("Parallel (3 s) → horizontal stretch (0.9 s) → elastic release (0.6 s). Pause or restart the whole sequence.");
+        hint.setText("Parallel (3 s) → horizontal stretch (0.9 s) → elastic release (0.6 s). Changing playback options restarts the sequence.");
         const logo = new AnimatedToolkitLogoWidget(this);
         const progress = new CProgressBar(this); fixedHeight(progress, 20);
         progress.setValue(0);
-        const status = new CLabel(this); fixedHeight(status, 24);
+        const status = new CLabel(this); fixedHeight(status, 44); status.setWordWrap(true);
         layout.addWidget(title); layout.addWidget(hint); layout.addWidget(logo, 1);
         layout.addWidget(progress); layout.addWidget(status);
         const controls = new CWidget(this); fixedHeight(controls, 32);
@@ -202,10 +202,15 @@ class ToolkitLogoAnimationDialog extends CDialog {
 		this.#animation.addAnimation(parallel);
         this.#animation.addAnimation(stretch);
         this.#animation.addAnimation(elastic);
+        // The containing group repeats; its member animations remain finite.
+        this.#animation.setLoopCount(-1);
         let stage = "Parallel";
         const updateStatus = (): void => {
-            progress.setValue(Math.round(this.#animation.currentTime() / this.#animation.duration() * 100));
-            status.setText(`${stage}   |   Rotation: ${Math.round(logo.rotation())}°   |   Scale: ${Math.round(logo.logoScale() * 100)}%   |   Width: ${Math.round(logo.horizontalStretch() * 100)}%`);
+            const animation = this.#animation;
+            progress.setValue(Math.round(animation.currentLoopTime() / animation.duration() * 100));
+            const direction = animation.currentDirection() === CAnimationDirection.Forward ? "Forward" : "Backward";
+            const total = animation.loopCount() < 0 ? "∞" : String(animation.loopCount());
+            status.setText(`${stage} | Loop: ${animation.currentLoop() + 1}/${total} | ${direction} | Rotation: ${Math.round(logo.rotation())}° | Scale: ${Math.round(logo.logoScale() * 100)}% | Width: ${Math.round(logo.horizontalStretch() * 100)}%`);
         };
         rotation.valueChanged.connect(degrees => { logo.setRotation(degrees); updateStatus(); });
         scale.valueChanged.connect(phase => {
@@ -222,21 +227,56 @@ class ToolkitLogoAnimationDialog extends CDialog {
             if (animation === parallel) logo.setHorizontalStretch(1);
             updateStatus();
         });
-        this.#animation.finished.connect(() => {
-            if (this.isOpen() && this.isVisible()) this.#animation.start();
-        });
+        this.#animation.currentLoopChanged.connect(updateStatus);
+        this.#animation.finished.connect(updateStatus);
         updateStatus();
+
+        const restartPlayback = (): void => {
+            this.#animation.stop();
+            logo.setRotation(this.#animation.direction() === CAnimationDirection.Backward ? 360 : 0);
+            logo.setScale(0.25); logo.setHorizontalStretch(1);
+            this.#animation.start();
+            updateStatus();
+        };
+        const options = new CWidget(this); fixedHeight(options, 32);
+        const optionLayout = new CHBoxLayout();
+        optionLayout.setContentsMargins(0, 0, 0, 0); optionLayout.setSpacing(8);
+        const direction = new CPushButton(options); direction.setFixedSize(160, 32); direction.setText("Direction: Forward");
+        direction.clicked.connect(() => {
+            this.#animation.stop();
+            const backward = this.#animation.direction() === CAnimationDirection.Forward;
+            this.#animation.setDirection(backward ? CAnimationDirection.Backward : CAnimationDirection.Forward);
+            direction.setText(backward ? "Direction: Backward" : "Direction: Forward");
+            restartPlayback();
+        });
+        const alternating = new CPushButton(options); alternating.setFixedSize(160, 32); alternating.setText("Auto reverse: Off");
+        alternating.clicked.connect(() => {
+            this.#animation.stop();
+            this.#animation.setAutoReverse(!this.#animation.autoReverse());
+            alternating.setText(this.#animation.autoReverse() ? "Auto reverse: On" : "Auto reverse: Off");
+            restartPlayback();
+        });
+        const repeat = new CPushButton(options); repeat.setFixedSize(160, 32); repeat.setText("Repeat: Forever");
+        repeat.clicked.connect(() => {
+            this.#animation.stop();
+            const count = this.#animation.loopCount() === -1 ? 1 : this.#animation.loopCount() === 1 ? 3 : -1;
+            this.#animation.setLoopCount(count);
+            repeat.setText(count === -1 ? "Repeat: Forever" : count === 1 ? "Repeat: Once" : "Repeat: 3 legs");
+            restartPlayback();
+        });
+        optionLayout.addWidget(direction); optionLayout.addWidget(alternating); optionLayout.addWidget(repeat); optionLayout.addStretch(1);
+        options.setLayout(optionLayout); layout.addWidget(options);
 
         const pause = new CPushButton(controls); pause.setFixedSize(110, 32); pause.setText("Pause");
         pause.clicked.connect(() => {
             if (this.#animation.state() === CAnimationState.Running) this.#animation.pause();
             else if (this.#animation.state() === CAnimationState.Paused) this.#animation.resume();
-            else this.#animation.start();
+            else restartPlayback();
         });
         this.#animation.stateChanged.connect(state => pause.setText(
             state === CAnimationState.Paused ? "Resume" : state === CAnimationState.Running ? "Pause" : "Play"));
         const restart = new CPushButton(controls); restart.setFixedSize(110, 32); restart.setText("Restart");
-        restart.clicked.connect(() => this.#animation.start());
+        restart.clicked.connect(restartPlayback);
         const close = new CPushButton(controls); close.setFixedSize(110, 32); close.setText("Close");
         close.clicked.connect(() => this.accept());
         buttons.addWidget(pause); buttons.addWidget(restart); buttons.addStretch(1); buttons.addWidget(close);

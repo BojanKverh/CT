@@ -140,3 +140,4 @@ export { CAnimationState } from "./animation/CAbstractAnimation.js";
 export { CParallelAnimationGroup } from "./animation/CParallelAnimationGroup.js";
 export { CEasingCurveType } from "./animation/CEasingCurve.js";
 export { CSequentialAnimationGroup } from "./animation/CSequentialAnimationGroup.js";
+export { CAnimationDirection } from "./animation/CAbstractAnimation.js";

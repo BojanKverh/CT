@@ -2,7 +2,7 @@ import { CSignal } from "../core/CSignal.js";
 import { CPoint } from "../geometry/CPoint.js";
 import { CSize } from "../geometry/CSize.js";
 import { CRect } from "../geometry/CRect.js";
-import { CAbstractAnimation } from "./CAbstractAnimation.js";
+import { CAbstractAnimation, CAnimationDirection } from "./CAbstractAnimation.js";
 import { CEasingCurve, CEasingCurveType } from "./CEasingCurve.js";
 
 export type CAnimationValue = number | CPoint | CSize | CRect;
@@ -73,15 +73,15 @@ export class CVariantAnimation<T extends CAnimationValue = number> extends CAbst
     endValue(): T { return copy(this.#end) as T; }
     currentValue(): T { return copy(this.#value) as T; }
     setStartValue(value: T): void {
-        this.#checkValue(value); this.#start = copy(value); this.updateCurrentTime(this.currentTime());
+        this.#checkValue(value); this.#start = copy(value); this.updateCurrentTime(this.currentLoopTime());
     }
     setEndValue(value: T): void {
-        this.#checkValue(value); this.#end = copy(value); this.updateCurrentTime(this.currentTime());
+        this.#checkValue(value); this.#end = copy(value); this.updateCurrentTime(this.currentLoopTime());
     }
     easingCurve(): CEasingCurve { return new CEasingCurve(this.#curve); }
     setEasingCurve(curve: CEasingCurve | CEasingCurveType): void {
         this.#curve = new CEasingCurve(curve);
-        this.updateCurrentTime(this.currentTime());
+        this.updateCurrentTime(this.currentLoopTime());
     }
     /** Re-emits a copy even when the current value has not changed. */
     override applyCurrentValue(): void {
@@ -101,7 +101,7 @@ export class CVariantAnimation<T extends CAnimationValue = number> extends CAbst
         }
     }
     protected override updateCurrentTime(time: number): void {
-        const progress = this.duration() === 0 ? 1 : this.#curve.valueForProgress(time / this.duration());
+        const progress = this.duration() === 0 ? (this.currentDirection() === CAnimationDirection.Backward ? 0 : 1) : this.#curve.valueForProgress(time / this.duration());
         const starts = components(this.#start), ends = components(this.#end);
         const value = compose(this.#kind ?? "number", starts.map((start, i) => interpolate(start, ends[i]!, progress)));
         if (same(value, this.#value)) return;

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CObject } from "../../src/core/CObject.js";
-import { CAbstractAnimation, CAnimationState } from "../../src/animation/CAbstractAnimation.js";
+import { CAbstractAnimation, CAnimationState, CAnimationDirection } from "../../src/animation/CAbstractAnimation.js";
 import { CVariantAnimation } from "../../src/animation/CVariantAnimation.js";
 import { CParallelAnimationGroup } from "../../src/animation/CParallelAnimationGroup.js";
 
@@ -272,4 +272,47 @@ describe("CParallelAnimationGroup", () => {
         const a = make(), g = group(a), other = make(200); g.start(); other.start(); g.stop();
         expect(frames.size).toBe(1); tick(100); expect(other.currentValue()).toBe(0.5);
     });
+    test("repeats the entire parallel group", () => {
+        const a = make(100), b = make(200), g = group(a, b); g.setLoopCount(2); const done = vi.fn(); g.finished.connect(done);
+        g.start(); tick(250); expect(g.currentLoop()).toBe(1); expect(a.currentValue()).toBe(.5); expect(b.currentValue()).toBe(.25);
+        tick(400); expect(a.currentValue()).toBe(1); expect(b.currentValue()).toBe(1); expect(done).toHaveBeenCalledOnce();
+    });
+    test("backwards parallel playback retains shorter endpoints until their interval is reached", () => {
+        const a = make(100), b = make(200), g = group(a, b); g.setDirection(CAnimationDirection.Backward); g.start();
+        expect(a.currentValue()).toBe(1); expect(b.currentValue()).toBe(1); tick(50); expect(a.currentValue()).toBe(1); expect(b.currentValue()).toBe(.75);
+        tick(150); expect(a.currentValue()).toBe(.5); expect(b.currentValue()).toBe(.25); tick(200);
+        expect(a.currentValue()).toBe(0); expect(b.currentValue()).toBe(0); expect(frames.size).toBe(0);
+    });
+    test("alternating parallel playback reverses all members on the next leg", () => {
+        const a = make(), b = make(), g = group(a, b); g.setLoopCount(2); g.setAutoReverse(true); g.start();
+        tick(100); expect(a.currentValue()).toBe(1); tick(150); expect(a.currentValue()).toBe(.5); expect(b.currentValue()).toBe(.5);
+        tick(200); expect(a.currentValue()).toBe(0); expect(g.state()).toBe(CAnimationState.Stopped);
+    });
+    test("member repeat counts contribute to parallel duration", () => {
+        const a = make(100), b = make(150); a.setLoopCount(3); const g = group(a, b);
+        expect(g.duration()).toBe(300); g.start(); tick(250); expect(a.currentLoop()).toBe(2); expect(a.currentValue()).toBe(.5); expect(b.currentValue()).toBe(1);
+    });
+    test("parallel members preserve their independently configured direction", () => {
+        const a = make(), b = make(); b.setDirection(CAnimationDirection.Backward); const g = group(a, b); g.start(); tick(25);
+        expect(a.currentValue()).toBe(.25); expect(b.currentValue()).toBe(.75);
+    });
+    test("infinite group repetition uses a single cancellable frame", () => {
+        const a = make(), g = group(a); g.setLoopCount(-1); g.start(); tick(100000025);
+        expect(a.currentValue()).toBe(.25); expect(frames.size).toBe(1); g.destroy(); expect(frames.size).toBe(0);
+    });
+    test("zero-loop members do not emit value or completion signals", () => {
+        const a = make(), b = make(); a.setLoopCount(0); const changed = vi.fn(), done = vi.fn();
+        a.valueChanged.connect(changed); a.finished.connect(done); const g = group(a, b); g.start(); tick(100);
+        expect(changed).not.toHaveBeenCalled(); expect(done).not.toHaveBeenCalled();
+    });
+    test("unbounded members are rejected before ownership is transferred", () => {
+        const a = make(); a.setLoopCount(-1); const g = group(); expect(() => g.addAnimation(a)).toThrow(RangeError);
+        expect(a.parent()).toBeNull(); expect(g.animationCount()).toBe(0);
+    });
+
+    test("explicit group reapplication ignores disabled zero-loop members", () => {
+        const a = make(), b = make(); a.setLoopCount(0); const changed = vi.fn(); a.valueChanged.connect(changed);
+        const g = group(a, b); g.start(); g.applyCurrentValue(); expect(changed).not.toHaveBeenCalled();
+    });
+
 });

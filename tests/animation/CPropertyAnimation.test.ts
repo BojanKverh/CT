@@ -3,7 +3,7 @@ import { CSize } from "../../src/geometry/CSize.js";
 import { CRect } from "../../src/geometry/CRect.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CObject } from "../../src/core/CObject.js";
-import { CAbstractAnimation, CAnimationState } from "../../src/animation/CAbstractAnimation.js";
+import { CAbstractAnimation, CAnimationState, CAnimationDirection } from "../../src/animation/CAbstractAnimation.js";
 import { CVariantAnimation } from "../../src/animation/CVariantAnimation.js";
 import { CPropertyAnimation } from "../../src/animation/CPropertyAnimation.js";
 import { CEasingCurve, CEasingCurveType } from "../../src/animation/CEasingCurve.js";
@@ -211,6 +211,50 @@ describe("CPropertyAnimation", () => {
         a.setStartValue(new CRect()); a.setEndValue(new CRect(10, 20, 30, 40)); a.setDuration(100);
         const observed: number[] = []; a.valueChanged.connect(r => { observed.push(value.x()); expect(value.equals(r)).toBe(true); });
         a.start(); tick(50); expect(observed).toEqual([5]);
+    });
+
+    test("repeat and direction configuration while stopped does not write the property", () => {
+        const setter = vi.fn(); const a = make(setter); a.setLoopCount(3); a.setDirection(CAnimationDirection.Backward); a.setAutoReverse(true);
+        expect(setter).not.toHaveBeenCalled(); a.start(); expect(setter.mock.calls.at(-1)).toEqual([10]);
+    });
+    test("an alternating property animation restores its initial value after two legs", () => {
+        let value = -1; const a = make(v => { value = v; }); a.setLoopCount(2); a.setAutoReverse(true); a.start();
+        tick(100); expect(value).toBe(10); tick(150); expect(value).toBe(5); tick(200); expect(value).toBe(0);
+    });
+    test("repeating constant-valued properties restore external target changes", () => {
+        let value = 99; const a = make(v => { value = v; }, 4, 4); a.setLoopCount(2); a.start(); value = 99;
+        tick(100); expect(value).toBe(4); value = 99; tick(200); expect(value).toBe(4);
+    });
+    test("backwards point animation writes copied positions", () => {
+        let point = new CPoint(); const a = new CPropertyAnimation<CPoint>(p => { point = p; }); animations.push(a);
+        a.setStartValue(new CPoint(10, 20)); a.setEndValue(new CPoint(30, 60)); a.setDuration(100); a.setDirection(CAnimationDirection.Backward);
+        a.start(); expect([point.x(), point.y()]).toEqual([30, 60]); tick(25); expect([point.x(), point.y()]).toEqual([25, 50]);
+        tick(100); expect([point.x(), point.y()]).toEqual([10, 20]);
+    });
+    test("alternating rectangle animation retains easing and exact return geometry", () => {
+        let rect = new CRect(); const a = new CPropertyAnimation<CRect>(r => { rect = r; }); animations.push(a);
+        a.setStartValue(new CRect(10, 20, 30, 40)); a.setEndValue(new CRect(50, 60, 70, 80));
+        a.setDuration(100); a.setEasingCurve(CEasingCurveType.InQuad); a.setLoopCount(2); a.setAutoReverse(true); a.start();
+        tick(150); expect([rect.x(), rect.y(), rect.width(), rect.height()]).toEqual([20, 30, 40, 50]);
+        tick(200); expect([rect.x(), rect.y(), rect.width(), rect.height()]).toEqual([10, 20, 30, 40]);
+    });
+    test("a reverse shared-target sequence applies later stages before earlier ones", () => {
+        let value = 99; const first = make(v => { value = v; }, 0, 10), second = make(v => { value = v; }, 10, 20);
+        const g = new CSequentialAnimationGroup(); animations.push(g); g.addAnimation(first); g.addAnimation(second); g.setDirection(CAnimationDirection.Backward);
+        g.start(); expect(value).toBe(20); tick(50); expect(value).toBe(15); tick(100); expect(value).toBe(10); tick(150); expect(value).toBe(5);
+        tick(200); expect(value).toBe(0);
+    });
+    test("auto reversing an entire shared-target sequence returns smoothly to its origin", () => {
+        let value = 99; const first = make(v => { value = v; }, 0, 10), second = make(v => { value = v; }, 10, 20);
+        const g = new CSequentialAnimationGroup(); animations.push(g); g.addAnimation(first); g.addAnimation(second); g.setLoopCount(2); g.setAutoReverse(true);
+        g.start(); tick(200); expect(value).toBe(20); tick(250); expect(value).toBe(15); tick(300); expect(value).toBe(10); tick(400); expect(value).toBe(0);
+    });
+    test("configuration uses local loop position instead of total elapsed time", () => {
+        let value = -1; const a = make(v => { value = v; }); a.setLoopCount(3); a.setAutoReverse(true); a.start(); tick(150);
+        a.setEndValue(20); expect(value).toBe(10); a.setEasingCurve(CEasingCurveType.InQuad); expect(value).toBe(5);
+    });
+    test("destroy from an endless property's setter cancels playback", () => {
+        const a = make(v => { if (v >= 5) a.destroy(); }); a.setLoopCount(-1); a.start(); tick(50); expect(a.isDestroyed()).toBe(true); expect(frames.size).toBe(0);
     });
 
 });

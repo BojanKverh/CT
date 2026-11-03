@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CObject } from "../../src/core/CObject.js";
-import { CAbstractAnimation, CAnimationState } from "../../src/animation/CAbstractAnimation.js";
+import { CAbstractAnimation, CAnimationState, CAnimationDirection } from "../../src/animation/CAbstractAnimation.js";
 import { CVariantAnimation } from "../../src/animation/CVariantAnimation.js";
 import { CParallelAnimationGroup } from "../../src/animation/CParallelAnimationGroup.js";
 import { CSequentialAnimationGroup } from "../../src/animation/CSequentialAnimationGroup.js";
@@ -316,6 +316,66 @@ describe("CSequentialAnimationGroup", () => {
         a.setDuration(Number.MAX_VALUE); b.setDuration(Number.MAX_VALUE);
         expect(() => g.duration()).toThrow(RangeError); expect(g.state()).toBe(CAnimationState.Stopped);
         expect(frames.size).toBe(0);
+    });
+
+    test("repeats a sequence without manually restarting it", () => {
+        const a = make(), b = make(), g = group(a, b); g.setLoopCount(2); const done = vi.fn(); g.finished.connect(done);
+        g.start(); tick(250); expect(g.currentLoop()).toBe(1); expect(g.currentAnimation()).toBe(a); expect(a.currentValue()).toBe(.5);
+        tick(400); expect(b.currentValue()).toBe(1); expect(done).toHaveBeenCalledOnce(); expect(frames.size).toBe(0);
+    });
+    test("backward sequences activate members in reverse insertion order", () => {
+        const a = make(), b = make(), g = group(a, b); g.setDirection(CAnimationDirection.Backward); g.start();
+        expect(g.currentAnimation()).toBe(b); expect(b.currentValue()).toBe(1); expect(a.state()).toBe(CAnimationState.Stopped);
+        tick(50); expect(b.currentValue()).toBe(.5); tick(100); expect(g.currentAnimation()).toBe(a); expect(a.currentValue()).toBe(1);
+        tick(150); expect(a.currentValue()).toBe(.5); tick(200); expect(a.currentValue()).toBe(0); expect(frames.size).toBe(0);
+    });
+    test("auto reverse sequence joins the last endpoint then runs the earlier members", () => {
+        const a = make(), b = make(), g = group(a, b); g.setLoopCount(2); g.setAutoReverse(true); g.start();
+        tick(200); expect(g.currentAnimation()).toBe(b); expect(b.currentValue()).toBe(1);
+        tick(250); expect(b.currentValue()).toBe(.5); tick(300); expect(g.currentAnimation()).toBe(a);
+        tick(350); expect(a.currentValue()).toBe(.5); tick(400); expect(a.currentValue()).toBe(0); expect(g.state()).toBe(CAnimationState.Stopped);
+    });
+    test("member loops contribute their total time to a sequence", () => {
+        const a = make(), b = make(); a.setLoopCount(3); const g = group(a, b); expect(g.duration()).toBe(400);
+        g.start(); tick(250); expect(g.currentAnimation()).toBe(a); expect(a.currentValue()).toBe(.5);
+        tick(350); expect(g.currentAnimation()).toBe(b); expect(b.currentValue()).toBe(.5);
+    });
+    test("nested parallel groups can play backwards inside a sequence", () => {
+        const a = make(), b = make(), tail = make(); const parallel = new CParallelAnimationGroup(); animations.push(parallel);
+        parallel.addAnimation(a); parallel.addAnimation(b); const g = group(parallel, tail); g.setDirection(CAnimationDirection.Backward); g.start();
+        tick(150); expect(g.currentAnimation()).toBe(parallel); expect(a.currentValue()).toBe(.5); expect(b.currentValue()).toBe(.5);
+        tick(200); expect(a.currentValue()).toBe(0); expect(b.currentValue()).toBe(0); expect(frames.size).toBe(0);
+    });
+    test("a backward sequence can be nested in a backwards parallel group", () => {
+        const a = make(), b = make(), sequence = group(a, b); sequence.setDirection(CAnimationDirection.Backward);
+        const parent = new CParallelAnimationGroup(); animations.push(parent); parent.addAnimation(sequence); parent.setDirection(CAnimationDirection.Backward);
+        parent.start(); tick(50); expect(sequence.currentAnimation()).toBe(a); expect(a.currentValue()).toBe(.5);
+        tick(200); expect(b.currentValue()).toBe(1); expect(frames.size).toBe(0);
+    });
+    test("long alternating sequence frames settle in the correct member and loop", () => {
+        const a = make(), b = make(), g = group(a, b); g.setLoopCount(1000); g.setAutoReverse(true); g.start(); tick(199950);
+        expect(g.currentLoop()).toBe(999); expect(g.currentAnimation()).toBe(a); expect(a.currentValue()).toBe(.5);
+    });
+    test("pausing a reversed sequence freezes all nested members", () => {
+        const a = make(), b = make(), g = group(a, b); g.setDirection(CAnimationDirection.Backward); g.start(); tick(50); g.pause(); tick(1000);
+        expect(b.currentValue()).toBe(.5); expect(frames.size).toBe(0); g.resume(); tick(1025); expect(b.currentValue()).toBe(.25);
+    });
+    test("backwards zero-duration members complete in reverse order", () => {
+        const a = make(0), b = make(0), c = make(), g = group(a, b, c); const events: string[] = [];
+        a.finished.connect(() => events.push("a")); b.finished.connect(() => events.push("b")); g.setDirection(CAnimationDirection.Backward);
+        g.start(); tick(100); expect(events).toEqual(["b", "a"]); expect(g.currentAnimation()).toBe(a);
+    });
+    test("zero-loop members are omitted from the sequence", () => {
+        const a = make(), b = make(); a.setLoopCount(0); const done = vi.fn(); a.finished.connect(done); const g = group(a, b);
+        g.start(); expect(g.currentAnimation()).toBe(b); tick(100); expect(done).not.toHaveBeenCalled();
+    });
+    test("an endless containing sequence can repeat finite stages", () => {
+        const a = make(), b = make(), g = group(a, b); g.setLoopCount(-1); g.setAutoReverse(true); g.start(); tick(350);
+        expect(g.currentLoop()).toBe(1); expect(g.currentAnimation()).toBe(a); expect(a.currentValue()).toBe(.5); expect(frames.size).toBe(1);
+    });
+    test("a loop callback can stop a sequence before starting a fresh member", () => {
+        const a = make(), b = make(), g = group(a, b); g.setLoopCount(3); g.currentLoopChanged.connect(() => g.stop());
+        g.start(); tick(250); expect(g.state()).toBe(CAnimationState.Stopped); expect(a.state()).toBe(CAnimationState.Stopped); expect(frames.size).toBe(0);
     });
 
 });
