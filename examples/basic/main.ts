@@ -1,4 +1,4 @@
-import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
+import {CApplication, CWidget, CPainter, CRect, CPoint, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
 	CDialogButtonBox, CStandardButton, CSelectionMode, CListWidget, CListWidgetItem, CStackedWidget,
@@ -15,7 +15,7 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
 	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut, CPlainTextEdit, CTextEditFindFlag,
-    CSize, CListViewMode, CSplashScreen, CImageView, CWizardDialog, CWizardPage, CVariantAnimation, CAnimationState, CAnimationDirection, CVBoxLayout, CParallelAnimationGroup, CSequentialAnimationGroup, CEasingCurveType,
+    CSize, CListViewMode, CSplashScreen, CImageView, CWizardDialog, CWizardPage, CVariantAnimation, CPropertyAnimation, CAnimationState, CAnimationDirection, CVBoxLayout, CParallelAnimationGroup, CSequentialAnimationGroup, CEasingCurveType,
 	CPauseAnimation
 } from "../../src/index.js";
 import { CEchoMode } from "../../src/widgets/CLineEdit.js";
@@ -91,11 +91,13 @@ function showAboutCanvasToolkit(parent: CWidget): void {
     dialog.exec();
 }
 
-/** Demo-only surface with independent rotation and scale animation properties. */
+/** Demo-only surface with rotation, scale and normalized path-position properties. */
 class AnimatedToolkitLogoWidget extends CWidget {
     #rotation = 0;
     #scale = 0.25;
     #horizontalStretch = 1;
+    #pathPosition = new CPoint();
+    #pathVisible = false;
     #surface = document.createElement("canvas");
     #context: CanvasRenderingContext2D;
     #frame: CPixmap;
@@ -120,6 +122,12 @@ class AnimatedToolkitLogoWidget extends CWidget {
     setHorizontalStretch(stretch: number): void {
         this.#horizontalStretch = Math.max(0.05, Math.min(4, stretch)); this.update();
     }
+    /** Normalized path coordinates keep the same route when the surface is resized. */
+    setPathPosition(position: CPoint): void {
+        this.#pathPosition = new CPoint(position.x(), position.y()); this.update();
+    }
+    pathPosition(): CPoint { return new CPoint(this.#pathPosition.x(), this.#pathPosition.y()); }
+    setPathVisible(visible: boolean): void { this.#pathVisible = visible; this.update(); }
     horizontalStretch(): number { return this.#horizontalStretch; }
     rotation(): number { return this.#rotation; }
     logoScale(): number { return this.#scale; }
@@ -139,15 +147,38 @@ class AnimatedToolkitLogoWidget extends CWidget {
         background.addColorStop(0, "#10243a"); background.addColorStop(1, "#245b78");
         ctx.fillStyle = background; ctx.fillRect(0, 0, width, height);
 
-        // A fixed ring makes changes in size easy to see.
         const maximumSize = Math.min(width, height) * 0.82;
-        ctx.strokeStyle = "rgba(184, 214, 229, 0.18)"; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(width / 2, height / 2, maximumSize / 2, 0, 2 * Math.PI); ctx.stroke();
         const size = maximumSize * this.logoScale();
         const imageWidth = size * this.#horizontalStretch;
+        // A rotation-independent bounding radius plus glow padding keeps the
+        // entire logo inside the surface at every key and during resizing.
+        const radius = Math.hypot(imageWidth, size) / 2;
+        const travelX = Math.max(0, width / 2 - radius - 24);
+        const travelY = Math.max(0, height / 2 - radius - 24);
+        if (this.#pathVisible) {
+            const vertices = [
+                new CPoint(width / 2, height / 2 - travelY),
+                new CPoint(width / 2 - travelX, height / 2 + travelY),
+                new CPoint(width / 2 + travelX, height / 2 + travelY)
+            ];
+            ctx.strokeStyle = "rgba(96, 225, 221, 0.3)"; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(vertices[0]!.x(), vertices[0]!.y());
+            ctx.lineTo(vertices[1]!.x(), vertices[1]!.y());
+            ctx.lineTo(vertices[2]!.x(), vertices[2]!.y()); ctx.closePath(); ctx.stroke();
+            ctx.fillStyle = "rgba(96, 225, 221, 0.65)";
+            for (const point of vertices) {
+                ctx.beginPath(); ctx.arc(point.x(), point.y(), 3, 0, 2 * Math.PI); ctx.fill();
+            }
+        } else {
+            // A fixed ring makes changes in size easy to see.
+            ctx.strokeStyle = "rgba(184, 214, 229, 0.18)"; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(width / 2, height / 2, maximumSize / 2, 0, 2 * Math.PI); ctx.stroke();
+        }
+        const centerX = width / 2 + this.#pathPosition.x() * travelX;
+        const centerY = height / 2 + this.#pathPosition.y() * travelY;
         ctx.save();
         try {
-            ctx.translate(width / 2, height / 2);
+            ctx.translate(centerX, centerY);
             ctx.rotate(this.#rotation * Math.PI / 180);
             ctx.shadowColor = "rgba(48, 215, 211, 0.35)"; ctx.shadowBlur = 24;
             ctx.drawImage(toolkitLogo, -imageWidth / 2, -size / 2, imageWidth, size);
@@ -176,7 +207,7 @@ class ToolkitLogoAnimationDialog extends CDialog {
         const font = title.font(); font.setPixelSize(20); title.setFont(font);
         title.setText("Canvas Toolkit in motion");
         const hint = new CLabel(this); hint.setWordWrap(true);
-        hint.setText("Parallel (3 s) → horizontal stretch (0.9 s) → elastic release (0.6 s) → pause (3 s). Changing playback options restarts the sequence.");
+        hint.setText("Parallel (3 s) → horizontal stretch (0.9 s) → elastic release (0.6 s) → triangle keyframes (3.6 s) → pause (3 s). Changing playback options restarts the sequence.");
         const logo = new AnimatedToolkitLogoWidget(this);
         const progress = new CProgressBar(this); fixedHeight(progress, 20);
         progress.setValue(0);
@@ -200,9 +231,19 @@ class ToolkitLogoAnimationDialog extends CDialog {
         elasticCurve.setOscillations(15);
         elasticCurve.setDamping(6);
         elastic.setEasingCurve(elasticCurve);
+        // One typed property animation travels through all the point keys.
+        const path = new CPropertyAnimation<CPoint>(point => logo.setPathPosition(point));
+        path.setStartValue(new CPoint(0, 0));
+        path.setKeyValueAt(0.15, new CPoint(0, -1));
+        path.setKeyValueAt(0.40, new CPoint(-1, 1));
+        path.setKeyValueAt(0.65, new CPoint(1, 1));
+        path.setKeyValueAt(0.90, new CPoint(0, -1));
+        path.setEndValue(new CPoint(0, 0));
+        path.setDuration(3600); path.setEasingCurve(CEasingCurveType.Linear);
 		this.#animation.addAnimation(parallel);
         this.#animation.addAnimation(stretch);
         this.#animation.addAnimation(elastic);
+        this.#animation.addAnimation(path);
 		this.#animation.addAnimation(new CPauseAnimation(3000));
         // The containing group repeats; its member animations remain finite.
         this.#animation.setLoopCount(-1);
@@ -212,7 +253,11 @@ class ToolkitLogoAnimationDialog extends CDialog {
             progress.setValue(Math.round(animation.currentLoopTime() / animation.duration() * 100));
             const direction = animation.currentDirection() === CAnimationDirection.Forward ? "Forward" : "Backward";
             const total = animation.loopCount() < 0 ? "∞" : String(animation.loopCount());
-            status.setText(`${stage} | Loop: ${animation.currentLoop() + 1}/${total} | ${direction} | Rotation: ${Math.round(logo.rotation())}° | Scale: ${Math.round(logo.logoScale() * 100)}% | Width: ${Math.round(logo.horizontalStretch() * 100)}%`);
+            const position = logo.pathPosition();
+            const detail = stage === "Triangle"
+                ? `Position: (${position.x().toFixed(2)}, ${position.y().toFixed(2)})`
+                : `Rotation: ${Math.round(logo.rotation())}° | Scale: ${Math.round(logo.logoScale() * 100)}% | Width: ${Math.round(logo.horizontalStretch() * 100)}%`;
+            status.setText(`${stage} | Loop: ${animation.currentLoop() + 1}/${total} | ${direction} | ${detail}`);
         };
         rotation.valueChanged.connect(degrees => { logo.setRotation(degrees); updateStatus(); });
         scale.valueChanged.connect(phase => {
@@ -225,7 +270,9 @@ class ToolkitLogoAnimationDialog extends CDialog {
             updateStatus();
         });
         this.#animation.currentAnimationChanged.connect(animation => {
-            stage = animation instanceof CPauseAnimation ? "Pause" : animation === stretch ? "Stretch X" : animation === elastic ? "Elastic" : "Parallel";
+            stage = animation instanceof CPauseAnimation ? "Pause" : animation === path ? "Triangle" : animation === stretch ? "Stretch X" : animation === elastic ? "Elastic" : "Parallel";
+            logo.setPathVisible(animation === path);
+            if (animation !== path) logo.setPathPosition(new CPoint());
             if (animation === parallel) logo.setHorizontalStretch(1);
             updateStatus();
         });
@@ -237,7 +284,7 @@ class ToolkitLogoAnimationDialog extends CDialog {
         const restartPlayback = (): void => {
             this.#animation.stop();
             logo.setRotation(this.#animation.direction() === CAnimationDirection.Backward ? 360 : 0);
-            logo.setScale(0.25); logo.setHorizontalStretch(1);
+            logo.setScale(0.25); logo.setHorizontalStretch(1); logo.setPathPosition(new CPoint());
             this.#animation.start();
             updateStatus();
         };
