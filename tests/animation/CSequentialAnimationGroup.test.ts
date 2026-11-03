@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CObject } from "../../src/core/CObject.js";
 import { CAbstractAnimation, CAnimationState, CAnimationDirection } from "../../src/animation/CAbstractAnimation.js";
+import { CPauseAnimation } from "../../src/animation/CPauseAnimation.js";
 import { CVariantAnimation } from "../../src/animation/CVariantAnimation.js";
 import { CParallelAnimationGroup } from "../../src/animation/CParallelAnimationGroup.js";
 import { CSequentialAnimationGroup } from "../../src/animation/CSequentialAnimationGroup.js";
@@ -376,6 +377,72 @@ describe("CSequentialAnimationGroup", () => {
     test("a loop callback can stop a sequence before starting a fresh member", () => {
         const a = make(), b = make(), g = group(a, b); g.setLoopCount(3); g.currentLoopChanged.connect(() => g.stop());
         g.start(); tick(250); expect(g.state()).toBe(CAnimationState.Stopped); expect(a.state()).toBe(CAnimationState.Stopped); expect(frames.size).toBe(0);
+    });
+
+    function interval(duration: number): CPauseAnimation {
+        const pause = new CPauseAnimation(duration); animations.push(pause); return pause;
+    }
+    test("a pause retains the preceding value until the next stage is reached", () => {
+        let value = -1; const a = make(), pause = interval(200), b = make();
+        a.setEndValue(10); b.setStartValue(10); b.setEndValue(20);
+        a.valueChanged.connect(v => { value = v; }); b.valueChanged.connect(v => { value = v; });
+        const g = group(a, pause, b); expect(g.duration()).toBe(400); g.start(); tick(100);
+        expect(g.currentAnimation()).toBe(pause); expect(value).toBe(10); tick(250); expect(value).toBe(10);
+        expect(pause.currentTime()).toBe(150); tick(300); expect(g.currentAnimation()).toBe(b);
+        tick(350); expect(value).toBe(15); tick(400); expect(value).toBe(20);
+    });
+    test("an initial pause does not apply a future member's value", () => {
+        const setter = vi.fn(); const a = make(), pause = interval(200); a.valueChanged.connect(setter);
+        const g = group(pause, a); g.start(); tick(150); expect(g.currentAnimation()).toBe(pause); expect(setter).not.toHaveBeenCalled();
+        tick(250); expect(a.currentValue()).toBe(.5);
+    });
+    test("a trailing pause delays the containing group's finished signal", () => {
+        const a = make(), pause = interval(200), g = group(a, pause), done = vi.fn(); g.finished.connect(done);
+        g.start(); tick(100); expect(a.state()).toBe(CAnimationState.Stopped); tick(299); expect(done).not.toHaveBeenCalled();
+        tick(300); expect(done).toHaveBeenCalledOnce(); expect(frames.size).toBe(0);
+    });
+    test("a long frame carries pause overshoot into the next animation", () => {
+        const a = make(), pause = interval(200), b = make(), g = group(a, pause, b); g.start(); tick(350);
+        expect(g.currentAnimation()).toBe(b); expect(b.currentTime()).toBe(50); expect(b.currentValue()).toBe(.5);
+    });
+    test("backward traversal retains the later stage's starting value during the pause", () => {
+        let value = -1; const a = make(), pause = interval(200), b = make();
+        a.setEndValue(10); b.setStartValue(10); b.setEndValue(20);
+        a.valueChanged.connect(v => { value = v; }); b.valueChanged.connect(v => { value = v; });
+        const g = group(a, pause, b); g.setDirection(CAnimationDirection.Backward); g.start(); tick(100);
+        expect(g.currentAnimation()).toBe(pause); expect(value).toBe(10); tick(250); expect(value).toBe(10);
+        tick(350); expect(g.currentAnimation()).toBe(a); expect(value).toBe(5); tick(400); expect(value).toBe(0);
+    });
+    test("auto reverse traverses the pause on both legs", () => {
+        const a = make(), pause = interval(200), b = make(), g = group(a, pause, b); g.setLoopCount(2); g.setAutoReverse(true);
+        g.start(); tick(150); expect(g.currentAnimation()).toBe(pause); tick(450); expect(g.currentAnimation()).toBe(b);
+        tick(550); expect(g.currentAnimation()).toBe(pause); tick(750); expect(g.currentAnimation()).toBe(a);
+        tick(800); expect(g.state()).toBe(CAnimationState.Stopped);
+    });
+    test("pausing and resuming the group preserves remaining pause time", () => {
+        const pause = interval(200), a = make(), g = group(pause, a); g.start(); tick(50); g.pause(); tick(1000);
+        expect(pause.currentTime()).toBe(50); expect(frames.size).toBe(0); g.resume(); tick(1100);
+        expect(g.currentAnimation()).toBe(pause); expect(pause.currentTime()).toBe(150);
+        tick(1150); expect(g.currentAnimation()).toBe(a); expect(a.currentTime()).toBe(0);
+    });
+    test("a zero-duration pause passes synchronously to the following stage", () => {
+        const pause = interval(0), a = make(), g = group(pause, a), done = vi.fn(); pause.finished.connect(done);
+        g.start(); expect(done).toHaveBeenCalledOnce(); expect(g.currentAnimation()).toBe(a); expect(frames.size).toBe(1);
+    });
+    test("seeking within a pause retains the appropriate preceding endpoint", () => {
+        let value = -1; const a = make(), pause = interval(200), b = make(); a.setEndValue(10); b.setStartValue(10); b.setEndValue(20);
+        a.valueChanged.connect(v => { value = v; }); b.valueChanged.connect(v => { value = v; }); const g = group(a, pause, b);
+        g.setCurrentTime(350); expect(value).toBe(15); g.setCurrentTime(150);
+        expect(g.currentAnimation()).toBe(pause); expect(value).toBe(10); expect(frames.size).toBe(0);
+    });
+    test("a repeated pause contributes its total duration to the sequence", () => {
+        const pause = interval(100); pause.setLoopCount(3); const a = make(), g = group(pause, a);
+        expect(g.duration()).toBe(400); g.start(); tick(250); expect(g.currentAnimation()).toBe(pause); expect(pause.currentLoop()).toBe(2);
+        tick(350); expect(a.currentValue()).toBe(.5);
+    });
+    test("an endless containing sequence can repeatedly pause without extra clocks", () => {
+        const pause = interval(100), a = make(), g = group(pause, a); g.setLoopCount(-1); g.start(); tick(450);
+        expect(g.currentLoop()).toBe(2); expect(g.currentAnimation()).toBe(pause); expect(frames.size).toBe(1); g.destroy(); expect(frames.size).toBe(0);
     });
 
 });

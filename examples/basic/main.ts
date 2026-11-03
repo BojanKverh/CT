@@ -15,7 +15,8 @@ import {CApplication, CWidget, CPainter, CRect, CMouseEvent, CMouseButton, CPush
 	CSqlRelationalDelegate, CDateItemDelegate, CTimeItemDelegate,
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
 	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut, CPlainTextEdit, CTextEditFindFlag,
-    CSize, CListViewMode, CSplashScreen, CImageView, CWizardDialog, CWizardPage, CVariantAnimation, CAnimationState, CAnimationDirection, CVBoxLayout, CParallelAnimationGroup, CSequentialAnimationGroup, CEasingCurveType
+    CSize, CListViewMode, CSplashScreen, CImageView, CWizardDialog, CWizardPage, CVariantAnimation, CAnimationState, CAnimationDirection, CVBoxLayout, CParallelAnimationGroup, CSequentialAnimationGroup, CEasingCurveType,
+	CPauseAnimation
 } from "../../src/index.js";
 import { CEchoMode } from "../../src/widgets/CLineEdit.js";
 import { CSizePolicyType } from "../../src/geometry/CSizePolicy.js";
@@ -175,7 +176,7 @@ class ToolkitLogoAnimationDialog extends CDialog {
         const font = title.font(); font.setPixelSize(20); title.setFont(font);
         title.setText("Canvas Toolkit in motion");
         const hint = new CLabel(this); hint.setWordWrap(true);
-        hint.setText("Parallel (3 s) → horizontal stretch (0.9 s) → elastic release (0.6 s). Changing playback options restarts the sequence.");
+        hint.setText("Parallel (3 s) → horizontal stretch (0.9 s) → elastic release (0.6 s) → pause (3 s). Changing playback options restarts the sequence.");
         const logo = new AnimatedToolkitLogoWidget(this);
         const progress = new CProgressBar(this); fixedHeight(progress, 20);
         progress.setValue(0);
@@ -202,6 +203,7 @@ class ToolkitLogoAnimationDialog extends CDialog {
 		this.#animation.addAnimation(parallel);
         this.#animation.addAnimation(stretch);
         this.#animation.addAnimation(elastic);
+		this.#animation.addAnimation(new CPauseAnimation(3000));
         // The containing group repeats; its member animations remain finite.
         this.#animation.setLoopCount(-1);
         let stage = "Parallel";
@@ -223,11 +225,12 @@ class ToolkitLogoAnimationDialog extends CDialog {
             updateStatus();
         });
         this.#animation.currentAnimationChanged.connect(animation => {
-            stage = animation === stretch ? "Stretch X" : animation === elastic ? "Elastic" : "Parallel";
+            stage = animation instanceof CPauseAnimation ? "Pause" : animation === stretch ? "Stretch X" : animation === elastic ? "Elastic" : "Parallel";
             if (animation === parallel) logo.setHorizontalStretch(1);
             updateStatus();
         });
         this.#animation.currentLoopChanged.connect(updateStatus);
+        this.#animation.currentTimeChanged.connect(updateStatus);
         this.#animation.finished.connect(updateStatus);
         updateStatus();
 

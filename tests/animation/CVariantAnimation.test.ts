@@ -1,3 +1,5 @@
+import { CPauseAnimation } from "../../src/animation/CPauseAnimation.js";
+import { CSequentialAnimationGroup } from "../../src/animation/CSequentialAnimationGroup.js";
 import { CPoint } from "../../src/geometry/CPoint.js";
 import { CSize } from "../../src/geometry/CSize.js";
 import { CRect } from "../../src/geometry/CRect.js";
@@ -703,4 +705,110 @@ describe("animation playback loops and direction", () => {
         expect(a.state()).toBe(CAnimationState.Stopped); expect(frames.size).toBe(0);
     });
 
+});
+
+describe("animation currentTimeChanged", () => {
+    let frames: Map<number, FrameRequestCallback>;
+    let next: number, now: number;
+    let oldRequest: PropertyDescriptor | undefined, oldCancel: PropertyDescriptor | undefined;
+    let restoreClock: () => void;
+    let animations: CAbstractAnimation[];
+    beforeEach(() => {
+        frames = new Map(); next = 0; now = 0; animations = [];
+        const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+        restoreClock = () => clock.mockRestore();
+        oldRequest = Object.getOwnPropertyDescriptor(globalThis, "requestAnimationFrame");
+        oldCancel = Object.getOwnPropertyDescriptor(globalThis, "cancelAnimationFrame");
+        Object.defineProperty(globalThis, "requestAnimationFrame", { configurable: true, writable: true,
+            value: (callback: FrameRequestCallback) => { frames.set(++next, callback); return next; } });
+        Object.defineProperty(globalThis, "cancelAnimationFrame", { configurable: true, writable: true,
+            value: (id: number) => { frames.delete(id); } });
+    });
+    afterEach(() => {
+        for (const animation of animations) animation.destroy();
+        expect(frames.size).toBe(0);
+        restoreClock();
+        if (oldRequest) Object.defineProperty(globalThis, "requestAnimationFrame", oldRequest);
+        else Reflect.deleteProperty(globalThis, "requestAnimationFrame");
+        if (oldCancel) Object.defineProperty(globalThis, "cancelAnimationFrame", oldCancel);
+        else Reflect.deleteProperty(globalThis, "cancelAnimationFrame");
+    });
+    function tick(time: number): void {
+        now = time; const pending = [...frames.values()]; frames.clear();
+        for (const callback of pending) callback(time);
+    }
+    function make(): CVariantAnimation {
+        const a = new CVariantAnimation(); animations.push(a); a.setDuration(100); a.setEndValue(10); return a;
+    }
+    test("emits elapsed time after the corresponding value is updated", () => {
+        const a = make(), samples: number[][] = []; a.currentTimeChanged.connect(time => samples.push([time, a.currentValue()]));
+        a.start(); tick(25); tick(50); expect(samples).toEqual([[25, 2.5], [50, 5]]);
+    });
+    test("does not emit for unchanged or clamped unchanged time", () => {
+        const a = make(), changed = vi.fn(); a.currentTimeChanged.connect(changed);
+        a.setCurrentTime(0); a.setCurrentTime(-1); a.start(); tick(0); a.applyCurrentValue(); expect(changed).not.toHaveBeenCalled();
+        a.setCurrentTime(1000); expect(changed).toHaveBeenCalledOnce(); a.setCurrentTime(1000); expect(changed).toHaveBeenCalledOnce();
+    });
+    test("explicit stopped seeks emit the resulting clamped time", () => {
+        const a = make(), values: number[] = []; a.currentTimeChanged.connect(time => values.push(time));
+        a.setCurrentTime(50); a.setCurrentTime(-50); a.setCurrentTime(500); expect(values).toEqual([50, 0, 100]); expect(frames.size).toBe(0);
+    });
+    test("pausing freezes time notifications until playback resumes", () => {
+        const a = make(), values: number[] = []; a.currentTimeChanged.connect(time => values.push(time));
+        a.start(); tick(25); a.pause(); tick(1000); expect(values).toEqual([25]); a.resume(); tick(1025); expect(values).toEqual([25, 50]);
+    });
+    test("the final time notification precedes finished", () => {
+        const a = make(), order: string[] = []; a.currentTimeChanged.connect(time => order.push(`time ${time}`)); a.finished.connect(() => order.push("finished"));
+        a.start(); tick(100); expect(order).toEqual(["time 100", "finished"]);
+    });
+    test("repeat boundaries report total elapsed time rather than resetting it", () => {
+        const a = make(), values: number[] = []; a.setLoopCount(3); a.currentTimeChanged.connect(time => values.push(time));
+        a.start(); tick(100); tick(150); tick(300); expect(values).toEqual([100, 150, 300]);
+    });
+    test("backwards playback reports elapsed time while local time decreases", () => {
+        const a = make(), values: number[][] = []; a.setDirection(CAnimationDirection.Backward);
+        a.currentTimeChanged.connect(time => values.push([time, a.currentLoopTime()])); a.start(); tick(25); tick(100);
+        expect(values).toEqual([[25, 75], [100, 0]]);
+    });
+    test("restart emits zero when resetting nonzero elapsed time", () => {
+        const a = make(), values: number[] = []; a.currentTimeChanged.connect(time => values.push(time));
+        a.start(); tick(50); a.start(); expect(values).toEqual([50, 0]); expect(frames.size).toBe(1);
+    });
+    test("a notification handler can stop playback at the endpoint without a stale finish", () => {
+        const a = make(), done = vi.fn(); a.finished.connect(done); a.currentTimeChanged.connect(() => a.stop());
+        a.start(); tick(100); expect(a.state()).toBe(CAnimationState.Stopped); expect(frames.size).toBe(0); expect(done).not.toHaveBeenCalled();
+    });
+    test("a notification handler can seek back before the old endpoint finishes", () => {
+        const a = make(), done = vi.fn(), values: number[] = []; a.finished.connect(done);
+        a.currentTimeChanged.connect(time => { values.push(time); if (time === 100) a.setCurrentTime(25); });
+        a.start(); tick(100); expect(values).toEqual([100, 25]); expect(a.currentValue()).toBe(2.5);
+        expect(done).not.toHaveBeenCalled(); expect(frames.size).toBe(1);
+    });
+    test("destroying from a notification releases the frame", () => {
+        const a = make(); a.currentTimeChanged.connect(() => a.destroy()); a.start(); tick(25);
+        expect(a.isDestroyed()).toBe(true); expect(frames.size).toBe(0);
+    });
+    test("zero-duration execution at unchanged zero elapsed time does not emit", () => {
+        const pause = new CPauseAnimation(0); animations.push(pause); const changed = vi.fn(); pause.currentTimeChanged.connect(changed);
+        pause.start(); expect(changed).not.toHaveBeenCalled(); expect(frames.size).toBe(0);
+    });
+    test("a pause emits time updates without any value animation", () => {
+        const pause = new CPauseAnimation(100); animations.push(pause); const values: number[] = [];
+        pause.currentTimeChanged.connect(time => values.push(time)); pause.start(); tick(25); tick(75); tick(100);
+        expect(values).toEqual([25, 75, 100]);
+    });
+    test("a containing sequence continues reporting progress during a pause", () => {
+        const a = make(), pause = new CPauseAnimation(200), group = new CSequentialAnimationGroup(); animations.push(pause, group);
+        group.addAnimation(a); group.addAnimation(pause); const progress: number[] = [];
+        group.currentTimeChanged.connect(() => progress.push(Math.round(100 * group.currentLoopTime() / group.duration())));
+        group.start(); tick(100); tick(150); tick(225); tick(300); expect(progress).toEqual([33, 50, 75, 100]);
+    });
+    test("changing live direction reports mirrored elapsed time once", () => {
+        const a = make(), values: number[] = []; a.currentTimeChanged.connect(time => values.push(time)); a.start(); tick(25);
+        a.setDirection(CAnimationDirection.Backward); expect(values).toEqual([25, 75]); expect(a.currentValue()).toBe(2.5);
+    });
+    test("a value callback stopping playback still leaves a coherent time notification", () => {
+        const a = make(), values: number[] = []; a.currentTimeChanged.connect(time => values.push(time)); a.valueChanged.connect(() => a.stop());
+        a.start(); tick(25); expect(values).toEqual([25]); expect(frames.size).toBe(0);
+    });
 });

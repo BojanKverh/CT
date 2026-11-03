@@ -26,9 +26,12 @@ export abstract class CAbstractAnimation extends CObject {
     #disposed = false;
     #externalClock = false;
     #drivenBackward = false;
+    #notifiedTime = 0;
     readonly stateChanged = new CSignal<[CAnimationState, CAnimationState]>();
     readonly finished = new CSignal<[]>();
     readonly destroyed = new CSignal<[]>();
+    /** Emitted after value updates when total elapsed playback time changes. */
+    readonly currentTimeChanged = new CSignal<[number]>();
     readonly currentLoopChanged = new CSignal<[number]>();
     readonly directionChanged = new CSignal<[CAnimationDirection]>();
 
@@ -101,6 +104,7 @@ export abstract class CAbstractAnimation extends CObject {
         this.#time = this.#loop * duration + duration - (this.#time - this.#loop * duration);
         const generation = ++this.#generation; this.#detach(); this.#reanchor();
         this.updateCurrentTime(this.currentLoopTime());
+        this.#notifyTime();
         if (generation === this.#generation && this.#state === CAnimationState.Running) this.#attach();
     }
     setDuration(duration: number): void {
@@ -121,7 +125,7 @@ export abstract class CAbstractAnimation extends CObject {
         if (!Number.isFinite(time)) throw new RangeError("Animation time must be finite.");
         if (this.#disposed) return;
         const generation = ++this.#generation;
-        try { this.#setTime(time, generation); }
+        try { this.#setTime(time, generation); this.#notifyTime(); }
         catch (error) { this.stop(); throw error; }
         if (generation !== this.#generation || this.#disposed) return;
         this.#reanchor();
@@ -157,6 +161,10 @@ export abstract class CAbstractAnimation extends CObject {
     }
     /** Starts a new run. Direction Backward starts with the last value. */
     start(): void {
+        try { this.#start(); }
+        finally { this.#notifyTime(); }
+    }
+    #start(): void {
         if (this.#disposed) return;
         this.#validate(this.duration(), this.#loopCount);
         this.#detach();
@@ -173,6 +181,7 @@ export abstract class CAbstractAnimation extends CObject {
         if (previousLoop !== this.#loop) this.currentLoopChanged.emit(this.#loop);
         if (generation !== this.#generation || this.#disposed) return;
         this.updateCurrentTime(this.currentLoopTime());
+        this.#notifyTime();
         if (generation !== this.#generation || this.#disposed) return;
         if (this.duration() === 0) this.#finish(); else this.#attach();
     }
@@ -199,11 +208,17 @@ export abstract class CAbstractAnimation extends CObject {
             if (this.#disposed || generation !== this.#generation || this.#state !== CAnimationState.Running) return;
             try {
                 this.#setTime(Math.max(this.#time, now - this.#origin), generation);
+                this.#notifyTime();
                 if (generation === this.#generation && this.#state === CAnimationState.Running && this.#atEnd()) this.#finish();
             } catch (error) {
                 this.stop(); throw error;
             }
         });
+    }
+    #notifyTime(): void {
+        if (this.#disposed || this.#time === this.#notifiedTime) return;
+        this.#notifiedTime = this.#time;
+        this.currentTimeChanged.emit(this.#time);
     }
     #detach(): void { this.#removeTick?.(); this.#removeTick = null; }
     #setState(state: CAnimationState): void {

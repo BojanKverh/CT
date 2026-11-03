@@ -134,7 +134,9 @@ export class CSequentialAnimationGroup extends CAnimationGroup {
             animation.setCurrentTime(passed ? (reverse ? 0 : this.memberDuration(animation)) : Math.max(0, time - start));
             if (!this.#valid(run)) return;
             if (passed && this.state() === CAnimationState.Paused) this.#started.add(animation);
-            if (activated) animation.applyCurrentValue();
+            // A pause has no value to restore. Explicit seeks must reapply
+            // earlier endpoints even if their cached values did not change.
+            if (activated || (this.#seeking && passed)) animation.applyCurrentValue();
             if (!this.#valid(run)) return;
             if (!passed) break;
         }
