@@ -257,4 +257,50 @@ describe("CPropertyAnimation", () => {
         const a = make(v => { if (v >= 5) a.destroy(); }); a.setLoopCount(-1); a.start(); tick(50); expect(a.isDestroyed()).toBe(true); expect(frames.size).toBe(0);
     });
 
+    test("key configuration while stopped does not touch the target", () => {
+        const setter = vi.fn(); const a = make(setter); a.setKeyValueAt(.5, 99); a.setKeyValues([[0, 5], [.5, 20], [1, 10]]);
+        expect(setter).not.toHaveBeenCalled(); a.start(); expect(setter.mock.calls.at(-1)).toEqual([5]); tick(50); expect(setter.mock.calls.at(-1)).toEqual([20]);
+    });
+    test("endpoint aliases also preserve stopped target configuration", () => {
+        const setter = vi.fn(); const a = make(setter); a.setKeyValueAt(0, 5); a.setKeyValueAt(1, 20);
+        expect(setter).not.toHaveBeenCalled(); a.start(); tick(100); expect(setter.mock.calls.at(-1)).toEqual([20]);
+    });
+    test("a live key change updates the bound property immediately", () => {
+        let value = 99; const a = make(v => { value = v; }); a.start(); tick(50); a.setKeyValueAt(.5, 20); expect(value).toBe(20);
+        a.setKeyValues([]); expect(value).toBe(5);
+    });
+    test("failed key configuration does not leave property writes suppressed", () => {
+        let value = 99; const a = make(v => { value = v; });
+        expect(() => a.setKeyValueAt(-1, 40)).toThrow(RangeError); expect(() => a.setKeyValues([[.5, NaN]])).toThrow(RangeError);
+        a.start(); tick(50); expect(value).toBe(5);
+    });
+    test("typed point keys reach the setter as independent values", () => {
+        let value = new CPoint(); const a = new CPropertyAnimation<CPoint>(p => { value = p; }); animations.push(a);
+        a.setDuration(100); a.setStartValue(new CPoint()); a.setKeyValueAt(.5, new CPoint(10, 20)); a.setEndValue(new CPoint(30, 10));
+        a.start(); tick(75); expect([value.x(), value.y()]).toEqual([20, 15]); value.move(99, 99);
+        expect([a.currentValue().x(), a.currentValue().y()]).toEqual([20, 15]);
+    });
+    test("future keyframed sequential members do not overwrite the active target", () => {
+        let value = 99; const first = make(v => { value = v; }, 0, 10), second = make(v => { value = v; }, 10, 20);
+        second.setKeyValueAt(.5, 99); const g = new CSequentialAnimationGroup(); animations.push(g); g.addAnimation(first); g.addAnimation(second);
+        g.start(); tick(50); expect(value).toBe(5); tick(150); expect(value).toBe(99); tick(200); expect(value).toBe(20);
+    });
+    test("a keyframed property in a parallel group preserves its timing", () => {
+        let value = 99; const first = make(v => { value = v; }, 0, 10), second = make(() => {});
+        first.setKeyValueAt(.5, 20); const g = new CParallelAnimationGroup(); animations.push(g); g.addAnimation(first); g.addAnimation(second);
+        g.start(); tick(50); expect(value).toBe(20); tick(75); expect(value).toBe(15);
+    });
+    test("a constant key segment reapplies an externally modified target", () => {
+        let value = 99; const a = make(v => { value = v; }); a.setKeyValueAt(.25, 5); a.setKeyValueAt(.75, 5);
+        a.start(); tick(30); expect(value).toBe(5); value = 99; tick(50); expect(value).toBe(5);
+    });
+    test("auto reverse property playback follows the key path in both directions", () => {
+        let value = 99; const a = make(v => { value = v; }); a.setKeyValueAt(.5, 20); a.setLoopCount(2); a.setAutoReverse(true);
+        a.start(); tick(50); expect(value).toBe(20); tick(150); expect(value).toBe(20); tick(200); expect(value).toBe(0);
+    });
+    test("destroyed property animations ignore further key configuration", () => {
+        const setter = vi.fn(); const a = make(setter); a.destroy(); a.setKeyValueAt(.5, 20); a.setKeyValues([[.5, 30]]);
+        expect(setter).not.toHaveBeenCalled(); expect(a.keyValueAt(.5)).toBeNull();
+    });
+
 });

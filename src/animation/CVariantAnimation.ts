@@ -6,6 +6,7 @@ import { CAbstractAnimation, CAnimationDirection } from "./CAbstractAnimation.js
 import { CEasingCurve, CEasingCurveType } from "./CEasingCurve.js";
 
 export type CAnimationValue = number | CPoint | CSize | CRect;
+export type CAnimationKeyValue<T extends CAnimationValue = number> = readonly [step: number, value: T];
 type ValueKind = "number" | "point" | "size" | "rect";
 
 function kind(value: CAnimationValue): ValueKind {
@@ -55,9 +56,10 @@ function interpolate(start: number, end: number, progress: number): number {
 
 /**
  * Interpolates numbers or all components of a geometry value without rounding.
- * Numbers remain the default. The first endpoint fixes the runtime value kind;
- * configure a geometry endpoint before using a geometry animation. The other
+ * Numbers remain the default. The first endpoint or key fixes the runtime value kind;
+ * configure a geometry value before using a geometry animation. The other
  * endpoint defaults to all zeroes (start) or all ones (end) of the same kind.
+ * Key steps use effective progress after the easing curve is applied.
  * Inputs, getters and signal values are copied to protect stored geometry.
  * Elastic extrapolation is preserved, including negative size components.
  */
@@ -67,6 +69,7 @@ export class CVariantAnimation<T extends CAnimationValue = number> extends CAbst
     #value: CAnimationValue = 0;
     #kind: ValueKind | null = null;
     #curve = new CEasingCurve();
+    #keys: CAnimationKeyValue<CAnimationValue>[] = [];
     readonly valueChanged = new CSignal<[T]>();
 
     startValue(): T { return copy(this.#start) as T; }
@@ -78,6 +81,62 @@ export class CVariantAnimation<T extends CAnimationValue = number> extends CAbst
     setEndValue(value: T): void {
         this.#checkValue(value); this.#end = copy(value); this.updateCurrentTime(this.currentLoopTime());
     }
+    /** Exact key lookup, including the implicit start (0) and end (1); null if absent. */
+    keyValueAt(step: number): T | null {
+        this.#checkStep(step);
+        if (step === 0) return this.startValue();
+        if (step === 1) return this.endValue();
+        const key = this.#keys.find(key => key[0] === step);
+        return key === undefined ? null : copy(key[1]) as T;
+    }
+    /** A sorted, independent snapshot including start and end. Geometry is copied. */
+    keyValues(): CAnimationKeyValue<T>[] {
+        const result: CAnimationKeyValue<T>[] = [[0, this.startValue()]];
+        for (const [step, value] of this.#keys) result.push([step, copy(value) as T]);
+        result.push([1, this.endValue()]);
+        return result;
+    }
+    /** Keys refer to eased progress, not necessarily elapsed time. Replaces equal steps. */
+    setKeyValueAt(step: number, value: T): void {
+        this.#checkStep(step);
+        if (step === 0) { this.setStartValue(value); return; }
+        if (step === 1) { this.setEndValue(value); return; }
+        this.#checkValue(value);
+        const keys = this.#keys.filter(key => key[0] !== step);
+        keys.push([step, copy(value)]); keys.sort((a, b) => a[0] - b[0]);
+        this.#keys = keys;
+        this.updateCurrentTime(this.currentLoopTime());
+    }
+    /**
+     * Atomically replaces intermediate keys. Supplied 0/1 keys replace endpoints;
+     * omitted endpoints retain their values. [] clears intermediate keys.
+     * Input may be unsorted; the last occurrence of a duplicate step wins.
+     */
+    setKeyValues(values: readonly CAnimationKeyValue<T>[]): void {
+        const keys = new Map<number, CAnimationValue>();
+        let type = this.#kind;
+        for (const entry of values) {
+            if (!Array.isArray(entry) || entry.length !== 2)
+                throw new TypeError("Each animation key must be a [step, value] pair.");
+            const [step, value] = entry;
+            this.#checkStep(step);
+            type = this.#validateValue(value, type);
+            keys.set(step, copy(value));
+        }
+        if (type !== null) this.#adoptKind(type);
+        const sorted = [...keys].sort((a, b) => a[0] - b[0]);
+        this.#keys = [];
+        for (const [step, value] of sorted) {
+            if (step === 0) this.#start = value;
+            else if (step === 1) this.#end = value;
+            else this.#keys.push([step, value]);
+        }
+        this.updateCurrentTime(this.currentLoopTime());
+    }
+    #checkStep(step: number): void {
+        if (!Number.isFinite(step) || step < 0 || step > 1)
+            throw new RangeError("Animation key steps must be finite numbers from 0 to 1.");
+    }
     easingCurve(): CEasingCurve { return new CEasingCurve(this.#curve); }
     setEasingCurve(curve: CEasingCurve | CEasingCurveType): void {
         this.#curve = new CEasingCurve(curve);
@@ -87,23 +146,37 @@ export class CVariantAnimation<T extends CAnimationValue = number> extends CAbst
     override applyCurrentValue(): void {
         if (!this.isDestroyed()) this.valueChanged.emit(this.currentValue());
     }
-    #checkValue(value: T): void {
+    #validateValue(value: T, expected: ValueKind | null): ValueKind {
         const type = kind(value);
         if (!components(value).every(Number.isFinite))
             throw new RangeError("Animation value components must be finite numbers.");
-        if (this.#kind !== null && type !== this.#kind)
-            throw new TypeError("Animation endpoints must have the same value kind.");
-        if (this.#kind === null) {
-            const count = components(value).length;
-            this.#start = compose(type, Array<number>(count).fill(0));
-            this.#end = compose(type, Array<number>(count).fill(1));
-            this.#kind = type;
-        }
+        if (expected !== null && type !== expected)
+            throw new TypeError("Animation endpoints and keys must have the same value kind.");
+        return type;
     }
+    #adoptKind(type: ValueKind): void {
+        if (this.#kind !== null) return;
+        const count = type === "rect" ? 4 : type === "number" ? 1 : 2;
+        this.#start = compose(type, Array<number>(count).fill(0));
+        this.#end = compose(type, Array<number>(count).fill(1));
+        this.#kind = type;
+    }
+    #checkValue(value: T): void { this.#adoptKind(this.#validateValue(value, this.#kind)); }
     protected override updateCurrentTime(time: number): void {
         const progress = this.duration() === 0 ? (this.currentDirection() === CAnimationDirection.Backward ? 0 : 1) : this.#curve.valueForProgress(time / this.duration());
-        const starts = components(this.#start), ends = components(this.#end);
-        const value = compose(this.#kind ?? "number", starts.map((start, i) => interpolate(start, ends[i]!, progress)));
+        const keys: CAnimationKeyValue<CAnimationValue>[] = [[0, this.#start], ...this.#keys, [1, this.#end]];
+        // Search in eased progress. Extrapolate outside [0, 1] using the nearest
+        // segment so elastic curves retain their overshoot with multiple keys.
+        let low = 1, high = keys.length - 1;
+        while (low < high) {
+            const middle = Math.floor((low + high) / 2);
+            if (progress > keys[middle]![0]) low = middle + 1;
+            else high = middle;
+        }
+        const [fromStep, from] = keys[low - 1]!, [toStep, to] = keys[low]!;
+        const localProgress = (progress - fromStep) / (toStep - fromStep);
+        const starts = components(from), ends = components(to);
+        const value = compose(this.#kind ?? "number", starts.map((start, i) => interpolate(start, ends[i]!, localProgress)));
         if (same(value, this.#value)) return;
         this.#value = value;
         this.valueChanged.emit(this.currentValue());

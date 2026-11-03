@@ -812,3 +812,183 @@ describe("animation currentTimeChanged", () => {
         a.start(); tick(25); expect(values).toEqual([25]); expect(frames.size).toBe(0);
     });
 });
+
+describe("CVariantAnimation key values", () => {
+    let frames: Map<number, FrameRequestCallback>;
+    let next: number, now: number;
+    let oldRequest: PropertyDescriptor | undefined, oldCancel: PropertyDescriptor | undefined;
+    let restoreClock: () => void;
+    let animations: CAbstractAnimation[];
+    beforeEach(() => {
+        frames = new Map(); next = 0; now = 0; animations = [];
+        const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+        restoreClock = () => clock.mockRestore();
+        oldRequest = Object.getOwnPropertyDescriptor(globalThis, "requestAnimationFrame");
+        oldCancel = Object.getOwnPropertyDescriptor(globalThis, "cancelAnimationFrame");
+        Object.defineProperty(globalThis, "requestAnimationFrame", { configurable: true, writable: true,
+            value: (callback: FrameRequestCallback) => { frames.set(++next, callback); return next; } });
+        Object.defineProperty(globalThis, "cancelAnimationFrame", { configurable: true, writable: true,
+            value: (id: number) => { frames.delete(id); } });
+    });
+    afterEach(() => {
+        for (const animation of animations) animation.destroy();
+        expect(frames.size).toBe(0);
+        restoreClock();
+        if (oldRequest) Object.defineProperty(globalThis, "requestAnimationFrame", oldRequest);
+        else Reflect.deleteProperty(globalThis, "requestAnimationFrame");
+        if (oldCancel) Object.defineProperty(globalThis, "cancelAnimationFrame", oldCancel);
+        else Reflect.deleteProperty(globalThis, "cancelAnimationFrame");
+    });
+    function tick(time: number): void {
+        now = time; const pending = [...frames.values()]; frames.clear();
+        for (const callback of pending) callback(time);
+    }
+    function make(): CVariantAnimation {
+        const a = new CVariantAnimation(); animations.push(a); a.setDuration(100); return a;
+    }
+    test("default key snapshots include start and end", () => {
+        const a = make(); expect(a.keyValues()).toEqual([[0, 0], [1, 1]]); expect(a.keyValueAt(.5)).toBeNull();
+    });
+    test("interpolates each segment in a numeric path", () => {
+        const a = make(); a.setStartValue(1); a.setEndValue(1); a.setKeyValueAt(.3, 2.6); a.setKeyValueAt(.6, .8);
+        a.setCurrentTime(15); expect(a.currentValue()).toBeCloseTo(1.8);
+        a.setCurrentTime(45); expect(a.currentValue()).toBeCloseTo(1.7);
+        a.setCurrentTime(80); expect(a.currentValue()).toBeCloseTo(.9);
+    });
+    test("exact key steps use exact key values", () => {
+        const a = make(); a.setKeyValueAt(.25, 20); a.setKeyValueAt(.75, -10);
+        a.setCurrentTime(25); expect(a.currentValue()).toBe(20); a.setCurrentTime(75); expect(a.currentValue()).toBe(-10);
+    });
+    test("insertion order is normalized and duplicate single steps replace values", () => {
+        const a = make(); a.setKeyValueAt(.8, 8); a.setKeyValueAt(.2, 2); a.setKeyValueAt(.2, 3);
+        expect(a.keyValues()).toEqual([[0, 0], [.2, 3], [.8, 8], [1, 1]]);
+    });
+    test("keys at zero and one are aliases for endpoints", () => {
+        const a = make(); a.setKeyValueAt(0, 10); a.setKeyValueAt(1, 20);
+        expect(a.startValue()).toBe(10); expect(a.endValue()).toBe(20);
+        a.setStartValue(30); a.setEndValue(40); expect(a.keyValueAt(0)).toBe(30); expect(a.keyValueAt(1)).toBe(40);
+        expect(a.keyValues()).toEqual([[0, 30], [1, 40]]);
+    });
+    test("bulk replacement accepts unsorted steps and replaces supplied endpoints", () => {
+        const a = make(); a.setKeyValues([[1, 100], [.5, 80], [0, 20]]);
+        expect(a.keyValues()).toEqual([[0, 20], [.5, 80], [1, 100]]); a.setCurrentTime(50); expect(a.currentValue()).toBe(80);
+    });
+    test("bulk replacement retains omitted endpoints and removes old intermediate keys", () => {
+        const a = make(); a.setStartValue(10); a.setEndValue(20); a.setKeyValueAt(.25, 99);
+        a.setKeyValues([[.5, 15]]); expect(a.keyValues()).toEqual([[0, 10], [.5, 15], [1, 20]]); expect(a.keyValueAt(.25)).toBeNull();
+    });
+    test("an empty bulk list clears only intermediate keys", () => {
+        const a = make(); a.setStartValue(10); a.setEndValue(20); a.setKeyValueAt(.5, 99);
+        a.setKeyValues([]); expect(a.keyValues()).toEqual([[0, 10], [1, 20]]); a.setCurrentTime(50); expect(a.currentValue()).toBe(15);
+    });
+    test("last duplicate step wins in a bulk list", () => {
+        const a = make(); a.setKeyValues([[.5, 10], [.5, 20], [0, 3], [0, 4]]);
+        expect(a.keyValues()).toEqual([[0, 4], [.5, 20], [1, 1]]);
+    });
+    test("a getter snapshot can be reordered or removed without altering stored keys", () => {
+        const a = make(); a.setKeyValueAt(.5, 5); const keys = a.keyValues(); keys.reverse(); keys.pop();
+        expect(a.keyValues()).toEqual([[0, 0], [.5, 5], [1, 1]]);
+    });
+    test("key lookup is exact rather than an interpolated or approximate lookup", () => {
+        const a = make(); a.setKeyValueAt(.5, 5); expect(a.keyValueAt(.25)).toBeNull(); expect(a.keyValueAt(.5 + Number.EPSILON)).toBeNull();
+    });
+    test("invalid single key steps and lookups are rejected without mutation", () => {
+        const a = make(); a.setKeyValueAt(.5, 5); const before = a.keyValues();
+        for (const step of [-.1, 1.1, NaN, Infinity, -Infinity]) {
+            expect(() => a.setKeyValueAt(step, 99)).toThrow(RangeError); expect(() => a.keyValueAt(step)).toThrow(RangeError);
+        }
+        expect(a.keyValues()).toEqual(before);
+    });
+    test("invalid bulk steps leave all old keys and endpoints unchanged", () => {
+        const a = make(); a.setKeyValues([[0, 10], [.5, 20], [1, 30]]); const before = a.keyValues();
+        expect(() => a.setKeyValues([[0, 99], [.2, 50], [1.1, 40]])).toThrow(RangeError); expect(a.keyValues()).toEqual(before);
+    });
+    test("invalid bulk values cannot partially replace endpoints", () => {
+        const a = make(); a.setKeyValues([[0, 10], [.5, 20], [1, 30]]); const before = a.keyValues();
+        expect(() => a.setKeyValues([[0, 99], [.2, NaN]])).toThrow(RangeError); expect(a.keyValues()).toEqual(before);
+        expect(() => a.setKeyValueAt(.2, Infinity)).toThrow(RangeError); expect(a.keyValues()).toEqual(before);
+    });
+    test("malformed bulk pairs are rejected atomically", () => {
+        const a = make(); a.setKeyValueAt(.5, 5);
+        expect(() => a.setKeyValues([[.2, 99], [.4]] as unknown as readonly (readonly [number, number])[])).toThrow(TypeError);
+        expect(a.keyValues()).toEqual([[0, 0], [.5, 5], [1, 1]]);
+    });
+    test("first geometry keys adopt matching default endpoints", () => {
+        const a = new CVariantAnimation<CPoint>(); animations.push(a); a.setKeyValueAt(.5, new CPoint(10, 20));
+        expect([a.startValue().x(), a.startValue().y()]).toEqual([0, 0]); expect([a.endValue().x(), a.endValue().y()]).toEqual([1, 1]);
+    });
+    test("failed bulk kind validation does not adopt a partial geometry kind", () => {
+        const a = new CVariantAnimation<CPoint | CSize>(); animations.push(a);
+        expect(() => a.setKeyValues([[.2, new CPoint()], [.5, new CSize()]])).toThrow(TypeError);
+        a.setKeyValueAt(.5, new CSize(10, 20)); expect(a.startValue() instanceof CSize).toBe(true);
+    });
+    test("interior keys reject kinds different from the established endpoint kind", () => {
+        const a = new CVariantAnimation<CPoint | CSize>(); animations.push(a); a.setStartValue(new CPoint());
+        expect(() => a.setKeyValueAt(.5, new CSize())).toThrow(TypeError); expect(a.keyValueAt(.5)).toBeNull();
+    });
+    test("point paths interpolate both coordinates", () => {
+        const a = new CVariantAnimation<CPoint>(); animations.push(a); a.setDuration(100); a.setStartValue(new CPoint());
+        a.setKeyValueAt(.5, new CPoint(10, 20)); a.setEndValue(new CPoint(30, 10)); a.setCurrentTime(75);
+        expect([a.currentValue().x(), a.currentValue().y()]).toEqual([20, 15]);
+    });
+    test("size paths interpolate both dimensions", () => {
+        const a = new CVariantAnimation<CSize>(); animations.push(a); a.setDuration(100); a.setStartValue(new CSize(10, 10));
+        a.setKeyValueAt(.5, new CSize(40, 20)); a.setEndValue(new CSize(100, 50)); a.setCurrentTime(75);
+        expect([a.currentValue().width(), a.currentValue().height()]).toEqual([70, 35]);
+    });
+    test("rectangle paths interpolate all four components", () => {
+        const a = new CVariantAnimation<CRect>(); animations.push(a); a.setDuration(100); a.setStartValue(new CRect(0, 0, 10, 20));
+        a.setKeyValueAt(.5, new CRect(100, 50, 40, 60)); a.setEndValue(new CRect(200, 0, 80, 30)); a.setCurrentTime(75);
+        const r = a.currentValue(); expect([r.x(), r.y(), r.width(), r.height()]).toEqual([150, 25, 60, 45]);
+    });
+    test("point keys are copied on insertion and both key getters", () => {
+        const a = new CVariantAnimation<CPoint>(); animations.push(a); const input = new CPoint(10, 20); a.setKeyValueAt(.5, input);
+        input.move(99, 99); a.keyValueAt(.5)!.move(90, 90); a.keyValues()[1]![1].move(80, 80);
+        const p = a.keyValueAt(.5)!; expect([p.x(), p.y()]).toEqual([10, 20]);
+    });
+    test("bulk size keys are copied independently of inputs and snapshots", () => {
+        const a = new CVariantAnimation<CSize>(); animations.push(a); const input = new CSize(10, 20); a.setKeyValues([[.5, input]]);
+        input.resize(99, 99); a.keyValueAt(.5)!.resize(90, 90); a.keyValues()[1]![1].resize(80, 80);
+        const size = a.keyValueAt(.5)!; expect([size.width(), size.height()]).toEqual([10, 20]);
+    });
+    test("bulk rectangle keys are copied independently of inputs and snapshots", () => {
+        const a = new CVariantAnimation<CRect>(); animations.push(a); const input = new CRect(1, 2, 3, 4); a.setKeyValues([[.5, input]]);
+        input.setGeometry(9, 9, 9, 9); a.keyValueAt(.5)!.setGeometry(8, 8, 8, 8); a.keyValues()[1]![1].setGeometry(7, 7, 7, 7);
+        const r = a.keyValueAt(.5)!; expect([r.x(), r.y(), r.width(), r.height()]).toEqual([1, 2, 3, 4]);
+    });
+    test("easing transforms global progress before segment selection", () => {
+        const a = make(); a.setEndValue(100); a.setKeyValueAt(.25, 40); a.setEasingCurve(CEasingCurveType.InQuad);
+        a.setCurrentTime(50); expect(a.currentValue()).toBe(40); a.setCurrentTime(75); expect(a.currentValue()).toBe(65);
+    });
+    test("elastic overshoot extrapolates the final segment rather than the entire path", () => {
+        const a = make(); a.setEndValue(10); a.setKeyValueAt(.5, 20);
+        const curve = new CEasingCurve(CEasingCurveType.OutElastic); curve.setOscillations(2); curve.setDamping(2); a.setEasingCurve(curve);
+        a.setCurrentTime(25); const progress = curve.valueForProgress(.25); expect(progress).toBeGreaterThan(1);
+        expect(a.currentValue()).toBeCloseTo(10 - 20 * (progress - 1)); a.setCurrentTime(100); expect(a.currentValue()).toBe(10);
+    });
+    test("backward playback visits the same key path in reverse", () => {
+        const a = make(); a.setEndValue(100); a.setKeyValueAt(.25, 80); a.setDirection(CAnimationDirection.Backward);
+        a.start(); tick(75); expect(a.currentValue()).toBe(80); tick(100); expect(a.currentValue()).toBe(0);
+    });
+    test("looping with auto reverse retains key values", () => {
+        const a = make(); a.setEndValue(10); a.setKeyValueAt(.5, 20); a.setLoopCount(2); a.setAutoReverse(true);
+        a.start(); tick(50); expect(a.currentValue()).toBe(20); tick(150); expect(a.currentValue()).toBe(20);
+        tick(200); expect(a.currentValue()).toBe(0); expect(a.keyValueAt(.5)).toBe(20);
+    });
+    test("a constant key segment does not emit redundant value changes", () => {
+        const a = make(); a.setKeyValueAt(.25, 0); a.setKeyValueAt(.75, 0); const changed = vi.fn(); a.valueChanged.connect(changed);
+        a.setCurrentTime(25); a.setCurrentTime(50); a.setCurrentTime(75); expect(changed).not.toHaveBeenCalled();
+    });
+    test("live bulk replacement recalculates the current value once", () => {
+        const a = make(); a.start(); tick(50); const values: number[] = []; a.valueChanged.connect(v => values.push(v));
+        a.setKeyValues([[.5, 99], [.75, 70]]); expect(a.currentValue()).toBe(99); expect(values).toEqual([99]);
+    });
+    test("closely spaced distinct steps are not merged", () => {
+        const a = make(); const step = .5 + Number.EPSILON;
+        a.setKeyValueAt(.5, 10); a.setKeyValueAt(step, 20); expect(a.keyValueAt(.5)).toBe(10); expect(a.keyValueAt(step)).toBe(20);
+        expect(a.keyValues().length).toBe(4);
+    });
+    test("zero-duration execution still uses the exact endpoint", () => {
+        const a = make(); a.setKeyValueAt(.5, 99); a.setDuration(0); a.start(); expect(a.currentValue()).toBe(1);
+    });
+});

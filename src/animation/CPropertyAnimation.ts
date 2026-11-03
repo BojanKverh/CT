@@ -1,7 +1,7 @@
 import type { CObject } from "../core/CObject.js";
 import { CAnimationState, CAnimationDirection } from "./CAbstractAnimation.js";
 import { CEasingCurve, CEasingCurveType } from "./CEasingCurve.js";
-import { CVariantAnimation, type CAnimationValue } from "./CVariantAnimation.js";
+import { CVariantAnimation, type CAnimationValue, type CAnimationKeyValue } from "./CVariantAnimation.js";
 
 /**
  * Animation bound to a setter, for example value => widget.setOpacity(value).
@@ -30,6 +30,12 @@ export class CPropertyAnimation<T extends CAnimationValue = number> extends CVar
     }
     override setEndValue(value: T): void {
         this.#configure(() => super.setEndValue(value));
+    }
+    override setKeyValueAt(step: number, value: T): void {
+        this.#configure(() => super.setKeyValueAt(step, value));
+    }
+    override setKeyValues(values: readonly CAnimationKeyValue<T>[]): void {
+        this.#configure(() => super.setKeyValues(values));
     }
     override setDuration(duration: number): void {
         this.#configure(() => super.setDuration(duration));
