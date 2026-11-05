@@ -1,3 +1,4 @@
+import { CRatingWidget } from "../../src/widgets/CRatingWidget.js";
 import { CNavigationPath } from "../../src/widgets/CNavigationPath.js";
 import { CSplitButton } from "../../src/widgets/CSplitButton.js";
 import { CSettings } from "../../src/core/CSettings.js";
@@ -1097,6 +1098,34 @@ function showIconGridDemo(parent: CWidget): void {
 }
 
 
+
+
+function showRatingDemo(parent: CWidget): void {
+    const dialog = new CDialog(parent); dialog.setWindowTitle("Star rating demo"); dialog.setGeometry(0, 0, 560, 340);
+    const layout = new CVBoxLayout(); layout.setContentsMargins(16, 16, 16, 16); layout.setSpacing(12);
+    const hint = new CLabel(dialog); hint.setWordWrap(true);
+    hint.setText("Move over the stars to preview, then click to rate. Arrow keys adjust; Home / Delete clears; End selects the maximum.");
+    layout.addWidget(hint);
+    const rating = new CRatingWidget(dialog); rating.setValue(3); layout.addWidget(rating);
+    const status = new CLabel(dialog); layout.addWidget(status);
+    const update = (): void => status.setText(`Rating: ${rating.value()} / ${rating.maximum()}`);
+    rating.valueChanged.connect(update); update();
+    const settings = new CWidget(dialog); const form = new CFormLayout();
+    const maximum = new CSpinBox(settings); maximum.setRange(1, 10); maximum.setValue(5);
+    form.addRow("Number of stars:", maximum);
+    maximum.valueChanged.connect(value => { rating.setMaximum(value); update(); });
+    const readOnly = new CCheckBox(settings); readOnly.setText("Read only"); form.addRow(readOnly);
+    readOnly.toggled.connect(value => rating.setReadOnly(value));
+    const disabled = new CCheckBox(settings); disabled.setText("Disabled"); form.addRow(disabled);
+    disabled.toggled.connect(value => rating.setEnabled(!value));
+    settings.setLayout(form); layout.addWidget(settings);
+    const controls = new CWidget(dialog); const buttons = new CHBoxLayout(); buttons.setContentsMargins(0, 0, 0, 0);
+    const clear = new CPushButton(controls); clear.setText("Clear rating");
+    clear.clicked.connect(() => rating.setValue(0)); buttons.addWidget(clear); buttons.addStretch(1);
+    const close = new CPushButton(controls); close.setText("Close"); close.clicked.connect(() => dialog.reject());
+    buttons.addWidget(close); controls.setLayout(buttons); layout.addWidget(controls);
+    dialog.setLayout(layout); dialog.open(); rating.setFocus();
+}
 
 function showNavigationPathDemo(parent: CWidget): void {
     const dialog = new CDialog(parent);
@@ -2559,6 +2588,8 @@ panelsMenu.addAction(new CAction("Console"));
 viewMenu.addMenu("Panels", panelsMenu);
 
 const toolsMenu = new CMenu();
+const ratingDemoAction = new CAction("Star rating demo…", mainWindow);
+ratingDemoAction.triggered.connect(() => showRatingDemo(parent)); toolsMenu.addAction(ratingDemoAction);
 const navigationPathDemoAction = new CAction("Navigation path demo…", mainWindow);
 navigationPathDemoAction.triggered.connect(() => showNavigationPathDemo(parent));
 toolsMenu.addAction(navigationPathDemoAction);

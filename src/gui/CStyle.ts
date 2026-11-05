@@ -1,3 +1,4 @@
+import type { CStyleOptionRatingWidget } from "./CStyleOptionRatingWidget.js";
 import type { CStyleOptionNavigationPath } from "./CStyleOptionNavigationPath.js";
 import type { CStyleOptionSplitButton } from "./CStyleOptionSplitButton.js";
 import { CStyleState } from "./CStyleOption.js";
@@ -31,6 +32,62 @@ import type { CStyleOptionToolTipWidget } from "../gui/CStyleOptionToolTipWidget
  * Defines the abstract interface used to render Canvas Toolkit widgets.
  */
 export abstract class CStyle {
+
+    /** Draws geometric stars using palette colors, independently of installed fonts. */
+    drawRatingWidget(painter: CPainter, option: CStyleOptionRatingWidget): void {
+        if (option.rect.width() <= 0 || option.rect.height() <= 0) return;
+        const enabled = (option.state & CStyleState.Enabled) !== 0;
+        painter.save();
+        try {
+            painter.clipRect(option.rect);
+            painter.setLineWidth(1);
+            for (let star = 0; star < option.starRects.length; ++star) {
+                const r = option.starRects[star]!, radius = Math.min(r.width(), r.height()) / 2 - 1;
+                if (radius <= 0) continue;
+                const cx = r.x() + r.width() / 2, cy = r.y() + r.height() / 2;
+                const points = Array.from({ length: 10 }, (_, i) => {
+                    const angle = -Math.PI / 2 + i * Math.PI / 5, length = radius * (i % 2 === 0 ? 1 : 0.45);
+                    return { x: cx + Math.cos(angle) * length, y: cy + Math.sin(angle) * length };
+                });
+                const filled = star < option.previewValue;
+                const color = option.palette.color(!enabled ? CPaletteColorRole.DisabledText
+                    : filled ? CPaletteColorRole.Highlight : CPaletteColorRole.Mid).toCss();
+                painter.setBrush(filled ? color : option.palette.color(CPaletteColorRole.Base).toCss());
+                // Fill the concave polygon by intersecting each horizontal scan line.
+                // CPainter's rectangle and line primitives keep this engine-independent.
+                for (let y = Math.floor(cy - radius); y < Math.ceil(cy + radius); ++y) {
+                    const scan = y + 0.5, crossings: number[] = [];
+                    for (let i = 0; i < points.length; ++i) {
+                        const a = points[i]!, b = points[(i + 1) % points.length]!;
+                        if ((a.y <= scan && b.y > scan) || (b.y <= scan && a.y > scan))
+                            crossings.push(a.x + (scan - a.y) * (b.x - a.x) / (b.y - a.y));
+                    }
+                    crossings.sort((a, b) => a - b);
+                    for (let i = 0; i + 1 < crossings.length; i += 2)
+                        painter.fillRect(new CRect(crossings[i]!, y, crossings[i + 1]! - crossings[i]!, 1));
+                }
+                painter.setPen(color);
+                for (let i = 0; i < points.length; ++i) {
+                    const a = points[i]!, b = points[(i + 1) % points.length]!;
+                    painter.drawLine(a.x, a.y, b.x, b.y);
+                }
+            }
+            if (enabled && !option.readOnly && (option.state & CStyleState.HasFocus) !== 0
+                && option.rect.width() > 4 && option.rect.height() > 4) {
+                const r = option.rect;
+                painter.setBrush(option.palette.color(CPaletteColorRole.Text).toCss());
+                for (let x = r.x() + 1; x < r.right() - 1; x += 2) {
+                    painter.fillRect(new CRect(x, r.y() + 1, 1, 1));
+                    painter.fillRect(new CRect(x, r.bottom() - 2, 1, 1));
+                }
+                for (let y = r.y() + 3; y < r.bottom() - 2; y += 2) {
+                    painter.fillRect(new CRect(r.x() + 1, y, 1, 1));
+                    painter.fillRect(new CRect(r.right() - 2, y, 1, 1));
+                }
+            }
+        } finally { painter.restore(); }
+    }
+
 
     /** Default palette-aware renderer; custom styles can override this method. */
     drawNavigationPath(painter: CPainter, option: CStyleOptionNavigationPath): void {

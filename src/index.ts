@@ -152,3 +152,6 @@ export { CStyleOptionSplitButton } from "./gui/CStyleOptionSplitButton.js";
 
 export { CNavigationPath } from "./widgets/CNavigationPath.js";
 export { CStyleOptionNavigationPath, type CNavigationPathSegment } from "./gui/CStyleOptionNavigationPath.js";
+
+export { CRatingWidget } from "./widgets/CRatingWidget.js";
+export { CStyleOptionRatingWidget } from "./gui/CStyleOptionRatingWidget.js";
