@@ -1,3 +1,4 @@
+import { CBusyIndicator } from "../../src/widgets/CBusyIndicator.js";
 import { CRatingWidget } from "../../src/widgets/CRatingWidget.js";
 import { CNavigationPath } from "../../src/widgets/CNavigationPath.js";
 import { CSplitButton } from "../../src/widgets/CSplitButton.js";
@@ -1099,6 +1100,34 @@ function showIconGridDemo(parent: CWidget): void {
 
 
 
+
+function showBusyIndicatorDemo(parent: CWidget): void {
+    const dialog = new CDialog(parent); dialog.setWindowTitle("Busy indicator demo"); dialog.setGeometry(0, 0, 520, 330);
+    const layout = new CVBoxLayout(); layout.setContentsMargins(16, 16, 16, 16); layout.setSpacing(12);
+    const hint = new CLabel(dialog); hint.setWordWrap(true);
+    hint.setText("Hide the indicator panel to suspend animation; show it to resume."); layout.addWidget(hint);
+    const panel = new CWidget(dialog); const row = new CHBoxLayout(); row.setContentsMargins(0, 0, 0, 0);
+    const busy = new CBusyIndicator(panel); busy.setIndicatorSize(48); row.addWidget(busy);
+    const message = new CLabel(panel); message.setText("Working…"); row.addWidget(message); row.addStretch(1);
+    panel.setLayout(row); layout.addWidget(panel);
+    const formPanel = new CWidget(dialog); const form = new CFormLayout();
+    const duration = new CSpinBox(formPanel); duration.setRange(100, 3000); duration.setValue(1000);
+    duration.valueChanged.connect(value => busy.setCycleDuration(value)); form.addRow("Cycle (ms):", duration);
+    const size = new CSpinBox(formPanel); size.setRange(8, 128); size.setValue(48);
+    size.valueChanged.connect(value => busy.setIndicatorSize(value)); form.addRow("Size (px):", size);
+    const hidden = new CCheckBox(formPanel); hidden.setText("Hide indicator panel");
+    hidden.toggled.connect(value => panel.setVisible(!value)); form.addRow(hidden);
+    formPanel.setLayout(form); layout.addWidget(formPanel);
+    const controls = new CWidget(dialog); const buttons = new CHBoxLayout(); buttons.setContentsMargins(0, 0, 0, 0);
+    const toggle = new CPushButton(controls); toggle.setText("Stop");
+    toggle.clicked.connect(() => { busy.setRunning(!busy.isRunning()); toggle.setText(busy.isRunning() ? "Stop" : "Start");
+        message.setText(busy.isRunning() ? "Working…" : "Stopped"); });
+    buttons.addWidget(toggle); buttons.addStretch(1);
+    const close = new CPushButton(controls); close.setText("Close"); close.clicked.connect(() => dialog.reject());
+    buttons.addWidget(close); controls.setLayout(buttons); layout.addWidget(controls);
+    dialog.setLayout(layout); dialog.open(); busy.start();
+    dialog.rejected.connect(() => busy.stop()); dialog.accepted.connect(() => busy.stop());
+}
 
 function showRatingDemo(parent: CWidget): void {
     const dialog = new CDialog(parent); dialog.setWindowTitle("Star rating demo"); dialog.setGeometry(0, 0, 560, 340);
@@ -2588,6 +2617,8 @@ panelsMenu.addAction(new CAction("Console"));
 viewMenu.addMenu("Panels", panelsMenu);
 
 const toolsMenu = new CMenu();
+const busyDemoAction = new CAction("Busy indicator demo…", mainWindow);
+busyDemoAction.triggered.connect(() => showBusyIndicatorDemo(parent)); toolsMenu.addAction(busyDemoAction);
 const ratingDemoAction = new CAction("Star rating demo…", mainWindow);
 ratingDemoAction.triggered.connect(() => showRatingDemo(parent)); toolsMenu.addAction(ratingDemoAction);
 const navigationPathDemoAction = new CAction("Navigation path demo…", mainWindow);

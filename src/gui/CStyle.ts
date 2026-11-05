@@ -1,3 +1,4 @@
+import type { CStyleOptionBusyIndicator } from "./CStyleOptionBusyIndicator.js";
 import type { CStyleOptionRatingWidget } from "./CStyleOptionRatingWidget.js";
 import type { CStyleOptionNavigationPath } from "./CStyleOptionNavigationPath.js";
 import type { CStyleOptionSplitButton } from "./CStyleOptionSplitButton.js";
@@ -32,6 +33,27 @@ import type { CStyleOptionToolTipWidget } from "../gui/CStyleOptionToolTipWidget
  * Defines the abstract interface used to render Canvas Toolkit widgets.
  */
 export abstract class CStyle {
+    /** Twelve fading spokes, centered in the available rectangle. */
+    drawBusyIndicator(painter: CPainter, option: CStyleOptionBusyIndicator): void {
+        if (!option.running || option.rect.width() <= 0 || option.rect.height() <= 0) return;
+        const r = option.rect, radius = Math.min(r.width(), r.height()) / 2 - 2;
+        if (radius <= 0) return;
+        const cx = r.x() + r.width() / 2, cy = r.y() + r.height() / 2;
+        const enabled = (option.state & CStyleState.Enabled) !== 0;
+        painter.save();
+        try {
+            painter.clipRect(r); painter.setLineWidth(Math.max(1, radius * 0.18));
+            for (let i = 0; i < 12; ++i) {
+                const angle = (option.angle + i * 30 - 90) * Math.PI / 180;
+                const color = option.palette.color(enabled ? CPaletteColorRole.Highlight : CPaletteColorRole.DisabledText);
+                color.setAlpha(Math.round(color.alpha() * (0.2 + 0.8 * i / 11)));
+                painter.setPen(color.toCss());
+                painter.drawLine(cx + Math.cos(angle) * radius * 0.48, cy + Math.sin(angle) * radius * 0.48,
+                    cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
+            }
+        } finally { painter.restore(); }
+    }
+
 
     /** Draws geometric stars using palette colors, independently of installed fonts. */
     drawRatingWidget(painter: CPainter, option: CStyleOptionRatingWidget): void {

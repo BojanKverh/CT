@@ -155,3 +155,6 @@ export { CStyleOptionNavigationPath, type CNavigationPathSegment } from "./gui/C
 
 export { CRatingWidget } from "./widgets/CRatingWidget.js";
 export { CStyleOptionRatingWidget } from "./gui/CStyleOptionRatingWidget.js";
+
+export { CBusyIndicator } from "./widgets/CBusyIndicator.js";
+export { CStyleOptionBusyIndicator } from "./gui/CStyleOptionBusyIndicator.js";

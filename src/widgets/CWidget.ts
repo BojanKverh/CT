@@ -102,6 +102,7 @@ export class CWidget extends CObject {
         if (parent === null)
             app.registerTopLevelWidget(this);
         this.#refreshFocusProxyHierarchy();
+        this.#notifyVisibilityChange();
         this.update();
     }
 
@@ -164,11 +165,21 @@ export class CWidget extends CObject {
 		    return;
 
 	    this.#m_visible = visible;
+        this.#notifyVisibilityChange();
 	    const parent = this.parent();
 	    /** Provides if behavior. */
 	    if (parent !== null)
 		    parent.childVisibilityChanged(this);
 	    this.update();
+    }
+
+    /** Called when this widget or an ancestor changes visibility or parent. */
+    protected visibilityChangeEvent(): void {}
+
+    #notifyVisibilityChange(): void {
+        this.visibilityChangeEvent();
+        for (const child of [...this.children()])
+            if (child instanceof CWidget) child.#notifyVisibilityChange();
     }
 
     /** Sets the enabled. */
