@@ -1,3 +1,4 @@
+import { CLoadingOverlay } from "../../src/widgets/CLoadingOverlay.js";
 import { CBusyIndicator } from "../../src/widgets/CBusyIndicator.js";
 import { CRatingWidget } from "../../src/widgets/CRatingWidget.js";
 import { CNavigationPath } from "../../src/widgets/CNavigationPath.js";
@@ -1100,6 +1101,36 @@ function showIconGridDemo(parent: CWidget): void {
 
 
 
+
+function showLoadingOverlayDemo(parent: CWidget): void {
+    const dialog = new CDialog(parent); dialog.setWindowTitle("Loading overlay demo"); dialog.setGeometry(0, 0, 720, 380);
+    const layout = new CVBoxLayout(); layout.setContentsMargins(16, 16, 16, 16); layout.setSpacing(12);
+    const hint = new CLabel(dialog); hint.setWordWrap(true);
+    hint.setText("Start a three-second load. The left panel is blocked; the right panel remains editable. Try Tab and resizing."); layout.addWidget(hint);
+    const panels = new CWidget(dialog); const row = new CHBoxLayout(); row.setContentsMargins(0, 0, 0, 0);
+    const target = new CWidget(panels); const form = new CFormLayout();
+    const name = new CLineEdit(target); name.setText("Bojan"); form.addRow("Name:", name);
+    const notes = new CLineEdit(target); notes.setText("Protected while loading"); form.addRow("Notes:", notes);
+    target.setLayout(form); row.addWidget(target);
+    const other = new CWidget(panels); const otherForm = new CFormLayout();
+    const editable = new CLineEdit(other); editable.setText("This field stays available"); otherForm.addRow("Other panel:", editable);
+    other.setLayout(otherForm); row.addWidget(other); panels.setLayout(row); layout.addWidget(panels);
+    const overlay = new CLoadingOverlay(target);
+    const controls = new CWidget(dialog); const buttons = new CHBoxLayout(); buttons.setContentsMargins(0, 0, 0, 0);
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const load = new CPushButton(controls); load.setText("Load for 3 seconds");
+    load.clicked.connect(() => {
+        if (timer !== null) clearTimeout(timer);
+        overlay.start("Loading customer data…"); timer = setTimeout(() => { timer = null; overlay.stop(); }, 3000);
+    }); buttons.addWidget(load);
+    const stop = new CPushButton(controls); stop.setText("Cancel loading");
+    const cancel = (): void => { if (timer !== null) clearTimeout(timer); timer = null; overlay.stop(); };
+    stop.clicked.connect(cancel); buttons.addWidget(stop); buttons.addStretch(1);
+    const close = new CPushButton(controls); close.setText("Close"); close.clicked.connect(() => dialog.reject());
+    buttons.addWidget(close); controls.setLayout(buttons); layout.addWidget(controls);
+    dialog.rejected.connect(cancel); dialog.accepted.connect(cancel);
+    dialog.setLayout(layout); dialog.open();
+}
 
 function showBusyIndicatorDemo(parent: CWidget): void {
     const dialog = new CDialog(parent); dialog.setWindowTitle("Busy indicator demo"); dialog.setGeometry(0, 0, 520, 330);
@@ -2617,6 +2648,8 @@ panelsMenu.addAction(new CAction("Console"));
 viewMenu.addMenu("Panels", panelsMenu);
 
 const toolsMenu = new CMenu();
+const loadingOverlayDemoAction = new CAction("Loading overlay demo…", mainWindow);
+loadingOverlayDemoAction.triggered.connect(() => showLoadingOverlayDemo(parent)); toolsMenu.addAction(loadingOverlayDemoAction);
 const busyDemoAction = new CAction("Busy indicator demo…", mainWindow);
 busyDemoAction.triggered.connect(() => showBusyIndicatorDemo(parent)); toolsMenu.addAction(busyDemoAction);
 const ratingDemoAction = new CAction("Star rating demo…", mainWindow);

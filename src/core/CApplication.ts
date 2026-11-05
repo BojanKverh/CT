@@ -406,6 +406,7 @@ export class CApplication extends CObject {
  */
     setFocusWidget(widget: CWidget | null): void {
         widget = widget?.focusTarget() ?? null;
+        widget = widget?.inputBlocker() ?? widget;
 	    if (this.#m_focusWidget === widget)
 		    return;
 
@@ -1152,6 +1153,7 @@ export class CApplication extends CObject {
             if (owner === boundary) break;
         }
         while (widget !== null) {
+            if (widget.inputBlocker() !== null) return null;
             const candidate = widget as Partial<CClipboardEditor>;
             if (typeof candidate.selectedText === "function" && typeof candidate.copy === "function" &&
                 typeof candidate.cut === "function" && typeof candidate.paste === "function" &&
@@ -1206,6 +1208,7 @@ export class CApplication extends CObject {
 			current = current.parent();
 		}
 		for (const owner of path) {
+            if (owner.inputBlocker() !== null) continue;
 			const matches = (owner as CObject).children().filter((child): child is CShortcut =>
 				child instanceof CShortcut && child.matches(event));
 			if (matches.length === 0) continue;
@@ -1480,7 +1483,7 @@ export class CApplication extends CObject {
         const visit = (widget: CWidget): void => {
             if (visited.has(widget) || !widget.isVisible() || !widget.isEnabled()) return;
             visited.add(widget);
-            if (widget.acceptsTabFocus()) result.push(widget);
+            if (widget.acceptsTabFocus() && widget.canReceiveFocus()) result.push(widget);
             for (const child of widget.children()) {
                 if (child instanceof CWidget) visit(child);
             }

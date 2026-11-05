@@ -158,3 +158,5 @@ export { CStyleOptionRatingWidget } from "./gui/CStyleOptionRatingWidget.js";
 
 export { CBusyIndicator } from "./widgets/CBusyIndicator.js";
 export { CStyleOptionBusyIndicator } from "./gui/CStyleOptionBusyIndicator.js";
+
+export { CLoadingOverlay } from "./widgets/CLoadingOverlay.js";

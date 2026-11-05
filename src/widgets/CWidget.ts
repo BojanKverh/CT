@@ -42,6 +42,7 @@ export class CWidget extends CObject {
     #m_focusProxy: CWidget | null = null;
     #m_focusProxyOwners = new Set<CWidget>();
     #m_destroyed = false;
+    #m_inputBlocker: CWidget | null = null;
     #m_acceptDrops = false;
 
 	/** Creates a new instance. */
@@ -145,6 +146,7 @@ export class CWidget extends CObject {
 
         this.#m_geometry.setGeometry(x, y, width, height);
         this.#m_layout?.update();
+        this.#m_inputBlocker?.setGeometry(0, 0, width, height);
         this.update();
     }
 
@@ -367,6 +369,7 @@ export class CWidget extends CObject {
     /** @internal Whether programmatic focus can reach the final proxy target. */
     canReceiveFocus(): boolean {
         for (let target: CWidget | null = this; target !== null; target = target.#m_focusProxy) {
+            if (target.inputBlocker() !== null) return false;
             for (let owner: CWidget | null = target; owner !== null; owner = owner.parent()) {
                 if (owner.#m_destroyed || !owner.isVisible() || !owner.isEnabled()) return false;
             }
@@ -423,6 +426,27 @@ export class CWidget extends CObject {
 
 		this.hide();
 	}
+
+    /** @internal Installs a direct-child input shield, rendered above normal children. */
+    setInputBlocker(blocker: CWidget | null): void {
+        if (blocker !== null && (blocker.parent() !== this || blocker === this))
+            throw new RangeError("An input blocker must be a direct child.");
+        if (blocker !== null && this.#m_inputBlocker !== null && this.#m_inputBlocker !== blocker)
+            throw new Error("This widget already has an input blocker.");
+        this.#m_inputBlocker = blocker;
+        blocker?.setGeometry(0, 0, this.width(), this.height());
+        this.update();
+    }
+    /** Returns the shield blocking input to this widget, excluding the shield's own subtree. */
+    inputBlocker(): CWidget | null {
+        let branch: CWidget | null = null;
+        for (let owner: CWidget | null = this; owner !== null; owner = owner.parent()) {
+            const blocker = owner.#m_inputBlocker;
+            if (blocker !== null && blocker.isVisible() && blocker !== branch) return blocker;
+            branch = owner;
+        }
+        return null;
+    }
 
     /** Returns whether the enabled condition is active. */
     isEnabled(): boolean {
@@ -483,7 +507,7 @@ export class CWidget extends CObject {
 					continue;
 
 				/** Provides if behavior. */
-				if (CApplication.instance().isWindowWidget(child))
+				if (CApplication.instance().isWindowWidget(child) || child === this.#m_inputBlocker)
 					continue;
 
 				child.render(painter);
@@ -496,6 +520,7 @@ export class CWidget extends CObject {
 					-childOffset.y()
 				);
 			}
+            if (this.#m_inputBlocker?.isVisible()) this.#m_inputBlocker.render(painter);
 		} finally {
 			painter.restore();
 		}
@@ -521,6 +546,11 @@ export class CWidget extends CObject {
         if (!this.rect().contains(new CPoint(x, y)))
             return null;
 
+        if (this.#m_inputBlocker?.isVisible()) {
+            const blocker = this.#m_inputBlocker;
+            const hit = blocker.widgetAt(x - blocker.x(), y - blocker.y());
+            if (hit !== null) return hit;
+        }
         const children = this.children();
         const childOffset = this.childOffset();
 
@@ -711,6 +741,10 @@ export class CWidget extends CObject {
 
     /** Provides event behavior. */
     event(event: CEvent): boolean {
+        if (event.type() !== CEventType.FocusIn && event.type() !== CEventType.FocusOut && this.inputBlocker() !== null) {
+            if (event.type() === CEventType.KeyPress && (event as CKeyEvent).key() === "Tab") { event.ignore(); return false; }
+            event.accept(); return true;
+        }
         /** Provides if behavior. */
         if (!this.isEnabled()) {
 			event.ignore();
