@@ -146,17 +146,13 @@ export { CAnimationDirection } from "./animation/CAbstractAnimation.js";
 export { CPauseAnimation } from "./animation/CPauseAnimation.js";
 export { CPropertyAnimation } from "./animation/CPropertyAnimation.js";
 export { CSettings } from "./core/CSettings.js";
-
 export { CSplitButton } from "./widgets/CSplitButton.js";
 export { CStyleOptionSplitButton } from "./gui/CStyleOptionSplitButton.js";
-
 export { CNavigationPath } from "./widgets/CNavigationPath.js";
 export { CStyleOptionNavigationPath, type CNavigationPathSegment } from "./gui/CStyleOptionNavigationPath.js";
-
 export { CRatingWidget } from "./widgets/CRatingWidget.js";
 export { CStyleOptionRatingWidget } from "./gui/CStyleOptionRatingWidget.js";
-
 export { CBusyIndicator } from "./widgets/CBusyIndicator.js";
 export { CStyleOptionBusyIndicator } from "./gui/CStyleOptionBusyIndicator.js";
-
 export { CLoadingOverlay } from "./widgets/CLoadingOverlay.js";
+export { CFlowLayout } from "./layouts/CFlowLayout.js";

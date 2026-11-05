@@ -1,3 +1,4 @@
+import { CFlowLayout } from "../../src/layouts/CFlowLayout.js";
 import { CLoadingOverlay } from "../../src/widgets/CLoadingOverlay.js";
 import { CBusyIndicator } from "../../src/widgets/CBusyIndicator.js";
 import { CRatingWidget } from "../../src/widgets/CRatingWidget.js";
@@ -1101,6 +1102,34 @@ function showIconGridDemo(parent: CWidget): void {
 
 
 
+
+function showFlowLayoutDemo(parent: CWidget): void {
+    const dialog = new CDialog(parent); dialog.setWindowTitle("Flow layout demo");
+    dialog.setMinimumSize(360, 480);
+    dialog.setGeometry(0, 0, 720, 480);
+    const layout = new CVBoxLayout(); layout.setContentsMargins(16, 16, 16, 16); layout.setSpacing(12);
+    const hint = new CLabel(dialog); hint.setWordWrap(true);
+    hint.setText("Resize the dialog: buttons retain their preferred widths and wrap to new rows. Try alignment and independent gaps."); layout.addWidget(hint);
+    const panel = new CWidget(dialog); const flow = new CFlowLayout(); flow.setContentsMargins(8, 8, 8, 8);
+    flow.setHorizontalSpacing(8); flow.setVerticalSpacing(10);
+    const status = new CLabel(dialog); status.setText("Choose a filter.");
+    for (const text of ["All documents", "Invoices", "Credit notes", "Unpaid", "Overdue", "This month", "Last quarter", "Needs review"]) {
+        const button = new CPushButton(panel); button.setText(text);
+        button.clicked.connect(() => status.setText(`Selected: ${text}`)); flow.addWidget(button);
+    }
+    panel.setLayout(flow); layout.addWidget(panel); layout.addWidget(status);
+    const settings = new CWidget(dialog); const form = new CFormLayout();
+    const alignment = new CComboBox(settings); alignment.addItems(["Left", "Center", "Right"]);
+    alignment.currentIndexChanged.connect(index => flow.setRowAlignment([CAlignment.Left, CAlignment.HCenter, CAlignment.Right][index] ?? CAlignment.Left));
+    form.addRow("Row alignment:", alignment);
+    const horizontal = new CSpinBox(settings); horizontal.setRange(0, 32); horizontal.setValue(8);
+    horizontal.valueChanged.connect(value => flow.setHorizontalSpacing(value)); form.addRow("Horizontal gap:", horizontal);
+    const vertical = new CSpinBox(settings); vertical.setRange(0, 32); vertical.setValue(10);
+    vertical.valueChanged.connect(value => flow.setVerticalSpacing(value)); form.addRow("Vertical gap:", vertical);
+    settings.setLayout(form); layout.addWidget(settings);
+    const close = new CPushButton(dialog); close.setText("Close"); close.clicked.connect(() => dialog.reject()); layout.addWidget(close);
+    dialog.setLayout(layout); dialog.open();
+}
 
 function showLoadingOverlayDemo(parent: CWidget): void {
     const dialog = new CDialog(parent); dialog.setWindowTitle("Loading overlay demo"); dialog.setGeometry(0, 0, 720, 380);
@@ -2648,6 +2677,8 @@ panelsMenu.addAction(new CAction("Console"));
 viewMenu.addMenu("Panels", panelsMenu);
 
 const toolsMenu = new CMenu();
+const flowLayoutDemoAction = new CAction("Flow layout demo…", mainWindow);
+flowLayoutDemoAction.triggered.connect(() => showFlowLayoutDemo(parent)); toolsMenu.addAction(flowLayoutDemoAction);
 const loadingOverlayDemoAction = new CAction("Loading overlay demo…", mainWindow);
 loadingOverlayDemoAction.triggered.connect(() => showLoadingOverlayDemo(parent)); toolsMenu.addAction(loadingOverlayDemoAction);
 const busyDemoAction = new CAction("Busy indicator demo…", mainWindow);
