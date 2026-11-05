@@ -1,6 +1,13 @@
+import type { CStyleOptionSplitButton } from "./CStyleOptionSplitButton.js";
+import { CStyleState } from "./CStyleOption.js";
+import { CPaletteColorRole } from "./CPalette.js";
+import { CRect } from "../geometry/CRect.js";
+import { CSize } from "../geometry/CSize.js";
+import { CFontMetrics } from "./CFontMetrics.js";
+import { CIconMode, CIconState } from "./CIcon.js";
 import type { CPainter } from "../painting/CPainter.js";
 import type { CStyleOptionToolButton } from "./CStyleOptionToolButton.js";
-import type { CStyleOptionPushButton } from "./CStyleOptionPushButton.js";
+import { CStyleOptionPushButton } from "./CStyleOptionPushButton.js";
 import type { CStyleOptionCheckBox } from "./CStyleOptionCheckBox.js";
 import type { CStyleOptionRadioButton } from "./CStyleOptionRadioButton.js";
 import type { CStyleOptionComboBox } from "./CStyleOptionComboBox.js";
@@ -23,6 +30,82 @@ import type { CStyleOptionToolTipWidget } from "../gui/CStyleOptionToolTipWidget
  * Defines the abstract interface used to render Canvas Toolkit widgets.
  */
 export abstract class CStyle {
+
+    /** Draws both parts using the style's push button renderer and palette. */
+    drawSplitButton(painter: CPainter, option: CStyleOptionSplitButton): void {
+        const r = option.rect;
+        if (r.width() <= 0 || r.height() <= 0) return;
+        const menuWidth = Math.min(r.width(), Math.max(0, option.menuWidth));
+        const mainWidth = r.width() - menuWidth;
+        const enabled = (option.state & CStyleState.Enabled) !== 0;
+        const paintPart = (clip: CRect, down: boolean, hovered: boolean): void => {
+            if (clip.width() <= 0) return;
+            const part = new CStyleOptionPushButton(option);
+            part.text = "";
+            part.state &= ~(CStyleState.Sunken | CStyleState.MouseOver | CStyleState.HasFocus);
+            if (down) part.state |= CStyleState.Sunken;
+            if (hovered) part.state |= CStyleState.MouseOver;
+            painter.save();
+            try { painter.clipRect(clip); this.drawPushButton(painter, part); }
+            finally { painter.restore(); }
+        };
+        paintPart(new CRect(r.x(), r.y(), mainWidth, r.height()), option.mainDown, option.mainHovered);
+        paintPart(new CRect(r.x() + mainWidth, r.y(), menuWidth, r.height()), option.menuDown, option.menuHovered);
+        const role = !enabled ? CPaletteColorRole.DisabledText
+            : option.mainDown ? CPaletteColorRole.HighlightedText : CPaletteColorRole.ButtonText;
+        painter.save();
+        try {
+            painter.clipRect(r);
+            painter.setFont(option.font);
+            painter.setTextAlign("center");
+            painter.setTextBaseline("middle");
+            painter.setPen(option.palette.color(role).toCss());
+            if (mainWidth > 0) {
+                painter.save();
+                try {
+                    painter.clipRect(new CRect(r.x(), r.y(), mainWidth, r.height()));
+                    const pixmap = option.icon?.pixmap(new CSize(16, 16), enabled ? CIconMode.Normal : CIconMode.Disabled,
+                        (option.state & CStyleState.On) !== 0 ? CIconState.On : CIconState.Off) ?? null;
+                    let textX = r.x() + mainWidth / 2;
+                    if (pixmap !== null && mainWidth > 24 && r.height() > 8) {
+                        const side = Math.min(16, r.height() - 8);
+                        const textWidth = new CFontMetrics(option.font).textWidth(option.text);
+                        const left = r.x() + Math.max(4, (mainWidth - textWidth - side - 6) / 2);
+                        painter.drawPixmap(pixmap, left, r.y() + (r.height() - side) / 2, side, side);
+                        textX = left + side + 6 + textWidth / 2;
+                    }
+                    painter.drawText(option.text, textX, r.y() + r.height() / 2);
+                } finally { painter.restore(); }
+            }
+            if (menuWidth > 0) {
+                const x = r.x() + mainWidth;
+                painter.setPen(option.palette.color(CPaletteColorRole.Mid).toCss());
+                painter.setLineWidth(1);
+                if (r.height() > 8) painter.drawLine(x, r.y() + 4, x, r.y() + r.height() - 4);
+                const arrowRole = !enabled ? CPaletteColorRole.DisabledText
+                    : option.menuDown ? CPaletteColorRole.HighlightedText : CPaletteColorRole.ButtonText;
+                painter.setPen(option.palette.color(arrowRole).toCss());
+                const cx = x + menuWidth / 2, cy = r.y() + r.height() / 2;
+                const d = Math.min(3, Math.max(0, (menuWidth - 4) / 2), Math.max(0, (r.height() - 4) / 2));
+                if (d > 0) {
+                    painter.drawLine(cx - d, cy - d / 2, cx, cy + d / 2);
+                    painter.drawLine(cx, cy + d / 2, cx + d, cy - d / 2);
+                }
+            }
+            if (enabled && (option.state & CStyleState.HasFocus) !== 0 && r.width() > 8 && r.height() > 8) {
+                painter.setBrush(option.palette.color(CPaletteColorRole.ButtonText).toCss());
+                for (let x = r.x() + 4; x < r.right() - 4; x += 2) {
+                    painter.fillRect(new CRect(x, r.y() + 4, 1, 1));
+                    painter.fillRect(new CRect(x, r.bottom() - 5, 1, 1));
+                }
+                for (let y = r.y() + 6; y < r.bottom() - 5; y += 2) {
+                    painter.fillRect(new CRect(r.x() + 4, y, 1, 1));
+                    painter.fillRect(new CRect(r.right() - 5, y, 1, 1));
+                }
+            }
+        } finally { painter.restore(); }
+    }
+
 	
         /**
      * Returns the slider handle size used by the style.

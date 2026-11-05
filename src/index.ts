@@ -146,3 +146,6 @@ export { CAnimationDirection } from "./animation/CAbstractAnimation.js";
 export { CPauseAnimation } from "./animation/CPauseAnimation.js";
 export { CPropertyAnimation } from "./animation/CPropertyAnimation.js";
 export { CSettings } from "./core/CSettings.js";
+
+export { CSplitButton } from "./widgets/CSplitButton.js";
+export { CStyleOptionSplitButton } from "./gui/CStyleOptionSplitButton.js";

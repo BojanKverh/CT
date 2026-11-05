@@ -1,3 +1,4 @@
+import { CSplitButton } from "../../src/widgets/CSplitButton.js";
 import { CSettings } from "../../src/core/CSettings.js";
 import { CPaletteColorRole } from "../../src/gui/CPalette.js";
 import {CApplication, CWidget, CPainter, CRect, CPoint, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
@@ -1092,6 +1093,48 @@ function showIconGridDemo(parent: CWidget): void {
     buttons.accepted.connect(() => dialog.accept());
     dialog.exec();
     list.widget()?.setFocus();
+}
+
+
+function showSplitButtonDemo(parent: CWidget): void {
+    const dialog = new CDialog(parent);
+    dialog.setWindowTitle("Split button demo");
+    dialog.setGeometry(0, 0, 580, 260);
+    const layout = new CVBoxLayout();
+    layout.setContentsMargins(16, 16, 16, 16); layout.setSpacing(10);
+    const hint = new CLabel(dialog);
+    hint.setText("Click New invoice, or use the arrow to choose a document type. Down / F4 opens the menu.");
+    hint.setWordWrap(true);
+    layout.addWidget(hint);
+    const button = new CSplitButton(dialog);
+    const menu = new CMenu();
+    const result = new CLabel(dialog);
+    result.setText("No document created yet.");
+    const actions = ["New invoice", "New quotation", "New credit note"].map(text => {
+        const action = new CAction(text);
+        action.triggered.connect(() => result.setText(`${text}: document created.`));
+        menu.addAction(action);
+        return action;
+    });
+    button.setDefaultAction(actions[0]!);
+    button.setMenu(menu);
+    layout.addWidget(button);
+    layout.addWidget(result);
+    const enabled = new CCheckBox(dialog);
+    enabled.setText("Enable split button"); enabled.setChecked(true);
+    enabled.toggled.connect(value => actions[0]!.setEnabled(value));
+    layout.addWidget(enabled);
+    const close = new CPushButton(dialog); close.setText("Close");
+    close.clicked.connect(() => dialog.reject()); layout.addWidget(close);
+    dialog.setLayout(layout);
+    // The popup and actions are borrowed by the button, so the demo releases them.
+    const cleanup = (): void => {
+        button.setMenu(null); button.setDefaultAction(null);
+        menu.destroy();
+        for (const action of actions) action.destroy();
+    };
+    dialog.rejected.connect(cleanup);
+    dialog.open(); button.setFocus();
 }
 
 function showWizardDemo(parent: CWidget): void {
@@ -2489,6 +2532,9 @@ panelsMenu.addAction(new CAction("Console"));
 viewMenu.addMenu("Panels", panelsMenu);
 
 const toolsMenu = new CMenu();
+const splitButtonDemoAction = new CAction("Split button demo…", mainWindow);
+splitButtonDemoAction.triggered.connect(() => showSplitButtonDemo(parent));
+toolsMenu.addAction(splitButtonDemoAction);
 toolsMenu.addAction(new CAction("Options"));
 toolsMenu.addAction(new CAction("Customize"));
 toolsMenu.addSeparator();
