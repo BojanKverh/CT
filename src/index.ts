@@ -149,3 +149,6 @@ export { CSettings } from "./core/CSettings.js";
 
 export { CSplitButton } from "./widgets/CSplitButton.js";
 export { CStyleOptionSplitButton } from "./gui/CStyleOptionSplitButton.js";
+
+export { CNavigationPath } from "./widgets/CNavigationPath.js";
+export { CStyleOptionNavigationPath, type CNavigationPathSegment } from "./gui/CStyleOptionNavigationPath.js";

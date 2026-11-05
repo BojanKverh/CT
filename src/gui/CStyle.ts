@@ -1,3 +1,4 @@
+import type { CStyleOptionNavigationPath } from "./CStyleOptionNavigationPath.js";
 import type { CStyleOptionSplitButton } from "./CStyleOptionSplitButton.js";
 import { CStyleState } from "./CStyleOption.js";
 import { CPaletteColorRole } from "./CPalette.js";
@@ -30,6 +31,63 @@ import type { CStyleOptionToolTipWidget } from "../gui/CStyleOptionToolTipWidget
  * Defines the abstract interface used to render Canvas Toolkit widgets.
  */
 export abstract class CStyle {
+
+    /** Default palette-aware renderer; custom styles can override this method. */
+    drawNavigationPath(painter: CPainter, option: CStyleOptionNavigationPath): void {
+        if (option.rect.width() <= 0 || option.rect.height() <= 0) return;
+        const enabled = (option.state & CStyleState.Enabled) !== 0;
+        painter.save();
+        try {
+            painter.clipRect(option.rect);
+            painter.setBrush(option.palette.color(CPaletteColorRole.Window).toCss());
+            painter.fillRect(option.rect);
+            painter.setFont(option.font); painter.setTextAlign("left"); painter.setTextBaseline("middle");
+            for (let i = 0; i < option.segments.length; ++i) {
+                const segment = option.segments[i]!, r = segment.rect;
+                if (r.width() <= 0 || r.height() <= 0) continue;
+                const interactive = segment.index !== option.currentIndex;
+                const down = enabled && interactive && segment.index === option.pressedIndex;
+                const hovered = enabled && interactive && segment.index === option.hoveredIndex;
+                const role = !enabled ? CPaletteColorRole.DisabledText
+                    : down ? CPaletteColorRole.HighlightedText
+                    : interactive ? CPaletteColorRole.Link : CPaletteColorRole.Text;
+                if (down || hovered) {
+                    painter.setBrush(option.palette.color(down ? CPaletteColorRole.Highlight : CPaletteColorRole.Hover).toCss());
+                    painter.fillRect(r);
+                }
+                painter.save();
+                try {
+                    painter.clipRect(r);
+                    painter.setPen(option.palette.color(role).toCss());
+                    painter.drawText(segment.text, r.x() + 8, r.y() + r.height() / 2);
+                    if (enabled && interactive && (option.state & CStyleState.HasFocus) !== 0
+                        && option.focusedIndex === segment.index && r.width() > 6 && r.height() > 6) {
+                        painter.setBrush(option.palette.color(role).toCss());
+                        for (let x = r.x() + 3; x < r.right() - 3; x += 2) {
+                            painter.fillRect(new CRect(x, r.y() + 3, 1, 1));
+                            painter.fillRect(new CRect(x, r.bottom() - 4, 1, 1));
+                        }
+                        for (let y = r.y() + 5; y < r.bottom() - 4; y += 2) {
+                            painter.fillRect(new CRect(r.x() + 3, y, 1, 1));
+                            painter.fillRect(new CRect(r.right() - 4, y, 1, 1));
+                        }
+                    }
+                } finally { painter.restore(); }
+                if (i > 0) {
+                    const previous = option.segments[i - 1]!.rect;
+                    const cx = (previous.right() + r.x()) / 2, cy = r.y() + r.height() / 2;
+                    const d = Math.min(3, Math.max(0, (r.x() - previous.right()) / 2 - 1), r.height() / 4);
+                    painter.setPen(option.palette.color(enabled ? CPaletteColorRole.Mid : CPaletteColorRole.DisabledText).toCss());
+                    painter.setLineWidth(1);
+                    if (d > 0) {
+                        painter.drawLine(cx - d / 2, cy - d, cx + d / 2, cy);
+                        painter.drawLine(cx + d / 2, cy, cx - d / 2, cy + d);
+                    }
+                }
+            }
+        } finally { painter.restore(); }
+    }
+
 
     /** Draws both parts using the style's push button renderer and palette. */
     drawSplitButton(painter: CPainter, option: CStyleOptionSplitButton): void {

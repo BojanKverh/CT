@@ -1,3 +1,4 @@
+import { CNavigationPath } from "../../src/widgets/CNavigationPath.js";
 import { CSplitButton } from "../../src/widgets/CSplitButton.js";
 import { CSettings } from "../../src/core/CSettings.js";
 import { CPaletteColorRole } from "../../src/gui/CPalette.js";
@@ -1095,6 +1096,32 @@ function showIconGridDemo(parent: CWidget): void {
     list.widget()?.setFocus();
 }
 
+
+
+function showNavigationPathDemo(parent: CWidget): void {
+    const dialog = new CDialog(parent);
+    dialog.setWindowTitle("Navigation path demo"); dialog.setGeometry(0, 0, 720, 300);
+    const layout = new CVBoxLayout(); layout.setContentsMargins(16, 16, 16, 16); layout.setSpacing(12);
+    const hint = new CLabel(dialog);
+    hint.setText("Click a parent to navigate. Resize the dialog to reveal the overflow menu (…). Use Left / Right and Enter; Down opens hidden steps.");
+    hint.setWordWrap(true); layout.addWidget(hint);
+    const navigation = new CNavigationPath(dialog);
+    const fullPath = ["Company", "Sales", "Financial year 2026", "Issued documents", "Invoices", "Invoice 2026-0042"];
+    navigation.setPath(fullPath); layout.addWidget(navigation);
+    const current = new CLabel(dialog); current.setText("Current page: Invoice 2026-0042"); layout.addWidget(current);
+    navigation.activated.connect((index, text) => {
+        navigation.setPath(navigation.path().slice(0, index + 1));
+        current.setText(`Current page: ${text}`);
+    });
+    const controls = new CWidget(dialog); const buttons = new CHBoxLayout();
+    buttons.setContentsMargins(0, 0, 0, 0); buttons.setSpacing(10);
+    const reset = new CPushButton(controls); reset.setText("Restore full path");
+    reset.clicked.connect(() => { navigation.setPath(fullPath); current.setText("Current page: Invoice 2026-0042"); });
+    buttons.addWidget(reset); buttons.addStretch(1);
+    const close = new CPushButton(controls); close.setText("Close"); close.clicked.connect(() => dialog.reject());
+    buttons.addWidget(close); controls.setLayout(buttons); layout.addWidget(controls);
+    dialog.setLayout(layout); dialog.open(); navigation.setFocus();
+}
 
 function showSplitButtonDemo(parent: CWidget): void {
     const dialog = new CDialog(parent);
@@ -2532,6 +2559,9 @@ panelsMenu.addAction(new CAction("Console"));
 viewMenu.addMenu("Panels", panelsMenu);
 
 const toolsMenu = new CMenu();
+const navigationPathDemoAction = new CAction("Navigation path demo…", mainWindow);
+navigationPathDemoAction.triggered.connect(() => showNavigationPathDemo(parent));
+toolsMenu.addAction(navigationPathDemoAction);
 const splitButtonDemoAction = new CAction("Split button demo…", mainWindow);
 splitButtonDemoAction.triggered.connect(() => showSplitButtonDemo(parent));
 toolsMenu.addAction(splitButtonDemoAction);
