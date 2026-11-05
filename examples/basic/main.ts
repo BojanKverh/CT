@@ -1,3 +1,4 @@
+import { CPaletteColorRole } from "../../src/gui/CPalette.js";
 import {CApplication, CWidget, CPainter, CRect, CPoint, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
     CRadioButton, CButtonGroup, CHBoxLayout, CScrollArea, CMenu, CAction, CMenuBar, CDialog,
@@ -16,7 +17,7 @@ import {CApplication, CWidget, CPainter, CRect, CPoint, CMouseEvent, CMouseButto
 	CDateTimeItemDelegate, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy,
 	CCompleter, CNumberEdit, CNumberItemDelegate, CShortcut, CPlainTextEdit, CTextEditFindFlag,
     CSize, CListViewMode, CSplashScreen, CImageView, CWizardDialog, CWizardPage, CVariantAnimation, CPropertyAnimation, CAnimationState, CAnimationDirection, CVBoxLayout, CParallelAnimationGroup, CSequentialAnimationGroup, CEasingCurveType,
-	CPauseAnimation
+	CPauseAnimation, CCssPalette
 } from "../../src/index.js";
 import { CEchoMode } from "../../src/widgets/CLineEdit.js";
 import { CSizePolicyType } from "../../src/geometry/CSizePolicy.js";
@@ -1166,12 +1167,27 @@ if (canvas === null)
     throw new Error("Canvas element not found.");
 
 const app = new CApplication(canvas);
+// Load the initial CSS theme before building the demo.
+const cssPalette = new CCssPalette(canvas);
+app.setPalette(cssPalette);
 
 const mainWindow = new CMainWindow();
 
 mainWindow.setGeometry(0, 0, canvas.width, canvas.height);
 
-const parent = new RedWidget();
+class DemoSurface extends RedWidget {
+    #background: string | null = null;
+    protected override paintEvent(painter: CPainter): void {
+        painter.setFillStyle(this.color());
+        painter.fillRect(this.rect());
+    }
+    override color(): string { return this.#background ?? this.palette().color(CPaletteColorRole.Window).toHex(); }
+    override setColor(color: string): void {
+        this.#background = color;
+        this.update();
+    }
+}
+const parent = new DemoSurface();
 mainWindow.setCentralWidget(parent);
 
 const but = new CPushButton(parent);
@@ -2280,7 +2296,7 @@ scrollContent.resize(1000, 700);
 scrollArea.setWidget(scrollContent);
 
 const splitter = new CSplitter(COrientation.Horizontal, parent);
-splitter.setGeometry(580, 100, 400, 300);
+splitter.setGeometry(580, 100, 600, 300);
 
 const leftW = new CTextEdit;
 leftW.setHtml(`
@@ -2420,6 +2436,18 @@ editMenu.addAction(new CAction("Copy"));
 editMenu.addAction(new CAction("Paste"));
 
 const viewMenu = new CMenu();
+
+// View -> Dark theme changes the CSS variables and updates existing windows.
+const darkThemeAction = new CAction("Dark theme", mainWindow);
+darkThemeAction.setCheckable(true);
+darkThemeAction.setChecked(document.documentElement.getAttribute("data-ct-theme") === "dark");
+darkThemeAction.triggered.connect(() => {
+    document.documentElement.setAttribute("data-ct-theme", darkThemeAction.isChecked() ? "dark" : "light");
+    cssPalette.reload();
+    app.setPalette(cssPalette);
+});
+viewMenu.addAction(darkThemeAction);
+viewMenu.addSeparator();
 
 const showGridAction = new CAction("Show grid", mainWindow);
 showGridAction.setShortcut("Ctrl+G");

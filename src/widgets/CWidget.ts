@@ -34,7 +34,7 @@ export class CWidget extends CObject {
     #m_sizePolicy = new CSizePolicy();
     #m_minimumSize = new CSize(0, 0);
     #m_maximumSize = new CSize(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
-    #m_palette: CPalette;
+    #m_palette: CPalette | null = null;
     #m_toolTip = "";
     #m_fontMetrics: CFontMetrics;
     #m_cursor: CCursorShape = CCursorShape.Arrow;
@@ -53,11 +53,9 @@ export class CWidget extends CObject {
         if (parent !== null) {
             super.setParent(parent);
             this.#m_font = parent.font();
-            this.#m_palette = parent.palette();
         } else {
             CApplication.instance().registerTopLevelWidget(this);
             this.#m_font = CApplication.instance().font();
-            this.#m_palette = CApplication.instance().palette();
         }
 
         this.#m_fontMetrics = new CFontMetrics(this.#m_font);
@@ -104,6 +102,7 @@ export class CWidget extends CObject {
         if (parent === null)
             app.registerTopLevelWidget(this);
         this.#refreshFocusProxyHierarchy();
+        this.update();
     }
 
     /** Provides geometry behavior. */
@@ -221,28 +220,45 @@ export class CWidget extends CObject {
         }
 	}
 
-    /** Provides palette behavior. */
-    palette() : CPalette {
-        return new CPalette(this.#m_palette);
+    /** Returns an independent copy of the effective palette. Widgets without a
+     * local palette inherit from their nearest explicit ancestor or application.
+     */
+    palette(): CPalette {
+        let owner: CWidget | null = this;
+        while (owner !== null) {
+            if (owner.#m_palette !== null) return new CPalette(owner.#m_palette);
+            owner = owner.parent();
+        }
+        return new CPalette(CApplication.instance().palette());
     }
 
-    /** Sets the palette. */
+    /** Whether setPalette() has installed a local override, even if its colors
+     * happen to equal the inherited palette. */
+    hasExplicitPalette(): boolean { return this.#m_palette !== null; }
+
+    /** Installs a local palette snapshot. Inheriting descendants follow it;
+     * descendants with explicit palettes keep theirs. Passing propagate=true
+     * explicitly replaces palettes on all widget descendants, as before.
+     */
     setPalette(palette: CPalette, propagate = false): void {
-        const changed = !this.#m_palette.isEqual(palette);
-        /** Provides if behavior. */
-        if (changed)
-	        this.#m_palette = new CPalette(palette);
+        const changed = !this.palette().isEqual(palette);
+        this.#m_palette = new CPalette(palette);
+        if (propagate) {
+            for (const child of this.children())
+                if (child instanceof CWidget) child.setPalette(palette, true);
+        }
+        if (changed) this.update();
+    }
 
-	    /** Provides if behavior. */
-	    if (propagate) {
-		    /** Provides for behavior. */
-		    for (const child of this.children())
-			    child.setPalette(palette, true);
-	    }
-
-        /** Provides if behavior. */
-        if (changed)
-	        this.update();
+    /** Removes the local override and resumes inheritance. With propagate=true,
+     * removes explicit overrides from all widget descendants as well. */
+    resetPalette(propagate = false): void {
+        this.#m_palette = null;
+        if (propagate) {
+            for (const child of this.children())
+                if (child instanceof CWidget) child.resetPalette(true);
+        }
+        this.update();
     }
 
     /** Provides style behavior. */

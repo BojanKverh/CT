@@ -17,6 +17,7 @@ export { CPaintEngine } from "./painting/CPaintEngine.js";
 export { CCanvasPaintEngine } from "./painting/CCanvasPaintEngine.js";
 export { CPainter } from "./painting/CPainter.js";
 export { CPalette, CPaletteColorRole } from "./gui/CPalette.js";
+export { CCssPalette } from "./gui/CCssPalette.js";
 export { CFont, CFontStyle, CFontWeight, CFontStretch, CFontCapitalization } from "./gui/CFont.js";
 export { CApplication } from "./core/CApplication.js";
 export { CWidget } from "./widgets/CWidget.js";

@@ -1,3 +1,6 @@
+import { CObject } from "../../src/core/CObject.js";
+import { CPaletteColorRole } from "../../src/gui/CPalette.js";
+import { CColor } from "../../src/gui/CColor.js";
 import { CSizePolicy, CSizePolicyType } from "../../src/geometry/CSizePolicy.js";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { CApplication } from "../../src/core/CApplication";
@@ -1695,5 +1698,82 @@ describe("CWidget height for width", () => {
         expect(widget.hasHeightForWidth()).toBe(true);
         const copy = widget.sizePolicy(); copy.setHeightForWidth(false);
         expect(widget.sizePolicy().hasHeightForWidth()).toBe(true);
+    });
+});
+
+
+describe("CWidget live palette inheritance", () => {
+
+    const role = CPaletteColorRole.Base;
+    function theme(hex: string): CPalette {
+        const palette = new CPalette(); const color = new CColor(); color.setColor(hex);
+        palette.setColor(role, color); return palette;
+    }
+    function base(widget: CWidget): string { return widget.palette().color(role).toHex(); }
+    
+    test("inherits the current application palette without a local override", () => {
+        const widget = new CWidget();
+        expect(widget.hasExplicitPalette()).toBe(false);
+        CApplication.instance().setPalette(theme("#123456")); expect(base(widget)).toBe("#123456");
+    });
+    test("inherits later parent changes through multiple ancestors", () => {
+        const parent = new CWidget(), child = new CWidget(parent), leaf = new CWidget(child);
+        parent.setPalette(theme("#123456")); expect(base(leaf)).toBe("#123456");
+        parent.setPalette(theme("#abcdef")); expect(base(leaf)).toBe("#abcdef");
+        expect(child.hasExplicitPalette()).toBe(false); expect(leaf.hasExplicitPalette()).toBe(false);
+    });
+    test("a local subtree keeps its palette when the application theme changes", () => {
+        const root = new CWidget(), local = new CWidget(root), leaf = new CWidget(local);
+        local.setPalette(theme("#123456")); CApplication.instance().setPalette(theme("#abcdef"));
+        expect(base(root)).toBe("#abcdef"); expect(base(local)).toBe("#123456"); expect(base(leaf)).toBe("#123456");
+    });
+    test("setting equal colors still creates an explicit override", () => {
+        const widget = new CWidget(); widget.setPalette(widget.palette());
+        expect(widget.hasExplicitPalette()).toBe(true);
+        CApplication.instance().setPalette(theme("#123456")); expect(base(widget)).toBe("#ffffff");
+    });
+    test("resetPalette resumes inheritance from the current parent", () => {
+        const parent = new CWidget(), child = new CWidget(parent);
+        parent.setPalette(theme("#123456")); child.setPalette(theme("#abcdef")); child.resetPalette();
+        expect(child.hasExplicitPalette()).toBe(false); expect(base(child)).toBe("#123456");
+    });
+    test("resetPalette preserves explicit descendants unless propagation is requested", () => {
+        const parent = new CWidget(), child = new CWidget(parent), leaf = new CWidget(child);
+        parent.setPalette(theme("#123456")); child.setPalette(theme("#abcdef"));
+        parent.resetPalette(); expect(base(child)).toBe("#abcdef"); expect(base(leaf)).toBe("#abcdef");
+        parent.resetPalette(true); expect(child.hasExplicitPalette()).toBe(false); expect(base(leaf)).toBe("#ffffff");
+    });
+    test("propagate=true explicitly replaces existing descendant overrides", () => {
+        const parent = new CWidget(), child = new CWidget(parent);
+        child.setPalette(theme("#abcdef")); parent.setPalette(theme("#123456"), true);
+        expect(base(child)).toBe("#123456"); expect(child.hasExplicitPalette()).toBe(true);
+        CApplication.instance().setPalette(theme("#654321")); expect(base(child)).toBe("#123456");
+    });
+    test("propagates even if the parent already has the same palette", () => {
+        const parent = new CWidget(), child = new CWidget(parent); const palette = theme("#123456");
+        parent.setPalette(palette); child.setPalette(theme("#abcdef")); parent.setPalette(palette, true);
+        expect(base(child)).toBe("#123456");
+    });
+    test("copies local palette input and returned colors", () => {
+        const palette = theme("#123456"), widget = new CWidget(); widget.setPalette(palette);
+        palette.setColor(role, new CColor(1, 2, 3));
+        const read = widget.palette(); read.setColor(role, new CColor(4, 5, 6));
+        expect(base(widget)).toBe("#123456");
+    });
+    test("reparenting and detaching refresh inherited colors", () => {
+        const first = new CWidget(), second = new CWidget(), child = new CWidget(first);
+        first.setPalette(theme("#123456")); second.setPalette(theme("#abcdef"));
+        expect(base(child)).toBe("#123456"); child.setParent(second); expect(base(child)).toBe("#abcdef");
+        child.setParent(null); expect(base(child)).toBe("#ffffff");
+    });
+    test("reparenting preserves explicit colors", () => {
+        const owner = new CWidget(), child = new CWidget(); child.setPalette(theme("#123456"));
+        owner.setPalette(theme("#abcdef")); child.setParent(owner); expect(base(child)).toBe("#123456");
+    });
+    test("non-widget children do not break palette propagation", () => {
+        const parent = new CWidget(); const action = new CObject(parent);
+        const child = new CWidget(parent); parent.setPalette(theme("#123456"), true);
+        expect(base(child)).toBe("#123456"); parent.resetPalette(true); expect(base(child)).toBe("#ffffff");
+        expect(action.parent()).toBe(parent);
     });
 });

@@ -8,6 +8,46 @@
     <link rel="icon" type="image/png" sizes="320x320" href="./assets/canvas-toolkit.png">
 
     <style>
+        :root {
+            --ct-window: #e0e0e0;
+            --ct-window-text: #202020;
+            --ct-base: #ffffff;
+            --ct-text: #202020;
+            --ct-button: #f0f0f0;
+            --ct-button-text: #202020;
+            --ct-disabled-text: #808080;
+            --ct-highlight: #0078d7;
+            --ct-highlighted-text: #ffffff;
+            --ct-hover: #e0eef9;
+            --ct-tool-tip-base: #ffffdc;
+            --ct-tool-tip-text: #202020;
+            --ct-link: #0000ee;
+            --ct-light: #ffffff;
+            --ct-mid: #a0a0a0;
+            --ct-dark: #606060;
+            --ct-placeholder-text: #808080;
+        }
+
+        :root[data-ct-theme="dark"] {
+            --ct-window: #25282e;
+            --ct-window-text: #eeeeee;
+            --ct-base: #191c21;
+            --ct-text: #eeeeee;
+            --ct-button: #383d46;
+            --ct-button-text: #eeeeee;
+            --ct-disabled-text: #9298a2;
+            --ct-highlight: #258bd2;
+            --ct-highlighted-text: #ffffff;
+            --ct-hover: #3a4d61;
+            --ct-tool-tip-base: #3b3f46;
+            --ct-tool-tip-text: #ffffff;
+            --ct-link: #75baff;
+            --ct-light: #606874;
+            --ct-mid: #444b55;
+            --ct-dark: #111318;
+            --ct-placeholder-text: #9ba2ad;
+        }
+
         html,
         body {
             margin: 0;

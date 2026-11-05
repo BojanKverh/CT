@@ -1,3 +1,6 @@
+import { CPalette } from "../../src/gui/CPalette.js";
+import { CPaletteColorRole } from "../../src/gui/CPalette.js";
+import { CColor } from "../../src/gui/CColor.js";
 import { CPushButton } from "../../src/widgets/CPushButton.js";
 import { CNumberEdit } from "../../src/widgets/CNumberEdit.js";
 import { CLabel } from "../../src/widgets/CLabel.js";
@@ -3367,5 +3370,56 @@ describe("native clipboard copy policy", () => {
         const edit = focused(CEchoMode.Password); clipboard("copy");
         edit.setEchoMode(CEchoMode.Normal); const result = clipboard("copy");
         expect(result.setData).toHaveBeenCalledWith("text/plain", "secret");
+    });
+});
+
+
+describe("CApplication live themes", () => {
+
+    const role = CPaletteColorRole.Base;
+    function theme(hex: string): CPalette {
+        const palette = new CPalette(); const color = new CColor(); color.setColor(hex);
+        palette.setColor(role, color); return palette;
+    }
+    function base(widget: CWidget): string { return widget.palette().color(role).toHex(); }
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+
+    test("theme replacement reaches existing, hidden and newly created widgets", () => {
+        const app = CApplication.instance(), root = new CWidget(), child = new CWidget(root);
+        child.hide(); app.setPalette(theme("#123456"));
+        expect(base(root)).toBe("#123456"); expect(base(child)).toBe("#123456");
+        expect(base(new CWidget(root))).toBe("#123456");
+    });
+    test("theme replacement preserves explicit widget palettes", () => {
+        const app = CApplication.instance(), root = new CWidget(), local = new CWidget(root);
+        local.setPalette(theme("#abcdef")); app.setPalette(theme("#123456"));
+        expect(base(root)).toBe("#123456"); expect(base(local)).toBe("#abcdef");
+    });
+    test("reapplying a mutated palette instance schedules a repaint", () => {
+        const app = CApplication.instance(), widget = new CWidget(), palette = theme("#123456");
+        app.setPalette(palette); const repaint = vi.spyOn(app, "requestRepaint");
+        palette.setColor(role, new CColor(171, 205, 239)); app.setPalette(palette);
+        expect(base(widget)).toBe("#abcdef"); expect(repaint).toHaveBeenCalledOnce();
+    });
+    test("open and closed owned dialogs inherit the current theme", () => {
+        const owner = new CWidget(), dialog = new CDialog(owner), field = new CWidget(dialog);
+        dialog.exec(); CApplication.instance().setPalette(theme("#123456")); expect(base(field)).toBe("#123456");
+        dialog.close(); CApplication.instance().setPalette(theme("#abcdef")); dialog.open(); expect(base(field)).toBe("#abcdef");
+    });
+    test("parentless dialog inherits despite not being in the top-level widget stack", () => {
+        const dialog = new CDialog(); CApplication.instance().setPalette(theme("#123456"));
+        expect(base(dialog)).toBe("#123456"); dialog.exec(); expect(base(dialog)).toBe("#123456");
+    });
+    test("local dialog palette and its fields survive theme replacement", () => {
+        const dialog = new CDialog(), field = new CWidget(dialog); dialog.setPalette(theme("#abcdef"));
+        dialog.exec(); CApplication.instance().setPalette(theme("#123456")); expect(base(field)).toBe("#abcdef");
+        dialog.resetPalette(); expect(base(field)).toBe("#123456");
+    });
+    test("repeated light and dark switches update existing fields", () => {
+        const widget = new CWidget(), app = CApplication.instance();
+        for (const hex of ["#ffffff", "#191c21", "#ffffff", "#191c21"]) {
+            app.setPalette(theme(hex)); expect(base(widget)).toBe(hex);
+        }
     });
 });

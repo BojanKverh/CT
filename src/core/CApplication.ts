@@ -335,13 +335,11 @@ export class CApplication extends CObject {
     }
 
 /**
- * Sets the application palette and schedules a repaint.
+ * Sets the palette inherited by widgets without local overrides and repaints.
+ * Reapplying the same instance also repaints, for example after CCssPalette.reload().
  * @param palette Palette to use.
  */
     setPalette(palette: CPalette): void {
-	    if (this.#m_palette === palette)
-		    return;
-
 	    this.#m_palette = palette;
 	    this.requestRepaint();
     }
