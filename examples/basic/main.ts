@@ -1,3 +1,4 @@
+import { CSettings } from "../../src/core/CSettings.js";
 import { CPaletteColorRole } from "../../src/gui/CPalette.js";
 import {CApplication, CWidget, CPainter, CRect, CPoint, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
     CCheckBox, CLineEdit, CSlider, CProgressBar, CGroupBox, CSpinBox, CScrollBar, COrientation, CPixmap,
@@ -1166,15 +1167,18 @@ const canvas = document.querySelector<HTMLCanvasElement>("#canvas");
 if (canvas === null)
     throw new Error("Canvas element not found.");
 
-const themeStorageKey = "ct-demo-theme";
+const settings = new CSettings("ct-demo");
 // Restore before constructing the palette or any widgets.
-try {
-    const savedTheme = window.localStorage.getItem(themeStorageKey);
-    if (savedTheme === "light" || savedTheme === "dark")
-        document.documentElement.setAttribute("data-ct-theme", savedTheme);
-} catch {
-    // Storage may be blocked; the CSS default and manual theme switching still work.
+if (!settings.contains("theme")) {
+    try {
+        const previousTheme = window.localStorage.getItem("ct-demo-theme");
+        if (previousTheme === "light" || previousTheme === "dark")
+            settings.setValue("theme", previousTheme);
+    } catch { /* The demo can run without browser storage. */ }
 }
+const savedTheme = settings.value("theme", "light");
+if (savedTheme === "light" || savedTheme === "dark")
+    document.documentElement.setAttribute("data-ct-theme", savedTheme);
 
 const app = new CApplication(canvas);
 // Load the initial CSS theme before building the demo.
@@ -2454,8 +2458,7 @@ darkThemeAction.setChecked(document.documentElement.getAttribute("data-ct-theme"
 darkThemeAction.triggered.connect(() => {
     const theme = darkThemeAction.isChecked() ? "dark" : "light";
     document.documentElement.setAttribute("data-ct-theme", theme);
-    try { window.localStorage.setItem(themeStorageKey, theme); }
-    catch { /* Keep the selected theme even when persistence is unavailable. */ }
+    settings.setValue("theme", theme);
     cssPalette.reload();
     app.setPalette(cssPalette);
 });

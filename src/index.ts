@@ -145,3 +145,4 @@ export { CSequentialAnimationGroup } from "./animation/CSequentialAnimationGroup
 export { CAnimationDirection } from "./animation/CAbstractAnimation.js";
 export { CPauseAnimation } from "./animation/CPauseAnimation.js";
 export { CPropertyAnimation } from "./animation/CPropertyAnimation.js";
+export { CSettings } from "./core/CSettings.js";
