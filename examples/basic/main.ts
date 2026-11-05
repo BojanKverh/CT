@@ -1166,6 +1166,16 @@ const canvas = document.querySelector<HTMLCanvasElement>("#canvas");
 if (canvas === null)
     throw new Error("Canvas element not found.");
 
+const themeStorageKey = "ct-demo-theme";
+// Restore before constructing the palette or any widgets.
+try {
+    const savedTheme = window.localStorage.getItem(themeStorageKey);
+    if (savedTheme === "light" || savedTheme === "dark")
+        document.documentElement.setAttribute("data-ct-theme", savedTheme);
+} catch {
+    // Storage may be blocked; the CSS default and manual theme switching still work.
+}
+
 const app = new CApplication(canvas);
 // Load the initial CSS theme before building the demo.
 const cssPalette = new CCssPalette(canvas);
@@ -2442,7 +2452,10 @@ const darkThemeAction = new CAction("Dark theme", mainWindow);
 darkThemeAction.setCheckable(true);
 darkThemeAction.setChecked(document.documentElement.getAttribute("data-ct-theme") === "dark");
 darkThemeAction.triggered.connect(() => {
-    document.documentElement.setAttribute("data-ct-theme", darkThemeAction.isChecked() ? "dark" : "light");
+    const theme = darkThemeAction.isChecked() ? "dark" : "light";
+    document.documentElement.setAttribute("data-ct-theme", theme);
+    try { window.localStorage.setItem(themeStorageKey, theme); }
+    catch { /* Keep the selected theme even when persistence is unavailable. */ }
     cssPalette.reload();
     app.setPalette(cssPalette);
 });
