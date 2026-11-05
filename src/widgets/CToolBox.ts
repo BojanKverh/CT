@@ -61,8 +61,9 @@ export class CToolBox extends CWidget
 			const buttonIndex = this.#indexOfButton(button);
 
 			/** Provides if behavior. */
-			if (buttonIndex !== -1)
+			if (buttonIndex !== -1) {
 				this.setCurrentIndex(buttonIndex);
+			}
 		});
 
 		/** Provides if behavior. */

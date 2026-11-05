@@ -203,7 +203,8 @@ describe("CToolBoxButton", () => {
 			setTextAlign: vi.fn(),
 			setTextBaseline: vi.fn(),
 			drawText: vi.fn(),
-            setPen: vi.fn()
+            setPen: vi.fn(),
+            save: vi.fn(), restore: vi.fn(), clipRect: vi.fn(), setLineWidth: vi.fn()
 		} as unknown as CPainter;
 
 		const option = new CStyleOptionToolBoxButton;

@@ -1,3 +1,4 @@
+import { CPushButton } from "../../src/widgets/CPushButton.js";
 import { CNumberEdit } from "../../src/widgets/CNumberEdit.js";
 import { CNumberItemDelegate } from "../../src/widgets/CNumberItemDelegate.js";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -2722,5 +2723,58 @@ describe("CTableView", () => {
             expect(findEditor(table, CSpinBox)).not.toBeNull();
             expect(findEditor(table, CNumberEdit)).toBeNull();
         });
+    });
+});
+
+
+describe("CTableView row-sized scrollbar arrows", () => {
+
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+
+    function scrollableView(): CTableView {
+        const view = new CTableView(); view.setGeometry(0, 0, 320, 180);
+        view.setModel(new TestTableModel(Array.from({ length: 100 }, (_, i) => [`Row ${i}`, "Country", "30"])));
+        return view;
+    }
+    function pressArrow(view: CTableView, text: "▲" | "▼"): void {
+        const button = view.verticalScrollBar().children().find(
+            child => child instanceof CPushButton && child.text() === text
+        );
+        if (!(button instanceof CPushButton)) throw new Error(`Missing scrollbar arrow ${text}`);
+        const x = button.width() / 2, y = button.height() / 2;
+        button.event(new CMouseEvent(CEventType.MousePress, x, y, CMouseButton.LeftButton));
+        button.event(new CMouseEvent(CEventType.MouseRelease, x, y, CMouseButton.LeftButton));
+    }
+
+    test("vertical single step equals one row and page step remains the viewport height", () => {
+        const view = scrollableView(), bar = view.verticalScrollBar();
+        expect(bar.isVisible()).toBe(true);
+        expect(bar.singleStep()).toBe(CTableView.RowHeight);
+        expect(bar.pageStep()).toBe(view.viewport().height());
+    });
+    test("clicking the down and up arrow moves content by one row", () => {
+        const view = scrollableView();
+        pressArrow(view, "▼"); expect(view.scrollY()).toBe(CTableView.RowHeight);
+        expect(view.verticalScrollBar().value()).toBe(CTableView.RowHeight);
+        pressArrow(view, "▲"); expect(view.scrollY()).toBe(0);
+    });
+    test("arrows keep a fractional row offset while direct pixel scrolling remains available", () => {
+        const view = scrollableView(); view.setScrollY(7);
+        expect(view.scrollY()).toBe(7);
+        pressArrow(view, "▼"); expect(view.scrollY()).toBe(7 + CTableView.RowHeight);
+        pressArrow(view, "▲"); expect(view.scrollY()).toBe(7);
+    });
+    test("arrow movement clamps at the top and the final partial row", () => {
+        const view = scrollableView(), bar = view.verticalScrollBar();
+        pressArrow(view, "▲"); expect(view.scrollY()).toBe(0);
+        const maximum = bar.maximum(); bar.setValue(maximum - 3);
+        pressArrow(view, "▼"); expect(view.scrollY()).toBe(maximum);
+        pressArrow(view, "▼"); expect(view.scrollY()).toBe(maximum);
+    });
+    test("resizing the view retains the row step", () => {
+        const view = scrollableView(); view.setGeometry(0, 0, 400, 220);
+        expect(view.verticalScrollBar().singleStep()).toBe(CTableView.RowHeight);
+        pressArrow(view, "▼"); expect(view.scrollY()).toBe(CTableView.RowHeight);
     });
 });

@@ -526,6 +526,7 @@ function recordPainting() {
         setTextAlign: vi.fn(), setTextBaseline: vi.fn(), drawText: vi.fn(),
         drawRoundedRect: vi.fn(), strokeRect: vi.fn(), drawLine: vi.fn(),
         drawEllipse: vi.fn(), fillEllipse: vi.fn(), drawPixmap: vi.fn(),
+        clipRect: vi.fn(), setLineWidth: vi.fn(),
         save: vi.fn(() => { stack.push(fill); }),
         restore: vi.fn(() => { fill = stack.pop()!; })
     };
@@ -594,8 +595,10 @@ describe("button focus indicators", () => {
                 expect(rect.x() + rect.width()).toBeLessThanOrEqual(96);
                 expect(rect.y() + rect.height()).toBeLessThanOrEqual(26);
             }
-            expect(result.painter.save).toHaveBeenCalledOnce();
-            expect(result.painter.restore).toHaveBeenCalledOnce();
+            // Tool box headers save once for their chevron/text and once for focus.
+            const expectedSaves = variant.name === "tool box button" ? 2 : 1;
+            expect(result.painter.save).toHaveBeenCalledTimes(expectedSaves);
+            expect(result.painter.restore).toHaveBeenCalledTimes(expectedSaves);
         });
         test(`${variant.name}: no outline without focus or when disabled`, () => {
             expect(exercise(CStyleState.Enabled).dots()).toHaveLength(0);

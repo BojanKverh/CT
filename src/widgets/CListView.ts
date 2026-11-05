@@ -436,6 +436,12 @@ export class CListView extends CAbstractItemView {
 	}
 
 	#updateContentGeometry(): void {
+        // Arrow buttons move by one visual row; scrollbar values stay in pixels.
+        this.#m_scrollArea.verticalScrollBar().setSingleStep(
+            this.viewMode() === CListViewMode.IconMode
+                ? this.gridSize().height() + this.spacing()
+                : CListView.ItemHeight
+        );
         if (this.viewMode() === CListViewMode.IconMode) {
             const frame = this.#m_scrollArea.frameWidth();
             const size = this.#m_itemLayout.contentSize(this.model()?.rowCount() ?? 0,

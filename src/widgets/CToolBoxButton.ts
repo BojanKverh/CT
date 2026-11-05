@@ -58,7 +58,7 @@ export class CToolBoxButton extends CAbstractButton
 	{
 		return new CSize(
 			this.fontMetrics().textWidth(this.text()) +
-				2 * CToolBoxButton.#PADDING,
+				2 * CToolBoxButton.#PADDING + 16,
 			CToolBoxButton.#HEIGHT
 		);
 	}

@@ -85,6 +85,7 @@ export class CTreeView extends CAbstractItemView {
 		this.#m_contentWidget = new CTreeViewContentWidget(this);
 
 		this.#m_scrollArea.setWidget(this.#m_contentWidget);
+		this.#m_scrollArea.verticalScrollBar().setSingleStep(CTreeView.RowHeight);
 
 		this.#m_scrollArea.horizontalScrollBar().valueChanged.connect(
 			value => {

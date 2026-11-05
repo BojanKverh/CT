@@ -83,6 +83,7 @@ export class CTableView extends CAbstractItemView {
 			new CTableViewContentWidget(this);
 
 		this.#m_scrollArea.setWidget(this.#m_contentWidget);
+		this.#m_scrollArea.verticalScrollBar().setSingleStep(CTableView.RowHeight);
 
 		this.#m_scrollArea.horizontalScrollBar()
 			.valueChanged.connect(value => {

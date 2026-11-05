@@ -1210,7 +1210,23 @@ override drawToolBoxButton(painter: CPainter, option: CStyleOptionToolBoxButton)
 		painter.setFont(option.font);
 		painter.setTextAlign("left");
 		painter.setTextBaseline("middle");
-		painter.drawText(option.text, 8, option.rect.height() / 2);
+		// A geometric chevron avoids depending on the selected font's glyphs.
+        const centerX = option.rect.x() + 12;
+        const centerY = option.rect.y() + option.rect.height() / 2;
+        painter.save();
+        try {
+            painter.clipRect(option.rect);
+            painter.setStrokeStyle(palette.color(textRole).toCss());
+            painter.setLineWidth(1);
+            if (option.current) {
+                painter.drawLine(centerX - 4, centerY - 2, centerX, centerY + 2);
+                painter.drawLine(centerX, centerY + 2, centerX + 4, centerY - 2);
+            } else {
+                painter.drawLine(centerX - 2, centerY - 4, centerX + 2, centerY);
+                painter.drawLine(centerX + 2, centerY, centerX - 2, centerY + 4);
+            }
+            painter.drawText(option.text, option.rect.x() + 24, centerY);
+        } finally { painter.restore(); }
 		this.#drawButtonFocus(painter, option, textRole);
 	}
 

@@ -1,3 +1,4 @@
+import { CPushButton } from "../../src/widgets/CPushButton.js";
 import { vi } from "vitest";
 import { CListViewMode } from "../../src/widgets/CListViewHelper.js";
 import { CSize } from "../../src/geometry/CSize.js";
@@ -917,5 +918,86 @@ describe("CListView icon editing compatibility", () => {
         const view=new CListView(); view.setViewMode(CListViewMode.IconMode); view.setModel(new TestListModel());
         const activated=vi.fn(); view.activated.connect(activated); view.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress,"Enter"));
         expect(activated).not.toHaveBeenCalled();
+    });
+});
+
+
+describe("CListView row-sized scrollbar arrows", () => {
+
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+
+    function scrollableView(): CListView {
+        const view = new CListView(); view.setGeometry(0, 0, 320, 180);
+        view.setModel(new TestListModel(Array.from({ length: 100 }, (_, i) => `Row ${i}`)));
+        return view;
+    }
+    function pressArrow(view: CListView, text: "▲" | "▼"): void {
+        const button = view.verticalScrollBar().children().find(
+            child => child instanceof CPushButton && child.text() === text
+        );
+        if (!(button instanceof CPushButton)) throw new Error(`Missing scrollbar arrow ${text}`);
+        const x = button.width() / 2, y = button.height() / 2;
+        button.event(new CMouseEvent(CEventType.MousePress, x, y, CMouseButton.LeftButton));
+        button.event(new CMouseEvent(CEventType.MouseRelease, x, y, CMouseButton.LeftButton));
+    }
+
+    test("vertical single step equals one row and page step remains the viewport height", () => {
+        const view = scrollableView(), bar = view.verticalScrollBar();
+        expect(bar.isVisible()).toBe(true);
+        expect(bar.singleStep()).toBe(CListView.ItemHeight);
+        expect(bar.pageStep()).toBe(view.viewport().height());
+    });
+    test("clicking the down and up arrow moves content by one row", () => {
+        const view = scrollableView();
+        pressArrow(view, "▼"); expect(view.scrollY()).toBe(CListView.ItemHeight);
+        expect(view.verticalScrollBar().value()).toBe(CListView.ItemHeight);
+        pressArrow(view, "▲"); expect(view.scrollY()).toBe(0);
+    });
+    test("arrows keep a fractional row offset while direct pixel scrolling remains available", () => {
+        const view = scrollableView(); view.setScrollY(7);
+        expect(view.scrollY()).toBe(7);
+        pressArrow(view, "▼"); expect(view.scrollY()).toBe(7 + CListView.ItemHeight);
+        pressArrow(view, "▲"); expect(view.scrollY()).toBe(7);
+    });
+    test("arrow movement clamps at the top and the final partial row", () => {
+        const view = scrollableView(), bar = view.verticalScrollBar();
+        pressArrow(view, "▲"); expect(view.scrollY()).toBe(0);
+        const maximum = bar.maximum(); bar.setValue(maximum - 3);
+        pressArrow(view, "▼"); expect(view.scrollY()).toBe(maximum);
+        pressArrow(view, "▼"); expect(view.scrollY()).toBe(maximum);
+    });
+    test("resizing the view retains the row step", () => {
+        const view = scrollableView(); view.setGeometry(0, 0, 400, 220);
+        expect(view.verticalScrollBar().singleStep()).toBe(CListView.ItemHeight);
+        pressArrow(view, "▼"); expect(view.scrollY()).toBe(CListView.ItemHeight);
+    });
+
+    test("icon-mode arrows move by a cell height plus its spacing", () => {
+        const view = scrollableView();
+        view.setGridSize(new CSize(70, 80)); view.setSpacing(10); view.setViewMode(CListViewMode.IconMode);
+        expect(view.verticalScrollBar().singleStep()).toBe(90);
+        pressArrow(view, "▼"); expect(view.scrollY()).toBe(90);
+        pressArrow(view, "▲"); expect(view.scrollY()).toBe(0);
+    });
+    test("changing icon grid height updates the next arrow movement", () => {
+        const view = scrollableView(); view.setViewMode(CListViewMode.IconMode);
+        view.setGridSize(new CSize(70, 60)); view.setSpacing(10);
+        expect(view.verticalScrollBar().singleStep()).toBe(70);
+        pressArrow(view, "▼"); expect(view.scrollY()).toBe(70);
+    });
+    test("changing icon spacing updates the next arrow movement", () => {
+        const view = scrollableView(); view.setViewMode(CListViewMode.IconMode);
+        view.setGridSize(new CSize(70, 80)); view.setSpacing(0);
+        expect(view.verticalScrollBar().singleStep()).toBe(80);
+        view.setSpacing(15); expect(view.verticalScrollBar().singleStep()).toBe(95);
+        pressArrow(view, "▼"); expect(view.scrollY()).toBe(95);
+    });
+    test("returning from icon mode restores the list row step", () => {
+        const view = scrollableView(); view.setViewMode(CListViewMode.IconMode);
+        view.setGridSize(new CSize(70, 80)); view.setSpacing(10);
+        view.setViewMode(CListViewMode.ListMode);
+        expect(view.verticalScrollBar().singleStep()).toBe(CListView.ItemHeight);
+        pressArrow(view, "▼"); expect(view.scrollY()).toBe(CListView.ItemHeight);
     });
 });

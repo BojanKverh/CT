@@ -1,3 +1,11 @@
+import { vi } from "vitest";
+import { CDefaultStyle } from "../../src/gui/CDefaultStyle.js";
+import { CStyleOptionToolBoxButton } from "../../src/gui/CStyleOptionToolBoxButton.js";
+import { CStyleState } from "../../src/gui/CStyleOption.js";
+import { CPaletteColorRole } from "../../src/gui/CPalette.js";
+import { CRect } from "../../src/geometry/CRect.js";
+import type { CPainter } from "../../src/painting/CPainter.js";
+import { CToolBoxButton } from "../../src/widgets/CToolBoxButton.js";
 import { beforeEach, afterEach, describe, expect, test } from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
 import { CSize } from "../../src/geometry/CSize.js";
@@ -478,4 +486,71 @@ describe("CToolBox", () => {
 
 		expect(toolBox.sizeHint().height()).toBe(176);
 	});
+});
+
+describe("CToolBox section chevrons", () => {
+    beforeEach(() => { new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+
+    function paint(current: boolean, enabled = true, x = 0, y = 0) {
+        const option = new CStyleOptionToolBoxButton();
+        option.rect = new CRect(x, y, 200, 28);
+        option.text = "General"; option.current = current;
+        option.state = enabled ? CStyleState.Enabled : 0;
+        const painter = {
+            setFillStyle: vi.fn(), fillRect: vi.fn(), setStrokeStyle: vi.fn(),
+            drawLine: vi.fn(), setPen: vi.fn(), setFont: vi.fn(),
+            setTextAlign: vi.fn(), setTextBaseline: vi.fn(), drawText: vi.fn(),
+            save: vi.fn(), restore: vi.fn(), clipRect: vi.fn(), setLineWidth: vi.fn()
+        };
+        new CDefaultStyle().drawToolBoxButton(painter as unknown as CPainter, option);
+        // First line is the existing bottom separator; remaining two form the chevron.
+        return { option, painter, lines: painter.drawLine.mock.calls.slice(1) };
+    }
+
+    test("closed section draws a right-facing chevron", () => {
+        const { lines } = paint(false);
+		expect(lines).toEqual([[10, 10, 14, 14], [14, 14, 10, 18]]);
+    });
+    test("open section draws a downward-facing chevron", () => {
+        const { lines } = paint(true);
+		expect(lines).toEqual([[8, 12, 12, 16], [12, 16, 16, 12]]);
+    });
+    test("normal chevron uses the text color", () => {
+        const { option, painter } = paint(false);
+        expect(painter.setStrokeStyle).toHaveBeenCalledWith(option.palette.color(CPaletteColorRole.Text).toCss());
+    });
+    test("open chevron uses highlighted text color", () => {
+        const { option, painter } = paint(true);
+        expect(painter.setStrokeStyle).toHaveBeenCalledWith(option.palette.color(CPaletteColorRole.HighlightedText).toCss());
+    });
+    for (const current of [false, true]) {
+        test(`disabled ${current ? "open" : "closed"} chevron uses DisabledText`, () => {
+            const { option, painter } = paint(current, false);
+            expect(painter.setStrokeStyle).toHaveBeenCalledWith(option.palette.color(CPaletteColorRole.DisabledText).toCss());
+        });
+    }
+    test("caption reserves space for the chevron", () => {
+        const { painter } = paint(false);
+        expect(painter.drawText).toHaveBeenCalledWith("General", 24, 14);
+        expect(painter.clipRect).toHaveBeenCalledOnce();
+        expect(painter.save).toHaveBeenCalledOnce(); expect(painter.restore).toHaveBeenCalledOnce();
+    });
+    test("chevron and caption follow an offset style rectangle", () => {
+        const { lines, painter } = paint(true, true, 20, 30);
+        expect(lines).toEqual([[28, 42, 32, 46], [32, 46, 36, 42]]);
+		expect(painter.drawText).toHaveBeenCalledWith("General", 44, 44);
+    });
+    test("button size hint includes the chevron and spacing", () => {
+        const button = new CToolBoxButton(); button.setText("General");
+        expect(button.sizeHint().width()).toBe(button.fontMetrics().textWidth("General") + 32);
+        expect(button.sizeHint().height()).toBe(28);
+    });
+    test("style option follows the button when its current state changes", () => {
+        const button = new CToolBoxButton(); button.setText("General");
+        const option = new CStyleOptionToolBoxButton(); option.initFromToolBoxButton(button);
+        expect(option.current).toBe(false);
+        button.setCurrent(true); option.initFromToolBoxButton(button); expect(option.current).toBe(true);
+        button.setCurrent(false); option.initFromToolBoxButton(button); expect(option.current).toBe(false);
+    });
 });
