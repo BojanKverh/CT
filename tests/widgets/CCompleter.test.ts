@@ -212,4 +212,15 @@ describe("CCompleter", () => {
 		editor.insert("M");
 		expect(completer.popup().isOpen()).toBe(false);
 	});
+    test("additional filter applies to string sources and can be cleared", () => {
+        const c = new CCompleter(["Mercator", "Merkur"]); c.setCompletionFilter(value => value !== "Merkur");
+        c.complete("Mer"); expect(c.completionCount()).toBe(1); c.setCompletionFilter(null); c.complete("Mer"); expect(c.completionCount()).toBe(2);
+        c.destroy();
+    });
+    test("additional filter applies to model sources", () => {
+        const model = new CompletionModel(); const c = new CCompleter(model); c.setCompletionColumn(1);
+        c.setCompletionFilter(value => value === "Merkur"); c.complete("Mer"); expect(c.completionCount()).toBe(1);
+        c.destroy(); model.destroy();
+    });
+
 });

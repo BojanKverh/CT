@@ -32,6 +32,7 @@ export class CCompleter extends CObject {
 	#m_disconnectWidget: (() => void) | null = null;
 	#m_disconnectModelSignals: Array<() => void> = [];
 	#m_activating = false;
+	#m_completionFilter: ((value: string) => boolean) | null = null;
 
 	constructor(
 		source: string[] | CAbstractItemModel | null = null,
@@ -137,6 +138,13 @@ export class CCompleter extends CObject {
 		this.#refresh();
 	}
 
+	/** Additional filtering applied to both string and model sources. */
+	completionFilter(): ((value: string) => boolean) | null { return this.#m_completionFilter; }
+	setCompletionFilter(filter: ((value: string) => boolean) | null): void {
+		this.#m_completionFilter = filter;
+		this.#refresh();
+	}
+
 	completionPrefix(): string {
 		return this.#m_completionPrefix;
 	}
@@ -166,6 +174,7 @@ export class CCompleter extends CObject {
 			this.#m_listWidget.addItem(match);
 
 		if (this.#m_widget === null || this.#m_widget.isReadOnly()
+			|| !this.#m_widget.canReceiveFocus()
 			|| prefix.length === 0 || this.#m_matches.length === 0) {
 			this.hidePopup();
 			return;
@@ -256,7 +265,7 @@ export class CCompleter extends CObject {
 				=== CCompleterCaseSensitivity.CaseSensitive
 				? value
 				: value.toLocaleLowerCase();
-			return candidate.startsWith(needle);
+			return candidate.startsWith(needle) && (this.#m_completionFilter?.(value) ?? true);
 		});
 	}
 

@@ -1,3 +1,4 @@
+import { CCompleter } from "../../src/widgets/CCompleter.js";
 import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
 import { beforeEach, afterEach, describe, expect, test, vi } from "vitest";
 import { CTagEdit } from "../../src/widgets/CTagEdit.js";
@@ -167,6 +168,64 @@ describe("CTagEdit", () => {
     test("pending text retains the line editor's undo behavior", () => {
         edit.setTags(["Committed"]); key("A"); key("B"); expect(edit.lineEdit().canUndo()).toBe(true);
         edit.lineEdit().undo(); expect(edit.lineEdit().text()).not.toBe("AB"); expect(edit.tags()).toEqual(["Committed"]);
+    });
+
+    function completion(): CCompleter {
+        const c = new CCompleter(["Accounting", "Accounts", "Paid", "Urgent"], edit);
+        edit.setCompleter(c); edit.setFocus(); return c;
+    }
+    test("associates the completer with the inner editor", () => {
+        const c = completion(); expect(edit.completer()).toBe(c); expect(c.widget()).toBe(edit.lineEdit());
+    });
+    test("Enter selects a suggestion and commits it once", () => {
+        const c = completion(); edit.lineEdit().insert("Acc"); const changed = vi.fn(); edit.tagsChanged.connect(changed);
+        key("Enter"); expect(edit.tags()).toEqual(["Accounting"]); expect(edit.lineEdit().text()).toBe("");
+        expect(changed).toHaveBeenCalledOnce(); expect(c.popup().isOpen()).toBe(false);
+    });
+    test("arrows choose another suggestion", () => {
+        completion(); edit.lineEdit().insert("Acc"); key("ArrowDown"); key("Enter"); expect(edit.tags()).toEqual(["Accounts"]);
+    });
+    test("mouse selection commits a suggestion", () => {
+        const c = completion(); edit.lineEdit().insert("Acc"); c.listWidget().itemClicked.emit(c.listWidget().item(1)!);
+        expect(edit.tags()).toEqual(["Accounts"]); expect(edit.lineEdit().hasFocus()).toBe(true);
+    });
+    test("selected tags are excluded without changing the source", () => {
+        const c = completion(); edit.setTags(["Accounting"]); c.complete("Acc");
+        expect(c.completionCount()).toBe(1); expect(c.currentCompletion()).toBe("Accounts"); expect(c.stringList().length).toBe(4);
+    });
+    test("removing a tag makes it available again", () => {
+        const c = completion(); edit.addTag("Accounting"); c.complete("Acc"); edit.removeTag("Accounting");
+        expect(c.completionCount()).toBe(2);
+    });
+    test("normalization also excludes whitespace-padded suggestions", () => {
+        const c = completion(); c.setStringList([" Accounting "]); edit.addTag("Accounting"); c.complete(" "); expect(c.completionCount()).toBe(0);
+    });
+    test("unknown text remains a valid custom tag", () => {
+        completion(); edit.lineEdit().insert("Custom"); key("Enter"); expect(edit.tags()).toEqual(["Custom"]);
+    });
+    test("Escape closes suggestions without committing", () => {
+        const c = completion(); edit.lineEdit().insert("Acc"); key("Escape"); expect(c.popup().isOpen()).toBe(false);
+        expect(edit.count()).toBe(0); expect(edit.lineEdit().text()).toBe("Acc");
+    });
+    test("readonly and disabled modes close suggestions", () => {
+        const c = completion(); edit.lineEdit().insert("Acc"); edit.setReadOnly(true); expect(c.popup().isOpen()).toBe(false);
+        edit.setReadOnly(false); c.complete("Acc"); edit.setEnabled(false); expect(c.popup().isOpen()).toBe(false);
+    });
+    test("detaching restores an existing filter and disconnects activation", () => {
+        const c = new CCompleter(["Accounting", "Paid"], edit); const filter = (value: string): boolean => value !== "Paid";
+        c.setCompletionFilter(filter); edit.setCompleter(c); edit.setCompleter(null);
+        expect(c.completionFilter()).toBe(filter); expect(c.widget()).toBeNull(); c.activated.emit("Accounting"); expect(edit.count()).toBe(0);
+    });
+    test("replacement detaches the old completer", () => {
+        const first = completion(), next = new CCompleter(["Next"], edit); edit.setCompleter(next);
+        expect(first.widget()).toBeNull(); expect(first.completionFilter()).toBeNull(); expect(next.widget()).toBe(edit.lineEdit());
+    });
+    test("same completer is not connected twice", () => {
+        const c = completion(); edit.setCompleter(c); edit.lineEdit().insert("Acc"); key("Enter"); expect(edit.tags()).toEqual(["Accounting"]);
+    });
+    test("tag filter composes with a preexisting filter", () => {
+        const c = new CCompleter(["Accounting", "Accounts"], edit); c.setCompletionFilter(value => value !== "Accounts");
+        edit.setCompleter(c); edit.addTag("Accounting"); c.complete("Acc"); expect(c.completionCount()).toBe(0);
     });
 
 });

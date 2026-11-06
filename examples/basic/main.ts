@@ -1109,9 +1109,12 @@ function showTagEditDemo(parent: CWidget): void {
     dialog.setMinimumSize(380, 400); dialog.setGeometry(0, 0, 680, 460);
     const layout = new CVBoxLayout(); layout.setContentsMargins(16, 16, 16, 16); layout.setSpacing(12);
     const hint = new CLabel(dialog); hint.setWordWrap(true);
-    hint.setText("Type a tag and press Enter. Click × to remove it, or use Backspace on empty input. Resize to wrap tags; duplicates are ignored."); layout.addWidget(hint);
+    hint.setText("Type Cr, Pa or Ur for suggestions; choose with arrows and Enter, or click. Enter also adds custom tags. Already selected categories are hidden. × removes a tag."); layout.addWidget(hint);
     const tags = new CTagEdit(dialog); tags.setPlaceholderText("New category…");
     tags.setTags(["Accounting", "Invoices", "Needs review", "Fiscal year 2026"]); layout.addWidget(tags);
+    const completer = new CCompleter(["Accounting", "Invoices", "Needs review", "Fiscal year 2026",
+        "Credit notes", "Paid", "Pending", "Payroll", "Urgent", "Unpaid"], tags);
+    tags.setCompleter(completer);
     const status = new CLabel(dialog); status.setWordWrap(true);
     const update = (): void => status.setText(`Tags (${tags.count()}): ${tags.tags().join(", ") || "none"}`);
     tags.tagsChanged.connect(update); update(); layout.addWidget(status);

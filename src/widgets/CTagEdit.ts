@@ -14,6 +14,7 @@ import { CStyleOptionTagEdit } from "../gui/CStyleOptionTagEdit.js";
 import { CFlowLayout } from "../layouts/CFlowLayout.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CLineEdit } from "./CLineEdit.js";
+import type { CCompleter } from "./CCompleter.js";
 import { CWidget } from "./CWidget.js";
 
 class TagLineEdit extends CLineEdit {
@@ -78,6 +79,10 @@ export class CTagEdit extends CWidget {
     #editor: TagLineEdit;
     #flow = new CFlowLayout();
     #readOnly = false;
+    #completer: CCompleter | null = null;
+    #disconnectCompletion: (() => void) | null = null;
+    #previousFilter: ((value: string) => boolean) | null = null;
+    #tagFilter: ((value: string) => boolean) | null = null;
     readonly tagsChanged = new CSignal<[string[]]>();
 
     constructor(parent: CWidget | null = null) {
@@ -96,6 +101,28 @@ export class CTagEdit extends CWidget {
     tags(): string[] { return [...this.#tags]; }
     count(): number { return this.#tags.length; }
     lineEdit(): CLineEdit { return this.#editor; }
+    completer(): CCompleter | null { return this.#completer; }
+    /** Borrows a completer; its original source and filter are retained. */
+    setCompleter(completer: CCompleter | null): void {
+        if (completer === this.#completer) return;
+        this.#disconnectCompletion?.(); this.#disconnectCompletion = null;
+        this.#editor.setCompleter(null);
+        if (this.#completer?.completionFilter() === this.#tagFilter)
+            this.#completer.setCompletionFilter(this.#previousFilter);
+        this.#completer = completer;
+        this.#previousFilter = completer?.completionFilter() ?? null;
+        const previous = this.#previousFilter;
+        this.#tagFilter = value => (previous?.(value) ?? true)
+            && !this.#tags.includes(this.#normalize(value));
+        if (completer !== null) {
+            completer.setCompletionFilter(this.#tagFilter);
+            this.#editor.setCompleter(completer);
+            this.#disconnectCompletion = completer.activated.connect(() => {
+                if (completer.widget() === this.#editor) this.commit();
+            });
+        }
+    }
+    override destroy(): void { this.setCompleter(null); super.destroy(); }
     isReadOnly(): boolean { return this.#readOnly; }
     placeholderText(): string { return this.#editor.placeholderText(); }
     setPlaceholderText(text: string): void { this.#editor.setPlaceholderText(text); this.#editor.updateGeometry(); }
@@ -103,7 +130,9 @@ export class CTagEdit extends CWidget {
     setTags(tags: readonly string[]): void {
         const next = [...new Set(tags.map(text => this.#normalize(text)).filter(text => text.length > 0))];
         if (next.length === this.#tags.length && next.every((text, i) => text === this.#tags[i])) return;
-        this.#tags = next; this.#rebuild(); this.tagsChanged.emit(this.tags());
+        this.#tags = next; this.#rebuild();
+        if (this.#completer?.completionFilter() === this.#tagFilter)
+            this.#completer.setCompletionFilter(this.#tagFilter); this.tagsChanged.emit(this.tags());
     }
     addTag(text: string): boolean {
         const normalized = this.#normalize(text);
@@ -121,13 +150,15 @@ export class CTagEdit extends CWidget {
         if (this.#readOnly || !this.isEnabled()) return false;
         const text = this.#normalize(this.#editor.text());
         if (!text) return false;
-        const added = this.addTag(text); this.#editor.setText(""); return added;
+        const added = this.addTag(text); this.#editor.setText(""); this.#completer?.hidePopup(); return added;
     }
     setReadOnly(readOnly: boolean): void {
         if (this.#readOnly === readOnly) return;
+        if (readOnly) this.#completer?.hidePopup();
         this.#readOnly = readOnly; this.#editor.setReadOnly(readOnly); this.#rebuild();
     }
     override setEnabled(enabled: boolean): void {
+        if (!enabled) this.#completer?.hidePopup();
         super.setEnabled(enabled); this.#editor.setEnabled(enabled);
         for (const chip of this.#chips) chip.setEnabled(enabled);
     }
