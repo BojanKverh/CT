@@ -1,3 +1,5 @@
+import { CKeyEvent } from "../../src/events/CKeyEvent.js";
+import { CCursorShape } from "../../src/gui/CCursorShape.js";
 import { CFormLayout } from "../../src/layouts/CFormLayout.js";
 import { CWidget } from "../../src/widgets/CWidget.js";
 import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
@@ -507,4 +509,119 @@ describe("CLabel wrapping geometry updates", () => {
         expect(label.heightForWidth(100)).toBe(-1);
         label.setPixmap(null); expect(label.hasHeightForWidth()).toBe(true);
     });
+});
+
+describe("CLabel hyperlinks", () => {
+    let label: TestLabel;
+    let opened: ReturnType<typeof vi.fn>;
+    beforeEach(() => {
+        if (CApplication.exists()) CApplication.instance().destroy();
+        opened = vi.fn();
+        vi.stubGlobal("window", { open: opened, addEventListener: vi.fn(), removeEventListener: vi.fn(), devicePixelRatio: 1 });
+        vi.stubGlobal("document", { baseURI: "http://localhost/" });
+        new CApplication(createTestCanvas()); label = new TestLabel(); label.resize(300, 60);
+        label.setAlignment(CAlignment.Left | CAlignment.Top);
+        vi.spyOn(label.fontMetrics(), "textWidth").mockImplementation(text => text.length * 8);
+        vi.spyOn(label.fontMetrics(), "height").mockImplementation(() => 16);
+    });
+    afterEach(() => {
+        try { label?.destroy(); }
+        finally {
+            try { if (CApplication.exists()) CApplication.instance().destroy(); }
+            finally { vi.unstubAllGlobals(); }
+        }
+    });
+    function links(): void { label.setText('Visit <a href="https://example.com/">Example</a> or <a href="app:partner/42">Partner</a>.'); }
+    function click(x = 55, y = 8): void {
+        label.event(new CMouseEvent(CEventType.MousePress, x, y, CMouseButton.LeftButton));
+        label.event(new CMouseEvent(CEventType.MouseRelease, x, y, CMouseButton.LeftButton));
+    }
+    function key(name: string): void { label.event(new CKeyEvent(CEventType.KeyPress, name)); }
+    function painter() {
+        const p = { save: vi.fn(), restore: vi.fn(), clipRect: vi.fn(), setBrush: vi.fn(), fillRect: vi.fn(), setPen: vi.fn(),
+            setLineWidth: vi.fn(), setFont: vi.fn(), setTextAlign: vi.fn(), setTextBaseline: vi.fn(), drawText: vi.fn(), drawLine: vi.fn(), strokeRect: vi.fn() };
+        return { p, paint: p as unknown as CPainter };
+    }
+    test("external opening is opt-in", () => { expect(label.openExternalLinks()).toBe(false); label.setOpenExternalLinks(true); expect(label.openExternalLinks()).toBe(true); });
+    test("anchor markup is hidden from display and measurement", () => {
+        links(); expect(label.displayText()).toBe("Visit Example or Partner."); expect(label.sizeHint().width()).toBe(25 * 8 + 12);
+    });
+    test("recognizes single quoted, unquoted and uppercase hrefs", () => {
+        label.setText("<A HREF='https://example.com'>One</A> <a href=app:two>Two</a>");
+        expect(label.displayText()).toBe("One Two"); expect(label.linkAt(4, 8)).toBe("https://example.com"); expect(label.linkAt(36, 8)).toBe("app:two");
+    });
+    test("decodes entities in link captions and addresses", () => {
+        label.setText('<a href="https://example.com/?a=1&amp;b=2">A &amp; B &#x1f600;</a>');
+        expect(label.displayText()).toBe("A & B 😀"); expect(label.linkAt(4, 8)).toBe("https://example.com/?a=1&b=2");
+    });
+    test("plain text and buddy mnemonics remain unchanged", () => {
+        const buddy = new CWidget(); buddy.setFocusPolicy(CFocusPolicy.StrongFocus); label.setBuddy(buddy); label.setText("&Name && surname");
+        expect(label.displayText()).toBe("Name & surname"); expect(label.mnemonic()).toBe("N"); buddy.destroy();
+    });
+    test("click emits the URL without opening by default", () => {
+        links(); const activated = vi.fn(); label.linkActivated.connect(activated); click(); expect(activated).toHaveBeenCalledWith("https://example.com/"); expect(opened).not.toHaveBeenCalled();
+    });
+    test("external opening uses a protected new browser tab", () => {
+        links(); label.setOpenExternalLinks(true); click(); expect(opened).toHaveBeenCalledWith("https://example.com/", "_blank", "noopener,noreferrer");
+    });
+    test("executable and data URLs are never automatically opened", () => {
+        label.setOpenExternalLinks(true); const activated = vi.fn(); label.linkActivated.connect(activated);
+        for (const url of ["javascript:alert(1)", "data:text/html,test", "vbscript:msgbox(1)", "app:partner/42"]) {
+            label.setText(`<a href="${url}">Open</a>`); click(4); expect(label.linkAt(4, 8)).toBe(url);
+        }
+        expect(opened).not.toHaveBeenCalled(); expect(activated).toHaveBeenCalledTimes(4);
+    });
+    test("mailto links can be opened", () => {
+        label.setText('<a href="mailto:info@example.com">Mail</a>'); label.setOpenExternalLinks(true); click(4);
+        expect(opened).toHaveBeenCalledWith("mailto:info@example.com", "_blank", "noopener,noreferrer");
+    });
+    test("nonlink text and blank label areas do not activate", () => { links(); const f = vi.fn(); label.linkActivated.connect(f); click(4); click(290); click(55, 40); expect(f).not.toHaveBeenCalled(); });
+    test("press and release must stay on the same link", () => {
+        links(); const f = vi.fn(); label.linkActivated.connect(f);
+        label.event(new CMouseEvent(CEventType.MousePress, 55, 8, CMouseButton.LeftButton));
+        label.event(new CMouseEvent(CEventType.MouseRelease, 150, 8, CMouseButton.LeftButton)); expect(f).not.toHaveBeenCalled();
+    });
+    test("right click and release without press do not activate", () => {
+        links(); const f = vi.fn(); label.linkActivated.connect(f);
+        label.event(new CMouseEvent(CEventType.MousePress, 55, 8, CMouseButton.RightButton));
+        label.event(new CMouseEvent(CEventType.MouseRelease, 55, 8, CMouseButton.RightButton));
+        label.event(new CMouseEvent(CEventType.MouseRelease, 55, 8, CMouseButton.LeftButton)); expect(f).not.toHaveBeenCalled();
+    });
+    test("links take keyboard focus and Enter activates the first", () => {
+        links(); expect(label.focusPolicy()).toBe(CFocusPolicy.StrongFocus); label.setFocus(); const f = vi.fn(); label.linkActivated.connect(f); key("Enter"); expect(f).toHaveBeenCalledWith("https://example.com/");
+    });
+    test("arrows and Home/End navigate multiple links", () => {
+        links(); const f = vi.fn(); label.linkActivated.connect(f); key("ArrowRight"); key("Return"); expect(f).toHaveBeenCalledWith("app:partner/42");
+        key("Home"); key("Enter"); expect(f).toHaveBeenCalledWith("https://example.com/"); key("End"); key("Enter"); expect(f).toHaveBeenCalledTimes(3);
+    });
+    test("removing links restores the previous focus policy", () => { links(); label.setText("Plain"); expect(label.focusPolicy()).toBe(CFocusPolicy.NoFocus); });
+    test("pixmap display disables links and restores them on clearing", () => {
+        links(); label.setPixmap(new CPixmap({} as CanvasImageSource, 20, 20)); expect(label.linkAt(55, 8)).toBeNull(); expect(label.focusPolicy()).toBe(CFocusPolicy.NoFocus);
+        label.setPixmap(null); expect(label.linkAt(55, 8)).toBe("https://example.com/"); expect(label.focusPolicy()).toBe(CFocusPolicy.StrongFocus);
+    });
+    test("disabled label cannot activate links", () => { links(); const f = vi.fn(); label.linkActivated.connect(f); label.setEnabled(false); click(); key("Enter"); expect(f).not.toHaveBeenCalled(); });
+    test("hover uses a pointing hand only over a link", () => {
+        links(); const normal = label.cursor(); label.event(new CMouseEvent(CEventType.MouseMove, 55, 8, CMouseButton.NoButton)); expect(label.cursor()).toBe(CCursorShape.PointingHand);
+        label.event(new CMouseEvent(CEventType.MouseMove, 2, 8, CMouseButton.NoButton)); expect(label.cursor()).toBe(normal);
+    });
+    test("right and bottom alignment share painting and hit geometry", () => {
+        label.setText('<a href="app:test">Test</a>'); label.setAlignment(CAlignment.Right | CAlignment.Bottom);
+        expect(label.linkAt(299, 59)).toBe("app:test"); expect(label.linkAt(4, 8)).toBeNull();
+    });
+    test("wrapped links remain clickable on successive lines", () => {
+        label.setText('<a href="app:test">abcdefghij</a>'); label.setWordWrap(true); label.resize(52, 80);
+        expect(label.heightForWidth(52)).toBe(38); expect(label.linkAt(10, 8)).toBe("app:test"); expect(label.linkAt(10, 24)).toBe("app:test");
+    });
+    test("text changes cancel a pending click", () => {
+        links(); const f = vi.fn(); label.linkActivated.connect(f); label.event(new CMouseEvent(CEventType.MousePress, 55, 8, CMouseButton.LeftButton));
+        label.setText('<a href="app:other">Other link</a>'); label.event(new CMouseEvent(CEventType.MouseRelease, 55, 8, CMouseButton.LeftButton)); expect(f).not.toHaveBeenCalled();
+    });
+    test("paint uses Link color and underlines hyperlink runs", () => {
+        links(); const r = painter(); label.paint(r.paint); expect(r.p.setPen).toHaveBeenCalledWith(label.palette().color(CPaletteColorRole.Link).toCss());
+        expect(r.p.drawLine).toHaveBeenCalledTimes(2); expect(r.p.save.mock.calls.length).toBe(r.p.restore.mock.calls.length);
+    });
+    test("disabled hyperlink paint uses DisabledText", () => {
+        links(); label.setEnabled(false); const r = painter(); label.paint(r.paint); expect(r.p.setPen).toHaveBeenCalledWith(label.palette().color(CPaletteColorRole.DisabledText).toCss());
+    });
+    test("focused link has a visible focus rectangle", () => { links(); label.setFocus(); const r = painter(); label.paint(r.paint); expect(r.p.strokeRect).toHaveBeenCalledOnce(); });
 });

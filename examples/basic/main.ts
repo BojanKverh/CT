@@ -1148,6 +1148,20 @@ function showToggleSwitchDemo(parent: CWidget, darkThemeAction: CAction): void {
     dialog.setLayout(layout); dialog.open(); theme.setFocus();
 }
 
+function showLabelLinksDemo(parent: CWidget): void {
+    const dialog = new CDialog(parent); dialog.setWindowTitle("CLabel hyperlinks");
+    dialog.setMinimumSize(380, 280); dialog.setGeometry(0, 0, 600, 340);
+    const layout = new CVBoxLayout(); layout.setContentsMargins(16, 16, 16, 16); layout.setSpacing(14);
+    const hint = new CLabel(dialog); hint.setWordWrap(true); hint.setText("Click an underlined link, or use Tab to focus the label, arrows to choose a link, and Enter to activate it."); layout.addWidget(hint);
+    const links = new CLabel(dialog); links.setWordWrap(true);
+    links.setText('Visit <a href="https://www.typescriptlang.org/">TypeScript</a>, <a href="https://developer.mozilla.org/">MDN</a>, or <a href="app:partner/42">show partner 42</a>.'); layout.addWidget(links);
+    const status = new CLabel(dialog); status.setWordWrap(true); status.setText("External opening is off: links only update this message."); layout.addWidget(status);
+    links.linkActivated.connect(url => status.setText(`linkActivated: ${url}`));
+    const external = new CCheckBox(dialog); external.setText("Open external links in the browser"); external.toggled.connect(value => links.setOpenExternalLinks(value)); layout.addWidget(external);
+    const close = new CPushButton(dialog); close.setText("Close"); close.clicked.connect(() => dialog.reject()); layout.addWidget(close);
+    dialog.setLayout(layout); dialog.open(); links.setFocus();
+}
+
 function showTagEditDemo(parent: CWidget): void {
     const dialog = new CDialog(parent); dialog.setWindowTitle("Tag editor demo");
     dialog.setMinimumSize(380, 400); dialog.setGeometry(0, 0, 680, 460);
@@ -2747,6 +2761,9 @@ panelsMenu.addAction(new CAction("Console"));
 viewMenu.addMenu("Panels", panelsMenu);
 
 const toolsMenu = new CMenu();
+const labelLinksAction = new CAction("Label hyperlinks demo…", mainWindow);
+labelLinksAction.triggered.connect(() => showLabelLinksDemo(parent)); toolsMenu.addAction(labelLinksAction);
+
 const segmentedDemoAction = new CAction("Category button demo…", mainWindow);
 segmentedDemoAction.triggered.connect(() => showCategoryButtonDemo(parent)); toolsMenu.addAction(segmentedDemoAction);
 const toggleSwitchDemoAction = new CAction("Toggle switch demo…", mainWindow);
