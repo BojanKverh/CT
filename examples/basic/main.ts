@@ -1,3 +1,4 @@
+import { CTagEdit } from "../../src/widgets/CTagEdit.js";
 import { CFlowLayout } from "../../src/layouts/CFlowLayout.js";
 import { CLoadingOverlay } from "../../src/widgets/CLoadingOverlay.js";
 import { CBusyIndicator } from "../../src/widgets/CBusyIndicator.js";
@@ -1102,6 +1103,28 @@ function showIconGridDemo(parent: CWidget): void {
 
 
 
+
+function showTagEditDemo(parent: CWidget): void {
+    const dialog = new CDialog(parent); dialog.setWindowTitle("Tag editor demo");
+    dialog.setMinimumSize(380, 400); dialog.setGeometry(0, 0, 680, 460);
+    const layout = new CVBoxLayout(); layout.setContentsMargins(16, 16, 16, 16); layout.setSpacing(12);
+    const hint = new CLabel(dialog); hint.setWordWrap(true);
+    hint.setText("Type a tag and press Enter. Click × to remove it, or use Backspace on empty input. Resize to wrap tags; duplicates are ignored."); layout.addWidget(hint);
+    const tags = new CTagEdit(dialog); tags.setPlaceholderText("New category…");
+    tags.setTags(["Accounting", "Invoices", "Needs review", "Fiscal year 2026"]); layout.addWidget(tags);
+    const status = new CLabel(dialog); status.setWordWrap(true);
+    const update = (): void => status.setText(`Tags (${tags.count()}): ${tags.tags().join(", ") || "none"}`);
+    tags.tagsChanged.connect(update); update(); layout.addWidget(status);
+    const readOnly = new CCheckBox(dialog); readOnly.setText("Read only");
+    readOnly.toggled.connect(value => tags.setReadOnly(value)); layout.addWidget(readOnly);
+    const disabled = new CCheckBox(dialog); disabled.setText("Disabled");
+    disabled.toggled.connect(value => tags.setEnabled(!value)); layout.addWidget(disabled);
+    const controls = new CWidget(dialog); const buttons = new CHBoxLayout(); buttons.setContentsMargins(0, 0, 0, 0);
+    const clear = new CPushButton(controls); clear.setText("Clear tags"); clear.clicked.connect(() => tags.clear()); buttons.addWidget(clear);
+    buttons.addStretch(1); const close = new CPushButton(controls); close.setText("Close");
+    close.clicked.connect(() => dialog.reject()); buttons.addWidget(close); controls.setLayout(buttons); layout.addWidget(controls);
+    dialog.setLayout(layout); dialog.open(); tags.setFocus();
+}
 
 function showFlowLayoutDemo(parent: CWidget): void {
     const dialog = new CDialog(parent); dialog.setWindowTitle("Flow layout demo");
@@ -2677,6 +2700,8 @@ panelsMenu.addAction(new CAction("Console"));
 viewMenu.addMenu("Panels", panelsMenu);
 
 const toolsMenu = new CMenu();
+const tagEditDemoAction = new CAction("Tag editor demo…", mainWindow);
+tagEditDemoAction.triggered.connect(() => showTagEditDemo(parent)); toolsMenu.addAction(tagEditDemoAction);
 const flowLayoutDemoAction = new CAction("Flow layout demo…", mainWindow);
 flowLayoutDemoAction.triggered.connect(() => showFlowLayoutDemo(parent)); toolsMenu.addAction(flowLayoutDemoAction);
 const loadingOverlayDemoAction = new CAction("Loading overlay demo…", mainWindow);

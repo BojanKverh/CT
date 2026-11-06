@@ -1,3 +1,4 @@
+import type { CStyleOptionTagEdit } from "./CStyleOptionTagEdit.js";
 import type { CStyleOptionBusyIndicator } from "./CStyleOptionBusyIndicator.js";
 import type { CStyleOptionRatingWidget } from "./CStyleOptionRatingWidget.js";
 import type { CStyleOptionNavigationPath } from "./CStyleOptionNavigationPath.js";
@@ -33,6 +34,45 @@ import type { CStyleOptionToolTipWidget } from "../gui/CStyleOptionToolTipWidget
  * Defines the abstract interface used to render Canvas Toolkit widgets.
  */
 export abstract class CStyle {
+
+    /** Draws a tag and its optional trailing remove button. */
+    drawTag(painter: CPainter, option: CStyleOptionTagEdit): void {
+        const r = option.rect;
+        if (r.width() <= 0 || r.height() <= 0) return;
+        const enabled = (option.state & CStyleState.Enabled) !== 0;
+        const removeWidth = option.readOnly ? 0 : Math.min(24, r.width());
+        painter.save();
+        try {
+            painter.clipRect(r);
+            painter.setBrush(option.palette.color(CPaletteColorRole.Button).toCss());
+            painter.setPen(option.palette.color(CPaletteColorRole.Mid).toCss());
+            painter.drawRoundedRect(r.x() + 0.5, r.y() + 0.5, Math.max(0, r.width() - 1), Math.max(0, r.height() - 1), 5);
+            const textRole = enabled ? CPaletteColorRole.ButtonText : CPaletteColorRole.DisabledText;
+            painter.setFont(option.font); painter.setTextAlign("left"); painter.setTextBaseline("middle");
+            painter.setPen(option.palette.color(textRole).toCss());
+            painter.save();
+            try {
+                painter.clipRect(new CRect(r.x() + 8, r.y(), Math.max(0, r.width() - removeWidth - 12), r.height()));
+                painter.drawText(option.text, r.x() + 8, r.y() + r.height() / 2);
+            } finally { painter.restore(); }
+            if (!option.readOnly) {
+                const x = r.right() - removeWidth;
+                if (enabled && (option.removeHovered || option.removePressed)) {
+                    painter.setBrush(option.palette.color(option.removePressed ? CPaletteColorRole.Highlight : CPaletteColorRole.Hover).toCss());
+                    painter.fillRect(new CRect(x + 1, r.y() + 2, Math.max(0, removeWidth - 3), Math.max(0, r.height() - 4)));
+                }
+                painter.setPen(option.palette.color(enabled && option.removePressed ? CPaletteColorRole.HighlightedText : textRole).toCss());
+                painter.setLineWidth(1);
+                const cx = x + removeWidth / 2, cy = r.y() + r.height() / 2;
+                const d = Math.max(0, Math.min(3, (removeWidth - 6) / 2, (r.height() - 6) / 2));
+                if (d > 0) {
+                    painter.drawLine(cx - d, cy - d, cx + d, cy + d);
+                    painter.drawLine(cx + d, cy - d, cx - d, cy + d);
+                }
+            }
+        } finally { painter.restore(); }
+    }
+
     /** Twelve fading spokes, centered in the available rectangle. */
     drawBusyIndicator(painter: CPainter, option: CStyleOptionBusyIndicator): void {
         if (!option.running || option.rect.width() <= 0 || option.rect.height() <= 0) return;
