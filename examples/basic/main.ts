@@ -1148,6 +1148,24 @@ function showToggleSwitchDemo(parent: CWidget, darkThemeAction: CAction): void {
     dialog.setLayout(layout); dialog.open(); theme.setFocus();
 }
 
+function showCollapsibleGroupDemo(parent: CWidget): void {
+    const dialog = new CDialog(parent); dialog.setWindowTitle("Collapsible group boxes");
+    dialog.setMinimumSize(400, 360); dialog.setGeometry(0, 0, 640, 520);
+    const layout = new CVBoxLayout(); layout.setContentsMargins(16, 16, 16, 16); layout.setSpacing(12);
+    const hint = new CLabel(dialog); hint.setWordWrap(true); hint.setText("Click a group title, or focus it with Tab and use Space, Enter or Left/Right. Each group expands independently."); layout.addWidget(hint);
+    for (const title of ["Contact details", "Additional settings"]) {
+        const group = new CGroupBox(title, dialog); group.setCollapsible(true);
+        const form = new CFormLayout(); form.setContentsMargins(12, 8, 12, 12);
+        const name = new CLineEdit(group); name.setText(title === "Contact details" ? "Bojan" : "Default"); form.addRow("Name:", name);
+        const email = new CLineEdit(group); email.setPlaceholderText("name@example.com"); form.addRow("Email:", email);
+        group.setLayout(form); layout.addWidget(group);
+        if (title === "Additional settings") group.setCollapsed(true);
+    }
+    layout.addStretch(1);
+    const close = new CPushButton(dialog); close.setText("Close"); close.clicked.connect(() => dialog.reject()); layout.addWidget(close);
+    dialog.setLayout(layout); dialog.open();
+}
+
 function showLabelLinksDemo(parent: CWidget): void {
     const dialog = new CDialog(parent); dialog.setWindowTitle("CLabel hyperlinks");
     dialog.setMinimumSize(380, 280); dialog.setGeometry(0, 0, 600, 340);
@@ -2761,6 +2779,9 @@ panelsMenu.addAction(new CAction("Console"));
 viewMenu.addMenu("Panels", panelsMenu);
 
 const toolsMenu = new CMenu();
+const collapsibleGroupAction = new CAction("Collapsible group boxes…", mainWindow);
+collapsibleGroupAction.triggered.connect(() => showCollapsibleGroupDemo(parent)); toolsMenu.addAction(collapsibleGroupAction);
+
 const labelLinksAction = new CAction("Label hyperlinks demo…", mainWindow);
 labelLinksAction.triggered.connect(() => showLabelLinksDemo(parent)); toolsMenu.addAction(labelLinksAction);
 

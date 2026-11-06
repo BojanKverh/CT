@@ -178,6 +178,15 @@ export class CWidget extends CObject {
     /** Called when this widget or an ancestor changes visibility or parent. */
     protected visibilityChangeEvent(): void {}
 
+    /** Controls effective child visibility without changing each child's explicit show/hide state. */
+    protected childrenAreVisible(): boolean { return true; }
+
+    /** Notify descendants after a change to childrenAreVisible(). */
+    protected notifyChildrenVisibilityChanged(): void {
+        for (const child of [...this.children()])
+            if (child instanceof CWidget) child.#notifyVisibilityChange();
+    }
+
     #notifyVisibilityChange(): void {
         this.visibilityChangeEvent();
         for (const child of [...this.children()])
@@ -196,7 +205,7 @@ export class CWidget extends CObject {
 
     /** Returns whether the visible condition is active. */
     isVisible(): boolean {
-        return this.#m_visible;
+        return this.#m_visible && (this.parent()?.childrenAreVisible() ?? true);
     }
 
 	/** Provides font behavior. */

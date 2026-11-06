@@ -9,6 +9,9 @@ export class CStyleOptionGroupBox extends CStyleOption {
 	 * Returns or updates the title value.
 	 */
 title = "";
+    collapsible = false;
+    collapsed = false;
+    headerHeight = 24;
 
 		/**
 	 * Creates a new CStyleOptionGroupBox instance.
@@ -18,8 +21,10 @@ title = "";
 constructor(other: CStyleOptionGroupBox | null = null) {
 		super(other);
 
-		if (other)
-			this.title = other.title;
+		if (other) {
+            this.title = other.title; this.collapsible = other.collapsible;
+            this.collapsed = other.collapsed; this.headerHeight = other.headerHeight;
+        }
 	}
 
 		/**
@@ -31,5 +36,6 @@ initFromGroupBox(groupBox: CGroupBox): void {
 		this.initFrom(groupBox);
 
 		this.title = groupBox.title();
+        this.collapsible = groupBox.isCollapsible(); this.collapsed = groupBox.isCollapsed(); this.headerHeight = groupBox.headerHeight();
 	}
 }

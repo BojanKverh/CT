@@ -1777,3 +1777,26 @@ describe("CWidget live palette inheritance", () => {
         expect(action.parent()).toBe(parent);
     });
 });
+
+
+describe("CWidget child visibility gating", () => {
+    class Gate extends CWidget {
+        allowed = true;
+        protected override childrenAreVisible(): boolean { return this.allowed; }
+        setAllowed(allowed: boolean): void { this.allowed = allowed; this.notifyChildrenVisibilityChanged(); }
+    }
+    beforeEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); new CApplication(createTestCanvas()); });
+    afterEach(() => { if (CApplication.exists()) CApplication.instance().destroy(); });
+    test("gate preserves explicit child visibility", () => {
+        const parent = new Gate(), shown = new CWidget(parent), hidden = new CWidget(parent); hidden.hide(); parent.setAllowed(false);
+        expect(shown.isVisible()).toBe(false); parent.setAllowed(true); expect(shown.isVisible()).toBe(true); expect(hidden.isVisible()).toBe(false); parent.destroy();
+    });
+    test("children created under a closed gate start effectively hidden", () => {
+        const parent = new Gate(); parent.setAllowed(false); const child = new CWidget(parent); expect(child.isVisible()).toBe(false); parent.setAllowed(true); expect(child.isVisible()).toBe(true); parent.destroy();
+    });
+    test("gate notifications reach grandchildren and skip nonwidget objects", () => {
+        const parent = new Gate(), child = new CWidget(parent); new CObject(parent);
+        class Observer extends CWidget { changes = 0; protected override visibilityChangeEvent(): void { ++this.changes; } }
+        const grandchild = new Observer(child); parent.setAllowed(false); expect(grandchild.changes).toBe(1); parent.setAllowed(true); expect(grandchild.changes).toBe(2); parent.destroy();
+    });
+});

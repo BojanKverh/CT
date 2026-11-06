@@ -508,6 +508,33 @@ override drawProgressBar(painter: CPainter, option: CStyleOptionProgressBar): vo
 	 * @param option Option.
 	 */
 override drawGroupBox(painter: CPainter, option: CStyleOptionGroupBox): void {
+        if (option.collapsible) {
+            const r = option.rect, h = Math.min(r.height(), option.headerHeight), cy = r.y() + h / 2;
+            if (r.width() <= 0 || h <= 0) return;
+            const enabled = (option.state & CStyleState.Enabled) !== 0;
+            const text = option.palette.color(enabled ? CPaletteColorRole.Text : CPaletteColorRole.DisabledText).toCss();
+            painter.save();
+            try {
+                painter.clipRect(r); painter.setPen(option.palette.color(CPaletteColorRole.Mid).toCss()); painter.setLineWidth(1);
+                if (!option.collapsed) painter.strokeRect(new CRect(r.x() + 0.5, cy, Math.max(0, r.width() - 1), Math.max(0, r.height() - h / 2 - 0.5)));
+                painter.setBrush(option.palette.color(CPaletteColorRole.Window).toCss()); painter.fillRect(new CRect(r.x() + 4, r.y(), Math.max(0, Math.min(r.width() - 8, new CFontMetrics(option.font).textWidth(option.title) + 32)), h));
+                painter.setPen(text);
+                const radius = Math.max(0, Math.min(4, (h - 4) / 2, (r.width() - 4) / 2)), x = r.x() + Math.min(14, r.width() / 2);
+                if (radius > 0) {
+                    if (option.collapsed) { painter.drawLine(x - radius / 2, cy - radius, x + radius / 2, cy); painter.drawLine(x + radius / 2, cy, x - radius / 2, cy + radius); }
+                    else { painter.drawLine(x - radius, cy - radius / 2, x, cy + radius / 2); painter.drawLine(x, cy + radius / 2, x + radius, cy - radius / 2); }
+                }
+                painter.setFont(option.font); painter.setTextAlign("left"); painter.setTextBaseline("middle"); painter.drawText(option.title, r.x() + 28, cy);
+                if (enabled && (option.state & CStyleState.HasFocus) !== 0 && r.width() >= 8 && h >= 8) {
+                    painter.setBrush(text);
+                    for (let dx = 4; dx < Math.min(r.width() - 4, new CFontMetrics(option.font).textWidth(option.title) + 32); dx += 2) {
+                        painter.fillRect(new CRect(r.x() + dx, r.y() + 2, 1, 1)); painter.fillRect(new CRect(r.x() + dx, r.y() + h - 3, 1, 1));
+                    }
+                }
+            } finally { painter.restore(); }
+            return;
+        }
+
 		const palette = option.palette;
 		const title = option.title;
 		const rect = option.rect;
