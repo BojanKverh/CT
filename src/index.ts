@@ -156,5 +156,9 @@ export { CBusyIndicator } from "./widgets/CBusyIndicator.js";
 export { CStyleOptionBusyIndicator } from "./gui/CStyleOptionBusyIndicator.js";
 export { CLoadingOverlay } from "./widgets/CLoadingOverlay.js";
 export { CFlowLayout } from "./layouts/CFlowLayout.js";
+
 export { CTagEdit } from "./widgets/CTagEdit.js";
 export { CStyleOptionTagEdit } from "./gui/CStyleOptionTagEdit.js";
+
+export { CToggleSwitch } from "./widgets/CToggleSwitch.js";
+export { CStyleOptionToggleSwitch } from "./gui/CStyleOptionToggleSwitch.js";

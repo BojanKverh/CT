@@ -1,3 +1,4 @@
+import { CToggleSwitch } from "../../src/widgets/CToggleSwitch.js";
 import { CTagEdit } from "../../src/widgets/CTagEdit.js";
 import { CFlowLayout } from "../../src/layouts/CFlowLayout.js";
 import { CLoadingOverlay } from "../../src/widgets/CLoadingOverlay.js";
@@ -1103,6 +1104,25 @@ function showIconGridDemo(parent: CWidget): void {
 
 
 
+
+function showToggleSwitchDemo(parent: CWidget, darkThemeAction: CAction): void {
+    const dialog = new CDialog(parent); dialog.setWindowTitle("Toggle switch demo");
+    dialog.setMinimumSize(380, 300); dialog.setGeometry(0, 0, 520, 340);
+    const layout = new CVBoxLayout(); layout.setContentsMargins(20, 20, 20, 20); layout.setSpacing(14);
+    const hint = new CLabel(dialog); hint.setWordWrap(true);
+    hint.setText("Click a switch or focus it with Tab and press Space. Try changing direction before the animation finishes."); layout.addWidget(hint);
+    const theme = new CToggleSwitch(dialog); theme.setText("Dark theme");
+    theme.setChecked(darkThemeAction.isChecked());
+    theme.toggled.connect(checked => { if (checked !== darkThemeAction.isChecked()) darkThemeAction.trigger(); });
+    const disconnect = darkThemeAction.toggled.connect(checked => theme.setChecked(checked));
+    dialog.rejected.connect(disconnect); dialog.accepted.connect(disconnect); layout.addWidget(theme);
+    const notifications = new CToggleSwitch(dialog); notifications.setText("Notifications"); notifications.setChecked(true); layout.addWidget(notifications);
+    const status = new CLabel(dialog); status.setText("Notifications: on");
+    notifications.toggled.connect(checked => status.setText(`Notifications: ${checked ? "on" : "off"}`)); layout.addWidget(status);
+    const disabled = new CToggleSwitch(dialog); disabled.setText("Disabled switch"); disabled.setChecked(true); disabled.setEnabled(false); layout.addWidget(disabled);
+    const close = new CPushButton(dialog); close.setText("Close"); close.clicked.connect(() => dialog.reject()); layout.addWidget(close);
+    dialog.setLayout(layout); dialog.open(); theme.setFocus();
+}
 
 function showTagEditDemo(parent: CWidget): void {
     const dialog = new CDialog(parent); dialog.setWindowTitle("Tag editor demo");
@@ -2703,6 +2723,8 @@ panelsMenu.addAction(new CAction("Console"));
 viewMenu.addMenu("Panels", panelsMenu);
 
 const toolsMenu = new CMenu();
+const toggleSwitchDemoAction = new CAction("Toggle switch demo…", mainWindow);
+toggleSwitchDemoAction.triggered.connect(() => showToggleSwitchDemo(parent, darkThemeAction)); toolsMenu.addAction(toggleSwitchDemoAction);
 const tagEditDemoAction = new CAction("Tag editor demo…", mainWindow);
 tagEditDemoAction.triggered.connect(() => showTagEditDemo(parent)); toolsMenu.addAction(tagEditDemoAction);
 const flowLayoutDemoAction = new CAction("Flow layout demo…", mainWindow);

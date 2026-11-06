@@ -1,3 +1,4 @@
+import type { CStyleOptionToggleSwitch } from "./CStyleOptionToggleSwitch.js";
 import type { CStyleOptionTagEdit } from "./CStyleOptionTagEdit.js";
 import type { CStyleOptionBusyIndicator } from "./CStyleOptionBusyIndicator.js";
 import type { CStyleOptionRatingWidget } from "./CStyleOptionRatingWidget.js";
@@ -34,6 +35,51 @@ import type { CStyleOptionToolTipWidget } from "../gui/CStyleOptionToolTipWidget
  * Defines the abstract interface used to render Canvas Toolkit widgets.
  */
 export abstract class CStyle {
+    /** Palette-aware track and animated thumb; no changes required in derived styles. */
+    drawToggleSwitch(painter: CPainter, option: CStyleOptionToggleSwitch): void {
+        const r = option.rect;
+        if (r.width() <= 0 || r.height() <= 0) return;
+        const enabled = (option.state & CStyleState.Enabled) !== 0;
+        const checked = (option.state & CStyleState.On) !== 0;
+        const color = (role: CPaletteColorRole): string => option.palette.color(role).toCss();
+        const scale = Math.max(0, Math.min(1, (r.width() - 8) / 44, (r.height() - 8) / 24));
+        const w = 44 * scale, h = 24 * scale, x = r.x() + 4, y = r.y() + (r.height() - h) / 2;
+        painter.save();
+        try {
+            painter.clipRect(r); painter.setLineWidth(1);
+            if (w >= 4 && h >= 4) {
+                const track = !enabled ? CPaletteColorRole.Mid : checked ? CPaletteColorRole.Highlight
+                    : (option.state & CStyleState.MouseOver) !== 0 ? CPaletteColorRole.Hover : CPaletteColorRole.Button;
+                painter.setBrush(color(track)); painter.setPen(color(enabled ? CPaletteColorRole.Mid : CPaletteColorRole.DisabledText));
+                painter.drawRoundedRect(x, y, w, h, Math.max(0, h / 2 - 1));
+                const inset = 3 * scale, diameter = h - 2 * inset;
+                const position = Math.max(0, Math.min(1, option.position));
+                painter.setBrush(color(!enabled ? CPaletteColorRole.DisabledText : checked
+                    ? CPaletteColorRole.HighlightedText : CPaletteColorRole.ButtonText));
+                // CPainter follows Canvas ellipse semantics: center coordinates and radii.
+                const radius = diameter / 2;
+                painter.fillEllipse(x + inset + radius + (w - diameter - 2 * inset) * position,
+                    y + h / 2 + ((option.state & CStyleState.Sunken) !== 0 ? scale : 0), radius, radius);
+            }
+            if (option.text && r.width() > 62) {
+                painter.setFont(option.font); painter.setPen(color(enabled ? CPaletteColorRole.Text : CPaletteColorRole.DisabledText));
+                painter.setTextAlign("left"); painter.setTextBaseline("middle");
+                painter.drawText(option.text, r.x() + 62, r.y() + r.height() / 2);
+            }
+            if (enabled && (option.state & CStyleState.HasFocus) !== 0 && r.width() >= 6 && r.height() >= 6) {
+                painter.setBrush(color(CPaletteColorRole.Text));
+                for (let dx = 2; dx < r.width() - 2; dx += 2) {
+                    painter.fillRect(new CRect(r.x() + dx, r.y() + 2, 1, 1));
+                    painter.fillRect(new CRect(r.x() + dx, r.y() + r.height() - 3, 1, 1));
+                }
+                for (let dy = 4; dy < r.height() - 4; dy += 2) {
+                    painter.fillRect(new CRect(r.x() + 2, r.y() + dy, 1, 1));
+                    painter.fillRect(new CRect(r.x() + r.width() - 3, r.y() + dy, 1, 1));
+                }
+            }
+        } finally { painter.restore(); }
+    }
+
 
     /** Draws a tag and its optional trailing remove button. */
     drawTag(painter: CPainter, option: CStyleOptionTagEdit): void {
