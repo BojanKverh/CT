@@ -1,3 +1,4 @@
+import { CCategoryButton } from "../../src/widgets/CCategoryButton.js";
 import { CToggleSwitch } from "../../src/widgets/CToggleSwitch.js";
 import { CTagEdit } from "../../src/widgets/CTagEdit.js";
 import { CFlowLayout } from "../../src/layouts/CFlowLayout.js";
@@ -1009,9 +1010,9 @@ function showIconGridDemo(parent: CWidget): void {
 
     const modeLabel = new CLabel(dialog);
     modeLabel.setGeometry(16, 48, 46, 28); modeLabel.setText("View:");
-    const mode = new CComboBox(dialog);
+    const mode = new CCategoryButton(dialog);
     mode.setGeometry(64, 48, 138, 28);
-    mode.addItems(["Large icons", "List"]);
+    mode.addItems(["Icons", "List"]);
 
     const sizeLabel = new CLabel(dialog);
     sizeLabel.setGeometry(222, 48, 62, 28); sizeLabel.setText("Icon size:");
@@ -1104,6 +1105,29 @@ function showIconGridDemo(parent: CWidget): void {
 
 
 
+
+function showCategoryButtonDemo(parent: CWidget): void {
+    const dialog = new CDialog(parent); dialog.setWindowTitle("Category button demo");
+    dialog.setMinimumSize(420, 420); dialog.setGeometry(0, 0, 680, 540);
+    const layout = new CVBoxLayout(); layout.setContentsMargins(16, 16, 16, 16); layout.setSpacing(12);
+    const hint = new CLabel(dialog); hint.setWordWrap(true);
+    hint.setText("Tab focuses the whole group. Arrow keys change selection, skipping disabled options. Resize to see the segments share available width."); layout.addWidget(hint);
+    const mode = new CCategoryButton(dialog);
+    mode.addItem("Icons", createListDemoIcon("image")); mode.addItem("List", createListDemoIcon("document"));
+    mode.addItem("Details (disabled)"); mode.setItemEnabled(2, false); layout.addWidget(mode);
+    const list = new CListWidget(dialog); list.setMinimumSize(200, 180);
+    list.setViewMode(CListViewMode.IconMode); list.setIconSize(new CSize(40, 40)); list.setGridSize(new CSize(112, 100)); list.setSpacing(8);
+    for (const name of ["Documents", "Invoices", "Partners", "Reports", "Archive", "Pictures"])
+        list.addItem(new CListWidgetItem(name, createListDemoIcon("folder")));
+    layout.addWidget(list);
+    mode.currentIndexChanged.connect(index => list.setViewMode(index === 0 ? CListViewMode.IconMode : CListViewMode.ListMode));
+    const period = new CCategoryButton(dialog); period.addItems(["Day", "Week", "Month"]); period.setCurrentIndex(1); layout.addWidget(period);
+    const status = new CLabel(dialog); status.setText("Period: Week"); layout.addWidget(status);
+    period.currentIndexChanged.connect(() => status.setText(`Period: ${period.currentText() || "none"}`));
+    const disable = new CCheckBox(dialog); disable.setText("Disable Week"); disable.toggled.connect(value => period.setItemEnabled(1, !value)); layout.addWidget(disable);
+    const close = new CPushButton(dialog); close.setText("Close"); close.clicked.connect(() => dialog.reject()); layout.addWidget(close);
+    dialog.setLayout(layout); dialog.open(); mode.setFocus();
+}
 
 function showToggleSwitchDemo(parent: CWidget, darkThemeAction: CAction): void {
     const dialog = new CDialog(parent); dialog.setWindowTitle("Toggle switch demo");
@@ -2723,6 +2747,8 @@ panelsMenu.addAction(new CAction("Console"));
 viewMenu.addMenu("Panels", panelsMenu);
 
 const toolsMenu = new CMenu();
+const segmentedDemoAction = new CAction("Category button demo…", mainWindow);
+segmentedDemoAction.triggered.connect(() => showCategoryButtonDemo(parent)); toolsMenu.addAction(segmentedDemoAction);
 const toggleSwitchDemoAction = new CAction("Toggle switch demo…", mainWindow);
 toggleSwitchDemoAction.triggered.connect(() => showToggleSwitchDemo(parent, darkThemeAction)); toolsMenu.addAction(toggleSwitchDemoAction);
 const tagEditDemoAction = new CAction("Tag editor demo…", mainWindow);

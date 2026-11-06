@@ -1,3 +1,4 @@
+import type { CStyleOptionCategoryButton } from "./CStyleOptionCategoryButton.js";
 import type { CStyleOptionToggleSwitch } from "./CStyleOptionToggleSwitch.js";
 import type { CStyleOptionTagEdit } from "./CStyleOptionTagEdit.js";
 import type { CStyleOptionBusyIndicator } from "./CStyleOptionBusyIndicator.js";
@@ -35,6 +36,67 @@ import type { CStyleOptionToolTipWidget } from "../gui/CStyleOptionToolTipWidget
  * Defines the abstract interface used to render Canvas Toolkit widgets.
  */
 export abstract class CStyle {
+    /** Connected segments share a border and retain one keyboard focus indicator. */
+    drawCategoryButton(painter: CPainter, option: CStyleOptionCategoryButton): void {
+        if (option.rect.width() <= 0 || option.rect.height() <= 0) return;
+        const groupEnabled = (option.state & CStyleState.Enabled) !== 0;
+        painter.save();
+        try {
+            painter.clipRect(option.rect); painter.setLineWidth(1);
+            for (let index = 0; index < option.segments.length; ++index) {
+                const item = option.segments[index]!, r = item.rect;
+                if (r.width() < 3 || r.height() < 3) continue;
+                const enabled = groupEnabled && item.enabled, selected = index === option.currentIndex;
+                const background = enabled && selected ? CPaletteColorRole.Highlight
+                    : enabled && (index === option.hoveredIndex || index === option.pressedIndex)
+                        ? CPaletteColorRole.Hover : CPaletteColorRole.Button;
+                const foreground = !enabled ? CPaletteColorRole.DisabledText
+                    : selected ? CPaletteColorRole.HighlightedText : CPaletteColorRole.ButtonText;
+                const color = (role: CPaletteColorRole): string => option.palette.color(role).toCss();
+                painter.save();
+                try {
+                    painter.clipRect(r); painter.setBrush(color(background)); painter.setPen(color(CPaletteColorRole.Mid));
+                    const radius = Math.min(4, (r.width() - 2) / 2, (r.height() - 2) / 2);
+                    const first = index === 0, last = index === option.segments.length - 1;
+                    // Extend inner sides by a pixel so adjacent segments share their edge.
+                    painter.drawRoundedRect(r.x() - (first ? 0 : 1), r.y(), r.width() + (first ? 0 : 1) + (last ? 0 : 1), r.height(),
+                        [first ? radius : 0, last ? radius : 0, last ? radius : 0, first ? radius : 0]);
+                    if (!last) painter.drawLine(r.x() + r.width() - 0.5, r.y() + 1, r.x() + r.width() - 0.5, r.y() + r.height() - 1);
+                    const hasIcon = item.icon !== null && !item.icon.isNull();
+                    const fm = new CFontMetrics(option.font), textWidth = fm.textWidth(item.text);
+                    const iconSize = Math.max(0, Math.min(16, r.height() - 8, r.width() - 16));
+                    const gap = hasIcon && item.text ? 6 : 0;
+                    let x = r.x() + Math.max(8, (r.width() - textWidth - (hasIcon ? iconSize + gap : 0)) / 2);
+                    const y = r.y() + r.height() / 2;
+                    if (hasIcon && iconSize > 0) {
+                        const pixmap = item.icon!.pixmap(new CSize(iconSize, iconSize), !enabled ? CIconMode.Disabled
+                            : selected ? CIconMode.Selected : CIconMode.Normal, selected ? CIconState.On : CIconState.Off);
+                        if (pixmap !== null && pixmap.width() > 0 && pixmap.height() > 0) {
+                            const scale = Math.min(iconSize / pixmap.width(), iconSize / pixmap.height());
+                            const width = pixmap.width() * scale, height = pixmap.height() * scale;
+                            painter.drawPixmap(pixmap, x + (iconSize - width) / 2, y - height / 2, width, height);
+                        }
+                        x += iconSize + gap;
+                    }
+                    painter.setFont(option.font); painter.setPen(color(foreground));
+                    painter.setTextAlign("left"); painter.setTextBaseline("middle");
+                    painter.drawText(item.text, x, y);
+                    if (enabled && selected && (option.state & CStyleState.HasFocus) !== 0 && r.width() >= 8 && r.height() >= 8) {
+                        painter.setBrush(color(foreground));
+                        for (let dx = 4; dx < r.width() - 4; dx += 2) {
+                            painter.fillRect(new CRect(r.x() + dx, r.y() + 3, 1, 1));
+                            painter.fillRect(new CRect(r.x() + dx, r.y() + r.height() - 4, 1, 1));
+                        }
+                        for (let dy = 5; dy < r.height() - 5; dy += 2) {
+                            painter.fillRect(new CRect(r.x() + 3, r.y() + dy, 1, 1));
+                            painter.fillRect(new CRect(r.x() + r.width() - 4, r.y() + dy, 1, 1));
+                        }
+                    }
+                } finally { painter.restore(); }
+            }
+        } finally { painter.restore(); }
+    }
+
     /** Palette-aware track and animated thumb; no changes required in derived styles. */
     drawToggleSwitch(painter: CPainter, option: CStyleOptionToggleSwitch): void {
         const r = option.rect;
