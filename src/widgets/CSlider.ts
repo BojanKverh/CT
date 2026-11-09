@@ -2,7 +2,7 @@ import { CSignal } from "../core/CSignal.js";
 import { CWidget } from "./CWidget.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
-import { CKeyEvent } from "../events/CKeyEvent";
+import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CStyleOptionSlider } from "../gui/CStyleOptionSlider.js";
 

@@ -164,4 +164,4 @@ export { CToggleSwitch } from "./widgets/CToggleSwitch.js";
 export { CStyleOptionToggleSwitch } from "./gui/CStyleOptionToggleSwitch.js";
 
 export { CCategoryButton } from "./widgets/CCategoryButton.js";
-export { CStyleOptionCategoryButton, type CCategoryButtonSegment } from "./gui/CStyleOptionCategoryButton";
+export { CStyleOptionCategoryButton, type CCategoryButtonSegment } from "./gui/CStyleOptionCategoryButton.js";

@@ -3,7 +3,7 @@ import { CWidget } from "./CWidget.js";
 import { CLineEdit } from "../widgets/CLineEdit.js";
 import { CPushButton } from "./CPushButton.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
-import { CWheelEvent } from "../../src/events/CWheelEvent.js";
+import { CWheelEvent } from "../events/CWheelEvent.js";
 import { CSize } from "../geometry/CSize.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CIntValidator } from "../util/CIntValidator.js";
