@@ -416,7 +416,7 @@ statusBar.addPermanentWidget(permanent);
 statusBar.showMessage("File saved", 3000);
 statusBar.setGeometry(700, 776, 300, 24);
 
-app.startUpdates();
+app.run();
 
 setInterval(() => {
     if (parent.x() <= 250)

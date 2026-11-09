@@ -36,4 +36,4 @@ layout.addWidget(greeting);
 layout.addStretch(1);
 root.setLayout(layout);
 
-app.startUpdates();
+app.run();

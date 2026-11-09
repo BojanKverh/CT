@@ -51,14 +51,14 @@ button.setText("Click me");
 button.clicked.connect(() => label.setText("Hello from Canvas Toolkit!"));
 
 window.show();
-app.startUpdates();
+app.run();
 
 // Call app.destroy() when the application is no longer needed.
 ```
 
 Adjust the import path for your entry file. For a consumer that resolves this package as `canvas-toolkit`, import from `"canvas-toolkit"` after building the library with `npm run build`.
 
-Only one `CApplication` may exist at a time. Widgets created without a parent are registered as top-level widgets automatically; child widgets receive their parent through the constructor. Rendering is enabled with `startUpdates()` and scheduled when widgets request updates.
+Only one `CApplication` may exist at a time. Widgets created without a parent are registered as top-level widgets automatically; child widgets receive their parent through the constructor. Rendering is enabled with `run()` and scheduled when widgets request updates.
 
 ## Features
 

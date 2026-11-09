@@ -81,10 +81,10 @@ beforeEach(() => {
 
 	new CApplication(createTestCanvas());
 
-	CApplication.instance().startUpdates();
+	CApplication.instance().run();
 
 	/*
-	 * startUpdates() schedules the initial repaint.
+	 * run() schedules the initial repaint.
 	 * Execute it so each test starts with no pending frame.
 	 */
 	runNextAnimationFrame();

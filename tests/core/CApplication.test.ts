@@ -363,28 +363,28 @@ describe("CApplication", () => {
         expect(app.updatesEnabled()).toBe(false);
     });
 
-    test("startUpdates enables updates", () => {
+    test("run enables updates", () => {
         const app = new CApplication(createTestCanvas());
 
-        app.startUpdates();
+        app.run();
 
         expect(app.updatesEnabled()).toBe(true);
     });
 
-    test("startUpdates schedules the initial repaint", () => {
+    test("run schedules the initial repaint", () => {
         const app = new CApplication(createTestCanvas());
 
-        app.startUpdates();
+        app.run();
 
         expect(pendingAnimationFrameCount()).toBe(1);
     });
 
-    test("calling startUpdates repeatedly does not schedule additional frames", () => {
+    test("calling run repeatedly does not schedule additional frames", () => {
         const app = new CApplication(createTestCanvas());
 
-        app.startUpdates();
-        app.startUpdates();
-        app.startUpdates();
+        app.run();
+        app.run();
+        app.run();
 
         expect(pendingAnimationFrameCount()).toBe(1);
     });
@@ -400,7 +400,7 @@ describe("CApplication", () => {
     test("coalesces multiple repaint requests into one animation frame", () => {
         const app = new CApplication(createTestCanvas());
 
-        app.startUpdates();
+        app.run();
 
         app.requestRepaint();
         app.requestRepaint();
@@ -412,7 +412,7 @@ describe("CApplication", () => {
     test("allows another repaint after the current frame completes", () => {
         const app = new CApplication(createTestCanvas());
 
-        app.startUpdates();
+        app.run();
 
         expect(pendingAnimationFrameCount()).toBe(1);
 
@@ -428,7 +428,7 @@ describe("CApplication", () => {
     test("stopUpdates disables updates", () => {
         const app = new CApplication(createTestCanvas());
 
-        app.startUpdates();
+        app.run();
         app.stopUpdates();
 
         expect(app.updatesEnabled()).toBe(false);
@@ -437,7 +437,7 @@ describe("CApplication", () => {
     test("stopUpdates cancels a pending repaint", () => {
         const app = new CApplication(createTestCanvas());
 
-        app.startUpdates();
+        app.run();
 
         expect(pendingAnimationFrameCount()).toBe(1);
 
@@ -449,7 +449,7 @@ describe("CApplication", () => {
     test("requestRepaint is ignored after stopUpdates", () => {
         const app = new CApplication(createTestCanvas());
 
-        app.startUpdates();
+        app.run();
         app.stopUpdates();
 
         app.requestRepaint();
@@ -460,10 +460,10 @@ describe("CApplication", () => {
     test("updates can be started again after being stopped", () => {
         const app = new CApplication(createTestCanvas());
 
-        app.startUpdates();
+        app.run();
         app.stopUpdates();
 
-        app.startUpdates();
+        app.run();
 
         expect(app.updatesEnabled()).toBe(true);
         expect(pendingAnimationFrameCount()).toBe(1);
@@ -472,7 +472,7 @@ describe("CApplication", () => {
     test("destroy stops updates and cancels pending repaint", () => {
         const app = new CApplication(createTestCanvas());
 
-        app.startUpdates();
+        app.run();
 
         expect(app.updatesEnabled()).toBe(true);
         expect(pendingAnimationFrameCount()).toBe(1);
@@ -506,7 +506,7 @@ describe("CApplication", () => {
         } as unknown as HTMLCanvasElement;
 
         const app = new CApplication(canvas);
-        app.startUpdates();
+        app.run();
         runNextAnimationFrame();
 
         expect(clearRect).toHaveBeenCalledOnce();

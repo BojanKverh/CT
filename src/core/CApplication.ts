@@ -427,7 +427,7 @@ export class CApplication extends CObject {
 /**
  * Enables repaint updates and requests a repaint.
  */
-	startUpdates(): void {
+	run(): void {
 		if (this.#m_updatesEnabled)
 			return;
 
