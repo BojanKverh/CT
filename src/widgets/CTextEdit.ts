@@ -1,4 +1,4 @@
-import { previousWordPosition, nextWordPosition } from "../util/CTextWordBoundary.js";
+import { previousWordPosition, nextWordPosition, previousGraphemePosition, nextGraphemePosition } from "../util/CTextWordBoundary.js";
 import { textSelectionRange } from "../util/CTextSelection.js";
 import { CAction } from "../core/CAction.js";
 import { CMenu } from "./CMenu.js";
@@ -1606,8 +1606,7 @@ export class CTextEdit extends CScrollArea {
 
 		/** Provides for behavior. */
 		for (let offset = 0; offset < line.text.length;) {
-            const code = line.text.codePointAt(offset)!;
-            const end = offset + (code > 0xffff ? 2 : 1);
+            const end = nextGraphemePosition(line.text, offset);
 			const width = this.#textWidth(line.start, end);
 			const middle = nearest ? (previousWidth + width) / 2 : width;
 
@@ -1623,13 +1622,11 @@ export class CTextEdit extends CScrollArea {
 	}
 
     #nextCharacter(position: number): number {
-        const code = this.toPlainText().codePointAt(position);
-        return position + (code !== undefined && code > 0xffff ? 2 : 1);
+        return nextGraphemePosition(this.toPlainText(), position);
     }
 
     #previousCharacter(position: number): number {
-        const previous = position - 2;
-        return previous >= 0 && this.#nextCharacter(previous) === position ? previous : position - 1;
+        return previousGraphemePosition(this.toPlainText(), position);
     }
 
 	#moveCursor(

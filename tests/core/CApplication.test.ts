@@ -16,6 +16,7 @@ import { CPainter } from "../../src/painting/CPainter";
 import { CMouseEvent } from "../../src/events/CMouseEvent";
 import { CFocusEvent } from "../../src/events/CFocusEvent";
 import { CKeyEvent } from "../../src/events/CKeyEvent";
+import { CEventType } from "../../src/events/CEvent.js";
 import { createTestCanvas } from "../helpers/createTestCanvas";
 import { createTestWindow } from "../helpers/createTestWindow.js";
 import { CHBoxLayout } from "../../src/layouts/CHBoxLayout.js";
@@ -155,6 +156,29 @@ afterEach(() => {
 describe("CApplication", () => {
 	const spacing: number = 6;
 	const margin: number = 6;
+
+    test.each(["line", "multiline"])("%s editor moves across and deletes whole emoji", kind => {
+        const app = new CApplication(createTestCanvas());
+        const edit = kind === "line" ? new CLineEdit() : new CTextEdit();
+        const text = () => edit instanceof CLineEdit ? edit.text() : edit.toPlainText();
+        const press = (key: string) => edit.event(new CKeyEvent(CEventType.KeyPress, key));
+        edit.insert("A👍🏽👩‍💻B");
+
+        press("ArrowLeft");
+        expect(edit.cursorPosition()).toBe("A👍🏽👩‍💻".length);
+        press("ArrowLeft");
+        expect(edit.cursorPosition()).toBe("A👍🏽".length);
+        press("ArrowLeft");
+        expect(edit.cursorPosition()).toBe(1);
+        press("ArrowRight");
+        expect(edit.cursorPosition()).toBe("A👍🏽".length);
+
+        press("Backspace");
+        expect(text()).toBe("A👩‍💻B");
+        press("Delete");
+        expect(text()).toBe("AB");
+        app.destroy();
+    });
 
     test("routes native text replacements to the focused editor", () => {
         class TestEditContext extends EventTarget {

@@ -1,4 +1,4 @@
-import { previousWordPosition, nextWordPosition } from "../util/CTextWordBoundary.js";
+import { previousWordPosition, nextWordPosition, previousGraphemePosition, nextGraphemePosition } from "../util/CTextWordBoundary.js";
 import { textSelectionRange } from "../util/CTextSelection.js";
 import { CAction } from "../core/CAction.js";
 import { CMenu } from "./CMenu.js";
@@ -899,13 +899,11 @@ export class CLineEdit extends CWidget {
     }
 
     #nextCharacter(position: number): number {
-        const code = this.#m_text.codePointAt(position);
-        return position + (code !== undefined && code > 0xffff ? 2 : 1);
+        return nextGraphemePosition(this.#m_text, position);
     }
 
     #previousCharacter(position: number): number {
-        const previous = position - 2;
-        return previous >= 0 && this.#nextCharacter(previous) === position ? previous : position - 1;
+        return previousGraphemePosition(this.#m_text, position);
     }
 
     #moveCursor(position: number, keepAnchor: boolean): void {

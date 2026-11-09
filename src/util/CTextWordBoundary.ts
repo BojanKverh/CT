@@ -47,3 +47,21 @@ export function nextWordPosition(text: string, position: number): number {
         pos += characterAt(text, pos).length;
     return pos;
 }
+
+const graphemes = typeof Intl.Segmenter === "function"
+    ? new Intl.Segmenter(undefined, { granularity: "grapheme" }) : null;
+
+/** Moves to the next grapheme boundary, using UTF-16 offsets. */
+export function nextGraphemePosition(text: string, position: number): number {
+    if (position >= text.length) return text.length;
+    const segment = graphemes?.segment(text).containing(position);
+    if (segment !== undefined) return segment.index + segment.segment.length;
+    const start = positionInText(text, position);
+    return start + characterAt(text, start).length;
+}
+
+/** Moves to the previous grapheme boundary, using UTF-16 offsets. */
+export function previousGraphemePosition(text: string, position: number): number {
+    return graphemes?.segment(text).containing(position - 1)?.index
+        ?? previousCharacter(text, position);
+}
