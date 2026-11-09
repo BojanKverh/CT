@@ -400,15 +400,33 @@ export class CLineEdit extends CWidget {
 		this.#insert(text, null);
 	}
 
-	#insert(text: string, group: CLineEditUndoGroup): void {
-		/** Provides if behavior. */
-		if (text.length === 0 || this.isReadOnly())
-			return;
-		const start = this.hasSelection()? this.selectionStart() : this.#m_cursorPosition;
-		const end = this.hasSelection()? this.selectionEnd() : this.#m_cursorPosition;
-        const remaining = this.#m_maxLength - (this.#m_text.length - (end - start));
-        text = this.#truncateToLength(text, remaining);
+    /** @internal Supplies the browser input context for the focused editor. */
+    nativeTextState(): { text: string; start: number; end: number } | null {
+        if (this.constructor !== CLineEdit || this.isReadOnly() || this.#m_echoMode !== CEchoMode.Normal) return null;
+        return { text: this.#m_text, start: this.selectionStart(), end: this.selectionEnd() };
+    }
+
+    /** @internal Applies the replacement reported by the browser input context. */
+    applyNativeTextUpdate(start: number, end: number, text: string): void {
+        if (this.nativeTextState() === null || start < 0 || end < start || end > this.#m_text.length)
+            return;
+        this.#replaceInput(start, end, text.replace(/[\r\n]/g, ""), null);
+    }
+
+    #insert(text: string, group: CLineEditUndoGroup): void {
         if (text.length === 0) return;
+        this.#replaceInput(this.selectionStart(), this.selectionEnd(), text, group);
+    }
+
+    #replaceInput(start: number, end: number, text: string, group: CLineEditUndoGroup): void {
+        if (this.isReadOnly()) return;
+        const remaining = this.#m_maxLength - (this.#m_text.length - (end - start));
+        if (text.length !== 0) {
+            text = this.#truncateToLength(text, remaining);
+            if (text.length === 0) return;
+        } else if (start === end) {
+            return;
+        }
 		const newText = this.#m_text.slice(0, start) + text
 			+ this.#m_text.slice(end);
 
@@ -416,7 +434,7 @@ export class CLineEdit extends CWidget {
 		if (!this.#isValidInput(newText))
 			return;
 
-		this.#pushUndoState(this.hasSelection() ? null : group);
+		this.#pushUndoState(start !== end ? null : group);
 		this.#m_text = newText;
 		this.#m_cursorPosition = start + text.length;
 		this.#m_selectionAnchor = this.#m_cursorPosition;
@@ -642,12 +660,12 @@ export class CLineEdit extends CWidget {
 			return;
 
         case "ArrowLeft":
-	        this.#moveCursor(this.#m_cursorPosition - 1, event.shift());
+	        this.#moveCursor(this.#previousCharacter(this.#m_cursorPosition), event.shift());
 	        event.accept();
 	        return;
 
         case "ArrowRight":
-	        this.#moveCursor(this.#m_cursorPosition + 1, event.shift());
+	        this.#moveCursor(this.#nextCharacter(this.#m_cursorPosition), event.shift());
 	        event.accept();
 	        return;
 
@@ -666,9 +684,9 @@ export class CLineEdit extends CWidget {
 	        /** Provides if behavior. */
 	        if (this.#m_cursorPosition > 0) {
 				this.#pushUndoState("backspace");
-		        this.#m_text = this.#m_text.slice(0, this.#m_cursorPosition - 1)
-			        + this.#m_text.slice(this.#m_cursorPosition);
-        		--this.#m_cursorPosition;
+		        const start = this.#previousCharacter(this.#m_cursorPosition);
+                this.#m_text = this.#m_text.slice(0, start) + this.#m_text.slice(this.#m_cursorPosition);
+                this.#m_cursorPosition = start;
 		        this.#m_selectionAnchor = this.#m_cursorPosition;
 				this.textChanged.emit(this.#m_text);
 				this.textEdited.emit(this.#m_text);
@@ -695,7 +713,7 @@ export class CLineEdit extends CWidget {
         	if (this.#m_cursorPosition < this.#m_text.length) {
 				this.#pushUndoState("delete");
 		        this.#m_text = this.#m_text.slice(0, this.#m_cursorPosition)
-			        + this.#m_text.slice(this.#m_cursorPosition + 1);
+			        + this.#m_text.slice(this.#nextCharacter(this.#m_cursorPosition));
 		        this.#m_selectionAnchor = this.#m_cursorPosition;
 				this.textChanged.emit(this.#m_text);
 				this.textEdited.emit(this.#m_text);
@@ -866,16 +884,28 @@ export class CLineEdit extends CWidget {
 	    if (textX <= 0)
 		    return 0;
     	/** Provides for behavior. */
-    	for (let i = 1; i <= this.#m_text.length; ++i) {
-	    	const previousWidth = fm.textWidth(display.slice(0, i - 1));
+    	for (let start = 0; start < this.#m_text.length;) {
+            const i = this.#nextCharacter(start);
+            const previousWidth = fm.textWidth(display.slice(0, start));
     		const width = fm.textWidth(display.slice(0, i));
     		const middle = nearest ? (previousWidth + width) / 2 : width;
     		/** Provides if behavior. */
     		if (textX < middle)
-	    		return i - 1;
+	    		return start;
+            start = i;
 	    }
 
 	    return this.#m_text.length;
+    }
+
+    #nextCharacter(position: number): number {
+        const code = this.#m_text.codePointAt(position);
+        return position + (code !== undefined && code > 0xffff ? 2 : 1);
+    }
+
+    #previousCharacter(position: number): number {
+        const previous = position - 2;
+        return previous >= 0 && this.#nextCharacter(previous) === position ? previous : position - 1;
     }
 
     #moveCursor(position: number, keepAnchor: boolean): void {

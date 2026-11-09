@@ -583,6 +583,18 @@ export class CTextEdit extends CScrollArea {
 		this.#insert(text, null);
 	}
 	
+    /** @internal Supplies the browser input context for the focused editor. */
+    nativeTextState(): { text: string; start: number; end: number } | null {
+        if (this.isReadOnly()) return null;
+        return { text: this.toPlainText(), start: this.selectionStart(), end: this.selectionEnd() };
+    }
+
+    /** @internal Applies the replacement reported by the browser input context. */
+    applyNativeTextUpdate(start: number, end: number, text: string): void {
+        if (start < 0 || end < start || end > this.#m_document.length()) return;
+        this.#replaceInput(start, end, text, null);
+    }
+
 	/** Handles text document behavior. */
 	/** Whether character formatting is supported by this editor. */
 	protected supportsRichText(): boolean {
@@ -1076,7 +1088,7 @@ export class CTextEdit extends CScrollArea {
 
 		case "ArrowLeft":
 			this.#moveCursor(
-				this.#m_cursorPosition - 1,
+				this.#previousCharacter(this.#m_cursorPosition),
 				event.shift()
 			);
 			event.accept();
@@ -1084,7 +1096,7 @@ export class CTextEdit extends CScrollArea {
 
 		case "ArrowRight":
 			this.#moveCursor(
-				this.#m_cursorPosition + 1,
+				this.#nextCharacter(this.#m_cursorPosition),
 				event.shift()
 			);
 			event.accept();
@@ -1156,9 +1168,9 @@ export class CTextEdit extends CScrollArea {
 			/** Provides if behavior. */
 			if (this.#m_cursorPosition > 0) {
                 this.#pushUndoState("backspace");
-				this.#m_document.remove(this.#m_cursorPosition - 1, 1);
-
-				--this.#m_cursorPosition;
+				const start = this.#previousCharacter(this.#m_cursorPosition);
+                this.#m_document.remove(start, this.#m_cursorPosition - start);
+                this.#m_cursorPosition = start;
 				this.#m_selectionAnchor = this.#m_cursorPosition;
 				this.#syncCurrentCharFormatFromCursor();
 				this.textChanged.emit();
@@ -1188,7 +1200,8 @@ export class CTextEdit extends CScrollArea {
 			/** Provides if behavior. */
 			if (this.#m_cursorPosition < this.#m_document.length()) {
                 this.#pushUndoState("delete");
-				this.#m_document.remove(this.#m_cursorPosition, 1);
+				const end = this.#nextCharacter(this.#m_cursorPosition);
+                this.#m_document.remove(this.#m_cursorPosition, end - this.#m_cursorPosition);
 
 				this.#m_selectionAnchor = this.#m_cursorPosition;
 				this.#syncCurrentCharFormatFromCursor();
@@ -1592,19 +1605,32 @@ export class CTextEdit extends CScrollArea {
 		let previousWidth = 0;
 
 		/** Provides for behavior. */
-		for (let i = 1; i <= line.text.length; ++i) {
-			const width = this.#textWidth(line.start, i);
+		for (let offset = 0; offset < line.text.length;) {
+            const code = line.text.codePointAt(offset)!;
+            const end = offset + (code > 0xffff ? 2 : 1);
+			const width = this.#textWidth(line.start, end);
 			const middle = nearest ? (previousWidth + width) / 2 : width;
 
 			/** Provides if behavior. */
 			if (textX < middle)
-				return line.start + i - 1;
+				return line.start + offset;
 
 			previousWidth = width;
+            offset = end;
 		}
 
 		return line.start + line.text.length;
 	}
+
+    #nextCharacter(position: number): number {
+        const code = this.toPlainText().codePointAt(position);
+        return position + (code !== undefined && code > 0xffff ? 2 : 1);
+    }
+
+    #previousCharacter(position: number): number {
+        const previous = position - 2;
+        return previous >= 0 && this.#nextCharacter(previous) === position ? previous : position - 1;
+    }
 
 	#moveCursor(
 		position: number,
@@ -2418,27 +2444,20 @@ export class CTextEdit extends CScrollArea {
 	}
 
 	#insert(text: string, group: CTextEditUndoGroup): void {
-		/** Provides if behavior. */
-		if (text.length === 0 || this.isReadOnly())
-			return;
+        if (text.length === 0) return;
+        this.#replaceInput(this.selectionStart(), this.selectionEnd(), text, group);
+    }
 
-		const hadSelection = this.hasSelection();
-		this.#pushUndoState(hadSelection ? null : group);
+    #replaceInput(start: number, end: number, text: string, group: CTextEditUndoGroup): void {
+        if (this.isReadOnly() || (start === end && text.length === 0)) return;
 
-		const start = hadSelection? this.selectionStart() : this.#m_cursorPosition;
-		const end = hadSelection? this.selectionEnd() : this.#m_cursorPosition;
-
-		/** Provides if behavior. */
-		if (hadSelection)
-			this.#m_document.remove(start, end - start);
-
-		this.#m_document.insert(
-			start,
-			text,
-			this.#m_currentCharFormat
-		);
+        const hadSelection = this.hasSelection();
+        this.#pushUndoState(start !== end ? null : group);
+        if (start !== end) this.#m_document.remove(start, end - start);
+        if (text.length > 0) this.#m_document.insert(start, text, this.#m_currentCharFormat);
 		this.#m_cursorPosition = start + text.length;
 		this.#m_selectionAnchor = this.#m_cursorPosition;
+        if (text.length === 0) this.#syncCurrentCharFormatFromCursor();
 		this.textChanged.emit();
 
 		/** Provides if behavior. */

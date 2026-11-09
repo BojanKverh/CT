@@ -41,10 +41,71 @@ type CClipboardEditor = CWidget & {
     isReadOnly(): boolean;
 };
 
+// TypeScript's DOM declarations do not yet include this browser API.
+type CNativeTextUpdate = Event & { text: string; updateRangeStart: number; updateRangeEnd: number };
+type CNativeEditContext = EventTarget & {
+    readonly text: string;
+    readonly selectionStart: number;
+    readonly selectionEnd: number;
+    updateText(start: number, end: number, text: string): void;
+    updateSelection(start: number, end: number): void;
+};
+type CEditCanvas = HTMLCanvasElement & { editContext?: CNativeEditContext | null };
+type CNativeTextEditor = CWidget & {
+    nativeTextState(): { text: string; start: number; end: number } | null;
+    applyNativeTextUpdate(start: number, end: number, text: string): void;
+};
+
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
 
 	#m_paintDevice: CCanvasPaintDevice;
+    #nativeEditContext: CNativeEditContext | null = null;
+    #nativeEditor: CNativeTextEditor | null = null;
+    #applyingNativeText = false;
+
+    #onNativeTextUpdate = (event: Event): void => {
+        const canvas = this.canvas();
+        const editor = this.#nativeEditor;
+        if (editor === null || editor !== this.#m_focusWidget ||
+            canvas.ownerDocument.activeElement !== canvas) return;
+        const { text, updateRangeStart, updateRangeEnd } = event as CNativeTextUpdate;
+        this.#applyingNativeText = true;
+        try {
+            editor.applyNativeTextUpdate(updateRangeStart, updateRangeEnd, text);
+        } finally {
+            this.#applyingNativeText = false;
+            this.#syncNativeEditor();
+        }
+    };
+
+    #syncNativeEditor(): void {
+        const context = this.#nativeEditContext;
+        if (context === null || this.#applyingNativeText) return;
+        const canvas: CEditCanvas = this.canvas();
+        const editor = this.#clipboardEditor() as CNativeTextEditor | null;
+        const state = editor?.nativeTextState?.() ?? null;
+        if (editor === null || state === null || editor !== this.#m_focusWidget) {
+            if (canvas.editContext === context) canvas.editContext = null;
+            this.#nativeEditor = null;
+            if (context.text !== "") context.updateText(0, context.text.length, "");
+            return;
+        }
+
+        if (this.#nativeEditor !== editor && canvas.editContext === context)
+            canvas.editContext = null;
+        this.#nativeEditor = editor;
+        if (context.text !== state.text) context.updateText(0, context.text.length, state.text);
+        if (context.selectionStart !== state.start || context.selectionEnd !== state.end)
+            context.updateSelection(state.start, state.end);
+        if (canvas.editContext !== context) canvas.editContext = context;
+    }
+
+    #focusNativeCanvas(): void {
+        const canvas = this.canvas();
+        if (this.#nativeEditor !== null && canvas.ownerDocument.activeElement !== canvas)
+            canvas.focus({ preventScroll: true });
+    }
     #m_canvasObserver: ResizeObserver | null = null;
     #syncCanvasSize = (): void => {
         const canvas = this.canvas();
@@ -85,6 +146,7 @@ export class CApplication extends CObject {
 
 	#onPointerDown = (event: PointerEvent): void => {
 		this.#dispatchMouseEvent(CEventType.MousePress, event);
+        this.#focusNativeCanvas();
 	};
 
 	#onDoubleClick = (event: MouseEvent): void => {
@@ -155,6 +217,11 @@ export class CApplication extends CObject {
 
 		this.#m_paintDevice = new CCanvasPaintDevice(canvas);
 		CApplication.#m_instance = this;
+        const EditContext = (globalThis as { EditContext?: new () => CNativeEditContext }).EditContext;
+        if (typeof EditContext === "function" && "editContext" in canvas) {
+            this.#nativeEditContext = new EditContext();
+            this.#nativeEditContext.addEventListener("textupdate", this.#onNativeTextUpdate);
+        }
 		this.#m_toolTipTimer.setSingleShot(true);
 		this.#m_toolTipTimer.timeout.connect(() => {
 			void this.#showToolTip();
@@ -207,6 +274,14 @@ export class CApplication extends CObject {
 			return;
 
 		this.stopUpdates();
+        const nativeContext = this.#nativeEditContext;
+        if (nativeContext !== null) {
+            nativeContext.removeEventListener("textupdate", this.#onNativeTextUpdate);
+            const canvas: CEditCanvas = this.canvas();
+            if (canvas.editContext === nativeContext) canvas.editContext = null;
+            this.#nativeEditContext = null;
+            this.#nativeEditor = null;
+        }
         this.#m_canvasObserver?.disconnect();
         this.#m_canvasObserver = null;
         if (typeof window !== "undefined") window.removeEventListener("resize", this.#syncCanvasSize);
@@ -422,6 +497,10 @@ export class CApplication extends CObject {
 		    const event = new CFocusEvent(CEventType.FocusIn);
 		    widget.event(event);
 	    }
+        this.#syncNativeEditor();
+        const canvas = this.canvas();
+        if (this.#nativeEditor !== null && canvas.ownerDocument.activeElement === canvas.ownerDocument.body)
+            this.#focusNativeCanvas();
     }
 
 /**
@@ -455,6 +534,7 @@ export class CApplication extends CObject {
  * Schedules a repaint on the next animation frame when updates are enabled.
  */
 	requestRepaint(): void {
+        this.#syncNativeEditor();
 		if (!this.#m_updatesEnabled)
 			return;
 
@@ -1055,6 +1135,8 @@ export class CApplication extends CObject {
 	}
 
 	#dispatchKeyEvent(type: CEventType, keyboardEvent: KeyboardEvent): void {
+        if (this.#nativeEditor !== null && keyboardEvent.target === this.canvas() &&
+            (keyboardEvent.isComposing || keyboardEvent.key === "Process" || keyboardEvent.key === "Dead")) return;
         if (this.#isDomEditor(keyboardEvent.target)
             && ["Enter", "Return"].includes(keyboardEvent.key)) return;
         if (this.#isDomEditor(keyboardEvent.target) && (keyboardEvent.ctrlKey || keyboardEvent.metaKey) &&

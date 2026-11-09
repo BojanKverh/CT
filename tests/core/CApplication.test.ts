@@ -156,6 +156,97 @@ describe("CApplication", () => {
 	const spacing: number = 6;
 	const margin: number = 6;
 
+    test("routes native text replacements to the focused editor", () => {
+        class TestEditContext extends EventTarget {
+            text = "";
+            selectionStart = 0;
+            selectionEnd = 0;
+
+            updateText(start: number, end: number, text: string): void {
+                this.text = this.text.slice(0, start) + text + this.text.slice(end);
+            }
+
+            updateSelection(start: number, end: number): void {
+                this.selectionStart = start;
+                this.selectionEnd = end;
+            }
+
+            replaceSelection(text: string): void {
+                const updateRangeStart = this.selectionStart;
+                const updateRangeEnd = this.selectionEnd;
+                this.updateText(updateRangeStart, updateRangeEnd, text);
+                this.updateSelection(updateRangeStart + text.length, updateRangeStart + text.length);
+                this.dispatchEvent(Object.assign(new Event("textupdate"), { text, updateRangeStart, updateRangeEnd }));
+            }
+        }
+
+        vi.stubGlobal("EditContext", TestEditContext);
+        try {
+            const body = {};
+            const ownerDocument = { body, activeElement: body };
+            const canvas = Object.assign(createTestCanvas(), {
+                editContext: null as TestEditContext | null,
+                ownerDocument,
+                focus: () => { ownerDocument.activeElement = canvas; }
+            });
+            const app = new CApplication(canvas);
+            const edit = new CLineEdit();
+            edit.setText("hello");
+            edit.selectAll();
+            edit.setFocus();
+
+            expect(ownerDocument.activeElement).toBe(canvas);
+            const context = canvas.editContext!;
+            expect([context.selectionStart, context.selectionEnd]).toEqual([0, 5]);
+            context.replaceSelection("🙂");
+            expect(edit.text()).toBe("🙂");
+            expect(edit.cursorPosition()).toBe(2);
+            window.dispatchEvent({ type: "keydown", key: "Backspace", preventDefault: () => {} } as KeyboardEvent);
+            expect(edit.text()).toBe("");
+            edit.undo();
+            expect(edit.text()).toBe("🙂");
+            edit.undo();
+            expect(edit.text()).toBe("hello");
+            expect(context.text).toBe("hello");
+
+            edit.setValidator(text => text === "hello");
+            context.replaceSelection("🙂");
+            expect(edit.text()).toBe("hello");
+            expect(context.text).toBe("hello");
+
+            edit.setEchoMode(CEchoMode.Password);
+            expect(canvas.editContext).toBeNull();
+            expect(context.text).toBe("");
+
+            const richEdit = new CTextEdit();
+            richEdit.setPlainText("Hello\nworld");
+            richEdit.setSelection(6, 11);
+            richEdit.setFontItalic(true);
+            richEdit.setFocus();
+            expect(canvas.editContext).toBe(context);
+            expect([context.selectionStart, context.selectionEnd]).toEqual([6, 11]);
+
+            context.replaceSelection("🙂");
+            expect(richEdit.toPlainText()).toBe("Hello\n🙂");
+            expect(richEdit.toHtml()).toContain("<i>🙂</i>");
+            expect(richEdit.cursorPosition()).toBe(8);
+
+            window.dispatchEvent({ type: "keydown", key: "Backspace", preventDefault: () => {} } as KeyboardEvent);
+            expect(richEdit.toPlainText()).toBe("Hello\n");
+            richEdit.undo();
+            expect(richEdit.toHtml()).toContain("<i>🙂</i>");
+            richEdit.undo();
+            expect(richEdit.toPlainText()).toBe("Hello\nworld");
+            expect(richEdit.toHtml()).toContain("<i>world</i>");
+            expect(context.text).toBe("Hello\nworld");
+
+            richEdit.setReadOnly(true);
+            expect(canvas.editContext).toBeNull();
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
     test("creates a singleton application", () => {
         const canvas = createTestCanvas();
         const app = new CApplication(canvas);
