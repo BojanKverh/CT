@@ -18,6 +18,7 @@
         "build": "tsc -p tsconfig.build.json",
         "typecheck": "tsc -p tsconfig.json --noEmit",
         "test": "vitest run",
+        "test:package": "node tests/package-smoke.mjs",
         "test:watch": "vitest",
         "dev": "vite examples/basic"
     },
