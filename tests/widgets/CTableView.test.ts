@@ -1,3 +1,5 @@
+import { CPainter } from "../../src/painting/CPainter.js";
+import { TestPaintDevice } from "../helpers/createTestPaintEngine.js";
 import { CPushButton } from "../../src/widgets/CPushButton.js";
 import { CNumberEdit } from "../../src/widgets/CNumberEdit.js";
 import { CNumberItemDelegate } from "../../src/widgets/CNumberItemDelegate.js";
@@ -318,6 +320,46 @@ describe("CTableView", () => {
 		if (CApplication.exists())
 			CApplication.instance().destroy();
 	});
+
+    test("paints only visible rows in a large table and its vertical header", () => {
+        class LargeModel extends CAbstractTableModel {
+            readonly cellRows = new Set<number>();
+            readonly headerRows = new Set<number>();
+            override rowCount(): number { return 100_000; }
+            override columnCount(): number { return 2; }
+            override data(index: CModelIndex): number {
+                this.cellRows.add(index.row());
+                return index.row();
+            }
+            override headerData(section: number, orientation: COrientation): number {
+                if (orientation === COrientation.Vertical) this.headerRows.add(section);
+                return section;
+            }
+        }
+
+        const view = new CTableView();
+        const model = new LargeModel();
+        view.resize(600, 330);
+        view.setModel(model);
+        const rowHeight = CTableView.RowHeight;
+        view.scrollTo(0, 50_000 * rowHeight + 7);
+
+        const painter = new CPainter(new TestPaintDevice());
+        view.paintCells(painter);
+        view.verticalHeader().render(painter);
+
+        const first = Math.floor(view.scrollY() / rowHeight);
+        const end = Math.ceil((view.scrollY() + view.viewport().height()) / rowHeight);
+        const visible = Array.from({ length: end - first }, (_, i) => first + i);
+        expect([...model.cellRows]).toEqual(visible);
+
+        const header = view.verticalHeader();
+        const headerEnd = Math.ceil((header.offset() + header.height()) / rowHeight);
+        const headerStart = Math.floor(header.offset() / rowHeight);
+        expect([...model.headerRows]).toEqual(
+            Array.from({ length: headerEnd - headerStart }, (_, i) => headerStart + i)
+        );
+    });
 
 	test("constructs without a model", () => {
 		const view = new CTableView();

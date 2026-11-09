@@ -259,10 +259,16 @@ export class CTableView extends CAbstractItemView {
 		painter.setTextBaseline("middle");
         painter.setTextAlign("left");
 
-		/** Provides for behavior. */
-		for (let row = 0; row < model.rowCount(); row++) {
-			/** Provides for behavior. */
-			for (let column = 0; column < model.columnCount(); column++) {
+        const rowHeight = CTableView.RowHeight;
+        const scrollY = this.scrollY();
+        const viewportHeight = this.viewport().height();
+        if (viewportHeight <= 0) return;
+
+        const firstRow = Math.floor(scrollY / rowHeight);
+        const endRow = Math.min(model.rowCount(), Math.ceil((scrollY + viewportHeight) / rowHeight));
+        const columns = model.columnCount();
+        for (let row = firstRow; row < endRow; ++row) {
+            for (let column = 0; column < columns; ++column) {
 				const index = model.index(row, column);
 				const x = this.#m_horizontalHeader.sectionPosition(column);
 				const width = this.#m_horizontalHeader.sectionSize(column);
@@ -273,7 +279,6 @@ export class CTableView extends CAbstractItemView {
 				painter.setPen(selected ? highlightedText : text);
 				painter.drawRect(x, y, width, CTableView.RowHeight);
 
-				const value = model.data(index);
 
 				painter.save();
 				painter.clipRect(new CRect(x, y, width, CTableView.RowHeight));
@@ -281,6 +286,7 @@ export class CTableView extends CAbstractItemView {
 				const delegate = this.itemDelegateForIndex(index);
 
 				if (!delegate.paint(painter, rect, index, this.#m_contentWidget)) {
+                    const value = model.data(index);
 					const val = value instanceof Date
 						? this.#formatDate(value)
 						: value === null || value === undefined

@@ -20,7 +20,8 @@ export class CHeaderView extends CWidget {
 	#m_orientation: COrientation;
 	#m_model: CAbstractItemModel | null = null;
 	#m_offset = 0;
-	#m_sectionSizes: number[] = [];
+	#m_sectionSizes = new Map<number, number>();
+	#m_sectionOffsets: number[] = [];
 	#m_pressedSection = -1;
 	#m_sortIndicatorSection = -1;
 	#m_sortIndicatorOrder = CSortOrder.AscendingOrder;
@@ -67,7 +68,8 @@ export class CHeaderView extends CWidget {
 			return;
 
 		this.#m_model = model;
-		this.#resetSectionSizes();
+		this.#m_sectionSizes.clear();
+		this.#m_sectionOffsets = [];
 		this.update();
 	}
 
@@ -133,7 +135,7 @@ export class CHeaderView extends CWidget {
 		if (section < 0)
 			return 0;
 
-		const size = this.#m_sectionSizes[section];
+		const size = this.#m_sectionSizes.get(section);
 
 		/** Provides if behavior. */
 		if (size !== undefined)
@@ -156,62 +158,66 @@ export class CHeaderView extends CWidget {
 		if (oldSize === size)
 			return;
 
-		this.#m_sectionSizes[section] = size;
+		if (size === this.#defaultSectionSize())
+            this.#m_sectionSizes.delete(section);
+        else
+            this.#m_sectionSizes.set(section, size);
+        this.#m_sectionOffsets = [];
 
 		this.sectionResized.emit(section, oldSize, size);
 		this.update();
 	}
 
-	/** Provides section position behavior. */
-	sectionPosition(section: number): number {
-		/** Provides if behavior. */
-		if (section <= 0)
-			return 0;
+    /** Returns the position of a section before applying the scroll offset. */
+    sectionPosition(section: number): number {
+        if (section <= 0) return 0;
+        const size = this.#defaultSectionSize();
+        if (this.#m_sectionSizes.size === 0) return section * size;
 
-		let position = 0;
+        const count = this.#sectionCount();
+        const offsets = this.#sectionOffsets(count);
+        const index = Math.min(section, count);
+        return offsets[index]! + (section - index) * size;
+    }
 
-		/** Provides for behavior. */
-		for (let i = 0; i < section; i++)
-			position += this.sectionSize(i);
+    /** Returns the section at a position in the header viewport. */
+    sectionAt(position: number): number {
+        return this.#sectionAtOffset(position + this.#m_offset, this.#sectionCount());
+    }
 
-		return position;
-	}
+    /** Returns the total length of all sections. */
+    length(): number {
+        return this.sectionPosition(this.#sectionCount());
+    }
 
-	/** Provides section at behavior. */
-	sectionAt(position: number): number {
-		position += this.#m_offset;
+    #sectionAtOffset(position: number, count: number): number {
+        if (position < 0 || !Number.isFinite(position) || count === 0) return -1;
+        if (this.#m_sectionSizes.size === 0) {
+            const section = Math.floor(position / this.#defaultSectionSize());
+            return section < count ? section : -1;
+        }
 
-		/** Provides if behavior. */
-		if (position < 0)
-			return -1;
+        const offsets = this.#sectionOffsets(count);
+        if (position >= offsets[count]!) return -1;
+        let first = 0;
+        let last = count;
+        while (first + 1 < last) {
+            const middle = Math.floor((first + last) / 2);
+            if (offsets[middle]! <= position) first = middle;
+            else last = middle;
+        }
+        return first;
+    }
 
-		let sectionPosition = 0;
-
-		/** Provides for behavior. */
-		for (let section = 0; section < this.#sectionCount(); section++) {
-			const size = this.sectionSize(section);
-
-			/** Provides if behavior. */
-			if (position >= sectionPosition &&
-				position < sectionPosition + size)
-				return section;
-
-			sectionPosition += size;
-		}
-
-		return -1;
-	}
-
-	/** Provides length behavior. */
-	length(): number {
-		let result = 0;
-
-		/** Provides for behavior. */
-		for (let section = 0; section < this.#sectionCount(); section++)
-			result += this.sectionSize(section);
-
-		return result;
-	}
+    #sectionOffsets(count: number): number[] {
+        if (this.#m_sectionOffsets.length !== count + 1) {
+            const offsets = [0];
+            for (let section = 0; section < count; ++section)
+                offsets.push(offsets[section]! + this.sectionSize(section));
+            this.#m_sectionOffsets = offsets;
+        }
+        return this.#m_sectionOffsets;
+    }
 
 	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
@@ -245,19 +251,15 @@ export class CHeaderView extends CWidget {
 		painter.setTextBaseline("middle");
 		painter.setTextAlign("left");
 
-		/** Provides for behavior. */
-		for (let section = 0; section < count; section++) {
-			const sectionSize = this.sectionSize(section);
-			const position =
-				this.sectionPosition(section) - this.#m_offset;
+        const horizontal = this.#m_orientation === COrientation.Horizontal;
+        const extent = horizontal ? this.width() : this.height();
+        const first = this.#sectionAtOffset(this.#m_offset, count);
+        let position = first < 0 ? extent : this.sectionPosition(first) - this.#m_offset;
+        for (let section = first; section >= 0 && section < count && position < extent; ++section) {
+            const sectionSize = this.sectionSize(section);
 
 			/** Provides if behavior. */
-			if (this.#m_orientation === COrientation.Horizontal) {
-				/** Provides if behavior. */
-				if (position + sectionSize < 0 ||
-					position >= this.width())
-					continue;
-
+			if (horizontal) {
 				painter.setBrush(base);
 				painter.setPen(text);
 				painter.drawRect(position, 0, sectionSize, this.height());
@@ -278,11 +280,6 @@ export class CHeaderView extends CWidget {
 						sectionSize
 					);
 			} else {
-				/** Provides if behavior. */
-				if (position + sectionSize < 0 ||
-					position >= this.height())
-					continue;
-
 				painter.setBrush(base);
 				painter.setPen(text);
 				painter.drawRect(0, position, this.width(), sectionSize);
@@ -295,8 +292,9 @@ export class CHeaderView extends CWidget {
 					position + sectionSize / 2
 				);
 			}
+            position += sectionSize;
 		}
-		
+
 		painter.setBrush("rgba(0, 0, 0, 0)");
 		painter.setPen(text);
 		painter.drawRect(0, 0, this.width(), this.height());
@@ -448,17 +446,6 @@ export class CHeaderView extends CWidget {
 		return this.#m_orientation === COrientation.Horizontal
 			? CHeaderView.DefaultSectionWidth
 			: CHeaderView.DefaultSectionHeight;
-	}
-
-	#resetSectionSizes(): void {
-		const count = this.#sectionCount();
-		const size = this.#defaultSectionSize();
-
-		this.#m_sectionSizes = [];
-
-		/** Provides for behavior. */
-		for (let section = 0; section < count; section++)
-			this.#m_sectionSizes.push(size);
 	}
 
 	#eventPosition(event: CMouseEvent): number {
