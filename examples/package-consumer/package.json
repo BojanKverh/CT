@@ -1,0 +1,12 @@
+{
+    "name": "canvas-toolkit-package-consumer",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "node ../../node_modules/vite/bin/vite.js",
+        "build": "node ../../node_modules/vite/bin/vite.js build"
+    },
+    "dependencies": {
+        "canvas-toolkit": "file:../.."
+    }
+}
