@@ -1,3 +1,5 @@
+import { CApplication } from "../core/CApplication.js";
+import { CCursorShape } from "../gui/CCursorShape.js";
 import { CSignal } from "../core/CSignal.js";
 import { CClipboard } from "../core/CClipboard.js";
 import { CEventType } from "../events/CEvent.js";
@@ -86,6 +88,19 @@ class CTableViewContentWidget extends CWidget {
 		this.#m_view.contentMousePressEvent(event);
 	}
 
+    protected override mouseMoveEvent(event: CMouseEvent): void {
+        this.#m_view.contentMouseMoveEvent(event);
+    }
+
+    protected override mouseReleaseEvent(event: CMouseEvent): void {
+        this.#m_view.contentMouseReleaseEvent(event);
+    }
+
+    protected override mouseLeaveEvent(event: CMouseEvent): void {
+        this.#m_view.contentMouseLeaveEvent();
+        super.mouseLeaveEvent(event);
+    }
+
 	protected override mouseDoubleClickEvent(event: CMouseEvent): void {
 		this.#m_view.contentMouseDoubleClickEvent(event);
 	}
@@ -118,6 +133,7 @@ export class CTableView extends CAbstractItemView {
 	#m_fetchingMore = false;
     #selectionMode = CTableSelectionMode.SingleSelection;
     #selectionAnchor: CModelIndex | null = null;
+    #dragSelection: { anchor: CModelIndex; cursor: CCursorShape } | null = null;
 
     selectionMode(): CTableSelectionMode {
         return this.#selectionMode;
@@ -126,6 +142,8 @@ export class CTableView extends CAbstractItemView {
     setSelectionMode(mode: CTableSelectionMode): void {
         if (mode === this.#selectionMode) return;
         this.#selectionMode = mode;
+        this.#dragSelection = null;
+        this.#m_contentWidget.setCursor(CCursorShape.Arrow);
         this.#selectionAnchor = null;
         const current = this.currentIndex();
         if (mode === CTableSelectionMode.SingleSelection && current.isValid())
@@ -402,6 +420,70 @@ export class CTableView extends CAbstractItemView {
 		}
 	}
 
+    #cellAtContentPoint(x: number, y: number): CModelIndex {
+        const viewport = this.viewport();
+        if (x < this.scrollX() || x >= this.scrollX() + viewport.width() ||
+            y < this.scrollY() || y >= this.scrollY() + viewport.height())
+            return new CModelIndex();
+        const column = this.#m_horizontalHeader.sectionAt(x - this.#m_horizontalHeader.offset());
+        const row = Math.floor(y / CTableView.RowHeight);
+        return this.model()?.index(row, column) ?? new CModelIndex();
+    }
+
+    #cornerCursor(index: CModelIndex, x: number, y: number): CCursorShape {
+        if (this.#selectionMode !== CTableSelectionMode.ExtendedSelection || !index.isValid() ||
+            !this.selectionModel()?.isSelected(index)) return CCursorShape.Arrow;
+
+        const rect = this.visualRect(index);
+        const localX = x - rect.x();
+        const localY = y - rect.y();
+        if (localX < 0 || localY < 0 || localX >= rect.width() || localY >= rect.height())
+            return CCursorShape.Arrow;
+
+        const margin = 5;
+        const nearSide = localX < margin || localX >= rect.width() - margin;
+        const nearTopOrBottom = localY < margin || localY >= rect.height() - margin;
+        return nearSide && nearTopOrBottom ? CCursorShape.SizeFDiag : CCursorShape.Arrow;
+    }
+
+    /** Updates the range only while the corner gesture owns pointer capture. */
+    contentMouseMoveEvent(event: CMouseEvent): void {
+        const index = this.#cellAtContentPoint(event.x(), event.y());
+        if (CApplication.instance().mouseGrabber() !== this.#m_contentWidget)
+            this.#dragSelection = null;
+
+        const drag = this.#dragSelection;
+        this.#m_contentWidget.setCursor(drag?.cursor ?? this.#cornerCursor(index, event.x(), event.y()));
+        if (drag === null) {
+            event.ignore();
+            return;
+        }
+
+        const selection = this.selectionModel();
+        if (index.isValid() && selection !== null && !index.equals(this.currentIndex())) {
+            selection.selectRectangle(drag.anchor, index);
+            selection.setCurrentIndex(index);
+            this.#m_contentWidget.update();
+        }
+        event.accept();
+    }
+
+    contentMouseReleaseEvent(event: CMouseEvent): void {
+        if (this.#dragSelection === null || event.button() !== CMouseButton.LeftButton) {
+            event.ignore();
+            return;
+        }
+        this.#dragSelection = null;
+        const index = this.#cellAtContentPoint(event.x(), event.y());
+        this.#m_contentWidget.setCursor(this.#cornerCursor(index, event.x(), event.y()));
+        event.accept();
+    }
+
+    contentMouseLeaveEvent(): void {
+        if (this.#dragSelection === null)
+            this.#m_contentWidget.setCursor(CCursorShape.Arrow);
+    }
+
 	/** Handles the content mouse press event. */
 	contentMousePressEvent(event: CMouseEvent): void {
 		const model = this.model();
@@ -437,6 +519,15 @@ export class CTableView extends CAbstractItemView {
         const modifiers = event.modifiers();
         const extend = (modifiers & CKeyboardModifier.ShiftModifier) !== 0;
         const toggle = (modifiers & CKeyboardModifier.ControlModifier) !== 0;
+        this.#dragSelection = null;
+        const cursor = this.#cornerCursor(index, event.x(), event.y());
+        if (!extend && !toggle && cursor !== CCursorShape.Arrow) {
+            this.#selectCell(index, false);
+            this.#dragSelection = { anchor: index, cursor };
+            this.#m_contentWidget.setCursor(cursor);
+            event.accept();
+            return;
+        }
         this.#selectCell(index, extend, toggle);
         if (toggle && this.#selectionMode === CTableSelectionMode.ExtendedSelection) {
             event.accept();
@@ -795,6 +886,7 @@ export class CTableView extends CAbstractItemView {
 		newModel: CAbstractItemModel | null
 	): void {
 		this.#selectionAnchor = null;
+        this.#dragSelection = null;
 		this.#m_horizontalHeader.setModel(newModel);
 		this.#m_verticalHeader.setModel(newModel);
 		this.#updateContentGeometry();
@@ -810,6 +902,7 @@ export class CTableView extends CAbstractItemView {
 	/** Updates table geometry and headers after a model reset. */
 	protected override modelReset(): void {
         this.#selectionAnchor = null;
+        this.#dragSelection = null;
 		this.#updateContentGeometry();
 		this.#m_contentWidget.update();
 		this.#m_horizontalHeader.update();
@@ -820,6 +913,7 @@ export class CTableView extends CAbstractItemView {
 	/** Updates table geometry after rows are rearranged or filtered. */
 	protected override modelLayoutChanged(): void {
         this.#selectionAnchor = null;
+        this.#dragSelection = null;
 		this.#updateContentGeometry();
 		this.#m_contentWidget.update();
 		this.#m_horizontalHeader.update();
@@ -846,6 +940,7 @@ export class CTableView extends CAbstractItemView {
 
 	#updateRowsGeometry(): void {
         this.#selectionAnchor = null;
+        this.#dragSelection = null;
 		this.#updateContentGeometry();
 		this.#m_contentWidget.update();
 		this.#m_verticalHeader.update();

@@ -438,6 +438,69 @@ describe("CTableView", () => {
         expect(selected()).toEqual([[1, 1]]);
     });
 
+    test("only extended-mode corner drags select a rectangle", () => {
+        const app = CApplication.instance();
+        const canvas = app.canvas();
+        const view = new CTableView();
+        view.setGeometry(0, 0, 500, 200);
+        view.setModel(new TestTableModel());
+
+        const pointer = (type: string, clientX: number, clientY: number) => {
+            canvas.dispatchEvent({
+                type, clientX, clientY, button: 0, pointerId: 1, timeStamp: 100,
+                preventDefault() {}
+            } as PointerEvent);
+        };
+        const selected = () => view.selectionModel()!.selectedIndexes()
+            .map(index => [index.row(), index.column()]);
+
+        const left = view.verticalHeader().width();
+        const top = view.horizontalHeader().height();
+        const cornerX = left + 2;
+        const cornerY = top + 2;
+        const endX = left + CTableView.ColumnWidth + 20;
+        const endY = top + CTableView.RowHeight + 12;
+
+        pointer("pointermove", cornerX, cornerY);
+        expect(canvas.style.cursor).toBe("default");
+        pointer("pointerdown", cornerX, cornerY);
+        pointer("pointermove", endX, endY);
+        pointer("pointerup", endX, endY);
+        expect(selected()).toEqual([[0, 0]]);
+
+        view.setSelectionMode(CTableSelectionMode.ExtendedSelection);
+        pointer("pointermove", cornerX, cornerY);
+        expect(canvas.style.cursor).toBe("nwse-resize");
+        pointer("pointermove", left + CTableView.ColumnWidth - 2, cornerY);
+        expect(canvas.style.cursor).toBe("nwse-resize");
+
+        pointer("pointermove", left + 4, cornerY);
+        expect(canvas.style.cursor).toBe("nwse-resize");
+        pointer("pointermove", left + 6, cornerY);
+        expect(canvas.style.cursor).toBe("default");
+        const outsideX = left + CTableView.ColumnWidth + 2;
+        pointer("pointermove", outsideX, cornerY);
+        expect(canvas.style.cursor).toBe("default");
+        pointer("pointerdown", outsideX, cornerY);
+        pointer("pointermove", endX, endY);
+        pointer("pointerup", endX, endY);
+        expect(selected()).toEqual([[0, 1]]);
+
+        pointer("pointerdown", left + 20, top + 12);
+        pointer("pointermove", endX, endY);
+        pointer("pointerup", endX, endY);
+        expect(selected()).toEqual([[0, 0]]);
+
+        pointer("pointerdown", cornerX, cornerY);
+        pointer("pointermove", endX, endY);
+        expect(selected()).toEqual([[0, 0], [0, 1], [1, 0], [1, 1]]);
+        pointer("pointermove", endX, top + 12);
+        expect(selected()).toEqual([[0, 0], [0, 1]]);
+        pointer("pointerup", endX, top + 12);
+        pointer("pointermove", endX, endY);
+        expect(selected()).toEqual([[0, 0], [0, 1]]);
+    });
+
 	test("constructs without a model", () => {
 		const view = new CTableView();
 
