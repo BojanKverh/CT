@@ -261,14 +261,25 @@ export class CTableView extends CAbstractItemView {
 
         const rowHeight = CTableView.RowHeight;
         const scrollY = this.scrollY();
-        const viewportHeight = this.viewport().height();
-        if (viewportHeight <= 0) return;
+        const viewport = this.viewport();
+        const viewportHeight = viewport.height();
+        const viewportWidth = viewport.width();
+        if (viewportHeight <= 0 || viewportWidth <= 0) return;
 
         const firstRow = Math.floor(scrollY / rowHeight);
         const endRow = Math.min(model.rowCount(), Math.ceil((scrollY + viewportHeight) / rowHeight));
+        const header = this.#m_horizontalHeader;
+        const firstColumn = header.sectionAt(this.scrollX() - header.offset());
+        if (firstColumn < 0) return;
+
+        const right = this.scrollX() + viewportWidth;
         const columns = model.columnCount();
+        let endColumn = firstColumn;
+        while (endColumn < columns && header.sectionPosition(endColumn) < right)
+            ++endColumn;
+
         for (let row = firstRow; row < endRow; ++row) {
-            for (let column = 0; column < columns; ++column) {
+            for (let column = firstColumn; column < endColumn; ++column) {
 				const index = model.index(row, column);
 				const x = this.#m_horizontalHeader.sectionPosition(column);
 				const width = this.#m_horizontalHeader.sectionSize(column);

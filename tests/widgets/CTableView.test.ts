@@ -361,6 +361,33 @@ describe("CTableView", () => {
         );
     });
 
+    test("paints only visible columns after scrolling a wide table", () => {
+        class WideModel extends CAbstractTableModel {
+            readonly paintedColumns = new Set<number>();
+            override rowCount(): number { return 100_000; }
+            override columnCount(): number { return 500; }
+            override data(index: CModelIndex): number {
+                this.paintedColumns.add(index.column());
+                return index.column();
+            }
+        }
+
+        const view = new CTableView();
+        const model = new WideModel();
+        view.resize(450, 330);
+        view.setModel(model);
+        const header = view.horizontalHeader();
+        header.resizeSection(249, 65);
+        header.resizeSection(250, 180);
+        view.scrollTo(header.sectionPosition(249) + 7, 120_007);
+        const right = view.scrollX() + view.viewport().width();
+        expect(right).toBeGreaterThan(header.sectionPosition(252));
+        expect(right).toBeLessThan(header.sectionPosition(253));
+
+        view.paintCells(new CPainter(new TestPaintDevice()));
+        expect([...model.paintedColumns]).toEqual([249, 250, 251, 252]);
+    });
+
 	test("constructs without a model", () => {
 		const view = new CTableView();
 

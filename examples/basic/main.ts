@@ -1285,6 +1285,64 @@ function showLargeTreeDemo(parent: CWidget): void {
     dialog.open();
 }
 
+function showWideTableDemo(parent: CWidget): void {
+    class WideTableModel extends CAbstractTableModel {
+        override rowCount(): number { return 100_000; }
+        override columnCount(): number { return 500; }
+
+        override headerData(section: number, orientation: COrientation): string {
+            return orientation === COrientation.Horizontal ? `Column ${section + 1}` : String(section + 1);
+        }
+
+        override data(index: CModelIndex): string | null {
+            return index.isValid() ? `R${index.row() + 1} · C${index.column() + 1}` : null;
+        }
+    }
+
+    const dialog = new CDialog(parent);
+    dialog.setWindowTitle("CTableView – 100,000 rows × 500 columns");
+    dialog.setMinimumSize(420, 300);
+    dialog.setGeometry(0, 0, 760, 520);
+
+    const layout = new CVBoxLayout();
+    layout.setContentsMargins(12, 12, 12, 12);
+    layout.setSpacing(8);
+
+    const hint = new CLabel(dialog);
+    hint.setWordWrap(true);
+    hint.setText("Drag either scrollbar or resize a column. Click a cell and press Ctrl+End to jump to the final cell.");
+    layout.addWidget(hint);
+
+    const table = new CTableView(dialog);
+    table.setModel(new WideTableModel());
+    const header = table.horizontalHeader();
+    header.resizeSection(0, 100);
+    header.resizeSection(1, 180);
+    header.resizeSection(2, 96);
+    const headerFont = table.verticalHeader().font();
+    headerFont.setPixelSize(9);
+    table.verticalHeader().setFont(headerFont);
+    layout.addWidget(table, 1);
+
+    const status = new CLabel(dialog);
+    status.setText("100,000 rows × 500 columns · Click a cell to select it");
+    const number = new Intl.NumberFormat("en-US");
+    table.selectionModel()?.currentChanged.connect(index => {
+        status.setText(index.isValid()
+            ? `Row ${number.format(index.row() + 1)} · Column ${index.column() + 1}`
+            : "100,000 rows × 500 columns · Click a cell to select it");
+    });
+    layout.addWidget(status);
+
+    const close = new CPushButton(dialog);
+    close.setText("Close");
+    close.clicked.connect(() => dialog.reject());
+    layout.addWidget(close);
+
+    dialog.setLayout(layout);
+    dialog.open();
+}
+
 function showLargeTableDemo(parent: CWidget): void {
     const rowCount = 100_000;
     const columns = ["Row", "Record", "Group", "Value", "Status"];
@@ -3000,6 +3058,10 @@ const toolsMenu = new CMenu();
 const largeTableAction = new CAction("CTableView – 100,000 rows");
 largeTableAction.triggered.connect(() => showLargeTableDemo(parent));
 toolsMenu.addAction(largeTableAction);
+
+const wideTableAction = new CAction("CTableView – 500 columns");
+wideTableAction.triggered.connect(() => showWideTableDemo(parent));
+toolsMenu.addAction(wideTableAction);
 
 const largeTreeAction = new CAction("CTreeView – 100,000 items");
 largeTreeAction.triggered.connect(() => showLargeTreeDemo(parent));
