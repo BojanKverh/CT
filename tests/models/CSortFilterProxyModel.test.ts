@@ -174,6 +174,41 @@ describe("CSortFilterProxyModel", () => {
 		expect(names(proxy)).toEqual(["David", "Carol", "Bob", "alice"]);
 	});
 
+    test("reads each default sort key once and keeps ties in source order", () => {
+        class CountingModel extends TestTableModel {
+            reads = 0;
+
+            override data(index: CModelIndex): unknown {
+                ++this.reads;
+                return super.data(index);
+            }
+        }
+
+        const model = new CountingModel();
+        model.replaceRows([["Bravo"], ["alpha"], ["ALPHA"], [null], ["Alpha"]]);
+        const proxy = new CSortFilterProxyModel();
+        proxy.setSourceModel(model);
+        proxy.sort(0, CSortOrder.DescendingOrder);
+
+        expect(model.reads).toBe(model.rowCount());
+        expect(Array.from({ length: proxy.rowCount() }, (_, row) =>
+            proxy.mapToSource(proxy.index(row, 0)).row()
+        )).toEqual([0, 1, 2, 4, 3]);
+    });
+
+    test("sorts with an overridden index comparator", () => {
+        class ReverseRowProxy extends CSortFilterProxyModel {
+            protected override lessThan(left: CModelIndex, right: CModelIndex): boolean {
+                return left.row() > right.row();
+            }
+        }
+
+        const proxy = new ReverseRowProxy();
+        proxy.setSourceModel(new TestTableModel());
+        proxy.sort(0);
+        expect(names(proxy)).toEqual(["David", "Bob", "alice", "Carol"]);
+    });
+
 	test("supports case-sensitive text sorting", () => {
 		const proxy = new CSortFilterProxyModel();
 		proxy.setSourceModel(new TestTableModel());

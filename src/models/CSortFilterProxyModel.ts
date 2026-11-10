@@ -306,31 +306,53 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 				? 1
 				: -1;
 
-			this.#m_sourceRows.sort((leftRow, rightRow) => {
-				const left = source.index(leftRow, column);
-				const right = source.index(rightRow, column);
-				const leftValue = source.data(left);
-				const rightValue = source.data(right);
-				const leftEmpty = leftValue === null || leftValue === undefined;
-				const rightEmpty = rightValue === null || rightValue === undefined;
-
-				if (leftEmpty && rightEmpty)
-					return leftRow - rightRow;
-				if (leftEmpty)
-					return 1;
-				if (rightEmpty)
-					return -1;
-
-				if (this.lessThan(left, right))
-					return -1 * direction;
-				if (this.lessThan(right, left))
-					return 1 * direction;
-
-				return leftRow - rightRow;
-			});
+			if (this.lessThan === CSortFilterProxyModel.prototype.lessThan) {
+				this.#sortCachedKeys(source, column, direction);
+			} else {
+				this.#sortWithCustomComparator(source, column, direction);
+			}
 		}
 
 		this.#m_sourceRows.forEach((sourceRow, proxyRow) => this.#m_proxyRows.set(sourceRow, proxyRow));
+	}
+
+	#sortCachedKeys(source: CAbstractItemModel, column: number, direction: number): void {
+		const keys = this.#m_sourceRows.map(row => ({ row, value: source.data(source.index(row, column)) }));
+		keys.sort((left, right) => {
+			if (left.value === null || left.value === undefined)
+				return right.value === null || right.value === undefined ? left.row - right.row : 1;
+			if (right.value === null || right.value === undefined) return -1;
+
+			if (this.#compareValues(left.value, right.value) < 0) return -direction;
+			if (this.#compareValues(right.value, left.value) < 0) return direction;
+			return left.row - right.row;
+		});
+		this.#m_sourceRows = keys.map(key => key.row);
+	}
+
+	#sortWithCustomComparator(source: CAbstractItemModel, column: number, direction: number): void {
+		this.#m_sourceRows.sort((leftRow, rightRow) => {
+			const left = source.index(leftRow, column);
+			const right = source.index(rightRow, column);
+			const leftValue = source.data(left);
+			const rightValue = source.data(right);
+			const leftEmpty = leftValue === null || leftValue === undefined;
+			const rightEmpty = rightValue === null || rightValue === undefined;
+
+			if (leftEmpty && rightEmpty)
+				return leftRow - rightRow;
+			if (leftEmpty)
+				return 1;
+			if (rightEmpty)
+				return -1;
+
+			if (this.lessThan(left, right))
+				return -1 * direction;
+			if (this.lessThan(right, left))
+				return 1 * direction;
+
+			return leftRow - rightRow;
+		});
 	}
 
 	#compareValues(left: unknown, right: unknown): number {
