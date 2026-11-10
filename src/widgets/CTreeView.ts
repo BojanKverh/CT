@@ -279,8 +279,14 @@ export class CTreeView extends CAbstractItemView {
 		painter.setTextBaseline("middle");
 		painter.setTextAlign("left");
 
-		/** Provides for behavior. */
-		for (let row = 0; row < this.#m_rows.length; row++) {
+        const rowHeight = CTreeView.RowHeight;
+        const scrollY = this.scrollY();
+        const viewportHeight = this.viewport().height();
+        if (viewportHeight <= 0) return;
+
+        const firstRow = Math.floor(scrollY / rowHeight);
+        const endRow = Math.min(this.#m_rows.length, Math.ceil((scrollY + viewportHeight) / rowHeight));
+        for (let row = firstRow; row < endRow; ++row) {
 			const treeRow = this.#m_rows[row];
 
 			/** Provides if behavior. */

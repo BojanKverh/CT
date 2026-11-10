@@ -1148,6 +1148,84 @@ function showToggleSwitchDemo(parent: CWidget, darkThemeAction: CAction): void {
     dialog.setLayout(layout); dialog.open(); theme.setFocus();
 }
 
+function showLargeTreeDemo(parent: CWidget): void {
+    const itemCount = 100_000;
+    const columns = ["Item", "Group", "Value"];
+    const number = new Intl.NumberFormat("en-US");
+
+    class LargeTreeModel extends CAbstractItemModel {
+        override rowCount(parent?: CModelIndex): number {
+            if (!parent?.isValid()) return 1;
+            return parent.data() === "branch" ? itemCount : 0;
+        }
+
+        override columnCount(): number { return columns.length; }
+
+        override index(row: number, column: number, parent?: CModelIndex): CModelIndex {
+            if (row < 0 || row >= this.rowCount(parent) || column < 0 || column >= columns.length)
+                return new CModelIndex();
+            return this.createIndex(row, column, parent?.isValid() ? "item" : "branch");
+        }
+
+        override parentIndex(index: CModelIndex): CModelIndex {
+            return index.data() === "item" ? this.index(0, 0) : new CModelIndex();
+        }
+
+        override headerData(section: number, orientation: COrientation): string {
+            return orientation === COrientation.Horizontal ? columns[section] ?? "" : "";
+        }
+
+        override data(index: CModelIndex): string | number | null {
+            if (!index.isValid()) return null;
+            if (index.data() === "branch")
+                return index.column() === 0 ? "Records" : index.column() === 2 ? number.format(itemCount) : "";
+            const item = index.row() + 1;
+            switch (index.column()) {
+                case 0: return `Item ${number.format(item)}`;
+                case 1: return `Group ${(item - 1) % 10 + 1}`;
+                case 2: return item * 3;
+                default: return null;
+            }
+        }
+    }
+
+    const dialog = new CDialog(parent);
+    dialog.setWindowTitle("CTreeView – 100,000 items");
+    dialog.setMinimumSize(420, 300);
+    dialog.setGeometry(0, 0, 700, 520);
+
+    const layout = new CVBoxLayout();
+    layout.setContentsMargins(12, 12, 12, 12);
+    layout.setSpacing(8);
+
+    const hint = new CLabel(dialog);
+    hint.setWordWrap(true);
+    hint.setText("Expand Records, then drag the scrollbar. Click an item and use Home, End or the arrow keys.");
+    layout.addWidget(hint);
+
+    const tree = new CTreeView(dialog);
+    tree.setModel(new LargeTreeModel());
+    tree.header().resizeSection(0, 200);
+    layout.addWidget(tree, 1);
+
+    const status = new CLabel(dialog);
+    status.setText("100,000 items in Records");
+    tree.selectionModel()?.currentChanged.connect(index => {
+        status.setText(index.data() === "item"
+            ? `Item ${number.format(index.row() + 1)} of ${number.format(itemCount)}`
+            : "100,000 items in Records");
+    });
+    layout.addWidget(status);
+
+    const close = new CPushButton(dialog);
+    close.setText("Close");
+    close.clicked.connect(() => dialog.reject());
+    layout.addWidget(close);
+
+    dialog.setLayout(layout);
+    dialog.open();
+}
+
 function showLargeTableDemo(parent: CWidget): void {
     const rowCount = 100_000;
     const columns = ["Row", "Record", "Group", "Value", "Status"];
@@ -2851,6 +2929,10 @@ const toolsMenu = new CMenu();
 const largeTableAction = new CAction("CTableView – 100,000 rows");
 largeTableAction.triggered.connect(() => showLargeTableDemo(parent));
 toolsMenu.addAction(largeTableAction);
+
+const largeTreeAction = new CAction("CTreeView – 100,000 items");
+largeTreeAction.triggered.connect(() => showLargeTreeDemo(parent));
+toolsMenu.addAction(largeTreeAction);
 
 const collapsibleGroupAction = new CAction("Collapsible group boxes…", mainWindow);
 collapsibleGroupAction.triggered.connect(() => showCollapsibleGroupDemo(parent)); toolsMenu.addAction(collapsibleGroupAction);

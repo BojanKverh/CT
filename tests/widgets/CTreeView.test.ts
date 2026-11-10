@@ -1,3 +1,5 @@
+import { CPainter } from "../../src/painting/CPainter.js";
+import { TestPaintDevice } from "../helpers/createTestPaintEngine.js";
 import { CPushButton } from "../../src/widgets/CPushButton.js";
 import {
 	afterEach, beforeEach, describe, expect, test, vi
@@ -242,6 +244,38 @@ describe("CTreeView", () => {
 		if (CApplication.exists())
 			CApplication.instance().destroy();
 	});
+
+    test("paints only visible rows after scrolling a large tree", () => {
+        class LargeModel extends CAbstractItemModel {
+            readonly paintedRows: number[] = [];
+
+            override rowCount(parent?: CModelIndex): number {
+                return parent?.isValid() ? 0 : 100_000;
+            }
+
+            override columnCount(): number { return 1; }
+
+            override data(index: CModelIndex): string {
+                this.paintedRows.push(index.row());
+                return String(index.row());
+            }
+        }
+
+        const view = new CTreeView();
+        const model = new LargeModel();
+        view.setGeometry(0, 0, 600, 330);
+        view.setModel(model);
+        const height = CTreeView.RowHeight;
+        view.scrollTo(0, 50_000 * height + 7);
+        expect(view.scrollY()).toBe(50_000 * height + 7);
+
+        view.paintRows(new CPainter(new TestPaintDevice()));
+
+        const end = Math.ceil((view.scrollY() + view.viewport().height()) / height);
+        expect(model.paintedRows).toEqual(
+            Array.from({ length: end - 50_000 }, (_, offset) => 50_000 + offset)
+        );
+    });
 
 	test("constructs without a model", () => {
 		const view = new CTreeView();
