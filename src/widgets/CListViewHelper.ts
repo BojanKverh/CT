@@ -35,6 +35,20 @@ export class CListViewHelper {
         return new CRect((row % columns) * (this.#gridSize.width() + this.#spacing),
             Math.floor(row / columns) * (this.#gridSize.height() + this.#spacing), this.#gridSize.width(), this.#gridSize.height());
     }
+    /** Returns the item index range intersecting the vertical viewport. */
+    visibleRange(count: number, width: number, top: number, height: number): [number, number] {
+        if (height <= 0) return [0, 0];
+        const iconMode = this.mode === CListViewMode.IconMode;
+        const columns = iconMode ? this.columns(width) : 1;
+        const gap = iconMode ? this.#spacing : 0;
+        const step = iconMode ? this.#gridSize.height() + gap : this.itemHeight;
+
+        // When the viewport starts in a gap, skip the row immediately above it.
+        const first = Math.floor((top + gap) / step) * columns;
+        const end = Math.ceil((top + height) / step) * columns;
+        return [Math.min(count, first), Math.min(count, end)];
+    }
+
     rowAt(x: number, y: number, width: number, count: number): number {
         if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x >= width) return -1;
         if (this.mode === CListViewMode.ListMode) {

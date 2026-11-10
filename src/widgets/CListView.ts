@@ -204,11 +204,12 @@ export class CListView extends CAbstractItemView {
 		painter.setTextBaseline("middle");
 		painter.setTextAlign("left");
 
-		for (let row = 0; row < model.rowCount(); row++) {
+        const [first, end] = this.#m_itemLayout.visibleRange(
+            model.rowCount(), width, this.scrollY(), this.viewport().height()
+        );
+        for (let row = first; row < end; ++row) {
 			const index = model.index(row, 0);
 			const rect = this.visualRect(index);
-            if (this.viewMode() === CListViewMode.IconMode && (rect.y() + rect.height() <= this.scrollY()
-                || rect.y() >= this.scrollY() + this.viewport().height())) continue;
             const y = rect.y();
 			const selected = this.selectionModel()?.isSelected(index) ?? false;
 

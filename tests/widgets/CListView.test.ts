@@ -4,7 +4,8 @@ import { CListViewMode } from "../../src/widgets/CListViewHelper.js";
 import { CSize } from "../../src/geometry/CSize.js";
 import { CPoint } from "../../src/geometry/CPoint.js";
 import type { CIcon } from "../../src/gui/CIcon.js";
-import type { CPainter } from "../../src/painting/CPainter.js";
+import { CPainter } from "../../src/painting/CPainter.js";
+import { TestPaintDevice } from "../helpers/createTestPaintEngine.js";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
 import { CEventType } from "../../src/events/CEvent.js";
@@ -131,6 +132,45 @@ describe("CListView", () => {
 		if (CApplication.exists())
 			CApplication.instance().destroy();
 	});
+
+    test.each([CListViewMode.ListMode, CListViewMode.IconMode])(
+        "paints only visible items in mode %s", mode => {
+            class LargeModel extends CAbstractListModel {
+                readonly indexed: number[] = [];
+                readonly painted: number[] = [];
+                override rowCount(): number { return 100_000; }
+                override index(row: number, column: number, parent?: CModelIndex): CModelIndex {
+                    this.indexed.push(row);
+                    return super.index(row, column, parent);
+                }
+                override data(index: CModelIndex): string {
+                    this.painted.push(index.row());
+                    return String(index.row());
+                }
+            }
+
+            const view = new CListView();
+            view.resize(180, 101);
+            view.setGridSize(new CSize(70, 80));
+            view.setSpacing(10);
+            view.setViewMode(mode);
+            const model = new LargeModel();
+            view.setModel(model);
+            const top = mode === CListViewMode.ListMode ? 120_007 : 90_085;
+            view.scrollTo(0, top);
+            expect(view.scrollY()).toBe(top);
+            model.indexed.length = 0;
+            view.paintItems(new CPainter(new TestPaintDevice()));
+
+            const first = Math.floor(top / CListView.ItemHeight);
+            const end = Math.ceil((top + view.viewport().height()) / CListView.ItemHeight);
+            const expected = mode === CListViewMode.ListMode
+                ? Array.from({ length: end - first }, (_, offset) => first + offset)
+                : [2002, 2003, 2004, 2005];
+            expect(model.indexed).toEqual(expected);
+            expect(model.painted).toEqual(expected);
+        }
+    );
 
 	test("constructs without a model", () => {
 		const view = new CListView();

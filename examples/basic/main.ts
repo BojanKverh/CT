@@ -1148,6 +1148,65 @@ function showToggleSwitchDemo(parent: CWidget, darkThemeAction: CAction): void {
     dialog.setLayout(layout); dialog.open(); theme.setFocus();
 }
 
+function showLargeListDemo(parent: CWidget): void {
+    const itemCount = 100_000;
+    const number = new Intl.NumberFormat("en-US");
+    const total = number.format(itemCount);
+
+    class LargeListModel extends CAbstractListModel {
+        override rowCount(): number { return itemCount; }
+
+        override data(index: CModelIndex): string {
+            return index.isValid() ? `Item ${number.format(index.row() + 1)}` : "";
+        }
+    }
+
+    const dialog = new CDialog(parent);
+    dialog.setWindowTitle("CListView – 100,000 items");
+    dialog.setMinimumSize(420, 320);
+    dialog.setGeometry(0, 0, 700, 520);
+
+    const layout = new CVBoxLayout();
+    layout.setContentsMargins(12, 12, 12, 12);
+    layout.setSpacing(8);
+
+    const hint = new CLabel(dialog);
+    hint.setWordWrap(true);
+    hint.setText("Switch between List and Icons. Drag the scrollbar, or click an item and press Home or End.");
+    layout.addWidget(hint);
+
+    const mode = new CCategoryButton(dialog);
+    mode.addItems(["List", "Icons"]);
+    mode.setCurrentIndex(0);
+    layout.addWidget(mode);
+
+    const list = new CListView(dialog);
+    list.setModel(new LargeListModel());
+    const icon = new CIcon(new CPixmap(toolkitLogo, toolkitLogo.naturalWidth, toolkitLogo.naturalHeight));
+    list.setIconProvider(() => icon);
+    mode.currentIndexChanged.connect(index => {
+        list.setViewMode(index === 1 ? CListViewMode.IconMode : CListViewMode.ListMode);
+    });
+    layout.addWidget(list, 1);
+
+    const status = new CLabel(dialog);
+    status.setText(`${total} items · Click an item to select it`);
+    list.selectionModel()?.currentChanged.connect(index => {
+        status.setText(index.isValid()
+            ? `Item ${number.format(index.row() + 1)} of ${total}`
+            : `${total} items · Click an item to select it`);
+    });
+    layout.addWidget(status);
+
+    const close = new CPushButton(dialog);
+    close.setText("Close");
+    close.clicked.connect(() => dialog.reject());
+    layout.addWidget(close);
+
+    dialog.setLayout(layout);
+    dialog.open();
+}
+
 function showLargeTreeDemo(parent: CWidget): void {
     const itemCount = 100_000;
     const columns = ["Item", "Group", "Value"];
@@ -2933,6 +2992,10 @@ toolsMenu.addAction(largeTableAction);
 const largeTreeAction = new CAction("CTreeView – 100,000 items");
 largeTreeAction.triggered.connect(() => showLargeTreeDemo(parent));
 toolsMenu.addAction(largeTreeAction);
+
+const largeListAction = new CAction("CListView – 100,000 items");
+largeListAction.triggered.connect(() => showLargeListDemo(parent));
+toolsMenu.addAction(largeListAction);
 
 const collapsibleGroupAction = new CAction("Collapsible group boxes…", mainWindow);
 collapsibleGroupAction.triggered.connect(() => showCollapsibleGroupDemo(parent)); toolsMenu.addAction(collapsibleGroupAction);
