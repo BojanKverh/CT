@@ -77,6 +77,64 @@ describe("CTableWidget", () => {
         expect(table.item(1, 1)?.data()).toBe(40);
     });
 
+    test("undoes and redoes a pasted block by item identity after sorting", () => {
+        const table = new CTableWidget();
+        table.setRowCount(2);
+        table.setColumnCount(2);
+        const first = new CTableWidgetItem("A");
+        const second = new CTableWidgetItem("B");
+        table.setItem(0, 0, first);
+        table.setItem(0, 1, new CTableWidgetItem(10));
+        table.setItem(1, 0, second);
+        table.setItem(1, 1, new CTableWidgetItem(20));
+        table.setCurrentIndex(table.model()!.index(0, 0));
+        table.paste("Z\t30\nC\t40");
+        table.paste("ignored\tabc");
+        table.model()!.sort(0);
+        expect(table.item(0, 0)).toBe(second);
+
+        table.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress, "z", true));
+        expect(table.item(0, 0)?.text()).toBe("B");
+        expect(table.item(0, 1)?.data()).toBe(20);
+        expect(table.item(1, 0)?.text()).toBe("A");
+        expect(table.item(1, 1)?.data()).toBe(10);
+
+        table.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress, "y", true));
+        expect(table.item(0, 0)?.text()).toBe("C");
+        expect(table.item(0, 1)?.data()).toBe(40);
+        expect(table.item(1, 0)?.text()).toBe("Z");
+        expect(table.item(1, 1)?.data()).toBe(30);
+    });
+
+    test("undoes a committed cell edit and a pasted block in order", () => {
+        const table = new CTableWidget();
+        table.setRowCount(1);
+        table.setColumnCount(2);
+        table.setItem(0, 0, new CTableWidgetItem("Before"));
+        table.setItem(0, 1, new CTableWidgetItem(10));
+        const model = table.model()!;
+        table.setCurrentIndex(model.index(0, 0));
+        table.paste("Pasted\t20");
+
+        table.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress, "F2"));
+        const editor = findEditor(table, CLineEdit)!;
+        editor.setText("Edited");
+        editor.event(new CKeyEvent(CEventType.KeyPress, "Enter"));
+        expect(table.item(0, 0)?.data()).toBe("Edited");
+
+        const key = (letter: string) =>
+            table.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress, letter, true));
+        const values = () => [table.item(0, 0)?.data(), table.item(0, 1)?.data()];
+        key("z");
+        expect(values()).toEqual(["Pasted", 20]);
+        key("z");
+        expect(values()).toEqual(["Before", 10]);
+        key("y");
+        expect(values()).toEqual(["Pasted", 20]);
+        key("y");
+        expect(values()).toEqual(["Edited", 20]);
+    });
+
 	test("constructs empty", () => {
 		const table = new CTableWidget();
 

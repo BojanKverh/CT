@@ -1,4 +1,7 @@
 import { CSignal } from "../core/CSignal.js";
+import { CUndoCommand } from "../core/CUndoCommand.js";
+import { CUndoStack } from "../core/CUndoStack.js";
+import type { CKeyEvent } from "../events/CKeyEvent.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CSortOrder } from "../gui/CSortOrder.js";
 import { CAbstractItemModel, type CItemTextEdit, type CItemTextEditError } from "../models/CAbstractItemModel.js";
@@ -7,11 +10,19 @@ import { CTableView } from "./CTableView.js";
 import { CTableWidgetItem } from "./CTableWidgetItem.js";
 import { CWidget } from "./CWidget.js";
 
+type CTableItemChange = { item: CTableWidgetItem; before: unknown; after: unknown };
+
 class CTableWidgetModel extends CAbstractItemModel {
 	#m_items: Array<Array<CTableWidgetItem | null>> = [];
 	#m_columnCount = 0;
 	#m_horizontalHeaderLabels: string[] = [];
 	#m_verticalHeaderLabels: string[] = [];
+    readonly editHistory = new CUndoStack(this);
+
+    constructor(parent: CWidget) {
+        super(parent);
+        this.modelReset.connect(() => this.editHistory.clear());
+    }
 
 	rowCount(_parent: CModelIndex = new CModelIndex()): number {
 		return this.#m_items.length;
@@ -38,17 +49,15 @@ class CTableWidgetModel extends CAbstractItemModel {
 		if (item === null || !item.isEditable())
 			return false;
 
-		if (!Object.is(item.data(), value)) {
-			item.setData(value);
-			this.emitDataChanged(index, index);
-		}
+        const before = item.data();
+        if (!Object.is(before, value))
+            this.#recordChanges([{ item, before, after: value }], "Edit cell");
 
 		return true;
 	}
 
     override applyTextEdits(edits: readonly CItemTextEdit[]): CItemTextEditError | null {
-        const changes: { item: CTableWidgetItem; value: unknown }[] = [];
-        let firstRow = Infinity, firstColumn = Infinity, lastRow = -1, lastColumn = -1;
+        const changes: CTableItemChange[] = [];
 
         for (const [editIndex, { index, text }] of edits.entries()) {
             const row = index.row();
@@ -74,17 +83,28 @@ class CTableWidgetModel extends CAbstractItemModel {
             }
 
             if (Object.is(value, previous)) continue;
-            changes.push({ item, value });
-            firstRow = Math.min(firstRow, row);
-            firstColumn = Math.min(firstColumn, column);
-            lastRow = Math.max(lastRow, row);
-            lastColumn = Math.max(lastColumn, column);
+            changes.push({ item, before: previous, after: value });
         }
 
-        for (const { item, value } of changes) item.setData(value);
-        if (changes.length > 0)
-            this.emitDataChanged(this.index(firstRow, firstColumn), this.index(lastRow, lastColumn));
+        if (changes.length > 0) this.#recordChanges(changes, "Paste cells");
         return null;
+    }
+
+    #recordChanges(changes: readonly CTableItemChange[], label: string): void {
+        const apply = (direction: "before" | "after"): void => {
+            for (const change of changes) change.item.setData(change[direction]);
+            // Resolve the current position because sorting can move an edited item.
+            if (changes.length === 1) {
+                const index = this.indexFromItem(changes[0]!.item);
+                this.emitDataChanged(index, index);
+                return;
+            }
+            this.emitDataChanged(this.index(0, 0), this.index(this.rowCount() - 1, this.columnCount() - 1));
+        };
+        this.editHistory.push(new class extends CUndoCommand {
+            override undo(): void { apply("before"); }
+            override redo(): void { apply("after"); }
+        }(label));
     }
 
 	override isEditable(index: CModelIndex): boolean {
@@ -368,6 +388,34 @@ export class CTableWidget extends CTableView {
 			}
 		);
 	}
+
+    /** Undoes the most recent cell edit or paste. */
+    undo(): void {
+        this.#m_tableModel.editHistory.undo();
+    }
+
+    /** Reapplies the most recently undone cell edit or paste. */
+    redo(): void {
+        this.#m_tableModel.editHistory.redo();
+    }
+
+    override contentKeyPressEvent(event: CKeyEvent): void {
+        if ((event.ctrl() || event.meta()) && !event.alt() && !event.altGraph()) {
+            const key = event.key().toLowerCase();
+            const history = this.#m_tableModel.editHistory;
+            if (key === "z" && !event.shift() && history.canUndo()) {
+                this.undo();
+                event.accept();
+                return;
+            }
+            if ((key === "y" && !event.shift() || key === "z" && event.shift()) && history.canRedo()) {
+                this.redo();
+                event.accept();
+                return;
+            }
+        }
+        super.contentKeyPressEvent(event);
+    }
 
 	/** Provides row count behavior. */
 	rowCount(): number {
