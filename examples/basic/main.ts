@@ -1304,7 +1304,7 @@ function showLargeTableDemo(parent: CWidget): void {
             if (!index.isValid()) return null;
             const row = index.row() + 1;
             switch (index.column()) {
-                case 0: return rowNumber.format(row);
+                case 0: return row;
                 case 1: return `Record ${row}`;
                 case 2: return `Group ${(row - 1) % 10 + 1}`;
                 case 3: return row * 3;
@@ -1325,24 +1325,36 @@ function showLargeTableDemo(parent: CWidget): void {
 
     const hint = new CLabel(dialog);
     hint.setWordWrap(true);
-    hint.setText("Drag the scrollbar to explore. Click a cell, then use the arrow keys, Ctrl+Home or Ctrl+End.");
+    hint.setText("Click a column heading to sort. Filter by group, or clear the field to show all rows.");
     layout.addWidget(hint);
 
+    const filter = new CLineEdit(dialog);
+    filter.setPlaceholderText("Filter by group, e.g. Group 3");
+    layout.addWidget(filter);
+
     const table = new CTableView(dialog);
-    const model = new LargeTableModel();
-    table.setModel(model);
+    const proxy = new CSortFilterProxyModel();
+    proxy.setSourceModel(new LargeTableModel());
+    proxy.setFilterKeyColumn(2);
+    table.setModel(proxy);
+    table.setSortingEnabled(true);
     const headerFont = table.verticalHeader().font();
     headerFont.setPixelSize(9);
     table.verticalHeader().setFont(headerFont);
     layout.addWidget(table, 1);
 
     const status = new CLabel(dialog);
-    status.setText("100,000 rows · Click a cell to select it");
-    table.selectionModel()?.currentChanged.connect(index => {
+    const updateStatus = (): void => {
+        const index = proxy.mapToSource(table.currentIndex());
+        const count = rowNumber.format(proxy.rowCount());
         status.setText(index.isValid()
-            ? `Row ${rowNumber.format(index.row() + 1)} of 100,000 · ${columns[index.column()]}`
-            : "100,000 rows · Click a cell to select it");
-    });
+            ? `${count} matching rows · Record ${rowNumber.format(index.row() + 1)} · ${columns[index.column()]}`
+            : `${count} matching rows · Click a cell to select it`);
+    };
+    table.selectionModel()?.currentChanged.connect(updateStatus);
+    proxy.layoutChanged.connect(updateStatus);
+    filter.textChanged.connect(text => proxy.setFilterFixedString(text.trim()));
+    updateStatus();
     layout.addWidget(status);
 
     const close = new CPushButton(dialog);

@@ -7,6 +7,7 @@ import { CModelIndex } from "./CModelIndex.js";
 /** Provides sorting and text filtering for flat item models. */
 export class CSortFilterProxyModel extends CAbstractProxyModel {
 	#m_sourceRows: number[] = [];
+	#m_proxyRows = new Map<number, number>();
 	#m_filterFixedString = "";
 	#m_filterKeyColumn = -1;
 	#m_filterCaseSensitive = false;
@@ -48,9 +49,9 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 			sourceIndex.model() !== this.sourceModel())
 			return new CModelIndex();
 
-		const proxyRow = this.#m_sourceRows.indexOf(sourceIndex.row());
+		const proxyRow = this.#m_proxyRows.get(sourceIndex.row());
 
-		return proxyRow < 0
+		return proxyRow === undefined
 			? new CModelIndex()
 			: this.index(proxyRow, sourceIndex.column());
 	}
@@ -176,9 +177,9 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 		this.#rebuildMapping();
 
 		const newIndexes = sourceCoordinates.map(([sourceRow, column]) => {
-			const proxyRow = this.#m_sourceRows.indexOf(sourceRow);
+			const proxyRow = this.#m_proxyRows.get(sourceRow);
 
-			return proxyRow < 0
+			return proxyRow === undefined
 				? new CModelIndex()
 				: this.index(proxyRow, column);
 		});
@@ -289,6 +290,7 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 	#rebuildMapping(): void {
 		const source = this.sourceModel();
 		this.#m_sourceRows = [];
+		this.#m_proxyRows.clear();
 
 		if (source === null)
 			return;
@@ -298,36 +300,37 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 				this.#m_sourceRows.push(row);
 		}
 
-		if (this.#m_sortColumn < 0)
-			return;
+		if (this.#m_sortColumn >= 0) {
+			const column = this.#m_sortColumn;
+			const direction = this.#m_sortOrder === CSortOrder.AscendingOrder
+				? 1
+				: -1;
 
-		const column = this.#m_sortColumn;
-		const direction = this.#m_sortOrder === CSortOrder.AscendingOrder
-			? 1
-			: -1;
+			this.#m_sourceRows.sort((leftRow, rightRow) => {
+				const left = source.index(leftRow, column);
+				const right = source.index(rightRow, column);
+				const leftValue = source.data(left);
+				const rightValue = source.data(right);
+				const leftEmpty = leftValue === null || leftValue === undefined;
+				const rightEmpty = rightValue === null || rightValue === undefined;
 
-		this.#m_sourceRows.sort((leftRow, rightRow) => {
-			const left = source.index(leftRow, column);
-			const right = source.index(rightRow, column);
-			const leftValue = source.data(left);
-			const rightValue = source.data(right);
-			const leftEmpty = leftValue === null || leftValue === undefined;
-			const rightEmpty = rightValue === null || rightValue === undefined;
+				if (leftEmpty && rightEmpty)
+					return leftRow - rightRow;
+				if (leftEmpty)
+					return 1;
+				if (rightEmpty)
+					return -1;
 
-			if (leftEmpty && rightEmpty)
+				if (this.lessThan(left, right))
+					return -1 * direction;
+				if (this.lessThan(right, left))
+					return 1 * direction;
+
 				return leftRow - rightRow;
-			if (leftEmpty)
-				return 1;
-			if (rightEmpty)
-				return -1;
+			});
+		}
 
-			if (this.lessThan(left, right))
-				return -1 * direction;
-			if (this.lessThan(right, left))
-				return 1 * direction;
-
-			return leftRow - rightRow;
-		});
+		this.#m_sourceRows.forEach((sourceRow, proxyRow) => this.#m_proxyRows.set(sourceRow, proxyRow));
 	}
 
 	#compareValues(left: unknown, right: unknown): number {
