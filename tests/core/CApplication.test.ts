@@ -1,3 +1,5 @@
+import { CUndoCommand } from "../../src/core/CUndoCommand.js";
+import { CUndoStack } from "../../src/core/CUndoStack.js";
 import { CPalette } from "../../src/gui/CPalette.js";
 import { CPaletteColorRole } from "../../src/gui/CPalette.js";
 import { CColor } from "../../src/gui/CColor.js";
@@ -3507,6 +3509,8 @@ describe("native clipboard copy policy", () => {
 
     test("native table paste validates the entire block and writes through sorted coordinates", () => {
         class Model extends CAbstractTableModel {
+            readonly history = new CUndoStack(this);
+            override undoStack(): CUndoStack { return this.history; }
             readonly values = [["B", "1"], ["A", "2"]];
             override rowCount(): number { return this.values.length; }
             override columnCount(): number { return 2; }
@@ -3518,8 +3522,15 @@ describe("native clipboard copy policy", () => {
                 const editIndex = edits.findIndex(edit =>
                     edit.index.column() === 1 && !/^\d+$/.test(edit.text));
                 if (editIndex >= 0) return { editIndex, message: "Expected digits." };
-                for (const { index, text } of edits) this.values[index.row()]![index.column()] = text;
-                this.emitDataChanged(this.index(0, 0), this.index(1, 1));
+                const before = edits.map(({ index }) => this.data(index)!);
+                const apply = (values: readonly string[]) => {
+                    edits.forEach(({ index }, i) => { this.values[index.row()]![index.column()] = values[i]!; });
+                    this.emitDataChanged(this.index(0, 0), this.index(1, 1));
+                };
+                this.history.push(new class extends CUndoCommand {
+                    override redo(): void { apply(edits.map(edit => edit.text)); }
+                    override undo(): void { apply(before); }
+                }());
                 return null;
             }
         }
@@ -3542,6 +3553,20 @@ describe("native clipboard copy policy", () => {
         const result = clipboard("paste", '"Z\t""hi"""\t10\r\n"Y\nQ"\t20\r\n');
         expect(result.preventDefault).toHaveBeenCalledOnce();
         expect(model.values).toEqual([["Y\nQ", "20"], ['Z\t"hi"', "10"]]);
+        const pasted = model.values.map(row => [...row]);
+        proxy.sort(1);
+        table.setFocus();
+        const press = (key: string) => {
+            const preventDefault = vi.fn();
+            window.dispatchEvent({
+                type: "keydown", key, ctrlKey: true, preventDefault
+            } as unknown as KeyboardEvent);
+            expect(preventDefault).toHaveBeenCalledOnce();
+        };
+        press("z");
+        expect(model.values).toEqual([["B", "1"], ["A", "2"]]);
+        press("y");
+        expect(model.values).toEqual(pasted);
     });
 
     test("Normal native Cut deletes the selection and is undoable", () => {

@@ -1,3 +1,4 @@
+import { CUndoCommand, CUndoStack } from "../../src/index.js";
 import { CCategoryButton } from "../../src/widgets/CCategoryButton.js";
 import { CToggleSwitch } from "../../src/widgets/CToggleSwitch.js";
 import { CTagEdit } from "../../src/widgets/CTagEdit.js";
@@ -476,7 +477,14 @@ class CStringListModel extends CAbstractListModel {
 
 const employeeOccupations = ["Developer", "Designer", "Manager", "Engineer", "Architect", "Analyst"];
 
+type EmployeeEdit = { row: number; column: number; before: unknown; after: unknown };
+
 class DemoTableModel extends CAbstractTableModel {
+    #editHistory = new CUndoStack(this);
+
+    override undoStack(): CUndoStack {
+        return this.#editHistory;
+    }
 	#m_rows: unknown[][] = [
 		["Alice", "Slovenia", "30", "Ljubljana", "Accountant", new Date("2026-01-01"), false],
 		["Bob", "Austria", "42", "Vienna", "Designer", new Date("2025-01-01"), true],
@@ -521,8 +529,10 @@ class DemoTableModel extends CAbstractTableModel {
 		if (row === undefined)
 			return false;
 
-		row[index.column()] = value;
-		this.emitDataChanged(index, index);
+        const column = index.column();
+        const before = row[column];
+        if (!Object.is(before, value))
+            this.#recordEdits([{ row: index.row(), column, before, after: value }], "Edit cell");
 
 		return true;
 	}
@@ -535,8 +545,7 @@ class DemoTableModel extends CAbstractTableModel {
 	}
 
     override applyTextEdits(edits: readonly CItemTextEdit[]): CItemTextEditError | null {
-        const changes: { row: unknown[]; column: number; value: unknown }[] = [];
-        let firstRow = Infinity, firstColumn = Infinity, lastRow = -1, lastColumn = -1;
+        const changes: EmployeeEdit[] = [];
         for (const [editIndex, { index, text }] of edits.entries()) {
             const row = this.#m_rows[index.row()];
             const column = index.column();
@@ -570,17 +579,31 @@ class DemoTableModel extends CAbstractTableModel {
                 value = boolean === "true";
             }
 
-            changes.push({ row, column, value });
-            firstRow = Math.min(firstRow, index.row());
-            lastRow = Math.max(lastRow, index.row());
-            firstColumn = Math.min(firstColumn, column);
-            lastColumn = Math.max(lastColumn, column);
+            if (!Object.is(row[column], value))
+                changes.push({ row: index.row(), column, before: row[column], after: value });
         }
 
-        for (const { row, column, value } of changes) row[column] = value;
-        if (changes.length > 0)
-            this.emitDataChanged(this.index(firstRow, firstColumn), this.index(lastRow, lastColumn));
+        if (changes.length > 0) this.#recordEdits(changes, "Paste cells");
         return null;
+    }
+
+    #recordEdits(changes: readonly EmployeeEdit[], label: string): void {
+        let firstRow = Infinity, firstColumn = Infinity, lastRow = -1, lastColumn = -1;
+        for (const { row, column } of changes) {
+            firstRow = Math.min(firstRow, row);
+            firstColumn = Math.min(firstColumn, column);
+            lastRow = Math.max(lastRow, row);
+            lastColumn = Math.max(lastColumn, column);
+        }
+        const apply = (direction: "before" | "after"): void => {
+            for (const change of changes)
+                this.#m_rows[change.row]![change.column] = change[direction];
+            this.emitDataChanged(this.index(firstRow, firstColumn), this.index(lastRow, lastColumn));
+        };
+        this.#editHistory.push(new class extends CUndoCommand {
+            override undo(): void { apply("before"); }
+            override redo(): void { apply("after"); }
+        }(label));
     }
 
 	override headerData(
@@ -2029,7 +2052,7 @@ but3.clicked.connect(() => {
 	const tv = new CTableView(dlg);
     const pasteStatus = new CLabel(dlg);
     pasteStatus.setGeometry(50, 8, 700, 25);
-    pasteStatus.setText("Click the starting cell and press Ctrl+V to paste spreadsheet cells.");
+    pasteStatus.setText("Ctrl+V pastes cells. Ctrl+Z undoes the last change. Ctrl+Y redoes it.");
     tv.setGeometry(50, 40, 700, 305);
     tv.pasteRejected.connect((row, column, reason) => {
         pasteStatus.setText(`Paste rejected at row ${row + 1}, column ${column + 1}. ${reason}`);
@@ -2049,12 +2072,28 @@ but3.clicked.connect(() => {
 	proxy.setFilterKeyColumn(1); // Country
 	//proxy.setFilterFixedString("Italy");
 
+    const history = model.undoStack();
+    const undo = new CPushButton(dlg);
+    undo.setText("Undo");
+    undo.setGeometry(50, 351, 90, 27);
+    undo.setEnabled(history.canUndo());
+    history.canUndoChanged.connect(enabled => undo.setEnabled(enabled));
+    undo.clicked.connect(() => { tv.undo(); tv.setFocus(); });
+
+    const redo = new CPushButton(dlg);
+    redo.setText("Redo");
+    redo.setGeometry(148, 351, 90, 27);
+    redo.setEnabled(history.canRedo());
+    history.canRedoChanged.connect(enabled => redo.setEnabled(enabled));
+    redo.clicked.connect(() => { tv.redo(); tv.setFocus(); });
+
 	const bb = new CDialogButtonBox(CStandardButton.Ok, dlg);
-	bb.setGeometry(0, 360, 780, 30);
+	bb.setGeometry(650, 351, 100, 27);
 	bb.accepted.connect(() => {
 		dlg.accept();
 	});
 	dlg.exec();
+	tv.setFocus();
 });
 
 const but4 = new CPushButton(parent);

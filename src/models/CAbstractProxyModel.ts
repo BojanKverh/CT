@@ -1,3 +1,4 @@
+import type { CUndoStack } from "../core/CUndoStack.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CAbstractItemModel, type CItemTextEdit, type CItemTextEditError } from "./CAbstractItemModel.js";
 import { CModelIndex } from "./CModelIndex.js";
@@ -53,6 +54,10 @@ export abstract class CAbstractProxyModel extends CAbstractItemModel {
 			? this.#m_sourceModel.setItemData(sourceIndex, value)
 			: false;
 	}
+
+    override undoStack(): CUndoStack | null {
+        return this.#m_sourceModel?.undoStack() ?? null;
+    }
 
     /** Resolves all source indexes before any edit can rearrange the proxy. */
     override applyTextEdits(edits: readonly CItemTextEdit[]): CItemTextEditError | null {

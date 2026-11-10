@@ -1,7 +1,6 @@
 import { CSignal } from "../core/CSignal.js";
 import { CUndoCommand } from "../core/CUndoCommand.js";
 import { CUndoStack } from "../core/CUndoStack.js";
-import type { CKeyEvent } from "../events/CKeyEvent.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CSortOrder } from "../gui/CSortOrder.js";
 import { CAbstractItemModel, type CItemTextEdit, type CItemTextEditError } from "../models/CAbstractItemModel.js";
@@ -17,11 +16,15 @@ class CTableWidgetModel extends CAbstractItemModel {
 	#m_columnCount = 0;
 	#m_horizontalHeaderLabels: string[] = [];
 	#m_verticalHeaderLabels: string[] = [];
-    readonly editHistory = new CUndoStack(this);
+    #editHistory = new CUndoStack(this);
+
+    override undoStack(): CUndoStack {
+        return this.#editHistory;
+    }
 
     constructor(parent: CWidget) {
         super(parent);
-        this.modelReset.connect(() => this.editHistory.clear());
+        this.modelReset.connect(() => this.#editHistory.clear());
     }
 
 	rowCount(_parent: CModelIndex = new CModelIndex()): number {
@@ -101,7 +104,7 @@ class CTableWidgetModel extends CAbstractItemModel {
             }
             this.emitDataChanged(this.index(0, 0), this.index(this.rowCount() - 1, this.columnCount() - 1));
         };
-        this.editHistory.push(new class extends CUndoCommand {
+        this.#editHistory.push(new class extends CUndoCommand {
             override undo(): void { apply("before"); }
             override redo(): void { apply("after"); }
         }(label));
@@ -388,34 +391,6 @@ export class CTableWidget extends CTableView {
 			}
 		);
 	}
-
-    /** Undoes the most recent cell edit or paste. */
-    undo(): void {
-        this.#m_tableModel.editHistory.undo();
-    }
-
-    /** Reapplies the most recently undone cell edit or paste. */
-    redo(): void {
-        this.#m_tableModel.editHistory.redo();
-    }
-
-    override contentKeyPressEvent(event: CKeyEvent): void {
-        if ((event.ctrl() || event.meta()) && !event.alt() && !event.altGraph()) {
-            const key = event.key().toLowerCase();
-            const history = this.#m_tableModel.editHistory;
-            if (key === "z" && !event.shift() && history.canUndo()) {
-                this.undo();
-                event.accept();
-                return;
-            }
-            if ((key === "y" && !event.shift() || key === "z" && event.shift()) && history.canRedo()) {
-                this.redo();
-                event.accept();
-                return;
-            }
-        }
-        super.contentKeyPressEvent(event);
-    }
 
 	/** Provides row count behavior. */
 	rowCount(): number {

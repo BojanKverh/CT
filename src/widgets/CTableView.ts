@@ -174,6 +174,7 @@ export class CTableView extends CAbstractItemView {
 			new CTableViewContentWidget(this);
 
 		this.#m_scrollArea.setWidget(this.#m_contentWidget);
+		this.setFocusProxy(this.#m_contentWidget);
 		this.#m_scrollArea.verticalScrollBar().setSingleStep(CTableView.RowHeight);
 
 		this.#m_scrollArea.horizontalScrollBar()
@@ -579,8 +580,32 @@ export class CTableView extends CAbstractItemView {
         if (this.canCopy()) CClipboard.instance().setText(text);
     }
 
+    /** Undoes the most recent model edit when the model provides history. */
+    undo(): void {
+        this.model()?.undoStack()?.undo();
+    }
+
+    /** Reapplies the most recently undone model edit. */
+    redo(): void {
+        this.model()?.undoStack()?.redo();
+    }
+
 	/** Handles the content key press event. */
 	contentKeyPressEvent(event: CKeyEvent): void {
+        if ((event.ctrl() || event.meta()) && !event.alt() && !event.altGraph()) {
+            const key = event.key().toLowerCase();
+            const history = this.model()?.undoStack();
+            if (key === "z" && !event.shift() && history?.canUndo()) {
+                this.undo();
+                event.accept();
+                return;
+            }
+            if ((key === "y" && !event.shift() || key === "z" && event.shift()) && history?.canRedo()) {
+                this.redo();
+                event.accept();
+                return;
+            }
+        }
         if ((event.ctrl() || event.meta()) && !event.alt() && !event.altGraph() &&
             !event.shift() && event.key().toLowerCase() === "c" && this.canCopy()) {
             this.copy();

@@ -1,3 +1,4 @@
+import type { CUndoStack } from "../core/CUndoStack.js";
 import { CObject } from "../core/CObject.js";
 import { CSignal } from "../core/CSignal.js";
 import { CModelIndex } from "./CModelIndex.js";
@@ -83,6 +84,11 @@ export abstract class CAbstractItemModel extends CObject {
      */
     applyTextEdits(_edits: readonly CItemTextEdit[]): CItemTextEditError | null {
         return { editIndex: 0, message: "This model does not support pasting cells." };
+    }
+
+    /** Returns the history of committed edits, if the model provides one. */
+    undoStack(): CUndoStack | null {
+        return null;
     }
 
 	/**
