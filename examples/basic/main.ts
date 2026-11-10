@@ -1383,7 +1383,7 @@ function showLargeTableDemo(parent: CWidget): void {
 
     const hint = new CLabel(dialog);
     hint.setWordWrap(true);
-    hint.setText("Click a heading to sort. Filter by group. Shift selects a rectangle. Ctrl+click toggles a cell.");
+    hint.setText("Click a heading to sort. Filter by group. Shift selects a rectangle. Ctrl+click toggles a cell. Ctrl+C copies the selection.");
     layout.addWidget(hint);
 
     const filter = new CLineEdit(dialog);

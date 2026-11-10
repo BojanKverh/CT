@@ -1,6 +1,10 @@
 import { CPalette } from "../../src/gui/CPalette.js";
 import { CPaletteColorRole } from "../../src/gui/CPalette.js";
 import { CColor } from "../../src/gui/CColor.js";
+import { CTableView } from "../../src/widgets/CTableView.js";
+import { CAbstractTableModel } from "../../src/models/CAbstractTableModel.js";
+import { CModelIndex } from "../../src/models/CModelIndex.js";
+import { CMouseButton } from "../../src/events/CMouseEvent.js";
 import { CPushButton } from "../../src/widgets/CPushButton.js";
 import { CNumberEdit } from "../../src/widgets/CNumberEdit.js";
 import { CLabel } from "../../src/widgets/CLabel.js";
@@ -3470,6 +3474,35 @@ describe("native clipboard copy policy", () => {
         expect(result.setData).toHaveBeenCalledWith("text/plain", "secret");
         expect(result.preventDefault).toHaveBeenCalledOnce(); expect(edit.text()).toBe("secret");
     });
+    test("native copy serializes a sparse table selection without handling cut or paste", () => {
+        class Model extends CAbstractTableModel {
+            override rowCount(): number { return 2; }
+            override columnCount(): number { return 2; }
+            override data(index: CModelIndex): string {
+                return index.row() === 0 ? "A\tB" : 'C"D';
+            }
+        }
+
+        const table = new CTableView();
+        table.resize(500, 200);
+        const model = new Model();
+        table.setModel(model);
+        table.contentMousePressEvent(new CMouseEvent(CEventType.MousePress, 5, 5, CMouseButton.LeftButton));
+        table.selectionModel()!.select(model.index(1, 1));
+
+        const result = clipboard("copy");
+        const expected = '"A\tB"\t\r\n\t"C""D"';
+        expect(result.setData).toHaveBeenCalledWith("text/plain", expected);
+        expect(result.preventDefault).toHaveBeenCalledOnce();
+        expect(CClipboard.instance().text()).toBe(expected);
+
+        for (const kind of ["cut", "paste"] as const) {
+            const ignored = clipboard(kind);
+            expect(ignored.setData).not.toHaveBeenCalled();
+            expect(ignored.preventDefault).not.toHaveBeenCalled();
+        }
+    });
+
     test("Normal native Cut deletes the selection and is undoable", () => {
         const edit = focused(CEchoMode.Normal); const result = clipboard("cut");
         expect(result.setData).toHaveBeenCalledWith("text/plain", "secret");

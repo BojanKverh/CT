@@ -33,9 +33,13 @@ import { CFont } from "../gui/CFont.js";
  * Central Canvas Toolkit application object that owns the canvas integration, event dispatch, focus, popups, drag-and-drop and repaint scheduling.
  * Only one CApplication instance may exist at a time.
  */
-type CClipboardEditor = CWidget & {
+type CClipboardSource = CWidget & {
     selectedText(): string;
-    copy(): void;
+    copy(text?: string): void;
+    canCopy?(): boolean;
+};
+
+type CClipboardEditor = CClipboardSource & {
     cut(): void;
     paste(): void;
     isReadOnly(): boolean;
@@ -1195,7 +1199,7 @@ export class CApplication extends CObject {
         if (type === CEventType.KeyPress && typeof ClipboardEvent !== "undefined" &&
             (event.ctrl() || event.meta()) && !event.alt() && !event.altGraph() &&
             (!event.shift() || key === "v") && ["c", "x", "v"].includes(key) &&
-            !this.#isDomEditor(keyboardEvent.target) && this.#clipboardEditor() !== null) return;
+            !this.#isDomEditor(keyboardEvent.target) && this.#clipboardEditor(key === "c") !== null) return;
 
 		while (target !== null) {
 			if (target.event(event))
@@ -1225,7 +1229,9 @@ export class CApplication extends CObject {
             ["INPUT", "TEXTAREA", "SELECT"].includes(element.tagName));
     }
 
-    #clipboardEditor(): CClipboardEditor | null {
+    #clipboardEditor(): CClipboardEditor | null;
+    #clipboardEditor(copyOnly: boolean): CClipboardSource | null;
+    #clipboardEditor(copyOnly = false): CClipboardSource | null {
         let widget = this.#m_focusWidget;
         const boundary = this.#m_popupWidgets[this.#m_popupWidgets.length - 1] ?? this.topModalWidget();
         if (widget === null || (boundary !== null && boundary !== undefined && !this.#belongsToModal(widget, boundary))) return null;
@@ -1238,8 +1244,8 @@ export class CApplication extends CObject {
             if (widget.inputBlocker() !== null) return null;
             const candidate = widget as Partial<CClipboardEditor>;
             if (typeof candidate.selectedText === "function" && typeof candidate.copy === "function" &&
-                typeof candidate.cut === "function" && typeof candidate.paste === "function" &&
-                typeof candidate.isReadOnly === "function") return widget as CClipboardEditor;
+                (copyOnly || (typeof candidate.cut === "function" && typeof candidate.paste === "function" &&
+                    typeof candidate.isReadOnly === "function"))) return widget as CClipboardSource;
             if (widget === boundary) break;
             widget = widget.parent();
         }
@@ -1248,28 +1254,28 @@ export class CApplication extends CObject {
 
     #dispatchClipboardEvent(kind: "copy" | "cut" | "paste", event: ClipboardEvent): void {
         if (event.defaultPrevented || this.#isDomEditor(event.target)) return;
-        const editor = this.#clipboardEditor();
+        const editor = kind === "copy" ? null : this.#clipboardEditor();
+        const source = kind === "copy" ? this.#clipboardEditor(true) : editor;
         const data = event.clipboardData;
-        if (editor === null || data == null) return;
-        if (kind !== "copy" && editor.isReadOnly()) return;
+        if (source === null || data == null || editor?.isReadOnly()) return;
         if (kind === "paste") {
             // An empty clipboard must not cause insertion of old internal data.
             if (!Array.from(data.types).includes("text/plain")) return;
             this.#m_clipboard.withNativeClipboard(() => {
                 this.#m_clipboard.setText(data.getData("text/plain"));
-                editor.paste();
+                editor?.paste();
             });
         } else {
-            const copyPolicy = editor as typeof editor & { canCopy?: () => boolean };
-            if (copyPolicy.canCopy?.() === false) {
+            const canCopy = source.canCopy?.();
+            if (canCopy === false) {
                 event.preventDefault();
                 return;
             }
-            const text = editor.selectedText();
-            if (text.length === 0) return;
+            const text = source.selectedText();
+            if (text.length === 0 && canCopy !== true) return;
             data.setData("text/plain", text);
             this.#m_clipboard.withNativeClipboard(() => {
-                if (kind === "cut") editor.cut(); else editor.copy();
+                if (kind === "cut") editor?.cut(); else source.copy(text);
             });
         }
         event.preventDefault();

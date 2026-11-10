@@ -1,3 +1,4 @@
+import { CClipboard } from "../core/CClipboard.js";
 import { CEventType } from "../events/CEvent.js";
 import { CKeyboardModifier, CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CSize } from "../geometry/CSize.js";
@@ -444,8 +445,61 @@ export class CTableView extends CAbstractItemView {
 		event.accept();
 	}
 
+    /** Returns whether the table has cells to copy. */
+    canCopy(): boolean {
+        return this.selectionModel()?.hasSelection() ?? false;
+    }
+
+    /** Serializes the selected cells in view order as tab-separated text. */
+    selectedText(): string {
+        const model = this.model();
+        const indexes = this.selectionModel()?.selectedIndexes() ?? [];
+        if (model === null || indexes.length === 0) return "";
+
+        let firstRow = Infinity, lastRow = -1, firstColumn = Infinity, lastColumn = -1;
+        const rows = new Map<number, Map<number, string>>();
+        for (const index of indexes) {
+            const row = index.row();
+            const column = index.column();
+            firstRow = Math.min(firstRow, row);
+            lastRow = Math.max(lastRow, row);
+            firstColumn = Math.min(firstColumn, column);
+            lastColumn = Math.max(lastColumn, column);
+
+            let cells = rows.get(row);
+            if (cells === undefined) {
+                cells = new Map();
+                rows.set(row, cells);
+            }
+            const value = model.data(index);
+            const text = value instanceof Date ? this.#formatDate(value) : String(value ?? "");
+            cells.set(column, /[\t\r\n"]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text);
+        }
+
+        const result: string[] = [];
+        for (let row = firstRow; row <= lastRow; ++row) {
+            const cells = rows.get(row);
+            const fields: string[] = [];
+            for (let column = firstColumn; column <= lastColumn; ++column)
+                fields.push(cells?.get(column) ?? "");
+            result.push(fields.join("\t"));
+        }
+        return result.join("\r\n");
+    }
+
+    /** Copies selected cells to the clipboard. */
+    copy(text = this.selectedText()): void {
+        if (this.canCopy()) CClipboard.instance().setText(text);
+    }
+
 	/** Handles the content key press event. */
 	contentKeyPressEvent(event: CKeyEvent): void {
+        if ((event.ctrl() || event.meta()) && !event.alt() && !event.altGraph() &&
+            !event.shift() && event.key().toLowerCase() === "c" && this.canCopy()) {
+            this.copy();
+            event.accept();
+            return;
+        }
 		const model = this.model();
 		const selectionModel = this.selectionModel();
 
