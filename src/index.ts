@@ -85,7 +85,7 @@ export { CAbstractItemModel } from "./models/CAbstractItemModel.js";
 export { CAbstractProxyModel } from "./models/CAbstractProxyModel.js";
 export { CAbstractListModel } from "./models/CAbstractListModel.js";
 export { CAbstractTableModel } from "./models/CAbstractTableModel.js";
-export { CTableView } from "./widgets/CTableView.js";
+export { CTableView, CTableSelectionMode } from "./widgets/CTableView.js";
 export { CTreeView } from "./widgets/CTreeView.js";
 export { CTreeWidgetItem } from "./widgets/CTreeWidgetItem.js";
 export { CTreeWidget } from "./widgets/CTreeWidget.js";

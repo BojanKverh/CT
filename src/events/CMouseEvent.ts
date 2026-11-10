@@ -32,16 +32,18 @@ export class CMouseEvent extends CEvent {
      * @param button Mouse button associated with the event.
      * @param shiftKey Whether Shift is pressed.
      * @param clickCount Number of consecutive clicks; defaults to one.
+     * @param ctrlKey Whether Control is pressed.
      */
     constructor(type: CEventType, x: number, y: number, button: number,
-        shiftKey: boolean = false, clickCount: number = 1) {
+        shiftKey: boolean = false, clickCount: number = 1, ctrlKey = false) {
         super(type);
 
         this.#m_pos = new CPoint(x, y);
         this.#m_button = button;
         this.#m_clickCount = Number.isFinite(clickCount)
             ? Math.max(1, Math.trunc(clickCount)) : 1;
-        this.#m_modifiers += shiftKey? CKeyboardModifier.ShiftModifier : 0;
+        if (shiftKey) this.#m_modifiers |= CKeyboardModifier.ShiftModifier;
+        if (ctrlKey) this.#m_modifiers |= CKeyboardModifier.ControlModifier;
     }
 
     /** Returns the widget-relative X coordinate. */

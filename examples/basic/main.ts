@@ -16,7 +16,7 @@ import {CApplication, CWidget, CPainter, CRect, CPoint, CMouseEvent, CMouseButto
 	CTabWidget, CFrame, CFrameShadow, CFrameShape, CComboBox, CFormLayout, CToolButton, CToolButtonStyle,
 	CToolBar, CToolBarArea, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
 	CColorDialog, CSplitter, CSizeGrip, CToolBox, CCalendarWidget, CDateEdit, CTimeEdit, CDateTimeEdit,
-	CTextEdit, CKeySequenceEdit, CListView, CModelIndex, CAbstractListModel, CTableView, CAbstractTableModel,
+	CTextEdit, CKeySequenceEdit, CListView, CModelIndex, CAbstractListModel, CTableView, CTableSelectionMode, CAbstractTableModel,
 	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget, CTableWidgetItem, CTableWidget, 
 	CContextMenuEvent, CDragEnterEvent, CDragMoveEvent, CDragLeaveEvent, CDropEvent,
 	CDrag, CMimeData, CDropAction, CIcon, CDockWidget, CDockWidgetArea,
@@ -1383,7 +1383,7 @@ function showLargeTableDemo(parent: CWidget): void {
 
     const hint = new CLabel(dialog);
     hint.setWordWrap(true);
-    hint.setText("Click a column heading to sort. Filter by group, or clear the field to show all rows.");
+    hint.setText("Click a heading to sort. Filter by group. Shift selects a rectangle. Ctrl+click toggles a cell.");
     layout.addWidget(hint);
 
     const filter = new CLineEdit(dialog);
@@ -1395,6 +1395,7 @@ function showLargeTableDemo(parent: CWidget): void {
     proxy.setSourceModel(new LargeTableModel());
     proxy.setFilterKeyColumn(2);
     table.setModel(proxy);
+    table.setSelectionMode(CTableSelectionMode.ExtendedSelection);
     table.setSortingEnabled(true);
     const headerFont = table.verticalHeader().font();
     headerFont.setPixelSize(9);
@@ -1975,6 +1976,7 @@ but3.clicked.connect(() => {
 
 	const tv = new CTableView(dlg);
 	tv.setGeometry(50, 20, 500, 330);
+	tv.setSelectionMode(CTableSelectionMode.ExtendedSelection);
 	const model = new DemoTableModel();
 	const proxy = new CSortFilterProxyModel();
 	proxy.setSourceModel(model);

@@ -1,5 +1,5 @@
 import { CEventType } from "../events/CEvent.js";
-import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
+import { CKeyboardModifier, CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CSize } from "../geometry/CSize.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { COrientation } from "../gui/COrientation.js";
@@ -48,6 +48,13 @@ class CTableViewContentWidget extends CWidget {
 	}
 }
 
+/** Controls how many cells the user can select in a table. */
+export enum CTableSelectionMode {
+    SingleSelection,
+    ContiguousSelection,
+    ExtendedSelection
+}
+
 /** Implements the table view widget. */
 export class CTableView extends CAbstractItemView {
 	static readonly RowHeight =
@@ -62,6 +69,43 @@ export class CTableView extends CAbstractItemView {
 	#m_contentWidget: CTableViewContentWidget;
 	#m_sortingEnabled = false;
 	#m_fetchingMore = false;
+    #selectionMode = CTableSelectionMode.SingleSelection;
+    #selectionAnchor: CModelIndex | null = null;
+
+    selectionMode(): CTableSelectionMode {
+        return this.#selectionMode;
+    }
+
+    setSelectionMode(mode: CTableSelectionMode): void {
+        if (mode === this.#selectionMode) return;
+        this.#selectionMode = mode;
+        this.#selectionAnchor = null;
+        const current = this.currentIndex();
+        if (mode === CTableSelectionMode.SingleSelection && current.isValid())
+            this.#selectCell(current, false);
+    }
+
+    #selectCell(index: CModelIndex, extend: boolean, toggle = false): void {
+        const selection = this.selectionModel();
+        if (selection === null || !index.isValid()) return;
+        const current = this.currentIndex();
+        if (extend && this.#selectionMode !== CTableSelectionMode.SingleSelection && current.isValid()) {
+            const anchor = this.#selectionAnchor ?? current;
+            this.#selectionAnchor = anchor;
+            selection.selectRectangle(anchor, index);
+        } else if (toggle && this.#selectionMode === CTableSelectionMode.ExtendedSelection) {
+            this.#selectionAnchor = index;
+            if (selection.isSelected(index)) selection.deselect(index);
+            else selection.select(index);
+        } else {
+            this.#selectionAnchor = index;
+            selection.clearSelection();
+            selection.select(index);
+        }
+        this.setCurrentIndex(index);
+        this.#m_contentWidget.update();
+    }
+
 
 	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
@@ -342,9 +386,14 @@ export class CTableView extends CAbstractItemView {
 			return;
 		}
 
-		selectionModel.clearSelection();
-		selectionModel.select(index);
-		this.setCurrentIndex(index);
+        const modifiers = event.modifiers();
+        const extend = (modifiers & CKeyboardModifier.ShiftModifier) !== 0;
+        const toggle = (modifiers & CKeyboardModifier.ControlModifier) !== 0;
+        this.#selectCell(index, extend, toggle);
+        if (toggle && this.#selectionMode === CTableSelectionMode.ExtendedSelection) {
+            event.accept();
+            return;
+        }
 
 		if (this.itemDelegateForIndex(index).editorEvent(
 			event,
@@ -374,6 +423,12 @@ export class CTableView extends CAbstractItemView {
 			return;
 		}
 
+        if (this.#selectionMode === CTableSelectionMode.ExtendedSelection &&
+            (event.modifiers() & CKeyboardModifier.ControlModifier) !== 0) {
+            event.accept();
+            return;
+        }
+
 		const column = this.#m_horizontalHeader.sectionAt(event.pos().x() - this.#m_scrollArea.scrollX());
 		const row = Math.floor(event.pos().y() / CTableView.RowHeight);
 		const index = model.index(row, column);
@@ -383,9 +438,7 @@ export class CTableView extends CAbstractItemView {
 			return;
 		}
 
-		selectionModel.clearSelection();
-		selectionModel.select(index);
-		this.setCurrentIndex(index);
+		this.#selectCell(index, false);
 		this.#m_contentWidget.update();
 		this.edit(index);
 		event.accept();
@@ -489,9 +542,7 @@ export class CTableView extends CAbstractItemView {
 
 		const index = model.index(row, column);
 
-		selectionModel.clearSelection();
-		selectionModel.select(index);
-		this.setCurrentIndex(index);
+		this.#selectCell(index, event.shift());
 
 		this.#ensureIndexVisible(index);
 
@@ -577,6 +628,7 @@ export class CTableView extends CAbstractItemView {
 		_oldModel: CAbstractItemModel | null,
 		newModel: CAbstractItemModel | null
 	): void {
+		this.#selectionAnchor = null;
 		this.#m_horizontalHeader.setModel(newModel);
 		this.#m_verticalHeader.setModel(newModel);
 		this.#updateContentGeometry();
@@ -591,6 +643,7 @@ export class CTableView extends CAbstractItemView {
 
 	/** Updates table geometry and headers after a model reset. */
 	protected override modelReset(): void {
+        this.#selectionAnchor = null;
 		this.#updateContentGeometry();
 		this.#m_contentWidget.update();
 		this.#m_horizontalHeader.update();
@@ -600,6 +653,7 @@ export class CTableView extends CAbstractItemView {
 
 	/** Updates table geometry after rows are rearranged or filtered. */
 	protected override modelLayoutChanged(): void {
+        this.#selectionAnchor = null;
 		this.#updateContentGeometry();
 		this.#m_contentWidget.update();
 		this.#m_horizontalHeader.update();
@@ -625,6 +679,7 @@ export class CTableView extends CAbstractItemView {
 	}
 
 	#updateRowsGeometry(): void {
+        this.#selectionAnchor = null;
 		this.#updateContentGeometry();
 		this.#m_contentWidget.update();
 		this.#m_verticalHeader.update();

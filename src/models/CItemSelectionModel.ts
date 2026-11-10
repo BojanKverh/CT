@@ -75,6 +75,31 @@ export class CItemSelectionModel extends CObject {
 		this.selectionChanged.emit([index], []);
 	}
 
+    /** @internal Replaces the selection with a rectangle in a flat model. */
+    selectRectangle(anchor: CModelIndex, end: CModelIndex): void {
+        const firstRow = Math.min(anchor.row(), end.row());
+        const lastRow = Math.max(anchor.row(), end.row());
+        const firstColumn = Math.min(anchor.column(), end.column());
+        const lastColumn = Math.max(anchor.column(), end.column());
+        const key = (index: CModelIndex) => `${index.row()}:${index.column()}`;
+        const previous = new Map(this.#m_selectedIndexes.map(index => [key(index), index]));
+        const next: CModelIndex[] = [];
+        const added: CModelIndex[] = [];
+
+        for (let row = firstRow; row <= lastRow; ++row) {
+            for (let column = firstColumn; column <= lastColumn; ++column) {
+                const index = this.#m_model.index(row, column);
+                if (!index.isValid()) continue;
+                next.push(index);
+                if (!previous.delete(key(index))) added.push(index);
+            }
+        }
+
+        this.#m_selectedIndexes = next;
+        if (added.length > 0 || previous.size > 0)
+            this.selectionChanged.emit(added, [...previous.values()]);
+    }
+
 	/** Removes an index from the selection. */
 	deselect(index: CModelIndex): void {
 		const position = this.#m_selectedIndexes.findIndex(

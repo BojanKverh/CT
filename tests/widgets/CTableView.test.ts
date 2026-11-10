@@ -8,7 +8,7 @@ import { CApplication } from "../../src/core/CApplication.js";
 import { COrientation } from "../../src/gui/COrientation.js";
 import { CAbstractTableModel } from "../../src/models/CAbstractTableModel.js";
 import { CModelIndex } from "../../src/models/CModelIndex.js";
-import { CTableView } from "../../src/widgets/CTableView.js";
+import { CTableView, CTableSelectionMode } from "../../src/widgets/CTableView.js";
 import { createTestCanvas } from "../helpers/createTestCanvas.js";
 import { CEventType } from "../../src/events/CEvent.js";
 import { CKeyEvent } from "../../src/events/CKeyEvent.js";
@@ -386,6 +386,56 @@ describe("CTableView", () => {
 
         view.paintCells(new CPainter(new TestPaintDevice()));
         expect([...model.paintedColumns]).toEqual([249, 250, 251, 252]);
+    });
+
+    test("extends and shrinks a rectangle with Shift in contiguous mode", () => {
+        const view = new CTableView();
+        const model = new TestTableModel();
+        view.resize(500, 200);
+        view.setModel(model);
+        const click = (row: number, column: number, shift = false) =>
+            view.contentMousePressEvent(new CMouseEvent(
+                CEventType.MousePress, column * CTableView.ColumnWidth + 5,
+                row * CTableView.RowHeight + 5, CMouseButton.LeftButton, shift
+            ));
+        const selected = () => view.selectionModel()!.selectedIndexes().map(index => [index.row(), index.column()]);
+
+        click(0, 0);
+        click(1, 1, true);
+        expect(view.selectionMode()).toBe(CTableSelectionMode.SingleSelection);
+        expect(selected()).toEqual([[1, 1]]);
+
+        view.setSelectionMode(CTableSelectionMode.ContiguousSelection);
+        click(0, 0);
+        click(1, 1, true);
+        expect(selected()).toEqual([[0, 0], [0, 1], [1, 0], [1, 1]]);
+        view.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress, "ArrowUp", false, true));
+        expect(selected()).toEqual([[0, 0], [0, 1]]);
+        view.setSelectionMode(CTableSelectionMode.SingleSelection);
+        expect(selected()).toEqual([[0, 1]]);
+    });
+
+    test("Ctrl-click toggles individual cells in extended selection mode", () => {
+        const view = new CTableView();
+        view.resize(500, 200);
+        view.setModel(new TestTableModel());
+        view.setSelectionMode(CTableSelectionMode.ExtendedSelection);
+
+        const click = (row: number, column: number, ctrl = false) =>
+            view.contentMousePressEvent(new CMouseEvent(
+                CEventType.MousePress, column * CTableView.ColumnWidth + 5,
+                row * CTableView.RowHeight + 5, CMouseButton.LeftButton, false, 1, ctrl
+            ));
+        const selected = () => view.selectionModel()!.selectedIndexes()
+            .map(index => [index.row(), index.column()]);
+
+        click(0, 0);
+        click(2, 2, true);
+        expect(selected()).toEqual([[0, 0], [2, 2]]);
+        click(0, 0, true);
+        expect(selected()).toEqual([[2, 2]]);
+        click(1, 1);
+        expect(selected()).toEqual([[1, 1]]);
     });
 
 	test("constructs without a model", () => {
