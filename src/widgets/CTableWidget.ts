@@ -1,7 +1,7 @@
 import { CSignal } from "../core/CSignal.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CSortOrder } from "../gui/CSortOrder.js";
-import { CAbstractItemModel } from "../models/CAbstractItemModel.js";
+import { CAbstractItemModel, type CItemTextEdit, type CItemTextEditError } from "../models/CAbstractItemModel.js";
 import { CModelIndex } from "../models/CModelIndex.js";
 import { CTableView } from "./CTableView.js";
 import { CTableWidgetItem } from "./CTableWidgetItem.js";
@@ -45,6 +45,47 @@ class CTableWidgetModel extends CAbstractItemModel {
 
 		return true;
 	}
+
+    override applyTextEdits(edits: readonly CItemTextEdit[]): CItemTextEditError | null {
+        const changes: { item: CTableWidgetItem; value: unknown }[] = [];
+        let firstRow = Infinity, firstColumn = Infinity, lastRow = -1, lastColumn = -1;
+
+        for (const [editIndex, { index, text }] of edits.entries()) {
+            const row = index.row();
+            const column = index.column();
+            const item = this.item(row, column);
+            if (index.model() !== this || item === null || !item.isEditable())
+                return { editIndex, message: "Cell is read-only or does not exist." };
+
+            const previous = item.data();
+            let value: string | number | boolean = text;
+            if (typeof previous === "number") {
+                const trimmed = text.trim();
+                const number = Number(trimmed);
+                if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(trimmed) ||
+                    !Number.isFinite(number))
+                    return { editIndex, message: "Expected a number." };
+                value = number;
+            } else if (typeof previous === "boolean") {
+                const boolean = text.trim().toLowerCase();
+                if (boolean !== "true" && boolean !== "false")
+                    return { editIndex, message: "Expected TRUE or FALSE." };
+                value = boolean === "true";
+            }
+
+            if (Object.is(value, previous)) continue;
+            changes.push({ item, value });
+            firstRow = Math.min(firstRow, row);
+            firstColumn = Math.min(firstColumn, column);
+            lastRow = Math.max(lastRow, row);
+            lastColumn = Math.max(lastColumn, column);
+        }
+
+        for (const { item, value } of changes) item.setData(value);
+        if (changes.length > 0)
+            this.emitDataChanged(this.index(firstRow, firstColumn), this.index(lastRow, lastColumn));
+        return null;
+    }
 
 	override isEditable(index: CModelIndex): boolean {
 		if (!index.isValid() || index.model() !== this)

@@ -1,3 +1,4 @@
+import { CSignal } from "../core/CSignal.js";
 import { CClipboard } from "../core/CClipboard.js";
 import { CEventType } from "../events/CEvent.js";
 import { CKeyboardModifier, CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
@@ -6,7 +7,7 @@ import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 import { CSortOrder } from "../gui/CSortOrder.js";
-import { CAbstractItemModel } from "../models/CAbstractItemModel.js";
+import { CAbstractItemModel, type CItemTextEdit } from "../models/CAbstractItemModel.js";
 import { CModelIndex } from "../models/CModelIndex.js";
 import { CPainter } from "../painting/CPainter.js";
 import { CHeaderView } from "./CHeaderView.js";
@@ -16,6 +17,51 @@ import { CWidget } from "./CWidget.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CRect } from "../geometry/CRect.js";
 import { CAbstractItemView } from "./CAbstractItemView.js";
+
+/** Reads TSV with quoted fields, doubled quotes and CRLF or LF separators. */
+function parseTableText(text: string): string[][] | null {
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let field = "";
+    let quoted = false;
+    let closedQuote = false;
+    let endedRow = false;
+
+    for (let i = 0; i < text.length; ++i) {
+        const char = text[i]!;
+        endedRow = false;
+        if (quoted) {
+            if (char !== '"') field += char;
+            else if (text[i + 1] === '"') {
+                field += '"';
+                ++i;
+            } else {
+                quoted = false;
+                closedQuote = true;
+            }
+        } else if (char === "\t" || char === "\r" || char === "\n") {
+            row.push(field);
+            field = "";
+            closedQuote = false;
+            if (char !== "\t") {
+                if (char === "\r" && text[i + 1] === "\n") ++i;
+                rows.push(row);
+                row = [];
+                endedRow = true;
+            }
+        } else if (closedQuote) {
+            return null;
+        } else if (char === '"' && field === "") {
+            quoted = true;
+        } else {
+            field += char;
+        }
+    }
+
+    if (quoted) return null;
+    if (!endedRow) rows.push([...row, field]);
+    return rows;
+}
 
 class CTableScrollArea extends CScrollArea {
 	updateTableScrollBars(): void {
@@ -444,6 +490,47 @@ export class CTableView extends CAbstractItemView {
 		this.edit(index);
 		event.accept();
 	}
+
+    /** Reports the rejected destination and reason when a paste cannot be applied. */
+    readonly pasteRejected = new CSignal<[row: number, column: number, message: string]>();
+
+    canPaste(): boolean {
+        const index = this.currentIndex();
+        return index.isValid() && (this.model()?.isEditable(index) ?? false);
+    }
+
+    /** Pastes text at the current cell through the model's atomic edit API. */
+    paste(text = CClipboard.instance().text()): void {
+        const model = this.model();
+        const anchor = this.currentIndex();
+        if (model === null || !anchor.isValid()) return;
+
+        const rows = parseTableText(text);
+        if (rows === null) {
+            this.pasteRejected.emit(anchor.row(), anchor.column(), "Invalid quoted text.");
+            return;
+        }
+
+        const edits: CItemTextEdit[] = [];
+        for (const [rowOffset, fields] of rows.entries()) {
+            for (const [columnOffset, value] of fields.entries()) {
+                const row = anchor.row() + rowOffset;
+                const column = anchor.column() + columnOffset;
+                const index = model.index(row, column);
+                if (!index.isValid() || !model.isEditable(index)) {
+                    this.pasteRejected.emit(row, column, index.isValid() ? "Cell is read-only." : "Cell is outside the table.");
+                    return;
+                }
+                edits.push({ index, text: value });
+            }
+        }
+
+        const error = model.applyTextEdits(edits);
+        if (error !== null) {
+            const index = edits[error.editIndex]?.index ?? anchor;
+            this.pasteRejected.emit(index.row(), index.column(), error.message);
+        }
+    }
 
     /** Returns whether the table has cells to copy. */
     canCopy(): boolean {

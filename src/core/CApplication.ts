@@ -39,9 +39,14 @@ type CClipboardSource = CWidget & {
     canCopy?(): boolean;
 };
 
-type CClipboardEditor = CClipboardSource & {
-    cut(): void;
+type CClipboardPasteTarget = CWidget & {
     paste(): void;
+    isReadOnly?(): boolean;
+    canPaste?(): boolean;
+};
+
+type CClipboardEditor = CClipboardSource & CClipboardPasteTarget & {
+    cut(): void;
     isReadOnly(): boolean;
 };
 
@@ -1199,7 +1204,8 @@ export class CApplication extends CObject {
         if (type === CEventType.KeyPress && typeof ClipboardEvent !== "undefined" &&
             (event.ctrl() || event.meta()) && !event.alt() && !event.altGraph() &&
             (!event.shift() || key === "v") && ["c", "x", "v"].includes(key) &&
-            !this.#isDomEditor(keyboardEvent.target) && this.#clipboardEditor(key === "c") !== null) return;
+            !this.#isDomEditor(keyboardEvent.target) && (key === "c" ? this.#clipboardEditor("copy") :
+                key === "v" ? this.#clipboardEditor("paste") : this.#clipboardEditor()) !== null) return;
 
 		while (target !== null) {
 			if (target.event(event))
@@ -1230,8 +1236,9 @@ export class CApplication extends CObject {
     }
 
     #clipboardEditor(): CClipboardEditor | null;
-    #clipboardEditor(copyOnly: boolean): CClipboardSource | null;
-    #clipboardEditor(copyOnly = false): CClipboardSource | null {
+    #clipboardEditor(mode: "copy"): CClipboardSource | null;
+    #clipboardEditor(mode: "paste"): CClipboardPasteTarget | null;
+    #clipboardEditor(mode: "copy" | "paste" | "edit" = "edit"): CClipboardSource | CClipboardPasteTarget | null {
         let widget = this.#m_focusWidget;
         const boundary = this.#m_popupWidgets[this.#m_popupWidgets.length - 1] ?? this.topModalWidget();
         if (widget === null || (boundary !== null && boundary !== undefined && !this.#belongsToModal(widget, boundary))) return null;
@@ -1243,8 +1250,10 @@ export class CApplication extends CObject {
         while (widget !== null) {
             if (widget.inputBlocker() !== null) return null;
             const candidate = widget as Partial<CClipboardEditor>;
-            if (typeof candidate.selectedText === "function" && typeof candidate.copy === "function" &&
-                (copyOnly || (typeof candidate.cut === "function" && typeof candidate.paste === "function" &&
+            if (mode === "paste" && typeof candidate.paste === "function")
+                return widget as CClipboardPasteTarget;
+            if (mode !== "paste" && typeof candidate.selectedText === "function" && typeof candidate.copy === "function" &&
+                (mode === "copy" || (typeof candidate.cut === "function" && typeof candidate.paste === "function" &&
                     typeof candidate.isReadOnly === "function"))) return widget as CClipboardSource;
             if (widget === boundary) break;
             widget = widget.parent();
@@ -1254,18 +1263,21 @@ export class CApplication extends CObject {
 
     #dispatchClipboardEvent(kind: "copy" | "cut" | "paste", event: ClipboardEvent): void {
         if (event.defaultPrevented || this.#isDomEditor(event.target)) return;
-        const editor = kind === "copy" ? null : this.#clipboardEditor();
-        const source = kind === "copy" ? this.#clipboardEditor(true) : editor;
         const data = event.clipboardData;
-        if (source === null || data == null || editor?.isReadOnly()) return;
+        if (data == null) return;
         if (kind === "paste") {
+            const target = this.#clipboardEditor("paste");
+            if (target === null || target.isReadOnly?.() || target.canPaste?.() === false) return;
             // An empty clipboard must not cause insertion of old internal data.
             if (!Array.from(data.types).includes("text/plain")) return;
             this.#m_clipboard.withNativeClipboard(() => {
                 this.#m_clipboard.setText(data.getData("text/plain"));
-                editor?.paste();
+                target.paste();
             });
         } else {
+            const editor = kind === "cut" ? this.#clipboardEditor() : null;
+            const source = kind === "copy" ? this.#clipboardEditor("copy") : editor;
+            if (source === null || editor?.isReadOnly()) return;
             const canCopy = source.canCopy?.();
             if (canCopy === false) {
                 event.preventDefault();

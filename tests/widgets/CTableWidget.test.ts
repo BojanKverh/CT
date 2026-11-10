@@ -53,6 +53,30 @@ describe("CTableWidget", () => {
             CApplication.instance().destroy();
     });
 
+    test("pastes a block without replacing numeric types or partially applying invalid input", () => {
+        const table = new CTableWidget();
+        table.setRowCount(2);
+        table.setColumnCount(2);
+        table.setItem(0, 0, new CTableWidgetItem("A"));
+        table.setItem(0, 1, new CTableWidgetItem(10));
+        table.setItem(1, 0, new CTableWidgetItem("B"));
+        table.setItem(1, 1, new CTableWidgetItem(20));
+        table.setCurrentIndex(table.model()!.index(0, 0));
+        const errors: unknown[][] = [];
+        table.pasteRejected.connect((...error) => errors.push(error));
+
+        table.paste("C\t30\nD\tabc");
+        expect(errors).toEqual([[1, 1, "Expected a number."]]);
+        expect(table.item(0, 0)?.data()).toBe("A");
+        expect(table.item(0, 1)?.data()).toBe(10);
+
+        table.paste("C\t30\nD\t40");
+        expect(table.item(0, 0)?.data()).toBe("C");
+        expect(table.item(0, 1)?.data()).toBe(30);
+        expect(table.item(1, 0)?.data()).toBe("D");
+        expect(table.item(1, 1)?.data()).toBe(40);
+    });
+
 	test("constructs empty", () => {
 		const table = new CTableWidget();
 

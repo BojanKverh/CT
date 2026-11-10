@@ -4,6 +4,9 @@ import { CModelIndex } from "./CModelIndex.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CSortOrder } from "../gui/CSortOrder.js";
 
+export type CItemTextEdit = { index: CModelIndex; text: string };
+export type CItemTextEditError = { editIndex: number; message: string };
+
 /**
  * Abstract base class for models that expose data to item views.
  */
@@ -73,6 +76,14 @@ export abstract class CAbstractItemModel extends CObject {
 	setItemData(_index: CModelIndex, _value: unknown): boolean {
 		return false;
 	}
+
+    /**
+     * Validates all pasted values before writing any of them.
+     * Return null on success or identify the rejected edit. Models opt in by overriding this method.
+     */
+    applyTextEdits(_edits: readonly CItemTextEdit[]): CItemTextEditError | null {
+        return { editIndex: 0, message: "This model does not support pasting cells." };
+    }
 
 	/**
 	 * Returns whether the item at an index can be edited.

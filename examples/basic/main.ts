@@ -17,6 +17,7 @@ import {CApplication, CWidget, CPainter, CRect, CPoint, CMouseEvent, CMouseButto
 	CToolBar, CToolBarArea, CStatusBar, CMainWindow, CMessageBox, CInputDialog, CFileDialog, CProgressDialog, CColor, 
 	CColorDialog, CSplitter, CSizeGrip, CToolBox, CCalendarWidget, CDateEdit, CTimeEdit, CDateTimeEdit,
 	CTextEdit, CKeySequenceEdit, CListView, CModelIndex, CAbstractListModel, CTableView, CTableSelectionMode, CAbstractTableModel,
+    type CItemTextEdit, type CItemTextEditError,
 	CTreeView, CAbstractItemModel, CTreeWidgetItem, CTreeWidget, CTableWidgetItem, CTableWidget, 
 	CContextMenuEvent, CDragEnterEvent, CDragMoveEvent, CDragLeaveEvent, CDropEvent,
 	CDrag, CMimeData, CDropAction, CIcon, CDockWidget, CDockWidgetArea,
@@ -473,6 +474,8 @@ class CStringListModel extends CAbstractListModel {
 	}
 }
 
+const employeeOccupations = ["Developer", "Designer", "Manager", "Engineer", "Architect", "Analyst"];
+
 class DemoTableModel extends CAbstractTableModel {
 	#m_rows: unknown[][] = [
 		["Alice", "Slovenia", "30", "Ljubljana", "Accountant", new Date("2026-01-01"), false],
@@ -530,6 +533,55 @@ class DemoTableModel extends CAbstractTableModel {
 
 		return this.#m_rows[index.row()]?.[index.column()] ?? null;
 	}
+
+    override applyTextEdits(edits: readonly CItemTextEdit[]): CItemTextEditError | null {
+        const changes: { row: unknown[]; column: number; value: unknown }[] = [];
+        let firstRow = Infinity, firstColumn = Infinity, lastRow = -1, lastColumn = -1;
+        for (const [editIndex, { index, text }] of edits.entries()) {
+            const row = this.#m_rows[index.row()];
+            const column = index.column();
+            if (index.model() !== this || row === undefined || column < 0 || column >= row.length)
+                return { editIndex, message: "Cell is outside the model." };
+
+            let value: unknown = text;
+            const trimmed = text.trim();
+            if (column === 2) {
+                const age = Number(trimmed);
+                if (!/^\d+$/.test(trimmed) || age > 100)
+                    return { editIndex, message: "Age must be a whole number from 0 to 100." };
+                value = age;
+            } else if (column === 4) {
+                if (!employeeOccupations.includes(trimmed))
+                    return { editIndex, message: "Choose an occupation from the list." };
+                value = trimmed;
+            } else if (column === 5) {
+                const european = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(trimmed);
+                const iso = european === null ? trimmed
+                    : `${european[3]}-${european[2]!.padStart(2, "0")}-${european[1]!.padStart(2, "0")}`;
+                const date = new Date(iso + "T00:00:00");
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(iso) || !Number.isFinite(date.getTime()) ||
+                    date.getDate() !== Number(iso.slice(8)))
+                    return { editIndex, message: "Use a valid date in YYYY-MM-DD or DD.MM.YYYY format." };
+                value = date;
+            } else if (column === 6) {
+                const boolean = trimmed.toLowerCase();
+                if (boolean !== "true" && boolean !== "false")
+                    return { editIndex, message: "Use TRUE or FALSE." };
+                value = boolean === "true";
+            }
+
+            changes.push({ row, column, value });
+            firstRow = Math.min(firstRow, index.row());
+            lastRow = Math.max(lastRow, index.row());
+            firstColumn = Math.min(firstColumn, column);
+            lastColumn = Math.max(lastColumn, column);
+        }
+
+        for (const { row, column, value } of changes) row[column] = value;
+        if (changes.length > 0)
+            this.emitDataChanged(this.index(firstRow, firstColumn), this.index(lastRow, lastColumn));
+        return null;
+    }
 
 	override headerData(
 		section: number,
@@ -1975,8 +2027,14 @@ but3.clicked.connect(() => {
 	dlg.setWindowTitle("Employees");
 
 	const tv = new CTableView(dlg);
-	tv.setGeometry(50, 20, 500, 330);
-	tv.setSelectionMode(CTableSelectionMode.ExtendedSelection);
+    const pasteStatus = new CLabel(dlg);
+    pasteStatus.setGeometry(50, 8, 700, 25);
+    pasteStatus.setText("Click the starting cell and press Ctrl+V to paste spreadsheet cells.");
+    tv.setGeometry(50, 40, 700, 305);
+    tv.pasteRejected.connect((row, column, reason) => {
+        pasteStatus.setText(`Paste rejected at row ${row + 1}, column ${column + 1}. ${reason}`);
+    });
+    tv.setSelectionMode(CTableSelectionMode.ExtendedSelection);
 	const model = new DemoTableModel();
 	const proxy = new CSortFilterProxyModel();
 	proxy.setSourceModel(model);
@@ -1986,8 +2044,7 @@ but3.clicked.connect(() => {
 
 	tv.setSortingEnabled(true);
 	tv.setItemDelegateForColumn(2, new CIntItemDelegate());
-	const occupationDelegate = new CComboBoxItemDelegate(["Developer", "Designer",
-    	"Manager", "Engineer", "Architect", "Analyst" ]);
+	const occupationDelegate = new CComboBoxItemDelegate(employeeOccupations);
 	tv.setItemDelegateForColumn(4, occupationDelegate);
 	proxy.setFilterKeyColumn(1); // Country
 	//proxy.setFilterFixedString("Italy");

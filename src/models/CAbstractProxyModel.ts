@@ -1,5 +1,5 @@
 import { COrientation } from "../gui/COrientation.js";
-import { CAbstractItemModel } from "./CAbstractItemModel.js";
+import { CAbstractItemModel, type CItemTextEdit, type CItemTextEditError } from "./CAbstractItemModel.js";
 import { CModelIndex } from "./CModelIndex.js";
 
 /**
@@ -53,6 +53,20 @@ export abstract class CAbstractProxyModel extends CAbstractItemModel {
 			? this.#m_sourceModel.setItemData(sourceIndex, value)
 			: false;
 	}
+
+    /** Resolves all source indexes before any edit can rearrange the proxy. */
+    override applyTextEdits(edits: readonly CItemTextEdit[]): CItemTextEditError | null {
+        const source = this.#m_sourceModel;
+        if (source === null) return super.applyTextEdits(edits);
+
+        const mapped: CItemTextEdit[] = [];
+        for (const [editIndex, edit] of edits.entries()) {
+            const index = this.#sourceIndex(edit.index);
+            if (!index.isValid()) return { editIndex, message: "Cell no longer exists." };
+            mapped.push({ index, text: edit.text });
+        }
+        return source.applyTextEdits(mapped);
+    }
 
 	/** Returns whether the mapped source index is editable. */
 	override isEditable(index: CModelIndex): boolean {

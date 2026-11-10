@@ -81,7 +81,7 @@ export { CTextEdit, CTextEditFindFlag } from "./widgets/CTextEdit.js";
 export { CKeySequenceEdit } from "./widgets/CKeySequenceEdit.js";
 export { CListView } from "./widgets/CListView.js";
 export { CModelIndex } from "./models/CModelIndex.js";
-export { CAbstractItemModel } from "./models/CAbstractItemModel.js";
+export { CAbstractItemModel, type CItemTextEdit, type CItemTextEditError } from "./models/CAbstractItemModel.js";
 export { CAbstractProxyModel } from "./models/CAbstractProxyModel.js";
 export { CAbstractListModel } from "./models/CAbstractListModel.js";
 export { CAbstractTableModel } from "./models/CAbstractTableModel.js";

@@ -2,6 +2,8 @@ import { CPalette } from "../../src/gui/CPalette.js";
 import { CPaletteColorRole } from "../../src/gui/CPalette.js";
 import { CColor } from "../../src/gui/CColor.js";
 import { CTableView } from "../../src/widgets/CTableView.js";
+import type { CItemTextEdit, CItemTextEditError } from "../../src/models/CAbstractItemModel.js";
+import { CSortFilterProxyModel } from "../../src/models/CSortFilterProxyModel.js";
 import { CAbstractTableModel } from "../../src/models/CAbstractTableModel.js";
 import { CModelIndex } from "../../src/models/CModelIndex.js";
 import { CMouseButton } from "../../src/events/CMouseEvent.js";
@@ -3501,6 +3503,45 @@ describe("native clipboard copy policy", () => {
             expect(ignored.setData).not.toHaveBeenCalled();
             expect(ignored.preventDefault).not.toHaveBeenCalled();
         }
+    });
+
+    test("native table paste validates the entire block and writes through sorted coordinates", () => {
+        class Model extends CAbstractTableModel {
+            readonly values = [["B", "1"], ["A", "2"]];
+            override rowCount(): number { return this.values.length; }
+            override columnCount(): number { return 2; }
+            override isEditable(): boolean { return true; }
+            override data(index: CModelIndex): string | undefined {
+                return this.values[index.row()]?.[index.column()];
+            }
+            override applyTextEdits(edits: readonly CItemTextEdit[]): CItemTextEditError | null {
+                const editIndex = edits.findIndex(edit =>
+                    edit.index.column() === 1 && !/^\d+$/.test(edit.text));
+                if (editIndex >= 0) return { editIndex, message: "Expected digits." };
+                for (const { index, text } of edits) this.values[index.row()]![index.column()] = text;
+                this.emitDataChanged(this.index(0, 0), this.index(1, 1));
+                return null;
+            }
+        }
+
+        const table = new CTableView();
+        table.resize(500, 200);
+        const model = new Model();
+        const proxy = new CSortFilterProxyModel();
+        proxy.setSourceModel(model);
+        proxy.sort(0);
+        table.setModel(proxy);
+        table.contentMousePressEvent(new CMouseEvent(CEventType.MousePress, 5, 5, CMouseButton.LeftButton));
+
+        const reject = vi.fn();
+        table.pasteRejected.connect(reject);
+        clipboard("paste", "Z\t10\r\nY\tabc");
+        expect(reject).toHaveBeenCalledWith(1, 1, "Expected digits.");
+        expect(model.values).toEqual([["B", "1"], ["A", "2"]]);
+
+        const result = clipboard("paste", '"Z\t""hi"""\t10\r\n"Y\nQ"\t20\r\n');
+        expect(result.preventDefault).toHaveBeenCalledOnce();
+        expect(model.values).toEqual([["Y\nQ", "20"], ['Z\t"hi"', "10"]]);
     });
 
     test("Normal native Cut deletes the selection and is undoable", () => {
