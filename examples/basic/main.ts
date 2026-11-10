@@ -1148,6 +1148,75 @@ function showToggleSwitchDemo(parent: CWidget, darkThemeAction: CAction): void {
     dialog.setLayout(layout); dialog.open(); theme.setFocus();
 }
 
+function showLargeTableDemo(parent: CWidget): void {
+    const rowCount = 100_000;
+    const columns = ["Row", "Record", "Group", "Value", "Status"];
+    const rowNumber = new Intl.NumberFormat("en-US");
+
+    class LargeTableModel extends CAbstractTableModel {
+        override rowCount(): number { return rowCount; }
+        override columnCount(): number { return columns.length; }
+
+        override headerData(section: number, orientation: COrientation): string {
+            return orientation === COrientation.Horizontal
+                ? columns[section] ?? ""
+                : String(section + 1);
+        }
+
+        override data(index: CModelIndex): string | number | null {
+            if (!index.isValid()) return null;
+            const row = index.row() + 1;
+            switch (index.column()) {
+                case 0: return rowNumber.format(row);
+                case 1: return `Record ${row}`;
+                case 2: return `Group ${(row - 1) % 10 + 1}`;
+                case 3: return row * 3;
+                case 4: return row % 2 === 0 ? "Ready" : "Pending";
+                default: return null;
+            }
+        }
+    }
+
+    const dialog = new CDialog(parent);
+    dialog.setWindowTitle("CTableView – 100,000 rows");
+    dialog.setMinimumSize(420, 300);
+    dialog.setGeometry(0, 0, 760, 520);
+
+    const layout = new CVBoxLayout();
+    layout.setContentsMargins(12, 12, 12, 12);
+    layout.setSpacing(8);
+
+    const hint = new CLabel(dialog);
+    hint.setWordWrap(true);
+    hint.setText("Drag the scrollbar to explore. Click a cell, then use the arrow keys, Ctrl+Home or Ctrl+End.");
+    layout.addWidget(hint);
+
+    const table = new CTableView(dialog);
+    const model = new LargeTableModel();
+    table.setModel(model);
+    const headerFont = table.verticalHeader().font();
+    headerFont.setPixelSize(9);
+    table.verticalHeader().setFont(headerFont);
+    layout.addWidget(table, 1);
+
+    const status = new CLabel(dialog);
+    status.setText("100,000 rows · Click a cell to select it");
+    table.selectionModel()?.currentChanged.connect(index => {
+        status.setText(index.isValid()
+            ? `Row ${rowNumber.format(index.row() + 1)} of 100,000 · ${columns[index.column()]}`
+            : "100,000 rows · Click a cell to select it");
+    });
+    layout.addWidget(status);
+
+    const close = new CPushButton(dialog);
+    close.setText("Close");
+    close.clicked.connect(() => dialog.reject());
+    layout.addWidget(close);
+
+    dialog.setLayout(layout);
+    dialog.open();
+}
+
 function showCollapsibleGroupDemo(parent: CWidget): void {
     const dialog = new CDialog(parent); dialog.setWindowTitle("Collapsible group boxes");
     dialog.setMinimumSize(400, 360); dialog.setGeometry(0, 0, 640, 520);
@@ -2779,6 +2848,10 @@ panelsMenu.addAction(new CAction("Console"));
 viewMenu.addMenu("Panels", panelsMenu);
 
 const toolsMenu = new CMenu();
+const largeTableAction = new CAction("CTableView – 100,000 rows");
+largeTableAction.triggered.connect(() => showLargeTableDemo(parent));
+toolsMenu.addAction(largeTableAction);
+
 const collapsibleGroupAction = new CAction("Collapsible group boxes…", mainWindow);
 collapsibleGroupAction.triggered.connect(() => showCollapsibleGroupDemo(parent)); toolsMenu.addAction(collapsibleGroupAction);
 
