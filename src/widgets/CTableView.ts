@@ -423,7 +423,7 @@ export class CTableView extends CAbstractItemView {
 		}
 	}
 
-    #cellAtContentPoint(x: number, y: number): CModelIndex {
+    protected cellAtContentPoint(x: number, y: number): CModelIndex {
         const viewport = this.viewport();
         if (x < this.scrollX() || x >= this.scrollX() + viewport.width() ||
             y < this.scrollY() || y >= this.scrollY() + viewport.height())
@@ -451,7 +451,7 @@ export class CTableView extends CAbstractItemView {
 
     /** Updates the range only while the corner gesture owns pointer capture. */
     contentMouseMoveEvent(event: CMouseEvent): void {
-        const index = this.#cellAtContentPoint(event.x(), event.y());
+        const index = this.cellAtContentPoint(event.x(), event.y());
         if (CApplication.instance().mouseGrabber() !== this.#m_contentWidget)
             this.#stopDragSelection();
 
@@ -517,7 +517,7 @@ export class CTableView extends CAbstractItemView {
         // Pointer coordinates stay relative to the viewport as the content moves.
         const x = this.scrollX() + Math.max(0, Math.min(drag.x, viewport.width() - 1));
         const y = this.scrollY() + Math.max(0, Math.min(drag.y, viewport.height() - 1));
-        this.#extendDragSelection(this.#cellAtContentPoint(x, y), drag.anchor);
+        this.#extendDragSelection(this.cellAtContentPoint(x, y), drag.anchor);
     }
 
     contentMouseReleaseEvent(event: CMouseEvent): void {
@@ -526,7 +526,7 @@ export class CTableView extends CAbstractItemView {
             return;
         }
         this.#stopDragSelection();
-        const index = this.#cellAtContentPoint(event.x(), event.y());
+        const index = this.cellAtContentPoint(event.x(), event.y());
         this.#m_contentWidget.setCursor(this.#cornerCursor(index, event.x(), event.y()));
         event.accept();
     }

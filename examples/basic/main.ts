@@ -2249,7 +2249,7 @@ but6.clicked.connect(() => {
 
 	const table = new CTableWidget(dlg);
 
-    const clearHint = "Delete clears selected cells. Ctrl+X cuts them. Ctrl+Z undoes the change.";
+    const clearHint = "Right-click selected cells for Cut, Copy, Paste and Clear. Ctrl+Z undoes changes.";
     const clearStatus = new CLabel(dlg);
     clearStatus.setGeometry(20, 8, 720, 25);
     clearStatus.setText(clearHint);

@@ -1,3 +1,4 @@
+import { CMenu } from "../../src/widgets/CMenu.js";
 import { CTableView } from "../../src/widgets/CTableView.js";
 import { CNumberEdit } from "../../src/widgets/CNumberEdit.js";
 import { CNumberItemDelegate } from "../../src/widgets/CNumberItemDelegate.js";
@@ -165,6 +166,49 @@ describe("CTableWidget", () => {
         expect([first.data(), second.data()]).toEqual([42, "text"]);
         table.redo();
         expect([first.data(), second.data()]).toEqual([null, null]);
+    });
+
+    test("context menu keeps the range on a selected cell and targets an outside cell", () => {
+        const app = CApplication.instance();
+        const canvas = app.canvas();
+        const table = new CTableWidget();
+        table.setGeometry(0, 0, 500, 200);
+        table.setRowCount(1);
+        table.setColumnCount(3);
+        for (let column = 0; column < 3; ++column)
+            table.setItem(0, column, new CTableWidgetItem(String(column)));
+        const model = table.model()!;
+        const selection = table.selectionModel()!;
+        selection.select(model.index(0, 0));
+        selection.select(model.index(0, 1));
+
+        const open = (column: number): CMenu => {
+            const point = table.viewport().mapToCanvas(column * CTableView.ColumnWidth + 10, 10);
+            canvas.dispatchEvent({
+                type: "contextmenu", clientX: point.x(), clientY: point.y(), button: 2,
+                preventDefault() {}
+            } as PointerEvent);
+            const menu = app.popupWidgets().at(-1);
+            expect(menu).toBeInstanceOf(CMenu);
+            return menu as CMenu;
+        };
+
+        const rangeMenu = open(1);
+        expect(selection.selectedIndexes().map(index => index.column())).toEqual([0, 1]);
+        expect(rangeMenu.actionAt(0)?.text()).toBe("Cut");
+        expect(rangeMenu.actionAt(1)?.text()).toBe("Copy");
+        expect(rangeMenu.actionAt(2)?.text()).toBe("Paste");
+        rangeMenu.close();
+
+        const cellMenu = open(2);
+        expect(selection.selectedIndexes().map(index => index.column())).toEqual([2]);
+        expect(table.currentIndex().column()).toBe(2);
+        cellMenu.actionAt(4)?.trigger();
+        expect(table.item(0, 2)?.data()).toBeNull();
+        expect(table.item(0, 0)?.data()).toBe("0");
+        cellMenu.close();
+        table.undo();
+        expect(table.item(0, 2)?.data()).toBe("2");
     });
 
 	test("constructs empty", () => {
