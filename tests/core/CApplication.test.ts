@@ -18,6 +18,7 @@ import { CAction } from "../../src/core/CAction.js";
 import { CShortcut } from "../../src/core/CShortcut.js";
 import { CKeySequenceEdit } from "../../src/widgets/CKeySequenceEdit.js";
 import { CLineEdit, CEchoMode } from "../../src/widgets/CLineEdit.js";
+import { CScrollArea } from "../../src/widgets/CScrollArea.js";
 import { CTextEdit } from "../../src/widgets/CTextEdit.js";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CApplication } from "../../src/core/CApplication";
@@ -1710,6 +1711,46 @@ describe("CApplication", () => {
 		} as unknown as KeyboardEvent);
 
 		expect(app.focusWidget()).toBe(widget1);
+	});
+
+	test("Tab and Shift+Tab scroll hidden fields into view", () => {
+		const app = new CApplication(createTestCanvas());
+		const area = new CScrollArea();
+		area.resize(200, 100);
+		const content = new CWidget();
+		content.resize(120, 300);
+		area.setWidget(content);
+
+		const createField = (y: number): CWidget => {
+			const field = new CWidget(content);
+			field.setGeometry(10, y, 80, 20);
+			field.setFocusPolicy(CFocusPolicy.StrongFocus);
+			return field;
+		};
+		const first = createField(10);
+		const second = createField(50);
+		const third = createField(210);
+		const pressTab = (shiftKey = false): void => {
+			window.dispatchEvent({
+				type: "keydown", key: "Tab", shiftKey,
+				ctrlKey: false, altKey: false, metaKey: false,
+				preventDefault: vi.fn()
+			} as unknown as KeyboardEvent);
+		};
+
+		area.setScrollY(5);
+		first.setFocus();
+		pressTab();
+		expect(app.focusWidget()).toBe(second);
+		expect(area.scrollY()).toBe(5);
+
+		pressTab();
+		expect(app.focusWidget()).toBe(third);
+		expect(area.scrollY()).toBe(third.y() + third.height() - area.viewport().height());
+
+		pressTab(true);
+		expect(app.focusWidget()).toBe(second);
+		expect(area.scrollY()).toBe(second.y());
 	});
 
 	test("Tab wraps focus from last widget to first widget", () => {
