@@ -760,7 +760,15 @@ export class CApplication extends CObject {
         else
             index = (index + (forward ? 1 : -1) + widgets.length) % widgets.length;
 
-		widgets[index]!.setFocus();
+        const widget = widgets[index]!;
+        widget.setFocus();
+
+        if (widget.focusTarget() === this.#m_focusWidget && !this.isWindowWidget(widget)) {
+            for (let ancestor = widget.parent(); ancestor !== null; ancestor = ancestor.parent()) {
+                ancestor.revealTabFocus(widget);
+                if (this.isWindowWidget(ancestor)) break;
+            }
+        }
 
 		return true;
 	}

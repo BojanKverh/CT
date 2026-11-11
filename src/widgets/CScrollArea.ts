@@ -77,6 +77,29 @@ export class CScrollArea extends CFrame {
 		return oldWidget;
 	}
 
+    /** @internal Reveals a focused control within the scroll content. */
+    override revealTabFocus(widget: CWidget): void {
+        const content = this.#m_widget;
+        if (content === null) return;
+
+        // Focus proxies may point at the entire scrolling surface.
+        let parent = widget.parent();
+        while (parent !== null && parent !== content) parent = parent.parent();
+        if (parent === null) return;
+
+        const origin = widget.mapToCanvas(0, 0);
+        const position = this.#m_viewport.mapFromCanvas(origin.x(), origin.y());
+        const delta = (start: number, size: number, viewportSize: number): number => {
+            const end = start + Math.min(size, viewportSize);
+            return start < 0 ? start : Math.max(0, end - viewportSize);
+        };
+
+        this.scrollTo(
+            this.#m_scrollX + delta(position.x(), widget.width(), this.#m_viewport.width()),
+            this.#m_scrollY + delta(position.y(), widget.height(), this.#m_viewport.height())
+        );
+    }
+
     /** Provides scroll x behavior. */
     scrollX(): number {
 		return this.#m_scrollX;

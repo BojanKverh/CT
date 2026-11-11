@@ -698,6 +698,9 @@ export class CWidget extends CObject {
         return this.#m_layout?.hasHeightForWidth() ?? this.#m_sizePolicy.hasHeightForWidth();
     }
 
+    /** @internal Allows containers to reveal a descendant reached by Tab. */
+    revealTabFocus(_widget: CWidget): void {}
+
     /** Preferred height at the supplied width, or -1 when independent. */
     heightForWidth(width: number): number {
         return this.#m_layout?.heightForWidth(width) ?? -1;

@@ -1501,13 +1501,40 @@ function showLargeTableDemo(parent: CWidget): void {
     dialog.open();
 }
 
+class CollapsibleGroupScrollArea extends CScrollArea {
+    override setGeometry(x: number, y: number, width: number, height: number): void {
+        super.setGeometry(x, y, width, height);
+        this.updateContentSize();
+    }
+
+    updateContentSize(): void {
+        const content = this.widget();
+        if (content === null) return;
+
+        const frame = 2 * this.frameWidth();
+        let width = Math.max(0, this.width() - frame);
+        let height = content.heightForWidth(width);
+        if (height > this.height() - frame) {
+            width = Math.max(0, width - CScrollArea.ScrollBarExtent);
+            height = content.heightForWidth(width);
+        }
+        content.resize(width, height);
+        this.updateScrollBars();
+    }
+}
+
 function showCollapsibleGroupDemo(parent: CWidget): void {
     const dialog = new CDialog(parent); dialog.setWindowTitle("Collapsible group boxes");
-    dialog.setMinimumSize(400, 360); dialog.setGeometry(0, 0, 640, 520);
+    dialog.setMinimumSize(400, 240); dialog.setGeometry(0, 0, 640, 520);
     const layout = new CVBoxLayout(); layout.setContentsMargins(16, 16, 16, 16); layout.setSpacing(12);
-    const hint = new CLabel(dialog); hint.setWordWrap(true); hint.setText("Click a group title, or focus it with Tab and use Space, Enter or Left/Right. Narrow the dialog to stack labels above fields."); layout.addWidget(hint);
+    const scrollArea = new CollapsibleGroupScrollArea(dialog);
+    const content = new CWidget();
+    const contentLayout = new CVBoxLayout(); contentLayout.setContentsMargins(4, 4, 4, 4); contentLayout.setSpacing(12);
+    const hint = new CLabel(content); hint.setWordWrap(true);
+    hint.setText("Click a group title, or focus it with Tab and use Space, Enter or Left/Right. Narrow the dialog to stack labels, or shorten it to scroll through the fields.");
+    contentLayout.addWidget(hint);
     for (const title of ["Contact details", "Additional settings"]) {
-        const group = new CGroupBox(title, dialog); group.setCollapsible(true);
+        const group = new CGroupBox(title, content); group.setCollapsible(true);
         const form = new CFormLayout(); form.setContentsMargins(12, 8, 12, 12);
         form.setStackBelowWidth(420);
         const name = new CLineEdit(group); name.setText(title === "Contact details" ? "Bojan" : "Default"); const nameLabel = new CLabel(group);
@@ -1520,10 +1547,13 @@ function showCollapsibleGroupDemo(parent: CWidget): void {
         emailLabel.setWordWrap(true);
         emailLabel.setBuddy(email);
         form.addRow(emailLabel, email);
-        group.setLayout(form); layout.addWidget(group);
+        group.setLayout(form); contentLayout.addWidget(group);
         if (title === "Additional settings") group.setCollapsed(true);
+        group.collapsedChanged.connect(() => scrollArea.updateContentSize());
     }
-    layout.addStretch(1);
+    content.setLayout(contentLayout);
+    scrollArea.setWidget(content);
+    layout.addWidget(scrollArea, 1);
     const close = new CPushButton(dialog); close.setText("Close"); close.clicked.connect(() => dialog.reject()); layout.addWidget(close);
     dialog.setLayout(layout); dialog.open();
 }
