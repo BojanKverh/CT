@@ -17,6 +17,10 @@ Open the local URL printed by Vite to explore the widget demo in `examples/basic
 
 Use a current Node.js version compatible with the dependencies in `package-lock.json`.
 
+## Full-viewport resize demo
+
+Run `npm exec -- vite examples/full-viewport` from the repository directory (use `npm.cmd` in PowerShell if script execution is disabled). Open the URL printed by Vite and resize the browser window. The example is a small notes editor with a menu bar and a grid layout. Its status bar displays the live sizes of the main window and central widget.
+
 ## Minimal example
 
 In an application using a TypeScript-aware bundler, provide a canvas and load your entry module:
