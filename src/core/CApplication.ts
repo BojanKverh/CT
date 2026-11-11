@@ -45,6 +45,10 @@ type CClipboardPasteTarget = CWidget & {
     canPaste?(): boolean;
 };
 
+type CClipboardCutTarget = CWidget & {
+    cutSelection(writeText: (text: string) => void): void;
+};
+
 type CClipboardEditor = CClipboardSource & CClipboardPasteTarget & {
     cut(): void;
     isReadOnly(): boolean;
@@ -1205,7 +1209,7 @@ export class CApplication extends CObject {
             (event.ctrl() || event.meta()) && !event.alt() && !event.altGraph() &&
             (!event.shift() || key === "v") && ["c", "x", "v"].includes(key) &&
             !this.#isDomEditor(keyboardEvent.target) && (key === "c" ? this.#clipboardEditor("copy") :
-                key === "v" ? this.#clipboardEditor("paste") : this.#clipboardEditor()) !== null) return;
+                key === "v" ? this.#clipboardEditor("paste") : this.#clipboardEditor("cut")) !== null) return;
 
 		while (target !== null) {
 			if (target.event(event))
@@ -1238,7 +1242,8 @@ export class CApplication extends CObject {
     #clipboardEditor(): CClipboardEditor | null;
     #clipboardEditor(mode: "copy"): CClipboardSource | null;
     #clipboardEditor(mode: "paste"): CClipboardPasteTarget | null;
-    #clipboardEditor(mode: "copy" | "paste" | "edit" = "edit"): CClipboardSource | CClipboardPasteTarget | null {
+    #clipboardEditor(mode: "cut"): CClipboardEditor | CClipboardCutTarget | null;
+    #clipboardEditor(mode: "copy" | "paste" | "cut" | "edit" = "edit"): CClipboardSource | CClipboardPasteTarget | CClipboardCutTarget | null {
         let widget = this.#m_focusWidget;
         const boundary = this.#m_popupWidgets[this.#m_popupWidgets.length - 1] ?? this.topModalWidget();
         if (widget === null || (boundary !== null && boundary !== undefined && !this.#belongsToModal(widget, boundary))) return null;
@@ -1249,7 +1254,9 @@ export class CApplication extends CObject {
         }
         while (widget !== null) {
             if (widget.inputBlocker() !== null) return null;
-            const candidate = widget as Partial<CClipboardEditor>;
+            const candidate = widget as Partial<CClipboardEditor & CClipboardCutTarget>;
+            if (mode === "cut" && typeof candidate.cutSelection === "function")
+                return widget as CClipboardCutTarget;
             if (mode === "paste" && typeof candidate.paste === "function")
                 return widget as CClipboardPasteTarget;
             if (mode !== "paste" && typeof candidate.selectedText === "function" && typeof candidate.copy === "function" &&
@@ -1275,7 +1282,20 @@ export class CApplication extends CObject {
                 target.paste();
             });
         } else {
-            const editor = kind === "cut" ? this.#clipboardEditor() : null;
+            const editor = kind === "cut" ? this.#clipboardEditor("cut") : null;
+            if (editor !== null && "cutSelection" in editor) {
+                let text: string | undefined;
+                editor.cutSelection(value => {
+                    data.setData("text/plain", value);
+                    text = value;
+                });
+                if (text !== undefined) {
+                    const cutText = text;
+                    this.#m_clipboard.withNativeClipboard(() => this.#m_clipboard.setText(cutText));
+                }
+                event.preventDefault();
+                return;
+            }
             const source = kind === "copy" ? this.#clipboardEditor("copy") : editor;
             if (source === null || editor?.isReadOnly()) return;
             const canCopy = source.canCopy?.();

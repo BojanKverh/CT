@@ -3,6 +3,8 @@ import { CUndoStack } from "../../src/core/CUndoStack.js";
 import { CPalette } from "../../src/gui/CPalette.js";
 import { CPaletteColorRole } from "../../src/gui/CPalette.js";
 import { CColor } from "../../src/gui/CColor.js";
+import { CTableWidget } from "../../src/widgets/CTableWidget.js";
+import { CTableWidgetItem } from "../../src/widgets/CTableWidgetItem.js";
 import { CTableView } from "../../src/widgets/CTableView.js";
 import type { CItemTextEdit, CItemTextEditError } from "../../src/models/CAbstractItemModel.js";
 import { CSortFilterProxyModel } from "../../src/models/CSortFilterProxyModel.js";
@@ -3567,6 +3569,40 @@ describe("native clipboard copy policy", () => {
         expect(model.values).toEqual([["B", "1"], ["A", "2"]]);
         press("y");
         expect(model.values).toEqual(pasted);
+    });
+
+    test("native table cut preserves the clipboard on rejection and undoes the whole cut", () => {
+        const table = new CTableWidget();
+        table.resize(500, 200);
+        table.setRowCount(1);
+        table.setColumnCount(2);
+        const first = new CTableWidgetItem(12);
+        const second = new CTableWidgetItem("Hello world");
+        table.setItem(0, 0, first);
+        table.setItem(0, 1, second);
+        table.contentMousePressEvent(new CMouseEvent(CEventType.MousePress, 5, 5, CMouseButton.LeftButton));
+        table.selectionModel()!.select(table.model()!.index(0, 1));
+        const clipboardStore = CClipboard.instance();
+        clipboardStore.withNativeClipboard(() => clipboardStore.setText("previous"));
+        const rejected = vi.fn();
+        table.clearRejected.connect(rejected);
+
+        second.setEditable(false);
+        const failed = clipboard("cut");
+        expect(failed.setData).not.toHaveBeenCalled();
+        expect(failed.preventDefault).toHaveBeenCalledOnce();
+        expect(clipboardStore.text()).toBe("previous");
+        expect(rejected).toHaveBeenCalledWith(0, 1);
+        expect([first.data(), second.data()]).toEqual([12, "Hello world"]);
+        expect(table.model()!.undoStack()?.canUndo()).toBe(false);
+
+        second.setEditable(true);
+        const success = clipboard("cut");
+        expect(success.setData).toHaveBeenCalledWith("text/plain", "12\tHello world");
+        expect(clipboardStore.text()).toBe("12\tHello world");
+        expect([first.data(), second.data()]).toEqual([null, null]);
+        table.undo();
+        expect([first.data(), second.data()]).toEqual([12, "Hello world"]);
     });
 
     test("Normal native Cut deletes the selection and is undoable", () => {

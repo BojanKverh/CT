@@ -1,3 +1,4 @@
+import { CClipboard } from "../core/CClipboard.js";
 import type { CKeyEvent } from "../events/CKeyEvent.js";
 import { CSignal } from "../core/CSignal.js";
 import { CUndoCommand } from "../core/CUndoCommand.js";
@@ -94,7 +95,7 @@ class CTableWidgetModel extends CAbstractItemModel {
         return null;
     }
 
-    clearCells(indexes: Iterable<CModelIndex>): CModelIndex | null {
+    clearCells(indexes: Iterable<CModelIndex>, label = "Clear cells", beforeClear?: () => void): CModelIndex | null {
         const changes: CTableItemChange[] = [];
         for (const index of indexes) {
             const item = this.item(index.row(), index.column());
@@ -104,7 +105,8 @@ class CTableWidgetModel extends CAbstractItemModel {
                 changes.push({ item, before, after: null });
         }
 
-        if (changes.length > 0) this.#recordChanges(changes, "Clear cells");
+        beforeClear?.();
+        if (changes.length > 0) this.#recordChanges(changes, label);
         return null;
     }
 
@@ -418,7 +420,27 @@ export class CTableWidget extends CTableView {
         if (rejected !== null) this.clearRejected.emit(rejected.row(), rejected.column());
     }
 
+    /** Cuts the selection after validating all its cells. */
+    cutSelection(writeText?: (text: string) => void): void {
+        const selection = this.selectionModel();
+        if (selection === null || !selection.hasSelection() || this.model() !== this.#m_tableModel) return;
+        let text: string | undefined;
+        const rejected = this.#m_tableModel.clearCells(selection.selectedIndexesInRowOrder(), "Cut cells", () => {
+            text = this.selectedText();
+            writeText?.(text);
+        });
+        if (rejected !== null) this.clearRejected.emit(rejected.row(), rejected.column());
+        else if (writeText === undefined && text !== undefined) CClipboard.instance().setText(text);
+    }
+
     override contentKeyPressEvent(event: CKeyEvent): void {
+        if (event.key().toLowerCase() === "x" && (event.ctrl() || event.meta()) &&
+            !event.alt() && !event.altGraph() && !event.shift() &&
+            this.model() === this.#m_tableModel && this.selectionModel()?.hasSelection()) {
+            this.cutSelection();
+            event.accept();
+            return;
+        }
         if (event.key() === "Delete" && !event.ctrl() && !event.meta() && !event.alt() &&
             !event.shift() && this.model() === this.#m_tableModel && this.selectionModel()?.hasSelection()) {
             this.clearSelectedCells();

@@ -2249,14 +2249,14 @@ but6.clicked.connect(() => {
 
 	const table = new CTableWidget(dlg);
 
-    const clearHint = "Select cells, then press Delete to clear or Ctrl+Z to undo.";
+    const clearHint = "Delete clears selected cells. Ctrl+X cuts them. Ctrl+Z undoes the change.";
     const clearStatus = new CLabel(dlg);
     clearStatus.setGeometry(20, 8, 720, 25);
     clearStatus.setText(clearHint);
     table.setGeometry(20, 36, 650, 310);
     table.setSelectionMode(CTableSelectionMode.ExtendedSelection);
     table.clearRejected.connect((row, column) =>
-        clearStatus.setText(`Cannot clear row ${row + 1}, column ${column + 1}. The cell is read-only or missing.`));
+        clearStatus.setText(`Row ${row + 1}, column ${column + 1} is read-only or missing.`));
     table.model()?.dataChanged.connect(() => clearStatus.setText(clearHint));
 	table.setRowCount(15);
 	table.setColumnCount(4);
