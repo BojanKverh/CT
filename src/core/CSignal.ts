@@ -31,6 +31,11 @@ export class CSignal<TArgs extends unknown[] = []> {
         this.#m_slots.delete(slot);
     }
 
+    /** Returns whether the signal has connected slots. */
+    hasConnections(): boolean {
+        return this.#m_slots.size > 0;
+    }
+
 /**
  * Emits the signal and invokes all currently connected slots.
  * @param args Arguments passed to each connected slot.

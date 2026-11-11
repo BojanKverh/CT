@@ -371,7 +371,7 @@ export abstract class CAbstractItemView extends CWidget {
 
 		const count = last - first + 1;
 		const indexes = [
-			...(this.#m_selectionModel?.selectedIndexes() ?? []),
+			...(this.#m_selectionModel?.indexesForRowChange() ?? []),
 			this.currentIndex(),
 			this.#m_editorIndex
 		];

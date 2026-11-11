@@ -3,6 +3,17 @@ import { CSignal } from "../core/CSignal.js";
 import { CAbstractItemModel } from "./CAbstractItemModel.js";
 import { CModelIndex } from "./CModelIndex.js";
 
+type SelectionRectangle = {
+    firstRow: number;
+    lastRow: number;
+    firstColumn: number;
+    lastColumn: number;
+};
+
+function cellKey(index: CModelIndex): string {
+    return `${index.row()}:${index.column()}`;
+}
+
 /**
  * Tracks the current index and selected indexes for an item model.
  */
@@ -18,6 +29,8 @@ export class CItemSelectionModel extends CObject {
 	#m_model: CAbstractItemModel;
 	#m_currentIndex = new CModelIndex();
 	#m_selectedIndexes: CModelIndex[] = [];
+    #rectangle: SelectionRectangle | null = null;
+    #excludedCells = new Set<string>();
 
 	/** Creates a selection model for the specified item model. */
 	constructor(model: CAbstractItemModel, parent: CObject | null = null) {
@@ -50,19 +63,44 @@ export class CItemSelectionModel extends CObject {
 
 	/** Returns whether at least one index is selected. */
 	hasSelection(): boolean {
-		return this.#m_selectedIndexes.length > 0;
+		if (this.#m_selectedIndexes.length > 0) return true;
+        const rect = this.#rectangle;
+        return rect !== null &&
+            (rect.lastRow - rect.firstRow + 1) * (rect.lastColumn - rect.firstColumn + 1) > this.#excludedCells.size;
 	}
 
 	/** Returns whether the specified index is selected. */
 	isSelected(index: CModelIndex): boolean {
-		return this.#m_selectedIndexes.some(
-			selected => selected.equals(index)
-		);
+        if (!index.isValid() || index.model() !== this.#m_model) return false;
+        if (this.#inRectangle(index)) return !this.#excludedCells.has(cellKey(index));
+		return this.#m_selectedIndexes.some(selected => selected.equals(index));
 	}
 
 	/** Returns a copy of the selected indexes. */
 	selectedIndexes(): CModelIndex[] {
-		return [...this.#m_selectedIndexes];
+        return this.#collectIndexes(false);
+    }
+
+    /** @internal Includes former coordinates when a removal has already shortened the model. */
+    indexesForRowChange(): CModelIndex[] {
+        return this.#collectIndexes(true);
+    }
+
+    #collectIndexes(includeFormerCoordinates: boolean): CModelIndex[] {
+        const indexes: CModelIndex[] = [];
+        const rect = this.#rectangle;
+        if (rect !== null) {
+            for (let row = rect.firstRow; row <= rect.lastRow; ++row) {
+                for (let column = rect.firstColumn; column <= rect.lastColumn; ++column) {
+                    if (this.#excludedCells.has(`${row}:${column}`)) continue;
+                    const index = this.#m_model.index(row, column);
+                    if (index.isValid()) indexes.push(index);
+                    else if (includeFormerCoordinates)
+                        indexes.push(new CModelIndex(row, column, null, this.#m_model));
+                }
+            }
+        }
+        return indexes.concat(this.#m_selectedIndexes);
 	}
 
 	/** Adds a valid index from the associated model to the selection. */
@@ -71,37 +109,52 @@ export class CItemSelectionModel extends CObject {
 			|| this.isSelected(index))
 			return;
 
-		this.#m_selectedIndexes.push(index);
+        if (this.#inRectangle(index)) this.#excludedCells.delete(cellKey(index));
+        else this.#m_selectedIndexes.push(index);
 		this.selectionChanged.emit([index], []);
 	}
 
     /** @internal Replaces the selection with a rectangle in a flat model. */
     selectRectangle(anchor: CModelIndex, end: CModelIndex): void {
-        const firstRow = Math.min(anchor.row(), end.row());
-        const lastRow = Math.max(anchor.row(), end.row());
-        const firstColumn = Math.min(anchor.column(), end.column());
-        const lastColumn = Math.max(anchor.column(), end.column());
-        const key = (index: CModelIndex) => `${index.row()}:${index.column()}`;
-        const previous = new Map(this.#m_selectedIndexes.map(index => [key(index), index]));
-        const next: CModelIndex[] = [];
-        const added: CModelIndex[] = [];
+        if (!anchor.isValid() || !end.isValid() ||
+            anchor.model() !== this.#m_model || end.model() !== this.#m_model) return;
 
-        for (let row = firstRow; row <= lastRow; ++row) {
-            for (let column = firstColumn; column <= lastColumn; ++column) {
-                const index = this.#m_model.index(row, column);
-                if (!index.isValid()) continue;
-                next.push(index);
-                if (!previous.delete(key(index))) added.push(index);
-            }
+        const previous = this.selectionChanged.hasConnections() ? this.selectedIndexes() : null;
+        this.#rectangle = {
+            firstRow: Math.min(anchor.row(), end.row()),
+            lastRow: Math.max(anchor.row(), end.row()),
+            firstColumn: Math.min(anchor.column(), end.column()),
+            lastColumn: Math.max(anchor.column(), end.column())
+        };
+        this.#excludedCells.clear();
+        this.#m_selectedIndexes = [];
+
+        // Existing subscribers receive concrete index deltas.
+        if (previous !== null) {
+            const oldCells = new Set(previous.map(cellKey));
+            const added = this.selectedIndexes().filter(index => !oldCells.has(cellKey(index)));
+            const removed = previous.filter(index => !this.isSelected(index));
+            if (added.length > 0 || removed.length > 0) this.selectionChanged.emit(added, removed);
         }
+    }
 
-        this.#m_selectedIndexes = next;
-        if (added.length > 0 || previous.size > 0)
-            this.selectionChanged.emit(added, [...previous.values()]);
+    #inRectangle(index: CModelIndex): boolean {
+        const rect = this.#rectangle;
+        return rect !== null &&
+            index.row() >= rect.firstRow && index.row() <= rect.lastRow &&
+            index.column() >= rect.firstColumn && index.column() <= rect.lastColumn;
     }
 
 	/** Removes an index from the selection. */
 	deselect(index: CModelIndex): void {
+        if (index.isValid() && index.model() === this.#m_model && this.#inRectangle(index)) {
+            const key = cellKey(index);
+            if (!this.#excludedCells.has(key)) {
+                this.#excludedCells.add(key);
+                this.selectionChanged.emit([], [index]);
+            }
+            return;
+        }
 		const position = this.#m_selectedIndexes.findIndex(
 			selected => selected.equals(index)
 		);
@@ -117,12 +170,11 @@ export class CItemSelectionModel extends CObject {
 
 	/** Clears all selected indexes while preserving the current index. */
 	clearSelection(): void {
-		if (this.#m_selectedIndexes.length === 0)
-			return;
-
-		const deselected = [...this.#m_selectedIndexes];
-		this.#m_selectedIndexes = [];
-		this.selectionChanged.emit([], deselected);
+        const deselected = this.selectionChanged.hasConnections() ? this.selectedIndexes() : [];
+        this.#rectangle = null;
+        this.#excludedCells.clear();
+        this.#m_selectedIndexes = [];
+        if (deselected.length > 0) this.selectionChanged.emit([], deselected);
 	}
 
 	/** Clears both the selection and the current index. */
@@ -144,6 +196,25 @@ export class CItemSelectionModel extends CObject {
 			oldIndexes,
 			newIndexes
 		);
+
+        if (this.#rectangle !== null) {
+            // A layout change can scatter a rectangle across unrelated rows.
+            const mappedCells = new Map(oldIndexes.map((index, i) => [cellKey(index), newIndexes[i]!]));
+            const remapped: CModelIndex[] = [];
+            const seen = new Set<string>();
+            for (const index of this.indexesForRowChange()) {
+                const mapped = mappedCells.get(cellKey(index)) ?? index;
+                const key = cellKey(mapped);
+                if (!mapped.isValid() || mapped.model() !== this.#m_model ||
+                    mapped.row() >= this.#m_model.rowCount() || seen.has(key)) continue;
+                seen.add(key);
+                remapped.push(mapped);
+            }
+            this.#rectangle = null;
+            this.#excludedCells.clear();
+            this.#m_selectedIndexes = remapped;
+            return;
+        }
 
 		const remapped: CModelIndex[] = [];
 

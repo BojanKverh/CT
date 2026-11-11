@@ -1,3 +1,4 @@
+import { CAbstractTableModel } from "../../src/models/CAbstractTableModel.js";
 import { describe, expect, test } from "vitest";
 import { CAbstractListModel } from "../../src/models/CAbstractListModel.js";
 import { CItemSelectionModel } from "../../src/models/CItemSelectionModel.js";
@@ -19,6 +20,39 @@ class TestListModel extends CAbstractListModel {
 }
 
 describe("CItemSelectionModel", () => {
+    test("keeps a million-cell rectangle compact while allowing individual toggles", () => {
+        class LargeModel extends CAbstractTableModel {
+            indexCalls = 0;
+            override rowCount(): number { return 100_000; }
+            override columnCount(): number { return 500; }
+            override data(): null { return null; }
+            override index(row: number, column: number, parent?: CModelIndex): CModelIndex {
+                ++this.indexCalls;
+                return super.index(row, column, parent);
+            }
+        }
+        const model = new LargeModel();
+        const selection = new CItemSelectionModel(model);
+        const anchor = model.index(0, 0);
+        const end = model.index(9_999, 99);
+        const middle = model.index(2, 2);
+        const outside = model.index(10_000, 100);
+        model.indexCalls = 0;
+
+        selection.selectRectangle(anchor, end);
+        expect(selection.hasSelection()).toBe(true);
+        expect(selection.isSelected(middle)).toBe(true);
+        selection.deselect(middle);
+        expect(selection.isSelected(middle)).toBe(false);
+        selection.select(middle);
+        selection.select(outside);
+        expect(selection.isSelected(middle)).toBe(true);
+        expect(selection.isSelected(outside)).toBe(true);
+        selection.clearSelection();
+        expect(selection.hasSelection()).toBe(false);
+        expect(model.indexCalls).toBe(0);
+    });
+
 	test("stores model", () => {
 		const model = new TestListModel();
 		const selection = new CItemSelectionModel(model);
