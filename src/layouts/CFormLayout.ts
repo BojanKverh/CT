@@ -33,6 +33,7 @@ export class CFormLayout extends CLayout {
 	#m_horizontalSpacing: number | null = null;
 	#m_verticalSpacing: number | null = null;
 	#m_labelColumnWidth: number | null = null;
+    #stackBelowWidth: number | null = null;
 	#m_labelAlignment = CAlignment.Right | CAlignment.VCenter;
 
 	/**
@@ -257,15 +258,55 @@ export class CFormLayout extends CLayout {
 		super.clear();
 	}
 
+    /** Returns the content width below which each label sits above its field. */
+    stackBelowWidth(): number | null {
+        return this.#stackBelowWidth;
+    }
+
+    /** Sets the stacking threshold in content pixels, or null to keep two columns. */
+    setStackBelowWidth(width: number | null): void {
+        if (width !== null && (!Number.isFinite(width) || width < 0))
+            throw new RangeError("Stacking width must be a finite, non-negative number.");
+        if (width === this.#stackBelowWidth) return;
+        this.#stackBelowWidth = width;
+        this.update();
+        this.parentWidget()?.updateGeometry();
+    }
+
+    override hasHeightForWidth(): boolean {
+        return (this.#stackBelowWidth !== null && this.#m_rows.some(row =>
+            row.labelItem !== null && row.fieldItem !== null)) || super.hasHeightForWidth();
+    }
+
+    #rowsForWidth(contentWidth: number): readonly CFormLayoutRow[] {
+        if (this.#stackBelowWidth === null || contentWidth >= this.#stackBelowWidth)
+            return this.#m_rows;
+
+        const rows: CFormLayoutRow[] = [];
+        for (const row of this.#m_rows) {
+            if (row.spanningItem !== null) {
+                rows.push(row);
+                continue;
+            }
+            for (const item of [row.labelItem, row.fieldItem]) {
+                if (item !== null)
+                    rows.push({ labelItem: null, fieldItem: null, spanningItem: item });
+            }
+        }
+        return rows;
+    }
+
     override heightForWidth(width: number): number {
         if (!this.hasHeightForWidth()) return -1;
         const margins = this.contentsMargins();
         const contentWidth = Math.max(0, width - margins.left - margins.right);
         // Asking for zero available height returns row minima, not preferred heights.
         // Evaluate each row at its actual column width instead.
-        const { labelWidth, fieldWidth } = this.#columnWidths(contentWidth);
-        let height = margins.top + margins.bottom + Math.max(0, this.#m_rows.length - 1) * this.verticalSpacing();
-        for (const row of this.#m_rows) {
+        const rows = this.#rowsForWidth(contentWidth);
+        const { labelWidth, fieldWidth } = rows === this.#m_rows
+            ? this.#columnWidths(contentWidth) : { labelWidth: 0, fieldWidth: contentWidth };
+        let height = margins.top + margins.bottom + Math.max(0, rows.length - 1) * this.verticalSpacing();
+        for (const row of rows) {
             let rowHeight = 0;
             for (const [item, available] of [[row.labelItem, labelWidth], [row.fieldItem, fieldWidth],
                 [row.spanningItem, contentWidth]] as const) {
@@ -297,14 +338,16 @@ export class CFormLayout extends CLayout {
 			contentsRect.width() - margins.left - margins.right
 		);
 
-        const { labelWidth, fieldWidth } = this.#columnWidths(contentWidth);
+        const rows = this.#rowsForWidth(contentWidth);
+        const { labelWidth, fieldWidth } = rows === this.#m_rows
+            ? this.#columnWidths(contentWidth) : { labelWidth: 0, fieldWidth: contentWidth };
         const fieldX = contentX + labelWidth + (labelWidth > 0 ? horizontalSpacing : 0);
         const heights = this.#rowHeights(Math.max(0, contentsRect.height() - margins.top - margins.bottom
-            - Math.max(0, this.#m_rows.length - 1) * verticalSpacing), contentWidth, labelWidth, fieldWidth);
+            - Math.max(0, rows.length - 1) * verticalSpacing), contentWidth, labelWidth, fieldWidth, rows);
         let rowIndex = 0;
 		let y = contentY;
 
-		for (const row of this.#m_rows) {
+		for (const row of rows) {
             const allocatedHeight = heights[rowIndex++]!;
 			const spanning = row.spanningItem?.widget() ?? null;
 
@@ -499,10 +542,10 @@ export class CFormLayout extends CLayout {
         return { labelWidth, fieldWidth: Math.max(0, contentWidth - labelWidth - (labelWidth > 0 ? spacing : 0)) };
     }
 
-    #rowHeights(available: number, contentWidth: number, labelWidth: number, fieldWidth: number): number[] {
+    #rowHeights(available: number, contentWidth: number, labelWidth: number, fieldWidth: number, rows: readonly CFormLayoutRow[]): number[] {
         const minimums: number[] = [], preferred: number[] = [], maximums: number[] = [];
         const weights: number[] = [], priorities: number[] = [];
-        for (const row of this.#m_rows) {
+        for (const row of rows) {
             const widgets = [row.labelItem?.widget(), row.fieldItem?.widget(), row.spanningItem?.widget()]
                 .filter((widget): widget is CWidget => widget !== null && widget !== undefined);
             let minimum = 0, hint = 0, maximum = 0, weight = 0, priority = 0;

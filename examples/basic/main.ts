@@ -1505,10 +1505,11 @@ function showCollapsibleGroupDemo(parent: CWidget): void {
     const dialog = new CDialog(parent); dialog.setWindowTitle("Collapsible group boxes");
     dialog.setMinimumSize(400, 360); dialog.setGeometry(0, 0, 640, 520);
     const layout = new CVBoxLayout(); layout.setContentsMargins(16, 16, 16, 16); layout.setSpacing(12);
-    const hint = new CLabel(dialog); hint.setWordWrap(true); hint.setText("Click a group title, or focus it with Tab and use Space, Enter or Left/Right. Each group expands independently."); layout.addWidget(hint);
+    const hint = new CLabel(dialog); hint.setWordWrap(true); hint.setText("Click a group title, or focus it with Tab and use Space, Enter or Left/Right. Narrow the dialog to stack labels above fields."); layout.addWidget(hint);
     for (const title of ["Contact details", "Additional settings"]) {
         const group = new CGroupBox(title, dialog); group.setCollapsible(true);
         const form = new CFormLayout(); form.setContentsMargins(12, 8, 12, 12);
+        form.setStackBelowWidth(420);
         const name = new CLineEdit(group); name.setText(title === "Contact details" ? "Bojan" : "Default"); const nameLabel = new CLabel(group);
         nameLabel.setText("Full name for correspondence:");
         nameLabel.setWordWrap(true);

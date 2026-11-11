@@ -1,3 +1,4 @@
+import { CLineEdit } from "../../src/widgets/CLineEdit.js";
 import { CSizePolicyType } from "../../src/geometry/CSizePolicy.js";
 import { vi } from "vitest";
 import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
@@ -72,6 +73,34 @@ describe("CFormLayout", () => {
         expect(layout.heightForWidth(parent.width())).toBe(
             label.height() + layout.contentsMargins().top + layout.contentsMargins().bottom
         );
+    });
+
+    test("stacks the same label and field below the configured content width", () => {
+        const parent = new CWidget();
+        parent.resize(400, 200);
+        const layout = new CFormLayout();
+        layout.setContentsMargins(10, 8, 10, 8);
+        layout.setStackBelowWidth(260);
+        parent.setLayout(layout);
+        const field = new CLineEdit(parent);
+        field.setText("Bojan");
+        layout.addRow("Name:", field);
+        const label = layout.widgetAt(0, CFormLayoutItemRole.LabelRole)!;
+        field.setFocus();
+
+        expect(field.x()).toBeGreaterThan(label.x());
+        const wideHeight = layout.heightForWidth(400);
+        parent.resize(270, 200);
+        expect(field.x()).toBe(label.x());
+        expect(field.y()).toBeGreaterThanOrEqual(label.y() + label.height());
+        expect(field.width()).toBe(250);
+        expect(layout.heightForWidth(270)).toBeGreaterThan(wideHeight);
+        expect(field.text()).toBe("Bojan");
+        expect(field.hasFocus()).toBe(true);
+
+        parent.resize(280, 200);
+        expect(field.x()).toBeGreaterThan(label.x());
+        expect(field.hasFocus()).toBe(true);
     });
 
 	test("has no rows by default", () => {
