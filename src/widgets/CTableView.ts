@@ -686,36 +686,44 @@ export class CTableView extends CAbstractItemView {
     /** Serializes the selected cells in view order as tab-separated text. */
     selectedText(): string {
         const model = this.model();
-        const indexes = this.selectionModel()?.selectedIndexes() ?? [];
-        if (model === null || indexes.length === 0) return "";
+        const selection = this.selectionModel();
+        if (model === null || selection === null || !selection.hasSelection()) return "";
 
-        let firstRow = Infinity, lastRow = -1, firstColumn = Infinity, lastColumn = -1;
-        const rows = new Map<number, Map<number, string>>();
-        for (const index of indexes) {
-            const row = index.row();
+        const rows: { row: number; first: number; last: number; text: string }[] = [];
+        let firstColumn = Infinity;
+        let lastColumn = -1;
+        let row = -1;
+        let start = 0;
+        let fields: string[] = [];
+
+        for (const index of selection.selectedIndexesInRowOrder()) {
+            if (row !== index.row()) {
+                if (row >= 0)
+                    rows.push({ row, first: start, last: start + fields.length - 1, text: fields.join("\t") });
+                row = index.row();
+                start = index.column();
+                fields = [];
+            }
             const column = index.column();
-            firstRow = Math.min(firstRow, row);
-            lastRow = Math.max(lastRow, row);
             firstColumn = Math.min(firstColumn, column);
             lastColumn = Math.max(lastColumn, column);
-
-            let cells = rows.get(row);
-            if (cells === undefined) {
-                cells = new Map();
-                rows.set(row, cells);
-            }
             const value = model.data(index);
             const text = value instanceof Date ? this.#formatDate(value) : String(value ?? "");
-            cells.set(column, /[\t\r\n"]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text);
+            fields[column - start] = /[\t\r\n"]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
         }
+        if (row < 0) return "";
+        rows.push({ row, first: start, last: start + fields.length - 1, text: fields.join("\t") });
 
         const result: string[] = [];
-        for (let row = firstRow; row <= lastRow; ++row) {
-            const cells = rows.get(row);
-            const fields: string[] = [];
-            for (let column = firstColumn; column <= lastColumn; ++column)
-                fields.push(cells?.get(column) ?? "");
-            result.push(fields.join("\t"));
+        const emptyRow = "\t".repeat(lastColumn - firstColumn);
+        let nextRow = rows[0]!.row;
+        for (const line of rows) {
+            while (nextRow < line.row) {
+                result.push(emptyRow);
+                ++nextRow;
+            }
+            result.push("\t".repeat(line.first - firstColumn) + line.text + "\t".repeat(lastColumn - line.last));
+            ++nextRow;
         }
         return result.join("\r\n");
     }

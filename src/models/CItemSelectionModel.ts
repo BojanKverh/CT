@@ -87,21 +87,36 @@ export class CItemSelectionModel extends CObject {
     }
 
     #collectIndexes(includeFormerCoordinates: boolean): CModelIndex[] {
-        const indexes: CModelIndex[] = [];
+        return [...this.#rectangleIndexes(includeFormerCoordinates), ...this.#m_selectedIndexes];
+    }
+
+    *#rectangleIndexes(includeFormerCoordinates = false): IterableIterator<CModelIndex> {
         const rect = this.#rectangle;
-        if (rect !== null) {
-            for (let row = rect.firstRow; row <= rect.lastRow; ++row) {
-                for (let column = rect.firstColumn; column <= rect.lastColumn; ++column) {
-                    if (this.#excludedCells.has(`${row}:${column}`)) continue;
-                    const index = this.#m_model.index(row, column);
-                    if (index.isValid()) indexes.push(index);
-                    else if (includeFormerCoordinates)
-                        indexes.push(new CModelIndex(row, column, null, this.#m_model));
-                }
+        if (rect === null) return;
+        for (let row = rect.firstRow; row <= rect.lastRow; ++row) {
+            for (let column = rect.firstColumn; column <= rect.lastColumn; ++column) {
+                if (this.#excludedCells.size > 0 && this.#excludedCells.has(`${row}:${column}`)) continue;
+                const index = this.#m_model.index(row, column);
+                if (index.isValid()) yield index;
+                else if (includeFormerCoordinates)
+                    yield new CModelIndex(row, column, null, this.#m_model);
             }
         }
-        return indexes.concat(this.#m_selectedIndexes);
-	}
+    }
+
+    /** @internal Iterates a flat table selection in view row and column order. */
+    *selectedIndexesInRowOrder(): IterableIterator<CModelIndex> {
+        const compare = (left: CModelIndex, right: CModelIndex) =>
+            left.row() - right.row() || left.column() - right.column();
+        const extras = [...this.#m_selectedIndexes].sort(compare);
+        let extra = 0;
+        for (const index of this.#rectangleIndexes()) {
+            while (extra < extras.length && compare(extras[extra]!, index) < 0)
+                yield extras[extra++]!;
+            yield index;
+        }
+        while (extra < extras.length) yield extras[extra++]!;
+    }
 
 	/** Adds a valid index from the associated model to the selection. */
 	select(index: CModelIndex): void {

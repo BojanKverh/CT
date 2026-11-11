@@ -545,6 +545,22 @@ describe("CTableView", () => {
         }
     });
 
+    test("copies a rectangle with omitted edges, holes, and separate cells in view order", () => {
+        const table = new CTableView();
+        const model = new TestTableModel([
+            ["A", "B", "C"], ["D", "E", "F"], ["G", "H", "I"], ["J", "K", "L"]
+        ]);
+        table.setModel(model);
+        const selection = table.selectionModel()!;
+        selection.selectRectangle(model.index(0, 0), model.index(1, 2));
+        selection.deselect(model.index(0, 0));
+        selection.deselect(model.index(1, 0));
+        selection.deselect(model.index(1, 1));
+        selection.select(model.index(3, 2));
+
+        expect(table.selectedText()).toBe("B\tC\r\n\tF\r\n\t\r\n\tL");
+    });
+
 	test("constructs without a model", () => {
 		const view = new CTableView();
 
