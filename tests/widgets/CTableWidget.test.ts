@@ -135,6 +135,38 @@ describe("CTableWidget", () => {
         expect(values()).toEqual(["Edited", 20]);
     });
 
+    test("Delete clears the entire selection in one undo step or rejects it unchanged", () => {
+        const table = new CTableWidget();
+        table.setRowCount(1);
+        table.setColumnCount(2);
+        const first = new CTableWidgetItem(42);
+        const second = new CTableWidgetItem("text");
+        second.setEditable(false);
+        table.setItem(0, 0, first);
+        table.setItem(0, 1, second);
+        const model = table.model()!;
+        const selection = table.selectionModel()!;
+        selection.select(model.index(0, 0));
+        selection.select(model.index(0, 1));
+        const rejected: number[][] = [];
+        table.clearRejected.connect((row, column) => rejected.push([row, column]));
+        const pressDelete = () => table.contentKeyPressEvent(new CKeyEvent(CEventType.KeyPress, "Delete"));
+
+        pressDelete();
+        expect(rejected).toEqual([[0, 1]]);
+        expect([first.data(), second.data()]).toEqual([42, "text"]);
+        expect(model.undoStack()?.canUndo()).toBe(false);
+
+        second.setEditable(true);
+        pressDelete();
+        expect([first.data(), second.data()]).toEqual([null, null]);
+        expect(selection.selectedIndexes()).toHaveLength(2);
+        table.undo();
+        expect([first.data(), second.data()]).toEqual([42, "text"]);
+        table.redo();
+        expect([first.data(), second.data()]).toEqual([null, null]);
+    });
+
 	test("constructs empty", () => {
 		const table = new CTableWidget();
 

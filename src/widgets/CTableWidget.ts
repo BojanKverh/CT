@@ -1,3 +1,4 @@
+import type { CKeyEvent } from "../events/CKeyEvent.js";
 import { CSignal } from "../core/CSignal.js";
 import { CUndoCommand } from "../core/CUndoCommand.js";
 import { CUndoStack } from "../core/CUndoStack.js";
@@ -90,6 +91,20 @@ class CTableWidgetModel extends CAbstractItemModel {
         }
 
         if (changes.length > 0) this.#recordChanges(changes, "Paste cells");
+        return null;
+    }
+
+    clearCells(indexes: Iterable<CModelIndex>): CModelIndex | null {
+        const changes: CTableItemChange[] = [];
+        for (const index of indexes) {
+            const item = this.item(index.row(), index.column());
+            if (index.model() !== this || item === null || !item.isEditable()) return index;
+            const before = item.data();
+            if (before !== null && before !== undefined && before !== "")
+                changes.push({ item, before, after: null });
+        }
+
+        if (changes.length > 0) this.#recordChanges(changes, "Clear cells");
         return null;
     }
 
@@ -370,6 +385,9 @@ class CTableWidgetModel extends CAbstractItemModel {
 export class CTableWidget extends CTableView {
 	#m_tableModel: CTableWidgetModel;
 
+    /** Reports the first selected cell that cannot be cleared. */
+    readonly clearRejected = new CSignal<[row: number, column: number]>();
+
 	/** Signal emitted when current item changes. */
 	readonly currentItemChanged =
 		new CSignal<[CTableWidgetItem | null, CTableWidgetItem | null]>();
@@ -391,6 +409,24 @@ export class CTableWidget extends CTableView {
 			}
 		);
 	}
+
+    /** Clears editable selected cells as a single undo command. */
+    clearSelectedCells(): void {
+        const selection = this.selectionModel();
+        if (selection === null || this.model() !== this.#m_tableModel) return;
+        const rejected = this.#m_tableModel.clearCells(selection.selectedIndexesInRowOrder());
+        if (rejected !== null) this.clearRejected.emit(rejected.row(), rejected.column());
+    }
+
+    override contentKeyPressEvent(event: CKeyEvent): void {
+        if (event.key() === "Delete" && !event.ctrl() && !event.meta() && !event.alt() &&
+            !event.shift() && this.model() === this.#m_tableModel && this.selectionModel()?.hasSelection()) {
+            this.clearSelectedCells();
+            event.accept();
+            return;
+        }
+        super.contentKeyPressEvent(event);
+    }
 
 	/** Provides row count behavior. */
 	rowCount(): number {
