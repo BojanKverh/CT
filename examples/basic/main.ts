@@ -1459,7 +1459,7 @@ function showLargeTableDemo(parent: CWidget): void {
 
     const hint = new CLabel(dialog);
     hint.setWordWrap(true);
-    hint.setText("Click a heading to sort. Filter by group. Shift selects a rectangle. Ctrl+click toggles a cell. Ctrl+C copies the selection.");
+    hint.setText("Click a heading to sort. Filter by group. Shift selects a rectangle. Ctrl+click toggles a cell. Copy with Ctrl+C or from the right-click menu.");
     layout.addWidget(hint);
 
     const filter = new CLineEdit(dialog);
@@ -2053,7 +2053,7 @@ but3.clicked.connect(() => {
 	const tv = new CTableView(dlg);
     const pasteStatus = new CLabel(dlg);
     pasteStatus.setGeometry(50, 8, 700, 25);
-    pasteStatus.setText("Ctrl+V pastes cells. Ctrl+Z undoes the last change. Ctrl+Y redoes it.");
+    pasteStatus.setText("Right-click a cell for Copy, Paste, Undo and Redo.");
     tv.setGeometry(50, 40, 700, 305);
     tv.pasteRejected.connect((row, column, reason) => {
         pasteStatus.setText(`Paste rejected at row ${row + 1}, column ${column + 1}. ${reason}`);

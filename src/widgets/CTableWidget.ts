@@ -1,6 +1,3 @@
-import { CAction } from "../core/CAction.js";
-import { CContextMenuEvent, CContextMenuReason } from "../events/CContextMenuEvent.js";
-import { CMenu } from "./CMenu.js";
 import { CClipboard } from "../core/CClipboard.js";
 import type { CKeyEvent } from "../events/CKeyEvent.js";
 import { CSignal } from "../core/CSignal.js";
@@ -389,8 +386,6 @@ class CTableWidgetModel extends CAbstractItemModel {
 /** Implements the table widget widget. */
 export class CTableWidget extends CTableView {
 	#m_tableModel: CTableWidgetModel;
-    #contextMenu: CMenu | null = null;
-    #pasteRequest = 0;
 
     /** Reports the first selected cell that cannot be cleared. */
     readonly clearRejected = new CSignal<[row: number, column: number]>();
@@ -417,99 +412,21 @@ export class CTableWidget extends CTableView {
 		);
 	}
 
-    protected override contextMenuEvent(event: CContextMenuEvent): void {
+    protected override contextCellActions(): { enabled: boolean; cut: () => void; clear: () => void } | null {
         const selection = this.selectionModel();
-        if (!this.isEnabled() || selection === null || this.model() !== this.#m_tableModel) {
-            event.ignore();
-            return;
-        }
-
-        const viewport = this.viewport();
-        let position = event.globalPos();
-        if (event.reason() === CContextMenuReason.Mouse) {
-            const point = viewport.mapFromCanvas(position.x(), position.y());
-            const index = this.cellAtContentPoint(point.x() + this.scrollX(), point.y() + this.scrollY());
-            if (!index.isValid()) {
-                event.ignore();
-                return;
-            }
-            if (!selection.isSelected(index)) {
-                selection.clearSelection();
-                selection.select(index);
-                this.update();
-            }
-            this.setCurrentIndex(index);
-        } else {
-            if (!this.currentIndex().isValid()) {
-                event.ignore();
-                return;
-            }
-            position = viewport.mapToCanvas(viewport.width() / 2, viewport.height() / 2);
-        }
-
-        this.#disposeContextMenu();
-        const menu = new CMenu();
-        const clipboard = CClipboard.instance();
-        const hasSelection = selection.hasSelection();
-        let editableSelection = hasSelection;
+        if (selection === null || this.model() !== this.#m_tableModel) return null;
+        let enabled = selection.hasSelection();
         for (const index of selection.selectedIndexesInRowOrder()) {
             if (!this.#m_tableModel.isEditable(index)) {
-                editableSelection = false;
+                enabled = false;
                 break;
             }
         }
-
-        const add = (label: string, enabled: boolean, execute: () => void): void => {
-            const action = new CAction(label);
-            action.setEnabled(enabled);
-            action.triggered.connect(execute);
-            menu.addAction(action);
+        return {
+            enabled,
+            cut: () => this.cutSelection(),
+            clear: () => this.clearSelectedCells()
         };
-        add("Cut", editableSelection, () => this.cutSelection());
-        add("Copy", hasSelection, () => this.copy());
-        add("Paste", this.canPaste() && (clipboard.canReadSystemText() || clipboard.text().length > 0),
-            () => { void this.#pasteFromContextMenu(); });
-        menu.addSeparator();
-        add("Clear", editableSelection, () => this.clearSelectedCells());
-
-        this.setFocus();
-        this.#contextMenu = menu;
-        menu.closed.connect(() => {
-            if (this.#contextMenu !== menu) return;
-            this.#contextMenu = null;
-            menu.destroy();
-        });
-        event.accept();
-        menu.exec(position);
-    }
-
-    async #pasteFromContextMenu(): Promise<void> {
-        const model = this.model();
-        const index = this.currentIndex();
-        const request = ++this.#pasteRequest;
-        const clipboard = CClipboard.instance();
-        if (!clipboard.canReadSystemText()) {
-            this.paste(clipboard.text());
-            return;
-        }
-
-        const text = await clipboard.readSystemText();
-        if (request === this.#pasteRequest && text !== null && model === this.model() &&
-            index.equals(this.currentIndex()) && this.isVisible() && this.isEnabled() && this.canPaste())
-            this.paste(text);
-    }
-
-    #disposeContextMenu(): void {
-        const menu = this.#contextMenu;
-        this.#contextMenu = null;
-        menu?.close();
-        menu?.destroy();
-    }
-
-    override destroy(): void {
-        ++this.#pasteRequest;
-        this.#disposeContextMenu();
-        super.destroy();
     }
 
     /** Clears editable selected cells as a single undo command. */

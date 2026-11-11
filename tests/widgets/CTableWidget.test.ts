@@ -207,8 +207,19 @@ describe("CTableWidget", () => {
         expect(table.item(0, 2)?.data()).toBeNull();
         expect(table.item(0, 0)?.data()).toBe("0");
         cellMenu.close();
-        table.undo();
+        const undoMenu = open(2);
+        expect(undoMenu.actionAt(6)?.text()).toBe("Undo");
+        expect(undoMenu.actionAt(6)?.isEnabled()).toBe(true);
+        expect(undoMenu.actionAt(7)?.isEnabled()).toBe(false);
+        undoMenu.actionAt(6)?.trigger();
+        undoMenu.close();
         expect(table.item(0, 2)?.data()).toBe("2");
+        const redoMenu = open(2);
+        expect(redoMenu.actionAt(7)?.text()).toBe("Redo");
+        expect(redoMenu.actionAt(7)?.isEnabled()).toBe(true);
+        redoMenu.actionAt(7)?.trigger();
+        redoMenu.close();
+        expect(table.item(0, 2)?.data()).toBeNull();
     });
 
 	test("constructs empty", () => {

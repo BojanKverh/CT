@@ -1,3 +1,6 @@
+import { CAction } from "../core/CAction.js";
+import { CContextMenuEvent, CContextMenuReason } from "../events/CContextMenuEvent.js";
+import { CMenu } from "./CMenu.js";
 import { CTimer } from "../core/CTimer.js";
 import { CApplication } from "../core/CApplication.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
@@ -136,6 +139,8 @@ export class CTableView extends CAbstractItemView {
     #selectionAnchor: CModelIndex | null = null;
     #dragSelection: { anchor: CModelIndex; cursor: CCursorShape; x: number; y: number } | null = null;
     #dragScrollTimer = new CTimer(this);
+    #contextMenu: CMenu | null = null;
+    #pasteRequest = 0;
 
     selectionMode(): CTableSelectionMode {
         return this.#selectionMode;
@@ -423,7 +428,7 @@ export class CTableView extends CAbstractItemView {
 		}
 	}
 
-    protected cellAtContentPoint(x: number, y: number): CModelIndex {
+    #cellAtContentPoint(x: number, y: number): CModelIndex {
         const viewport = this.viewport();
         if (x < this.scrollX() || x >= this.scrollX() + viewport.width() ||
             y < this.scrollY() || y >= this.scrollY() + viewport.height())
@@ -451,7 +456,7 @@ export class CTableView extends CAbstractItemView {
 
     /** Updates the range only while the corner gesture owns pointer capture. */
     contentMouseMoveEvent(event: CMouseEvent): void {
-        const index = this.cellAtContentPoint(event.x(), event.y());
+        const index = this.#cellAtContentPoint(event.x(), event.y());
         if (CApplication.instance().mouseGrabber() !== this.#m_contentWidget)
             this.#stopDragSelection();
 
@@ -517,7 +522,7 @@ export class CTableView extends CAbstractItemView {
         // Pointer coordinates stay relative to the viewport as the content moves.
         const x = this.scrollX() + Math.max(0, Math.min(drag.x, viewport.width() - 1));
         const y = this.scrollY() + Math.max(0, Math.min(drag.y, viewport.height() - 1));
-        this.#extendDragSelection(this.cellAtContentPoint(x, y), drag.anchor);
+        this.#extendDragSelection(this.#cellAtContentPoint(x, y), drag.anchor);
     }
 
     contentMouseReleaseEvent(event: CMouseEvent): void {
@@ -526,7 +531,7 @@ export class CTableView extends CAbstractItemView {
             return;
         }
         this.#stopDragSelection();
-        const index = this.cellAtContentPoint(event.x(), event.y());
+        const index = this.#cellAtContentPoint(event.x(), event.y());
         this.#m_contentWidget.setCursor(this.#cornerCursor(index, event.x(), event.y()));
         event.accept();
     }
@@ -636,6 +641,112 @@ export class CTableView extends CAbstractItemView {
 		this.edit(index);
 		event.accept();
 	}
+
+    protected override contextMenuEvent(event: CContextMenuEvent): void {
+        const selection = this.selectionModel();
+        const model = this.model();
+        if (!this.isEnabled() || selection === null || model === null) {
+            event.ignore();
+            return;
+        }
+
+        const viewport = this.viewport();
+        let position = event.globalPos();
+        if (event.reason() === CContextMenuReason.Mouse) {
+            const point = viewport.mapFromCanvas(position.x(), position.y());
+            const index = this.#cellAtContentPoint(point.x() + this.scrollX(), point.y() + this.scrollY());
+            if (!index.isValid()) {
+                event.ignore();
+                return;
+            }
+            if (!selection.isSelected(index)) {
+                selection.clearSelection();
+                selection.select(index);
+                this.update();
+            }
+            this.setCurrentIndex(index);
+        } else {
+            if (!this.currentIndex().isValid()) {
+                event.ignore();
+                return;
+            }
+            position = viewport.mapToCanvas(viewport.width() / 2, viewport.height() / 2);
+        }
+
+        this.#disposeContextMenu();
+        const menu = new CMenu();
+        const clipboard = CClipboard.instance();
+        const hasSelection = selection.hasSelection();
+        const cellActions = this.contextCellActions();
+
+        const add = (label: string, enabled: boolean, execute: () => void): void => {
+            const action = new CAction(label);
+            action.setEnabled(enabled);
+            action.triggered.connect(execute);
+            menu.addAction(action);
+        };
+        if (cellActions !== null) add("Cut", cellActions.enabled, cellActions.cut);
+        add("Copy", hasSelection, () => this.copy());
+        if (model.supportsTextEdits()) {
+            add("Paste", this.canPaste() && (clipboard.canReadSystemText() || clipboard.text().length > 0),
+                () => { void this.#pasteFromContextMenu(); });
+        }
+        if (cellActions !== null) {
+            menu.addSeparator();
+            add("Clear", cellActions.enabled, cellActions.clear);
+        }
+
+        const history = model.undoStack();
+        if (history !== null) {
+            menu.addSeparator();
+            add("Undo", history.canUndo(), () => this.undo());
+            add("Redo", history.canRedo(), () => this.redo());
+        }
+
+        this.setFocus();
+        this.#contextMenu = menu;
+        menu.closed.connect(() => {
+            if (this.#contextMenu !== menu) return;
+            this.#contextMenu = null;
+            menu.destroy();
+        });
+        event.accept();
+        menu.exec(position);
+    }
+
+    async #pasteFromContextMenu(): Promise<void> {
+        const model = this.model();
+        const index = this.currentIndex();
+        const request = ++this.#pasteRequest;
+        const clipboard = CClipboard.instance();
+        if (!clipboard.canReadSystemText()) {
+            this.paste(clipboard.text());
+            return;
+        }
+
+        const text = await clipboard.readSystemText();
+        if (request === this.#pasteRequest && text !== null && model === this.model() &&
+            index.equals(this.currentIndex()) && this.isVisible() && this.isEnabled() && this.canPaste())
+            this.paste(text);
+    }
+
+    #disposeContextMenu(): void {
+        const menu = this.#contextMenu;
+        this.#contextMenu = null;
+        menu?.close();
+        menu?.destroy();
+    }
+
+    override destroy(): void {
+        ++this.#pasteRequest;
+        this.#disposeContextMenu();
+        super.destroy();
+    }
+
+    /** Supplies model-specific Cut and Clear actions, if available. */
+    protected contextCellActions(): { enabled: boolean; cut: () => void; clear: () => void } | null {
+        return null;
+    }
 
     /** Reports the rejected destination and reason when a paste cannot be applied. */
     readonly pasteRejected = new CSignal<[row: number, column: number, message: string]>();

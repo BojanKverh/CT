@@ -55,6 +55,10 @@ export abstract class CAbstractProxyModel extends CAbstractItemModel {
 			: false;
 	}
 
+    override supportsTextEdits(): boolean {
+        return this.#m_sourceModel?.supportsTextEdits() ?? false;
+    }
+
     override undoStack(): CUndoStack | null {
         return this.#m_sourceModel?.undoStack() ?? null;
     }

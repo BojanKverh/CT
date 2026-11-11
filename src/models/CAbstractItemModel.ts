@@ -86,6 +86,11 @@ export abstract class CAbstractItemModel extends CObject {
         return { editIndex: 0, message: "This model does not support pasting cells." };
     }
 
+    /** Returns whether this model accepts batches of pasted text. */
+    supportsTextEdits(): boolean {
+        return this.applyTextEdits !== CAbstractItemModel.prototype.applyTextEdits;
+    }
+
     /** Returns the history of committed edits, if the model provides one. */
     undoStack(): CUndoStack | null {
         return null;
