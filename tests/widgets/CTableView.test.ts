@@ -3,7 +3,7 @@ import { TestPaintDevice } from "../helpers/createTestPaintEngine.js";
 import { CPushButton } from "../../src/widgets/CPushButton.js";
 import { CNumberEdit } from "../../src/widgets/CNumberEdit.js";
 import { CNumberItemDelegate } from "../../src/widgets/CNumberItemDelegate.js";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
 import { COrientation } from "../../src/gui/COrientation.js";
 import { CAbstractTableModel } from "../../src/models/CAbstractTableModel.js";
@@ -499,6 +499,50 @@ describe("CTableView", () => {
         pointer("pointerup", endX, top + 12);
         pointer("pointermove", endX, endY);
         expect(selected()).toEqual([[0, 0], [0, 1]]);
+    });
+
+    test("corner drag scrolls in both directions until the pointer is released", () => {
+        vi.useFakeTimers();
+        try {
+            const canvas = CApplication.instance().canvas();
+            const view = new CTableView();
+            view.setGeometry(0, 0, 350, 160);
+            view.setModel(new TestTableModel(Array.from({ length: 30 }, () =>
+                Array.from({ length: 15 }, () => "cell")
+            )));
+            view.setSelectionMode(CTableSelectionMode.ExtendedSelection);
+
+            const pointer = (type: string, clientX: number, clientY: number) => {
+                canvas.dispatchEvent({
+                    type, clientX, clientY, button: 0, pointerId: 1, timeStamp: 100,
+                    preventDefault() {}
+                } as PointerEvent);
+            };
+            const left = view.verticalHeader().width();
+            const top = view.horizontalHeader().height();
+            pointer("pointerdown", left + 20, top + 12);
+            pointer("pointerup", left + 20, top + 12);
+            pointer("pointerdown", left + 2, top + 2);
+
+            const right = left + view.viewport().width() - 2;
+            const bottom = top + view.viewport().height() - 2;
+            pointer("pointermove", right, bottom);
+            const firstEnd = view.currentIndex();
+            vi.advanceTimersByTime(280);
+            expect(view.scrollX()).toBeGreaterThan(0);
+            expect(view.scrollY()).toBeGreaterThan(0);
+            expect(view.currentIndex().row()).toBeGreaterThan(firstEnd.row());
+            expect(view.currentIndex().column()).toBeGreaterThan(firstEnd.column());
+            expect(view.selectionModel()!.isSelected(view.model()!.index(0, 0))).toBe(true);
+
+            pointer("pointerup", right, bottom);
+            const x = view.scrollX();
+            const y = view.scrollY();
+            vi.advanceTimersByTime(280);
+            expect([view.scrollX(), view.scrollY()]).toEqual([x, y]);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
 	test("constructs without a model", () => {

@@ -1385,11 +1385,12 @@ function showWideTableDemo(parent: CWidget): void {
 
     const hint = new CLabel(dialog);
     hint.setWordWrap(true);
-    hint.setText("Drag either scrollbar or resize a column. Click a cell and press Ctrl+End to jump to the final cell.");
+    hint.setText("Select a cell, then drag from its corner to an edge to extend the selection while scrolling. Ctrl+End jumps to the final cell.");
     layout.addWidget(hint);
 
     const table = new CTableView(dialog);
     table.setModel(new WideTableModel());
+    table.setSelectionMode(CTableSelectionMode.ExtendedSelection);
     const header = table.horizontalHeader();
     header.resizeSection(0, 100);
     header.resizeSection(1, 180);

@@ -1,3 +1,4 @@
+import { CTimer } from "../core/CTimer.js";
 import { CApplication } from "../core/CApplication.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
 import { CSignal } from "../core/CSignal.js";
@@ -133,7 +134,8 @@ export class CTableView extends CAbstractItemView {
 	#m_fetchingMore = false;
     #selectionMode = CTableSelectionMode.SingleSelection;
     #selectionAnchor: CModelIndex | null = null;
-    #dragSelection: { anchor: CModelIndex; cursor: CCursorShape } | null = null;
+    #dragSelection: { anchor: CModelIndex; cursor: CCursorShape; x: number; y: number } | null = null;
+    #dragScrollTimer = new CTimer(this);
 
     selectionMode(): CTableSelectionMode {
         return this.#selectionMode;
@@ -142,7 +144,7 @@ export class CTableView extends CAbstractItemView {
     setSelectionMode(mode: CTableSelectionMode): void {
         if (mode === this.#selectionMode) return;
         this.#selectionMode = mode;
-        this.#dragSelection = null;
+        this.#stopDragSelection();
         this.#m_contentWidget.setCursor(CCursorShape.Arrow);
         this.#selectionAnchor = null;
         const current = this.currentIndex();
@@ -193,6 +195,7 @@ export class CTableView extends CAbstractItemView {
 
 		this.#m_scrollArea.setWidget(this.#m_contentWidget);
 		this.setFocusProxy(this.#m_contentWidget);
+        this.#dragScrollTimer.timeout.connect(() => this.#scrollDragSelection());
 		this.#m_scrollArea.verticalScrollBar().setSingleStep(CTableView.RowHeight);
 
 		this.#m_scrollArea.horizontalScrollBar()
@@ -450,7 +453,7 @@ export class CTableView extends CAbstractItemView {
     contentMouseMoveEvent(event: CMouseEvent): void {
         const index = this.#cellAtContentPoint(event.x(), event.y());
         if (CApplication.instance().mouseGrabber() !== this.#m_contentWidget)
-            this.#dragSelection = null;
+            this.#stopDragSelection();
 
         const drag = this.#dragSelection;
         this.#m_contentWidget.setCursor(drag?.cursor ?? this.#cornerCursor(index, event.x(), event.y()));
@@ -459,13 +462,62 @@ export class CTableView extends CAbstractItemView {
             return;
         }
 
-        const selection = this.selectionModel();
-        if (index.isValid() && selection !== null && !index.equals(this.currentIndex())) {
-            selection.selectRectangle(drag.anchor, index);
-            selection.setCurrentIndex(index);
-            this.#m_contentWidget.update();
-        }
+        drag.x = event.x() - this.scrollX();
+        drag.y = event.y() - this.scrollY();
+        this.#extendDragSelection(index, drag.anchor);
+        const [dx, dy] = this.#dragScrollDelta(drag.x, drag.y);
+        if (dx === 0 && dy === 0) this.#dragScrollTimer.stop();
+        else if (!this.#dragScrollTimer.isActive()) this.#dragScrollTimer.start(40);
         event.accept();
+    }
+
+    #stopDragSelection(): void {
+        this.#dragSelection = null;
+        this.#dragScrollTimer.stop();
+    }
+
+    #extendDragSelection(index: CModelIndex, anchor: CModelIndex): void {
+        const selection = this.selectionModel();
+        if (!index.isValid() || selection === null || index.equals(this.currentIndex())) return;
+        selection.selectRectangle(anchor, index);
+        selection.setCurrentIndex(index);
+        this.#m_contentWidget.update();
+    }
+
+    #dragScrollDelta(x: number, y: number): [number, number] {
+        const viewport = this.viewport();
+        const delta = (position: number, extent: number): number => {
+            const edge = Math.min(16, extent / 2);
+            if (position < edge) return -CTableView.RowHeight;
+            if (position >= extent - edge) return CTableView.RowHeight;
+            return 0;
+        };
+        return [delta(x, viewport.width()), delta(y, viewport.height())];
+    }
+
+    #scrollDragSelection(): void {
+        const drag = this.#dragSelection;
+        if (drag === null || CApplication.instance().mouseGrabber() !== this.#m_contentWidget ||
+            !this.#m_contentWidget.isVisible() || !this.#m_contentWidget.isEnabled()) {
+            this.#stopDragSelection();
+            return;
+        }
+
+        const [dx, dy] = this.#dragScrollDelta(drag.x, drag.y);
+        const oldX = this.scrollX();
+        const oldY = this.scrollY();
+        this.scrollTo(oldX + dx, oldY + dy);
+        if (this.scrollX() === oldX && this.scrollY() === oldY) {
+            this.#dragScrollTimer.stop();
+            return;
+        }
+
+        const viewport = this.viewport();
+        if (viewport.width() < 1 || viewport.height() < 1) return;
+        // Pointer coordinates stay relative to the viewport as the content moves.
+        const x = this.scrollX() + Math.max(0, Math.min(drag.x, viewport.width() - 1));
+        const y = this.scrollY() + Math.max(0, Math.min(drag.y, viewport.height() - 1));
+        this.#extendDragSelection(this.#cellAtContentPoint(x, y), drag.anchor);
     }
 
     contentMouseReleaseEvent(event: CMouseEvent): void {
@@ -473,7 +525,7 @@ export class CTableView extends CAbstractItemView {
             event.ignore();
             return;
         }
-        this.#dragSelection = null;
+        this.#stopDragSelection();
         const index = this.#cellAtContentPoint(event.x(), event.y());
         this.#m_contentWidget.setCursor(this.#cornerCursor(index, event.x(), event.y()));
         event.accept();
@@ -519,11 +571,13 @@ export class CTableView extends CAbstractItemView {
         const modifiers = event.modifiers();
         const extend = (modifiers & CKeyboardModifier.ShiftModifier) !== 0;
         const toggle = (modifiers & CKeyboardModifier.ControlModifier) !== 0;
-        this.#dragSelection = null;
+        this.#stopDragSelection();
         const cursor = this.#cornerCursor(index, event.x(), event.y());
         if (!extend && !toggle && cursor !== CCursorShape.Arrow) {
             this.#selectCell(index, false);
-            this.#dragSelection = { anchor: index, cursor };
+            this.#dragSelection = {
+                anchor: index, cursor, x: event.x() - this.scrollX(), y: event.y() - this.scrollY()
+            };
             this.#m_contentWidget.setCursor(cursor);
             event.accept();
             return;
@@ -886,7 +940,7 @@ export class CTableView extends CAbstractItemView {
 		newModel: CAbstractItemModel | null
 	): void {
 		this.#selectionAnchor = null;
-        this.#dragSelection = null;
+        this.#stopDragSelection();
 		this.#m_horizontalHeader.setModel(newModel);
 		this.#m_verticalHeader.setModel(newModel);
 		this.#updateContentGeometry();
@@ -902,7 +956,7 @@ export class CTableView extends CAbstractItemView {
 	/** Updates table geometry and headers after a model reset. */
 	protected override modelReset(): void {
         this.#selectionAnchor = null;
-        this.#dragSelection = null;
+        this.#stopDragSelection();
 		this.#updateContentGeometry();
 		this.#m_contentWidget.update();
 		this.#m_horizontalHeader.update();
@@ -913,7 +967,7 @@ export class CTableView extends CAbstractItemView {
 	/** Updates table geometry after rows are rearranged or filtered. */
 	protected override modelLayoutChanged(): void {
         this.#selectionAnchor = null;
-        this.#dragSelection = null;
+        this.#stopDragSelection();
 		this.#updateContentGeometry();
 		this.#m_contentWidget.update();
 		this.#m_horizontalHeader.update();
@@ -940,7 +994,7 @@ export class CTableView extends CAbstractItemView {
 
 	#updateRowsGeometry(): void {
         this.#selectionAnchor = null;
-        this.#dragSelection = null;
+        this.#stopDragSelection();
 		this.#updateContentGeometry();
 		this.#m_contentWidget.update();
 		this.#m_verticalHeader.update();
