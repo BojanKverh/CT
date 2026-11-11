@@ -33,6 +33,7 @@ export class CLabel extends CFrame {
 
 	static readonly #HPADDING: number = 6;
 	static readonly #VPADDING: number = 3;
+    static readonly #LINE_GAP = 2;
 
 
 	/** Creates a new instance. */
@@ -99,19 +100,19 @@ export class CLabel extends CFrame {
         }
     }
     #linkLayout(): Array<{ text: string; start: number; x: number; y: number; height: number }> {
-        const lines = this.#m_wordWrap ? this.#wrappedLines(this.width()) : (() => {
-            let start = 0; return this.displayText().split("\n").map(text => { const line = { text, start }; start += text.length + 1; return line; });
-        })();
-        const height = this.fontMetrics().height(), block = lines.length * height;
-        const paddingY = this.#m_wordWrap ? CLabel.#VPADDING : 0;
+        const lines = this.#m_wordWrap ? this.#wrappedLines(this.width()) : this.#textLines();
+        const height = this.fontMetrics().height();
+        const block = this.#textBlockHeight(lines.length, height);
+        const padded = this.#m_wordWrap || lines.length > 1;
+        const paddingY = padded ? CLabel.#VPADDING : 0;
         const top = (this.#m_alignment & CAlignment.Bottom) !== 0 ? this.height() - paddingY - block
             : (this.#m_alignment & CAlignment.VCenter) !== 0 ? (this.height() - block) / 2 : paddingY;
-        const paddingX = this.#m_wordWrap ? CLabel.#HPADDING : 0;
+        const paddingX = padded ? CLabel.#HPADDING : 0;
         return lines.map((line, i) => {
             const width = this.fontMetrics().textWidth(line.text);
             const x = (this.#m_alignment & CAlignment.Right) !== 0 ? this.width() - paddingX - width
                 : (this.#m_alignment & CAlignment.HCenter) !== 0 ? (this.width() - width) / 2 : paddingX;
-            return { ...line, x, y: top + i * height, height };
+            return { ...line, x, y: top + i * (height + CLabel.#LINE_GAP), height };
         });
     }
     #linkFragments(): Array<{ index: number; rect: CRect }> {
@@ -298,18 +299,32 @@ export class CLabel extends CFrame {
 
     override heightForWidth(width: number): number {
         if (!this.hasHeightForWidth()) return -1;
-        return this.#wrappedLines(width).length * this.fontMetrics().height() + 2 * CLabel.#VPADDING;
+        return this.#textBlockHeight(this.#wrappedLines(width).length) + 2 * CLabel.#VPADDING;
+    }
+
+    #textBlockHeight(lines: number, lineHeight = this.fontMetrics().height()): number {
+        return lines * lineHeight + Math.max(0, lines - 1) * CLabel.#LINE_GAP;
+    }
+
+    #textLines(): Array<{ text: string; start: number }> {
+        const parts = this.displayText().split(/(\r\n|\r|\n)/);
+        const lines: Array<{ text: string; start: number }> = [];
+        let start = 0;
+        for (let i = 0; i < parts.length; i += 2) {
+            const text = parts[i]!;
+            lines.push({ text, start });
+            start += text.length + (parts[i + 1]?.length ?? 0);
+        }
+        return lines;
     }
 
     // Keep source offsets so mnemonic underlines follow wrapped text.
     #wrappedLines(width: number): Array<{ text: string; start: number }> {
-        const text = this.displayText().replace(/\r\n?/g, "\n");
         const available = Math.max(0, width - 2 * CLabel.#HPADDING);
         const metrics = this.fontMetrics();
         const lines: Array<{ text: string; start: number }> = [];
-        let offset = 0;
-        for (const paragraph of text.split("\n")) {
-            let rest = paragraph, start = offset;
+        for (const paragraph of this.#textLines()) {
+            let rest = paragraph.text, start = paragraph.start;
             if (rest.length === 0) lines.push({ text: "", start });
             while (rest.length > 0) {
                 let end = 0;
@@ -328,17 +343,17 @@ export class CLabel extends CFrame {
                 const spaces = rest.match(/^[^\S\n]+/u)?.[0].length ?? 0;
                 rest = rest.slice(spaces); start += spaces;
             }
-            offset += paragraph.length + 1;
         }
         return lines;
     }
 
 	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
-		return new CSize(
-			Math.max(0, ...this.displayText().split(/\r?\n/).map(line => this.fontMetrics().textWidth(line))) + 2 * CLabel.#HPADDING,
-			this.fontMetrics().height() * this.displayText().split(/\r?\n/).length + 2 * CLabel.#VPADDING
-		);
+        const lines = this.#textLines();
+        return new CSize(
+            Math.max(0, ...lines.map(line => this.fontMetrics().textWidth(line.text))) + 2 * CLabel.#HPADDING,
+            this.#textBlockHeight(lines.length) + 2 * CLabel.#VPADDING
+        );
 	}
 
     #paintLinks(painter: CPainter, option: CStyleOptionLabel): void {
@@ -375,16 +390,16 @@ export class CLabel extends CFrame {
         if (this.#m_pixmap === null && this.#parsed().links.length > 0) {
             this.#paintLinks(painter, option); return;
         }
-        if (!this.hasHeightForWidth()) {
+        if (!this.hasHeightForWidth() && (option.pixmap !== null || !/[\r\n]/.test(option.text))) {
             this.style().drawLabel(painter, option);
             return;
         }
         const background = new CStyleOptionLabel(option);
         background.text = "";
         this.style().drawLabel(painter, background);
-        const lines = this.#wrappedLines(this.width());
+        const lines = this.hasHeightForWidth() ? this.#wrappedLines(this.width()) : this.#textLines();
         const lineHeight = this.fontMetrics().height();
-        const blockHeight = lines.length * lineHeight;
+        const blockHeight = this.#textBlockHeight(lines.length, lineHeight);
         const y = (this.#m_alignment & CAlignment.Bottom) !== 0 ? this.height() - CLabel.#VPADDING - blockHeight
             : (this.#m_alignment & CAlignment.VCenter) !== 0 ? (this.height() - blockHeight) / 2 : CLabel.#VPADDING;
         painter.save();
@@ -400,7 +415,7 @@ export class CLabel extends CFrame {
                 lineOption.mnemonicIndex = index >= 0 && index < line.text.length ? index : -1;
             }
             painter.save();
-            painter.translate(CLabel.#HPADDING, y + i * lineHeight);
+            painter.translate(CLabel.#HPADDING, y + i * (lineHeight + CLabel.#LINE_GAP));
             this.style().drawLabel(painter, lineOption);
             painter.restore();
         }

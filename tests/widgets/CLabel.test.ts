@@ -431,21 +431,21 @@ describe("CLabel height for width and word wrapping", () => {
     test("narrow text needs more lines and wide text returns to one line", () => {
         const label = new CLabel(); label.setText("Hello world"); label.setWordWrap(true);
         const width = label.fontMetrics().textWidth("Hello") + 12;
-        expect(label.heightForWidth(width)).toBe(2 * label.fontMetrics().height() + 6);
+        expect(label.heightForWidth(width)).toBe(2 * label.fontMetrics().height() + 8);
         expect(label.heightForWidth(1000)).toBe(label.fontMetrics().height() + 6);
     });
     test("explicit newlines including empty lines contribute to height", () => {
         const label = new CLabel(); label.setText("One\n\nTwo"); label.setWordWrap(true);
-        expect(label.heightForWidth(1000)).toBe(3 * label.fontMetrics().height() + 6);
+        expect(label.heightForWidth(1000)).toBe(3 * label.fontMetrics().height() + 10);
     });
     test("zero width terminates and preserves complete Unicode characters", () => {
         const label = new CLabel(); label.setText("😀č"); label.setWordWrap(true);
-        expect(label.heightForWidth(0)).toBe(2 * label.fontMetrics().height() + 6);
+        expect(label.heightForWidth(0)).toBe(2 * label.fontMetrics().height() + 8);
     });
     test("mnemonic markers are not measured as visible characters", () => {
         const label = new CLabel(); label.setBuddy(new CWidget()); label.setText("&Hello world"); label.setWordWrap(true);
         const width = label.fontMetrics().textWidth("Hello") + 12;
-        expect(label.heightForWidth(width)).toBe(2 * label.fontMetrics().height() + 6);
+        expect(label.heightForWidth(width)).toBe(2 * label.fontMetrics().height() + 8);
     });
     test("empty text still reserves one text line", () => {
         const label = new CLabel(); label.setWordWrap(true);
@@ -461,6 +461,8 @@ describe("CLabel height for width and word wrapping", () => {
         label.paint(painter as unknown as CPainter);
         const texts = draw.mock.calls.map(call => call[1].text);
         expect(texts).toEqual(["", "Hello", "world"]);
+        const [first, second] = painter.translate.mock.calls;
+        expect(second![1] - first![1]).toBe(label.fontMetrics().height() + 2);
         draw.mockRestore();
     });
 });
@@ -610,7 +612,7 @@ describe("CLabel hyperlinks", () => {
     });
     test("wrapped links remain clickable on successive lines", () => {
         label.setText('<a href="app:test">abcdefghij</a>'); label.setWordWrap(true); label.resize(52, 80);
-        expect(label.heightForWidth(52)).toBe(38); expect(label.linkAt(10, 8)).toBe("app:test"); expect(label.linkAt(10, 24)).toBe("app:test");
+        expect(label.heightForWidth(52)).toBe(40); expect(label.linkAt(10, 8)).toBe("app:test"); expect(label.linkAt(10, 24)).toBe("app:test");
     });
     test("text changes cancel a pending click", () => {
         links(); const f = vi.fn(); label.linkActivated.connect(f); label.event(new CMouseEvent(CEventType.MousePress, 55, 8, CMouseButton.LeftButton));

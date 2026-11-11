@@ -1509,8 +1509,16 @@ function showCollapsibleGroupDemo(parent: CWidget): void {
     for (const title of ["Contact details", "Additional settings"]) {
         const group = new CGroupBox(title, dialog); group.setCollapsible(true);
         const form = new CFormLayout(); form.setContentsMargins(12, 8, 12, 12);
-        const name = new CLineEdit(group); name.setText(title === "Contact details" ? "Bojan" : "Default"); form.addRow("Name:", name);
-        const email = new CLineEdit(group); email.setPlaceholderText("name@example.com"); form.addRow("Email:", email);
+        const name = new CLineEdit(group); name.setText(title === "Contact details" ? "Bojan" : "Default"); const nameLabel = new CLabel(group);
+        nameLabel.setText("Full name for correspondence:");
+        nameLabel.setWordWrap(true);
+        nameLabel.setBuddy(name);
+        form.addRow(nameLabel, name);
+        const email = new CLineEdit(group); email.setPlaceholderText("name@example.com"); const emailLabel = new CLabel(group);
+        emailLabel.setText("Email address for notifications:");
+        emailLabel.setWordWrap(true);
+        emailLabel.setBuddy(email);
+        form.addRow(emailLabel, email);
         group.setLayout(form); layout.addWidget(group);
         if (title === "Additional settings") group.setCollapsed(true);
     }

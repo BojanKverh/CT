@@ -49,6 +49,31 @@ describe("CFormLayout", () => {
 			CApplication.instance().destroy();
 	});
 
+    test("keeps fields inside a narrow form with long wrapped labels and a larger font", () => {
+        const parent = new CWidget();
+        parent.resize(250, 350);
+        const layout = new CFormLayout();
+        parent.setLayout(layout);
+
+        const label = new CLabel(parent);
+        label.setText("Email address for notifications and updates");
+        const font = label.font();
+        font.setPixelSize(22);
+        label.setFont(font);
+        label.setWordWrap(true);
+        const field = new HintWidget(160, 24);
+        field.setMinimumSize(100, 0);
+        layout.addRow(label, field);
+
+        expect(label.width()).toBeLessThan(label.sizeHint().width());
+        expect(label.height()).toBe(label.heightForWidth(label.width()));
+        expect(field.width()).toBeGreaterThanOrEqual(100);
+        expect(field.x() + field.width()).toBeLessThanOrEqual(parent.width() - layout.contentsMargins().right);
+        expect(layout.heightForWidth(parent.width())).toBe(
+            label.height() + layout.contentsMargins().top + layout.contentsMargins().bottom
+        );
+    });
+
 	test("has no rows by default", () => {
 		const layout = new CFormLayout();
 
