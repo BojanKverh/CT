@@ -193,8 +193,11 @@ export class CScrollArea extends CFrame {
 
     /** Handles the wheel event. */
     protected override wheelEvent(event: CWheelEvent): void {
-        const dx = this.#m_horizontalScrollBar.isVisible() ? event.deltaX() : 0;
-        const dy = this.#m_verticalScrollBar.isVisible() ? event.deltaY() : 0;
+        const shift = event.shiftKey();
+        // Use the browser's horizontal delta when it already remapped the wheel.
+        const horizontalDelta = shift && event.deltaX() === 0 ? event.deltaY() : event.deltaX();
+        const dx = this.#m_horizontalScrollBar.isVisible() ? horizontalDelta : 0;
+        const dy = !shift && this.#m_verticalScrollBar.isVisible() ? event.deltaY() : 0;
         if (dx === 0 && dy === 0) {
             event.ignore();
             return;

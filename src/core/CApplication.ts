@@ -1550,7 +1550,7 @@ export class CApplication extends CObject {
 		const position = this.#canvasPosition(wheelEvent);
         const localPosition = widget.mapFromCanvas(position.x(), position.y());
         const event = new CWheelEvent(wheelEvent.deltaX, wheelEvent.deltaY,
-            localPosition.x(), localPosition.y());
+            localPosition.x(), localPosition.y(), wheelEvent.shiftKey);
 		return widget.event(event);
 	}
 

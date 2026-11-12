@@ -1851,6 +1851,34 @@ describe("CApplication", () => {
 		expect(child.hasFocus()).toBe(false);
 	});
 
+    test("Shift+wheel scrolls horizontally without applying the vertical delta twice", () => {
+        const canvas = createTestCanvas();
+        new CApplication(canvas);
+        const area = new CScrollArea();
+        area.resize(300, 200);
+        const content = new CWidget();
+        content.resize(600, 500);
+        area.setWidget(content);
+        canvas.dispatchEvent({
+            type: "pointermove", clientX: 50, clientY: 50, pointerId: 1
+        } as PointerEvent);
+
+        const wheel = (deltaX: number, deltaY: number, shiftKey: boolean): void => {
+            canvas.dispatchEvent({
+                type: "wheel", clientX: 50, clientY: 50, deltaX, deltaY, shiftKey
+            } as WheelEvent);
+        };
+
+        wheel(0, 80, true);
+        expect([area.scrollX(), area.scrollY()]).toEqual([20, 0]);
+
+        wheel(-40, -80, true);
+        expect([area.scrollX(), area.scrollY()]).toEqual([10, 0]);
+
+        wheel(0, 60, false);
+        expect([area.scrollX(), area.scrollY()]).toEqual([10, 15]);
+    });
+
 	test("Tab moves focus to next widget", () => {
 		const app = new CApplication(createTestCanvas());
 		const widget1 = new CWidget();
