@@ -1941,6 +1941,35 @@ describe("CApplication", () => {
         expect([area.scrollX(), area.scrollY()]).toEqual([10, 15]);
     });
 
+    test.each([
+        { hidden: "field", backward: false },
+        { hidden: "panel", backward: false },
+        { hidden: "outer panel", backward: true }
+    ])("clears focus when hiding $hidden and resumes Tab from that position", ({ hidden, backward }) => {
+        const app = new CApplication(createTestCanvas());
+        const root = new CWidget();
+        const first = new CPushButton(root);
+        const outer = new CWidget(root);
+        const panel = new CWidget(outer);
+        const editor = new CLineEdit(panel);
+        const last = new CPushButton(root);
+        const finished = vi.fn();
+        editor.editingFinished.connect(finished);
+        editor.setFocus();
+        expect(app.focusWidget()).toBe(editor);
+
+        const hiddenWidget = hidden === "field" ? editor : hidden === "panel" ? panel : outer;
+        hiddenWidget.hide();
+        expect(app.focusWidget()).toBeNull();
+        expect(finished).toHaveBeenCalledOnce();
+
+        window.dispatchEvent({
+            type: "keydown", key: "Tab", code: "Tab", shiftKey: backward,
+            ctrlKey: false, altKey: false, metaKey: false, preventDefault: vi.fn()
+        } as unknown as KeyboardEvent);
+        expect(app.focusWidget()).toBe(backward ? first : last);
+    });
+
 	test("Tab moves focus to next widget", () => {
 		const app = new CApplication(createTestCanvas());
 		const widget1 = new CWidget();

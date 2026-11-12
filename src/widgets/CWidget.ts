@@ -104,7 +104,7 @@ export class CWidget extends CObject {
         if (parent === null)
             app.registerTopLevelWidget(this);
         this.#refreshFocusProxyHierarchy();
-        this.#clearDisabledFocus();
+        this.#clearUnavailableFocus();
         this.#notifyVisibilityChange();
         this.update();
     }
@@ -168,7 +168,9 @@ export class CWidget extends CObject {
 	    if (this.#m_visible === visible)
 		    return;
 
+        if (!visible) CApplication.instance().rememberFocusBeforeHide(this);
 	    this.#m_visible = visible;
+        this.#clearUnavailableFocus();
         this.#notifyVisibilityChange();
 	    const parent = this.parent();
 	    /** Provides if behavior. */
@@ -185,6 +187,7 @@ export class CWidget extends CObject {
 
     /** Notify descendants after a change to childrenAreVisible(). */
     protected notifyChildrenVisibilityChanged(): void {
+        this.#clearUnavailableFocus();
         for (const child of [...this.children()])
             if (child instanceof CWidget) child.#notifyVisibilityChange();
     }
@@ -201,14 +204,26 @@ export class CWidget extends CObject {
             return;
 
         this.#m_enabled = enabled;
-        this.#clearDisabledFocus();
+        this.#clearUnavailableFocus();
         this.update();
     }
 
-    #clearDisabledFocus(): void {
+    #clearUnavailableFocus(): void {
         const app = CApplication.instance();
         const focused = app.focusWidget();
-        if (focused !== null && !focused.isEnabled()) app.setFocusWidget(null);
+        if (focused === null) return;
+
+        if (!focused.isEnabled()) {
+            app.setFocusWidget(null);
+            return;
+        }
+
+        for (let widget: CWidget | null = focused; widget !== null; widget = widget.parent()) {
+            if (!widget.isVisible()) {
+                app.setFocusWidget(null);
+                return;
+            }
+        }
     }
 
     /** Returns whether the visible condition is active. */

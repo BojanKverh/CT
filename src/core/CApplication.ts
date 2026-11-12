@@ -132,6 +132,7 @@ export class CApplication extends CObject {
 	#m_mouseGrabber: CWidget | null = null;
 	#m_hoverWidget: CWidget | null = null;
 	#m_focusWidget: CWidget | null = null;
+    #m_hiddenFocusTabPosition: { widgets: CWidget[]; index: number } | null = null;
     // Weak keys do not retain destroyed widgets or their window hierarchies.
     #m_tabOrder = new WeakMap<CWidget, { root: CWidget; position: number }>();
 	#m_updatesEnabled = false;
@@ -393,6 +394,7 @@ export class CApplication extends CObject {
 		this.#m_mouseGrabber = null;
 		this.#m_hoverWidget = null;
         this.#m_focusWidget = null;
+        this.#m_hiddenFocusTabPosition = null;
 		this.#m_modalWidgets.length = 0;
 		if (this.#m_activeDrag !== null)
 			this.cancelDrag();
@@ -554,6 +556,7 @@ export class CApplication extends CObject {
 
 	    const oldWidget = this.#m_focusWidget;
 	    this.#m_focusWidget = widget;
+        if (widget !== null) this.#m_hiddenFocusTabPosition = null;
 
 	    if (oldWidget !== null) {
 		    const event = new CFocusEvent(CEventType.FocusOut);
@@ -810,7 +813,7 @@ export class CApplication extends CObject {
 		let index = widgets.findIndex(widget => widget.focusTarget() === current);
 
 		if (index < 0)
-            index = forward ? 0 : widgets.length - 1;
+            index = this.#indexAfterHiddenFocus(widgets, forward);
         else
             index = (index + (forward ? 1 : -1) + widgets.length) % widgets.length;
 
@@ -826,6 +829,31 @@ export class CApplication extends CObject {
 
 		return true;
 	}
+
+    /** @internal Keeps the current tab position when a focused subtree is about to be hidden. */
+    rememberFocusBeforeHide(subtree: CWidget): void {
+        const focused = this.#m_focusWidget;
+        if (focused === null || !this.#belongsToModal(focused, subtree)) return;
+
+        const widgets = this.#focusableWidgets();
+        const index = widgets.findIndex(widget => widget.focusTarget() === focused);
+        this.#m_hiddenFocusTabPosition = index < 0 ? null : { widgets, index };
+    }
+
+    #indexAfterHiddenFocus(widgets: CWidget[], forward: boolean): number {
+        const position = this.#m_hiddenFocusTabPosition;
+        if (position !== null) {
+            const step = forward ? 1 : -1;
+            const available = new Map(widgets.map((widget, index) => [widget.focusTarget(), index]));
+            const count = position.widgets.length;
+            for (let offset = 1; offset < count; offset++) {
+                const previousIndex = (position.index + offset * step + count) % count;
+                const index = available.get(position.widgets[previousIndex]!.focusTarget());
+                if (index !== undefined) return index;
+            }
+        }
+        return forward ? 0 : widgets.length - 1;
+    }
 
     /** @internal Focus transfer shared by label clicks and Alt mnemonics. */
     focusLabelBuddy(label: CWidget, buddy: CWidget): boolean {
