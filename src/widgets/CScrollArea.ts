@@ -193,14 +193,15 @@ export class CScrollArea extends CFrame {
 
     /** Handles the wheel event. */
     protected override wheelEvent(event: CWheelEvent): void {
-    	/** Provides if behavior. */
-    	if (!this.#m_verticalScrollBar.isVisible()) {
-	    	event.ignore();
-		    return;
-	    }
+        const dx = this.#m_horizontalScrollBar.isVisible() ? event.deltaX() : 0;
+        const dy = this.#m_verticalScrollBar.isVisible() ? event.deltaY() : 0;
+        if (dx === 0 && dy === 0) {
+            event.ignore();
+            return;
+        }
 
-	    this.setScrollY(this.#m_scrollY + event.deltaY() / 4);
-	    event.accept();
+        this.scrollTo(this.#m_scrollX + dx / 4, this.#m_scrollY + dy / 4);
+        event.accept();
     }
 
 	/** Handles update scroll bars behavior. */

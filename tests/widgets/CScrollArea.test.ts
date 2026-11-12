@@ -483,6 +483,34 @@ describe("CScrollArea", () => {
 		expect(event.isAccepted()).toBe(false);
 	});
 
+	test.each([
+		{ height: 100, expectedY: 0 },
+		{ height: 500, expectedY: 15 }
+	])("uses both wheel deltas when their axes can scroll (content height $height)", ({ height, expectedY }) => {
+		const area = new CScrollArea();
+		area.resize(300, 200);
+		const content = new CWidget();
+		content.resize(600, height);
+		area.setWidget(content);
+
+		const event = new CWheelEvent(80, 60);
+		expect(area.event(event)).toBe(true);
+		expect(area.scrollX()).toBe(20);
+		expect(area.scrollY()).toBe(expectedY);
+		expect(area.horizontalScrollBar().value()).toBe(20);
+	});
+
+	test("ignores a horizontal wheel event when only vertical scrolling is available", () => {
+		const area = new CScrollArea();
+		area.resize(300, 200);
+		const content = new CWidget();
+		content.resize(100, 500);
+		area.setWidget(content);
+
+		expect(area.event(new CWheelEvent(80, 0))).toBe(false);
+		expect(area.scrollY()).toBe(0);
+	});
+
 	test("inherits CFrame", () => {
 		const scrollArea = new CScrollArea();
 
