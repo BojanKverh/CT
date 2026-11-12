@@ -14,6 +14,7 @@ import { CWheelEvent } from "../events/CWheelEvent.js";
 import { CPalette } from "../gui/CPalette.js";
 import { CDefaultStyle } from "../gui/CDefaultStyle.js";
 import type { CStyle } from "../gui/CStyle.js";
+import type { CScrollArea } from "../widgets/CScrollArea.js";
 import type { CPopupWidget } from "../widgets/CPopupWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
@@ -153,11 +154,28 @@ export class CApplication extends CObject {
 	#m_dragTarget: CWidget | null = null;
 	#m_clipboard = new CClipboard(this);
 
+    #m_touchPan: {
+        pointerId: number;
+        target: CWidget;
+        area: CScrollArea;
+        origin: CPoint;
+        clientX: number;
+        clientY: number;
+        lastY: number;
+        mode: "pending" | "scroll" | "cancelled";
+    } | null = null;
+
+    static readonly #TOUCH_PAN_THRESHOLD = 8;
+
 	static readonly #TOOL_TIP_DELAY = 700;
 	static readonly #TOOL_TIP_OFFSET_X = 12;
 	static readonly #TOOL_TIP_OFFSET_Y = 18;
 
 	#onPointerDown = (event: PointerEvent): void => {
+        if (event.pointerType === "touch") {
+            if (event.isPrimary === false) return;
+            if (this.#beginTouchPan(event)) return;
+        }
 		this.#dispatchMouseEvent(CEventType.MousePress, event);
         this.#focusNativeCanvas();
 	};
@@ -169,6 +187,22 @@ export class CApplication extends CObject {
 	#onPointerUp = (event: PointerEvent): void => {
 		this.#dismissToolTip();
 
+        if (event.pointerType === "touch" && event.isPrimary === false) return;
+        const pan = this.#m_touchPan;
+        if (pan !== null && pan.pointerId === event.pointerId) {
+            this.#moveTouchPan(event);
+            this.#m_touchPan = null;
+            const position = this.#canvasPosition(event);
+            if (pan.mode === "pending" && this.#m_mouseGrabber === null
+                && this.#touchTargetAt(position) === pan.target) {
+                this.#dispatchMouseEvent(CEventType.MousePress, event);
+                this.#focusNativeCanvas();
+            } else {
+                this.#releasePointerCapture(event.pointerId);
+                return;
+            }
+        }
+
 		if (this.#m_activeDrag !== null) {
 			this.#dispatchDrop(event);
 			this.#releasePointer(event);
@@ -179,6 +213,11 @@ export class CApplication extends CObject {
 	};
 
 	#onPointerMove = (event: PointerEvent): void => {
+        if (event.pointerType === "touch" && event.isPrimary === false) return;
+        if (this.#m_touchPan !== null && this.#m_touchPan.pointerId === event.pointerId) {
+            this.#moveTouchPan(event);
+            return;
+        }
 		const position = this.#canvasPosition(event);
 		this.#m_mouseX = position.x();
 		this.#m_mouseY = position.y();
@@ -207,6 +246,12 @@ export class CApplication extends CObject {
 	};
 	
 	#onPointerCancel = (event: PointerEvent): void => {
+        if (event.pointerType === "touch" && event.isPrimary === false) return;
+        if (this.#m_touchPan !== null && this.#m_touchPan.pointerId === event.pointerId) {
+            this.#m_touchPan = null;
+            this.#releasePointerCapture(event.pointerId);
+            return;
+        }
 		if (this.#m_activeDrag !== null)
 			this.cancelDrag();
 
@@ -252,6 +297,7 @@ export class CApplication extends CObject {
 		canvas.addEventListener("pointermove", this.#onPointerMove);
 		canvas.addEventListener("wheel", this.#onWheel);
 		canvas.addEventListener("pointercancel", this.#onPointerCancel);
+        canvas.addEventListener("lostpointercapture", this.#onLostPointerCapture);
 		canvas.addEventListener("contextmenu", this.#onContextMenu);
 
         if (typeof window !== "undefined") {
@@ -306,6 +352,11 @@ export class CApplication extends CObject {
 		canvas.removeEventListener("pointermove", this.#onPointerMove);
 		canvas.removeEventListener("wheel", this.#onWheel);
 		canvas.removeEventListener("pointercancel", this.#onPointerCancel);
+        canvas.removeEventListener("lostpointercapture", this.#onLostPointerCapture);
+        if (this.#m_touchPan !== null) {
+            this.#releasePointerCapture(this.#m_touchPan.pointerId);
+            this.#m_touchPan = null;
+        }
 		canvas.removeEventListener("contextmenu", this.#onContextMenu);
 
 		if (typeof window !== "undefined") {
@@ -1017,6 +1068,89 @@ export class CApplication extends CObject {
 		return null;
 	}
 
+    #touchTargetAt(position: CPoint, enabledFrom?: CWidget): CWidget | null {
+        const target = this.#widgetAt(position.x(), position.y());
+        if (target === null) return null;
+
+        const modal = this.topModalWidget();
+        const popup = this.#m_popupWidgets.at(-1);
+        if ((modal !== null && !this.#belongsToModal(target, modal))
+            || (popup !== undefined && !this.#belongsToModal(target, popup))) return null;
+
+        for (let widget: CWidget | null = target; widget !== null; widget = widget.parent()) {
+            if (!widget.isVisible() || widget.inputBlocker() !== null) return null;
+        }
+        for (let widget: CWidget | null = enabledFrom ?? target; widget !== null; widget = widget.parent()) {
+            if (!widget.isEnabled()) return null;
+        }
+        return target;
+    }
+
+    #beginTouchPan(event: PointerEvent): boolean {
+        if (this.#m_touchPan !== null || this.#m_mouseGrabber !== null || this.#m_activeDrag !== null) return false;
+
+        const origin = this.#canvasPosition(event);
+        const target = this.#touchTargetAt(origin);
+        if (target === null) return false;
+
+        const boundary = this.#m_popupWidgets.at(-1) ?? this.topModalWidget();
+        for (let child = target; child !== boundary && !this.isWindowWidget(child);) {
+            const parent = child.parent();
+            if (parent === null) break;
+
+            const area = parent.touchScrollAreaFor(child);
+            if (area === false) return false;
+            if (area !== null) {
+                this.#m_touchPan = {
+                    pointerId: event.pointerId, target, area, origin,
+                    clientX: event.clientX, clientY: event.clientY,
+                    lastY: origin.y(), mode: "pending"
+                };
+                this.#dismissToolTip();
+                this.canvas().setPointerCapture(event.pointerId);
+                return true;
+            }
+            child = parent;
+        }
+        return false;
+    }
+
+    #moveTouchPan(event: PointerEvent): void {
+        const pan = this.#m_touchPan;
+        if (pan === null || pan.mode === "cancelled") return;
+
+        const viewport = pan.area.viewport();
+        const hit = this.#touchTargetAt(pan.origin, pan.mode === "scroll" ? viewport : undefined);
+        if (hit === null || !this.#belongsToModal(hit, viewport)
+            || pan.area.touchScrollAreaFor(viewport) === null) {
+            pan.mode = "cancelled";
+            return;
+        }
+
+        if (pan.mode === "pending") {
+            const dx = Math.abs(event.clientX - pan.clientX);
+            const dy = Math.abs(event.clientY - pan.clientY);
+            if (Math.max(dx, dy) < CApplication.#TOUCH_PAN_THRESHOLD) return;
+            pan.mode = dy >= dx ? "scroll" : "cancelled";
+            if (pan.mode === "cancelled") return;
+            this.#m_lastClick = null;
+        }
+
+        const y = this.#canvasPosition(event).y();
+        pan.area.setScrollY(pan.area.scrollY() + pan.lastY - y);
+        pan.lastY = y;
+    }
+
+    #onLostPointerCapture = (event: PointerEvent): void => {
+        if (this.#m_touchPan !== null && this.#m_touchPan.pointerId === event.pointerId)
+            this.#m_touchPan = null;
+    };
+
+    #releasePointerCapture(pointerId: number): void {
+        const canvas = this.canvas();
+        if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
+    }
+
 	#dropTargetAt(x: number, y: number): CWidget | null {
 		let target = this.#widgetAt(x, y);
 
@@ -1683,8 +1817,7 @@ export class CApplication extends CObject {
 	#releasePointer(event: PointerEvent): void {
 		this.releaseMouse();
 
-		if (this.#m_paintDevice.canvas().hasPointerCapture(event.pointerId))
-			this.#m_paintDevice.canvas().releasePointerCapture(event.pointerId);
+		this.#releasePointerCapture(event.pointerId);
 	}
 
 	#proposedDragAction(): CDropAction {

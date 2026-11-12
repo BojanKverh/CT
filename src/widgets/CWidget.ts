@@ -1,4 +1,5 @@
 import { CSizePolicy, CSizePolicyType } from "../geometry/CSizePolicy.js";
+import type { CScrollArea } from "./CScrollArea.js";
 import { CApplication } from "../core/CApplication.js";
 import { CObject } from "../core/CObject.js";
 import { CPoint } from "../geometry/CPoint.js";
@@ -700,6 +701,9 @@ export class CWidget extends CObject {
 
     /** @internal Allows containers to reveal a descendant reached by Tab. */
     revealTabFocus(_widget: CWidget): void {}
+
+    /** @internal Returns a touch pan owner, false to stop the search, or null to continue. */
+    touchScrollAreaFor(_child: CWidget): CScrollArea | false | null { return null; }
 
     /** Preferred height at the supplied width, or -1 when independent. */
     heightForWidth(width: number): number {

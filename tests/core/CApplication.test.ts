@@ -164,6 +164,137 @@ afterEach(() => {
         CApplication.instance().destroy();
 });
 
+describe("touch scrolling", () => {
+    function setup() {
+        const canvas = createTestCanvas();
+        const app = new CApplication(canvas);
+        const root = new CWidget();
+        root.resize(400, 400);
+        const area = new CScrollArea(root);
+        area.setGeometry(0, 0, 180, 140);
+        const content = new CWidget();
+        content.resize(140, 400);
+        area.setWidget(content);
+
+        const button = new CPushButton(content);
+        button.setGeometry(10, 60, 100, 40);
+        const clicked = vi.fn();
+        button.clicked.connect(clicked);
+
+        const touch = (type: string, y: number, x = 30): void => {
+            canvas.dispatchEvent({
+                type, clientX: x, clientY: y, pointerId: 1,
+                pointerType: "touch", isPrimary: true, button: 0
+            } as PointerEvent);
+        };
+
+        return { app, root, area, clicked, touch };
+    }
+
+    test("distinguishes a tap from a pan starting on a button", () => {
+        const { area, clicked, touch } = setup();
+        touch("pointerdown", 80);
+        expect(clicked).not.toHaveBeenCalled();
+        touch("pointerup", 82);
+        expect(clicked).toHaveBeenCalledTimes(1);
+
+        touch("pointerdown", 80);
+        touch("pointermove", 78);
+        expect(area.scrollY()).toBe(0);
+        touch("pointermove", 40);
+        touch("pointerup", 40);
+        expect(area.scrollY()).toBe(40);
+        expect(clicked).toHaveBeenCalledTimes(1);
+    });
+
+    test.each(["covered", "hidden", "disabled", "disabled parent", "outside modal", "input shield", "behind popup"])(
+        "ignores a scroll area when it is %s", condition => {
+            const { app, root, area, touch } = setup();
+            if (condition === "covered") {
+                const overlay = new CWidget();
+                overlay.resize(180, 140);
+                app.registerWindowWidget(overlay);
+            } else if (condition === "hidden") {
+                area.hide();
+            } else if (condition === "disabled") {
+                area.setEnabled(false);
+            } else if (condition === "disabled parent") {
+                root.setEnabled(false);
+            } else if (condition === "outside modal") {
+                const modal = new CWidget();
+                modal.setGeometry(200, 0, 180, 140);
+                app.registerModalWidget(modal);
+            } else if (condition === "input shield") {
+                area.setInputBlocker(new CWidget(area));
+            } else {
+                const popup = new CPopupWidget();
+                popup.setGeometry(200, 0, 100, 100);
+                popup.open();
+            }
+
+            touch("pointerdown", 80);
+            touch("pointermove", 40);
+            touch("pointerup", 40);
+            expect(area.scrollY()).toBe(0);
+        }
+    );
+
+    test("pans inside the modal and stops when another modal opens", () => {
+        const { app, root, area, clicked, touch } = setup();
+        app.registerModalWidget(root);
+        touch("pointerdown", 80);
+        touch("pointermove", 40);
+        expect(area.scrollY()).toBe(40);
+
+        const modal = new CWidget();
+        modal.setGeometry(200, 0, 180, 140);
+        app.registerModalWidget(modal);
+        touch("pointermove", 20);
+        touch("pointerup", 20);
+        expect(area.scrollY()).toBe(40);
+        expect(clicked).not.toHaveBeenCalled();
+    });
+
+    test("leaves an inner scrollbar available for direct touch dragging", () => {
+        const { area, touch } = setup();
+        const inner = new CScrollArea(area.widget());
+        inner.setGeometry(0, 0, 100, 125);
+        const content = new CWidget();
+        content.resize(60, 300);
+        inner.setWidget(content);
+
+        touch("pointerdown", 80, 30);
+        touch("pointermove", 40, 30);
+        touch("pointerup", 40, 30);
+        expect(inner.scrollY()).toBe(40);
+        expect(area.scrollY()).toBe(0);
+
+        inner.setScrollY(0);
+        const bar = inner.verticalScrollBar();
+        const position = bar.mapToCanvas(bar.width() / 2, bar.thumbStart() + bar.thumbLength() / 2);
+        touch("pointerdown", position.y(), position.x());
+        touch("pointermove", position.y() + 25, position.x());
+        touch("pointerup", position.y() + 25, position.x());
+        expect(inner.scrollY()).toBeGreaterThan(0);
+        expect(area.scrollY()).toBe(0);
+    });
+
+    test("cancels a pending tap on pointer cancellation or horizontal movement", () => {
+        const { area, clicked, touch } = setup();
+        touch("pointerdown", 80);
+        touch("pointercancel", 80);
+        touch("pointerdown", 80);
+        touch("pointermove", 78, 55);
+        touch("pointerup", 78, 55);
+        expect(area.scrollY()).toBe(0);
+        expect(clicked).not.toHaveBeenCalled();
+
+        touch("pointerdown", 80);
+        touch("pointerup", 80);
+        expect(clicked).toHaveBeenCalledTimes(1);
+    });
+});
+
 describe("CApplication", () => {
 	const spacing: number = 6;
 	const margin: number = 6;
