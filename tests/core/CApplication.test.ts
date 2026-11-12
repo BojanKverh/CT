@@ -1193,6 +1193,68 @@ describe("CApplication", () => {
 		expect(widget.hasFocus()).toBe(false);
 	});
 
+    test("disabling a panel blocks descendant input and clears its editor focus", () => {
+        const canvas = createTestCanvas();
+        const app = new CApplication(canvas);
+        const panel = new CWidget();
+        panel.resize(240, 160);
+        const group = new CWidget(panel);
+        group.resize(240, 160);
+        const button = new CPushButton(group);
+        button.setGeometry(10, 10, 100, 30);
+        const editor = new CLineEdit(group);
+        editor.setGeometry(10, 50, 100, 30);
+
+        const clicked = vi.fn();
+        button.clicked.connect(clicked);
+        const finished = vi.fn();
+        editor.editingFinished.connect(finished);
+        editor.setFocus();
+        expect(app.focusWidget()).toBe(editor);
+
+        const click = (): void => {
+            for (const type of ["pointerdown", "pointerup"]) {
+                canvas.dispatchEvent({
+                    type, clientX: 25, clientY: 20, button: 0, pointerId: 1
+                } as PointerEvent);
+            }
+        };
+
+        panel.setEnabled(false);
+        expect(app.focusWidget()).toBeNull();
+        expect(finished).toHaveBeenCalledOnce();
+        app.setFocusWidget(editor);
+        expect(app.focusWidget()).toBeNull();
+        window.dispatchEvent({
+            type: "keydown", key: "x", code: "KeyX", preventDefault: vi.fn()
+        } as unknown as KeyboardEvent);
+        expect(editor.text()).toBe("");
+        click();
+        expect(clicked).not.toHaveBeenCalled();
+
+        editor.setEnabled(false);
+        panel.setEnabled(true);
+        expect(editor.isEnabled()).toBe(false);
+        expect(app.focusWidget()).toBeNull();
+        click();
+        expect(clicked).toHaveBeenCalledOnce();
+    });
+
+    test("moving a focused widget under a disabled parent clears focus", () => {
+        const app = new CApplication(createTestCanvas());
+        const editor = new CLineEdit();
+        const panel = new CWidget();
+        panel.setEnabled(false);
+
+        editor.setFocus();
+        expect(app.focusWidget()).toBe(editor);
+        editor.setParent(panel);
+        expect(app.focusWidget()).toBeNull();
+        expect(editor.isEnabled()).toBe(false);
+        editor.setParent(null);
+        expect(editor.isEnabled()).toBe(true);
+    });
+
 	test("accepted mouse press gives focus to widget", () => {
 		const canvas = createTestCanvas();
 		const app = new CApplication(canvas);

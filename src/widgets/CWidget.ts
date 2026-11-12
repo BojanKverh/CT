@@ -104,6 +104,7 @@ export class CWidget extends CObject {
         if (parent === null)
             app.registerTopLevelWidget(this);
         this.#refreshFocusProxyHierarchy();
+        this.#clearDisabledFocus();
         this.#notifyVisibilityChange();
         this.update();
     }
@@ -194,14 +195,20 @@ export class CWidget extends CObject {
             if (child instanceof CWidget) child.#notifyVisibilityChange();
     }
 
-    /** Sets the enabled. */
+    /** Sets this widget's own enabled state. A disabled ancestor disables its descendants. */
     setEnabled(enabled: boolean): void {
-        /** Provides if behavior. */
         if (this.#m_enabled === enabled)
             return;
 
         this.#m_enabled = enabled;
+        this.#clearDisabledFocus();
         this.update();
+    }
+
+    #clearDisabledFocus(): void {
+        const app = CApplication.instance();
+        const focused = app.focusWidget();
+        if (focused !== null && !focused.isEnabled()) app.setFocusWidget(null);
     }
 
     /** Returns whether the visible condition is active. */
@@ -458,9 +465,9 @@ export class CWidget extends CObject {
         return null;
     }
 
-    /** Returns whether the enabled condition is active. */
+    /** Returns whether this widget and its ancestors are enabled. */
     isEnabled(): boolean {
-        return this.#m_enabled;
+        return this.#m_enabled && (this.parent()?.isEnabled() ?? true);
     }
 
 	/** Returns whether this object has focus. */
@@ -762,7 +769,8 @@ export class CWidget extends CObject {
             event.accept(); return true;
         }
         /** Provides if behavior. */
-        if (!this.isEnabled()) {
+        // A widget losing focus on disable still needs to finish its edit or stop its caret.
+        if (event.type() !== CEventType.FocusOut && !this.isEnabled()) {
 			event.ignore();
 			return false;
 		}

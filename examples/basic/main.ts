@@ -1553,6 +1553,10 @@ function showCollapsibleGroupDemo(parent: CWidget): void {
     }
     content.setLayout(contentLayout);
     scrollArea.setWidget(content);
+    const disableFields = new CCheckBox(dialog);
+    disableFields.setText("Disable form");
+    disableFields.toggled.connect(disabled => scrollArea.setEnabled(!disabled));
+    layout.addWidget(disableFields);
     layout.addWidget(scrollArea, 1);
     const close = new CPushButton(dialog); close.setText("Close"); close.clicked.connect(() => dialog.reject()); layout.addWidget(close);
     dialog.setLayout(layout); dialog.open();

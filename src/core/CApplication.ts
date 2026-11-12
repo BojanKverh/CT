@@ -545,8 +545,10 @@ export class CApplication extends CObject {
  * @param widget Widget to focus, or `null` to clear focus.
  */
     setFocusWidget(widget: CWidget | null): void {
+        if (widget !== null && !widget.isEnabled()) return;
         widget = widget?.focusTarget() ?? null;
         widget = widget?.inputBlocker() ?? widget;
+        if (widget !== null && !widget.isEnabled()) return;
 	    if (this.#m_focusWidget === widget)
 		    return;
 
@@ -1081,10 +1083,7 @@ export class CApplication extends CObject {
         for (let widget: CWidget | null = target; widget !== null; widget = widget.parent()) {
             if (!widget.isVisible() || widget.inputBlocker() !== null) return null;
         }
-        for (let widget: CWidget | null = enabledFrom ?? target; widget !== null; widget = widget.parent()) {
-            if (!widget.isEnabled()) return null;
-        }
-        return target;
+        return (enabledFrom ?? target).isEnabled() ? target : null;
     }
 
     #beginTouchPan(event: PointerEvent): boolean {
