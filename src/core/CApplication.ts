@@ -19,6 +19,7 @@ import type { CPopupWidget } from "../widgets/CPopupWidget.js";
 import type { CToolTipWidget } from "../widgets/CToolTipWidget.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
 import { CTimer } from "./CTimer.js";
+import { COrientation } from "../gui/COrientation.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CContextMenuEvent, CContextMenuReason } from "../events/CContextMenuEvent.js";
 import { CDrag } from "./CDrag.js";
@@ -161,8 +162,8 @@ export class CApplication extends CObject {
         origin: CPoint;
         clientX: number;
         clientY: number;
-        lastY: number;
-        mode: "pending" | "scroll" | "cancelled";
+        lastPosition: CPoint;
+        mode: "pending" | "horizontal" | "vertical" | "cancelled";
     } | null = null;
 
     static readonly #TOUCH_PAN_THRESHOLD = 8;
@@ -1104,7 +1105,7 @@ export class CApplication extends CObject {
                 this.#m_touchPan = {
                     pointerId: event.pointerId, target, area, origin,
                     clientX: event.clientX, clientY: event.clientY,
-                    lastY: origin.y(), mode: "pending"
+                    lastPosition: origin, mode: "pending"
                 };
                 this.#dismissToolTip();
                 this.canvas().setPointerCapture(event.pointerId);
@@ -1120,7 +1121,7 @@ export class CApplication extends CObject {
         if (pan === null || pan.mode === "cancelled") return;
 
         const viewport = pan.area.viewport();
-        const hit = this.#touchTargetAt(pan.origin, pan.mode === "scroll" ? viewport : undefined);
+        const hit = this.#touchTargetAt(pan.origin, pan.mode === "pending" ? undefined : viewport);
         if (hit === null || !this.#belongsToModal(hit, viewport)
             || pan.area.touchScrollAreaFor(viewport) === null) {
             pan.mode = "cancelled";
@@ -1131,14 +1132,24 @@ export class CApplication extends CObject {
             const dx = Math.abs(event.clientX - pan.clientX);
             const dy = Math.abs(event.clientY - pan.clientY);
             if (Math.max(dx, dy) < CApplication.#TOUCH_PAN_THRESHOLD) return;
-            pan.mode = dy >= dx ? "scroll" : "cancelled";
-            if (pan.mode === "cancelled") return;
+            pan.mode = dy >= dx ? "vertical" : "horizontal";
             this.#m_lastClick = null;
         }
 
-        const y = this.#canvasPosition(event).y();
-        pan.area.setScrollY(pan.area.scrollY() + pan.lastY - y);
-        pan.lastY = y;
+        const horizontal = pan.mode === "horizontal";
+        const orientation = horizontal ? COrientation.Horizontal : COrientation.Vertical;
+        if (!pan.area.canTouchScroll(orientation)) {
+            pan.mode = "cancelled";
+            return;
+        }
+
+        const position = this.#canvasPosition(event);
+        if (horizontal) {
+            pan.area.setScrollX(pan.area.scrollX() + pan.lastPosition.x() - position.x());
+        } else {
+            pan.area.setScrollY(pan.area.scrollY() + pan.lastPosition.y() - position.y());
+        }
+        pan.lastPosition = position;
     }
 
     #onLostPointerCapture = (event: PointerEvent): void => {

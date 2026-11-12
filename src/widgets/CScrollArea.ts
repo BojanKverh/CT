@@ -103,8 +103,15 @@ export class CScrollArea extends CFrame {
     /** @internal Touch panning starts in the viewport, including its content. */
     override touchScrollAreaFor(child: CWidget): CScrollArea | false | null {
         if (child !== this.#m_viewport) return false;
-        return this.#m_verticalScrollBar.isVisible()
-            && this.#m_verticalScrollBar.maximum() > 0 ? this : null;
+        return this.canTouchScroll(COrientation.Horizontal) || this.canTouchScroll(COrientation.Vertical)
+            ? this : null;
+    }
+
+    /** @internal Returns whether the viewport can be panned along this axis. */
+    canTouchScroll(orientation: COrientation): boolean {
+        const bar = orientation === COrientation.Horizontal
+            ? this.#m_horizontalScrollBar : this.#m_verticalScrollBar;
+        return bar.isVisible() && bar.maximum() > bar.minimum();
     }
 
     /** Provides scroll x behavior. */

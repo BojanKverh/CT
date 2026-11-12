@@ -165,7 +165,7 @@ afterEach(() => {
 });
 
 describe("touch scrolling", () => {
-    function setup() {
+    function setup(contentWidth = 140, contentHeight = 400) {
         const canvas = createTestCanvas();
         const app = new CApplication(canvas);
         const root = new CWidget();
@@ -173,7 +173,7 @@ describe("touch scrolling", () => {
         const area = new CScrollArea(root);
         area.setGeometry(0, 0, 180, 140);
         const content = new CWidget();
-        content.resize(140, 400);
+        content.resize(contentWidth, contentHeight);
         area.setWidget(content);
 
         const button = new CPushButton(content);
@@ -279,7 +279,58 @@ describe("touch scrolling", () => {
         expect(area.scrollY()).toBe(0);
     });
 
-    test("cancels a pending tap on pointer cancellation or horizontal movement", () => {
+    test.each([
+        { axis: "horizontal", firstX: 65, firstY: 80, lastX: 55, lastY: 45, expected: [35, 0] },
+        { axis: "vertical", firstX: 85, firstY: 60, lastX: 45, lastY: 50, expected: [0, 35] }
+    ])("locks the drag to the initial $axis axis", ({ firstX, firstY, lastX, lastY, expected }) => {
+        const { area, clicked, touch } = setup(400, 400);
+        touch("pointerdown", 85, 90);
+        touch("pointermove", firstY, firstX);
+        touch("pointermove", lastY, lastX);
+        touch("pointerup", lastY, lastX);
+
+        expect([area.scrollX(), area.scrollY()]).toEqual(expected);
+        expect(clicked).not.toHaveBeenCalled();
+    });
+
+    test("keeps scrolling a wide table and its header throughout one touch drag", () => {
+        class WideModel extends CAbstractTableModel {
+            override rowCount(): number { return 100_000; }
+            override columnCount(): number { return 500; }
+            override data(): string { return ""; }
+        }
+
+        const { root, touch } = setup();
+        const dialog = new CDialog(root);
+        dialog.setGeometry(0, 0, 640, 420);
+        const table = new CTableView(dialog);
+        table.setGeometry(12, 12, 560, 320);
+        table.setModel(new WideModel());
+        dialog.open();
+
+        const start = table.viewport().mapToCanvas(280, 100);
+        touch("pointerdown", start.y(), start.x());
+        for (const distance of [16, 72, 140, 245]) {
+            touch("pointermove", start.y(), start.x() - distance);
+            expect(table.scrollX()).toBe(distance);
+            expect(table.horizontalHeader().offset()).toBe(distance);
+            expect(table.scrollY()).toBe(0);
+        }
+        touch("pointerup", start.y(), start.x() - 245);
+        expect(table.scrollX()).toBe(245);
+        expect(table.selectionModel()?.currentIndex().isValid()).toBe(false);
+    });
+
+    test("pans when only horizontal scrolling is available", () => {
+        const { area, touch } = setup(400, 100);
+        touch("pointerdown", 80, 90);
+        touch("pointermove", 80, 50);
+        touch("pointerup", 80, 50);
+        expect(area.scrollX()).toBe(40);
+        expect(area.scrollY()).toBe(0);
+    });
+
+    test("cancels a pending tap on pointer cancellation or movement along an unavailable axis", () => {
         const { area, clicked, touch } = setup();
         touch("pointerdown", 80);
         touch("pointercancel", 80);

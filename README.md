@@ -94,7 +94,7 @@ The package entry point is `src/index.ts`. Additional base classes and implement
 - `CPainter` forwards drawing operations to a paint engine. The canvas implementation uses the browser Canvas 2D API.
 - Styles and palettes control widget appearance; layouts arrange child widgets; models and delegates supply data and editing behavior for views.
 
-To enable one-finger vertical scrolling in a `CScrollArea`, apply `touch-action: none` to the application's canvas so the browser leaves touch gestures there to the toolkit. A short tap still activates the widget under the finger.
+To enable one-finger scrolling in a `CScrollArea`, apply `touch-action: none` to the application's canvas so the browser leaves touch gestures there to the toolkit. The initial drag direction determines the scroll axis. A short tap still activates the widget under the finger.
 
 For responsive canvases, set `data-ct-auto-resize` on the element and give it an explicit CSS size. `CApplication` observes its displayed size and updates the backing bitmap. `app.resizeCanvas(width, height)` is also available for manual resizing. Top-level widgets that fill the old viewport follow its new size.
 
