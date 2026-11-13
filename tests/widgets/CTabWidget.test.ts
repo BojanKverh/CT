@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { CApplication } from "../../src/core/CApplication.js";
+import { CKeyEvent } from "../../src/events/CKeyEvent.js";
+import { CFocusPolicy } from "../../src/gui/CFocusPolicy.js";
 import { CEventType } from "../../src/events/CEvent.js";
 import { CMouseButton, CMouseEvent } from "../../src/events/CMouseEvent.js";
 import { CTabWidget } from "../../src/widgets/CTabWidget.js";
@@ -19,6 +21,32 @@ describe("CTabWidget", () =>
 		if (CApplication.exists())
 			CApplication.instance().destroy();
 	});
+
+    test("arrows skip disabled tabs and Tab enters the selected page", () => {
+        const app = CApplication.instance();
+        const tabs = new CTabWidget();
+        const fields = ["First", "Second", "Third"].map(label => {
+            const page = new CWidget();
+            const field = new CWidget(page);
+            field.setFocusPolicy(CFocusPolicy.StrongFocus);
+            tabs.addTab(page, label);
+            return field;
+        });
+        tabs.setTabEnabled(1, false);
+        expect(app.focusNextWidget()).toBe(true);
+        expect(tabs.hasFocus()).toBe(true);
+        const press = (key: string) => tabs.event(new CKeyEvent(CEventType.KeyPress, key));
+        expect(press("ArrowRight")).toBe(true);
+        expect(tabs.currentIndex()).toBe(2);
+        expect(press("ArrowRight")).toBe(true);
+        expect(tabs.currentIndex()).toBe(0);
+        expect(press("ArrowLeft")).toBe(true);
+        expect(tabs.currentIndex()).toBe(2);
+        expect(app.focusNextWidget()).toBe(true);
+        expect(app.focusWidget()).toBe(fields[2]);
+        expect(press("ArrowLeft")).toBe(false);
+        expect(tabs.currentIndex()).toBe(2);
+    });
 
 	test("has no tabs by default", () =>
 	{

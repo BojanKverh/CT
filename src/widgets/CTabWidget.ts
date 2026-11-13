@@ -1,5 +1,6 @@
 import { CSignal } from "../core/CSignal.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
+import type { CKeyEvent } from "../events/CKeyEvent.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CStackedWidget } from "./CStackedWidget.js";
 import { CWidget } from "./CWidget.js";
@@ -217,6 +218,27 @@ export class CTabWidget extends CWidget {
 		super.setGeometry(x, y, width, height);
 		this.#updateStackGeometry();
 	}
+
+    protected override keyPressEvent(event: CKeyEvent): void {
+        const key = event.key();
+        if (!this.hasFocus() || (key !== "ArrowLeft" && key !== "ArrowRight")
+            || event.ctrl() || event.alt() || event.meta() || event.shift()) {
+            event.ignore();
+            return;
+        }
+
+        const step = key === "ArrowRight" ? 1 : -1;
+        const count = this.count();
+        const current = this.currentIndex();
+        for (let offset = 1; offset < count; offset++) {
+            const index = (current + step * offset + count) % count;
+            if (!this.isTabEnabled(index)) continue;
+            this.setCurrentIndex(index);
+            event.accept();
+            return;
+        }
+        event.ignore();
+    }
 
     /** Handles the mouse press event. */
     protected override mousePressEvent(event: CMouseEvent): void {
