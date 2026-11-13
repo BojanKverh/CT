@@ -3114,6 +3114,135 @@ describe("action shortcut dispatch", () => {
 });
 
 
+describe("non-modal focus restoration", () => {
+    test.each(["available", "hidden"])("restores focus from before the opening menu when the field is %s", state => {
+        const app = new CApplication(createTestCanvas());
+        const root = new CWidget();
+        new CLineEdit(root);
+        const editor = new CLineEdit(root);
+        const next = new CLineEdit(root);
+        editor.setFocus();
+
+        const dialog = new CDialog(root);
+        const close = new CPushButton(dialog);
+        close.clicked.connect(() => dialog.close());
+        const menu = new CMenu();
+        const action = new CAction("Open dialog");
+        action.triggered.connect(() => {
+            dialog.open();
+            close.setFocus();
+        });
+        menu.addAction(action);
+        menu.open();
+        expect(app.focusWidget()).toBe(menu);
+        menu.event(new CMouseEvent(CEventType.MousePress, 5, 5, CMouseButton.LeftButton));
+        expect(dialog.isOpen()).toBe(true);
+        expect(menu.isOpen()).toBe(false);
+
+        if (state === "hidden") editor.hide();
+        close.clicked.emit();
+        if (state === "hidden") {
+            expect(app.focusWidget()).toBeNull();
+            app.focusNextWidget();
+        }
+        expect(app.focusWidget()).toBe(state === "available" ? editor : next);
+    });
+
+    test.each(["inside", "outside", "hidden"])("handles closing with focus scenario %s", scenario => {
+        const app = new CApplication(createTestCanvas());
+        const root = new CWidget();
+        new CLineEdit(root);
+        const previous = new CLineEdit(root);
+        const next = new CLineEdit(root);
+        previous.setFocus();
+
+        const dialog = new CDialog(root);
+        dialog.open();
+        new CLineEdit(dialog).setFocus();
+        if (scenario === "outside") next.setFocus();
+        if (scenario === "hidden") previous.hide();
+        dialog.close();
+
+        if (scenario === "hidden") {
+            expect(app.focusWidget()).toBeNull();
+            app.focusNextWidget();
+        }
+        expect(app.focusWidget()).toBe(scenario === "inside" ? previous : next);
+    });
+});
+
+describe("modal focus restoration", () => {
+    test.each(["Escape", "button", "destroy"])("restores focus after closing nested dialogs via %s", method => {
+        const app = new CApplication(createTestCanvas());
+        const editor = new CLineEdit();
+        editor.setFocus();
+        const outer = new CDialog();
+        outer.exec();
+        const outerField = new CLineEdit(outer);
+        outerField.setFocus();
+        const inner = new CDialog(outer);
+        inner.exec();
+        const close = new CPushButton(inner);
+        close.clicked.connect(() => inner.accept());
+        close.setFocus();
+
+        if (method === "Escape") {
+            window.dispatchEvent({
+                type: "keydown", key: "Escape", code: "Escape", preventDefault: vi.fn()
+            } as unknown as KeyboardEvent);
+        } else if (method === "button") {
+            close.clicked.emit();
+        } else {
+            inner.destroy();
+        }
+
+        expect(app.topModalWidget()).toBe(outer);
+        expect(app.focusWidget()).toBe(outerField);
+        outer.reject();
+        expect(app.focusWidget()).toBe(editor);
+    });
+
+    test.each(["hidden", "disabled"])("resumes Tab in the parent modal when its saved field is %s", state => {
+        const app = new CApplication(createTestCanvas());
+        const outer = new CDialog();
+        outer.exec();
+        new CLineEdit(outer);
+        const saved = new CLineEdit(outer);
+        const next = new CLineEdit(outer);
+        saved.setFocus();
+        const inner = new CDialog();
+        inner.exec();
+
+        if (state === "hidden") saved.hide();
+        else saved.setEnabled(false);
+        inner.reject();
+        expect(app.focusWidget()).toBeNull();
+
+        window.dispatchEvent({
+            type: "keydown", key: "Tab", code: "Tab", preventDefault: vi.fn()
+        } as unknown as KeyboardEvent);
+        expect(app.focusWidget()).toBe(next);
+    });
+
+    test("skips a modal closed out of order when restoring focus", () => {
+        const app = new CApplication(createTestCanvas());
+        const editor = new CLineEdit();
+        editor.setFocus();
+        const outer = new CDialog();
+        outer.exec();
+        new CLineEdit(outer).setFocus();
+        const inner = new CDialog();
+        inner.exec();
+        const innerField = new CLineEdit(inner);
+        innerField.setFocus();
+
+        outer.close();
+        expect(app.focusWidget()).toBe(innerField);
+        inner.close();
+        expect(app.focusWidget()).toBe(editor);
+    });
+});
+
 describe("modal Tab focus boundaries", () => {
     let app: CApplication;
     let oldWindow: PropertyDescriptor | undefined;

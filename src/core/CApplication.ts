@@ -71,6 +71,9 @@ type CNativeTextEditor = CWidget & {
     applyNativeTextUpdate(start: number, end: number, text: string): void;
 };
 
+type TabPosition = { widgets: CWidget[]; index: number };
+type SavedFocus = { boundary: CWidget | null; widget: CWidget | null; position: TabPosition | null };
+
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
 
@@ -132,7 +135,7 @@ export class CApplication extends CObject {
 	#m_mouseGrabber: CWidget | null = null;
 	#m_hoverWidget: CWidget | null = null;
 	#m_focusWidget: CWidget | null = null;
-    #m_hiddenFocusTabPosition: { widgets: CWidget[]; index: number } | null = null;
+    #m_hiddenFocusTabPosition: TabPosition | null = null;
     // Weak keys do not retain destroyed widgets or their window hierarchies.
     #m_tabOrder = new WeakMap<CWidget, { root: CWidget; position: number }>();
 	#m_updatesEnabled = false;
@@ -144,6 +147,8 @@ export class CApplication extends CObject {
     #m_popupFocus = new Map<CPopupWidget, CWidget | null>();
 	#m_windowWidgets: CWidget[] = [];
 	#m_modalWidgets: CWidget[] = [];
+    #m_modalFocus = new Map<CWidget, SavedFocus>();
+    #m_nonModalFocus = new Map<CWidget, SavedFocus>();
 	#m_toolTipWidget: CToolTipWidget | null = null;
 	#m_toolTipTarget: CWidget | null = null;
 	#m_toolTipTimer = new CTimer(this);
@@ -379,6 +384,8 @@ export class CApplication extends CObject {
         if (this.#m_activeDrag !== null) this.cancelDrag();
         this.setFocusWidget(null);
         this.#m_popupFocus.clear();
+        this.#m_modalFocus.clear();
+        this.#m_nonModalFocus.clear();
         const roots = new Set<CWidget>([
             ...this.#m_topLevelWidgets, ...this.#m_windowWidgets,
             ...this.#m_modalWidgets, ...this.#m_popupWidgets
@@ -748,11 +755,38 @@ export class CApplication extends CObject {
 		this.closeAllPopups();
 		const index = this.#m_modalWidgets.indexOf(widget);
 
-		if (index !== -1)
-			this.#m_modalWidgets.splice(index, 1);
+        if (this.topModalWidget() === widget) return;
 
+        if (index !== -1) this.#removeModalFocus(widget);
+        this.#m_modalFocus.set(widget, this.#saveFocus(widget));
 		this.#m_modalWidgets.push(widget);
 	}
+
+    /** @internal Records focus before opening a non-modal dialog. */
+    rememberNonModalFocus(dialog: CWidget): void {
+        // Menu actions can open a dialog before the menu has dismissed itself.
+        this.closeAllPopups();
+        this.#m_nonModalFocus.set(dialog, this.#saveFocus(dialog));
+    }
+
+    /** @internal Discards the saved focus and optionally restores it after hiding the dialog. */
+    restoreNonModalFocus(dialog: CWidget, hadFocus: boolean): void {
+        const previous = this.#m_nonModalFocus.get(dialog);
+        this.#m_nonModalFocus.delete(dialog);
+        if (hadFocus && previous !== undefined && this.#m_focusWidget === null
+            && previous.boundary === this.topModalWidget()) this.#restoreFocus(dialog, previous);
+    }
+
+    #saveFocus(widget: CWidget): SavedFocus {
+        const boundary = this.topModalWidget();
+        const focused = this.#m_focusWidget;
+        const previous = focused !== null && (boundary === null || this.#belongsToModal(focused, boundary))
+            && !this.#belongsToModal(focused, widget) ? focused : null;
+        return {
+            boundary, widget: previous,
+            position: previous !== null ? this.#tabPosition(previous) : this.#m_hiddenFocusTabPosition
+        };
+    }
 
 /**
  * Unregisters a modal widget.
@@ -765,8 +799,35 @@ export class CApplication extends CObject {
 		if (index === -1)
 			return;
 
-		this.#m_modalWidgets.splice(index, 1);
+        const wasTop = this.topModalWidget() === widget;
+        const previous = this.#removeModalFocus(widget);
+        if (wasTop && previous !== undefined) this.#restoreFocus(widget, previous);
 	}
+
+    #restoreFocus(widget: CWidget, previous: SavedFocus): void {
+        const boundary = this.topModalWidget();
+        const target = previous.widget;
+        if (previous.boundary === boundary && target !== null
+            && (boundary === null || this.#belongsToModal(target, boundary))
+            && target.canReceiveFocus() && !this.#belongsToModal(target, widget)) {
+            target.setFocus();
+        } else {
+            this.#m_hiddenFocusTabPosition = previous.boundary === boundary ? previous.position : null;
+            this.setFocusWidget(null);
+        }
+	}
+
+    #removeModalFocus(widget: CWidget): SavedFocus | undefined {
+        this.#m_modalWidgets.splice(this.#m_modalWidgets.indexOf(widget), 1);
+        const previous = this.#m_modalFocus.get(widget);
+        this.#m_modalFocus.delete(widget);
+        if (previous !== undefined) {
+            for (const [modal, saved] of this.#m_modalFocus) {
+                if (saved.boundary === widget) this.#m_modalFocus.set(modal, previous);
+            }
+        }
+        return previous;
+    }
 
 /**
  * Returns the registered modal widgets.
@@ -835,9 +896,13 @@ export class CApplication extends CObject {
         const focused = this.#m_focusWidget;
         if (focused === null || !this.#belongsToModal(focused, subtree)) return;
 
+        this.#m_hiddenFocusTabPosition = this.#tabPosition(focused);
+    }
+
+    #tabPosition(focused: CWidget): TabPosition | null {
         const widgets = this.#focusableWidgets();
         const index = widgets.findIndex(widget => widget.focusTarget() === focused);
-        this.#m_hiddenFocusTabPosition = index < 0 ? null : { widgets, index };
+        return index < 0 ? null : { widgets, index };
     }
 
     #indexAfterHiddenFocus(widgets: CWidget[], forward: boolean): number {

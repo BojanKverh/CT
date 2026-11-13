@@ -182,6 +182,7 @@ export class CDialog extends CWidget
     override destroy(): void {
         if (this.#m_disposed) return;
         this.#m_disposed = true;
+        this.close();
         super.destroy();
         this.#m_sizeGrip = null;
     }
@@ -322,10 +323,11 @@ export class CDialog extends CWidget
 		this.#m_open = true;
 		this.#m_result = CDialogResult.Rejected;
 
-		CApplication.instance().registerWindowWidget(this);
+        const app = CApplication.instance();
+        if (!this.#m_modal) app.rememberNonModalFocus(this);
+        app.registerWindowWidget(this);
 
-		if (this.#m_modal)
-			CApplication.instance().registerModalWidget(this);
+        if (this.#m_modal) app.registerModalWidget(this);
 
 		this.show();
 		this.setFocus();
@@ -348,13 +350,14 @@ export class CDialog extends CWidget
 		if (!this.#m_open)
 			return;
 
-		if (this.#m_modal)
-			CApplication.instance().unregisterModalWidget(this);
-
-		CApplication.instance().unregisterWindowWidget(this);
-		this.#m_open = false;
-
-		this.hide();
+        const app = CApplication.instance();
+        let focused = app.focusWidget();
+        while (focused !== null && focused !== this) focused = focused.parent();
+        app.unregisterWindowWidget(this);
+        this.#m_open = false;
+        this.hide();
+        app.unregisterModalWidget(this);
+        app.restoreNonModalFocus(this, focused === this);
 	}
 
 /**
