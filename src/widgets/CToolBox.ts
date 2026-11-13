@@ -1,3 +1,4 @@
+import type { CKeyEvent } from "../events/CKeyEvent.js";
 import { CSignal } from "../core/CSignal.js";
 import { CSize } from "../geometry/CSize.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
@@ -290,6 +291,26 @@ export class CToolBox extends CWidget
     protected override paintEvent(_painter: CPainter): void {
         _painter.setBrush(this.palette().color(CPaletteColorRole.Base).toCss());
         _painter.fillRect(this.rect());
+    }
+
+    protected override keyPressEvent(event: CKeyEvent): void {
+        const key = event.key();
+        if ((key === "ArrowUp" || key === "ArrowDown")
+            && !event.ctrl() && !event.alt() && !event.meta() && !event.shift()) {
+            const current = this.#m_items.findIndex(item => item.button.hasFocus());
+            if (current >= 0) {
+                const step = key === "ArrowDown" ? 1 : -1;
+                for (let index = current + step; index >= 0 && index < this.#m_items.length; index += step) {
+                    const button = this.#m_items[index]!.button;
+                    if (!button.canReceiveFocus()) continue;
+                    button.setFocus();
+                    break;
+                }
+                event.accept();
+                return;
+            }
+        }
+        super.keyPressEvent(event);
     }
 
 	#indexOfButton(button: CToolBoxButton): number

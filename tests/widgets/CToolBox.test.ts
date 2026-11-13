@@ -579,3 +579,35 @@ test("Enter on a toolbox header opens its page and closes the previous page", ()
         app.destroy();
     }
 });
+
+test("arrows move between enabled toolbox headers without opening a page", () => {
+    const app = new CApplication(createTestCanvas());
+    try {
+        const toolbox = new CToolBox();
+        for (const name of ["General", "Network", "Advanced"]) {
+            toolbox.addItem(new CWidget(), name);
+        }
+        toolbox.setItemEnabled(1, false);
+        const headers = toolbox.children().filter(child => child instanceof CToolBoxButton);
+        const general = headers[0]!;
+        const advanced = headers[2]!;
+        general.setFocus();
+
+        const press = (key: string) => {
+            const event = new CKeyEvent(CEventType.KeyPress, key);
+            const focused = app.focusWidget()!;
+            return focused.event(event) || toolbox.event(event);
+        };
+
+        expect(press("ArrowDown")).toBe(true);
+        expect(app.focusWidget()).toBe(advanced);
+        expect(toolbox.currentIndex()).toBe(0);
+        expect(press("ArrowUp")).toBe(true);
+        expect(app.focusWidget()).toBe(general);
+        press("ArrowDown");
+        expect(press("Enter")).toBe(true);
+        expect(toolbox.currentIndex()).toBe(2);
+    } finally {
+        app.destroy();
+    }
+});
