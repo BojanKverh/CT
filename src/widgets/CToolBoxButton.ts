@@ -1,3 +1,4 @@
+import type { CKeyEvent } from "../events/CKeyEvent.js";
 import { CAbstractButton } from "./CAbstractButton.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CSize } from "../geometry/CSize.js";
@@ -62,6 +63,16 @@ export class CToolBoxButton extends CAbstractButton
 			CToolBoxButton.#HEIGHT
 		);
 	}
+
+    protected override keyPressEvent(event: CKeyEvent): void {
+        if (event.key() !== "Enter" && event.key() !== "Return") {
+            super.keyPressEvent(event);
+            return;
+        }
+
+        event.accept();
+        this.clicked.emit();
+    }
 
 	/** Handles the mouse press event. */
 	protected override mousePressEvent(event: CMouseEvent): void

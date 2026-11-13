@@ -1,3 +1,5 @@
+import { CKeyEvent } from "../../src/events/CKeyEvent.js";
+import { CEventType } from "../../src/events/CEvent.js";
 import { vi } from "vitest";
 import { CDefaultStyle } from "../../src/gui/CDefaultStyle.js";
 import { CStyleOptionToolBoxButton } from "../../src/gui/CStyleOptionToolBoxButton.js";
@@ -553,4 +555,27 @@ describe("CToolBox section chevrons", () => {
         button.setCurrent(true); option.initFromToolBoxButton(button); expect(option.current).toBe(true);
         button.setCurrent(false); option.initFromToolBoxButton(button); expect(option.current).toBe(false);
     });
+});
+
+test("Enter on a toolbox header opens its page and closes the previous page", () => {
+    const app = new CApplication(createTestCanvas());
+    try {
+        const toolbox = new CToolBox();
+        const first = new CWidget();
+        const second = new CWidget();
+        toolbox.addItem(first, "General");
+        toolbox.addItem(second, "Network");
+        const header = toolbox.children().find(child =>
+            child instanceof CToolBoxButton && child.text() === "Network")!;
+        header.setFocus();
+
+        expect(header.hasFocus()).toBe(true);
+        expect(header.event(new CKeyEvent(CEventType.KeyPress, "Enter"))).toBe(true);
+        expect(toolbox.currentIndex()).toBe(1);
+        expect(first.isVisible()).toBe(false);
+        expect(second.isVisible()).toBe(true);
+        expect(header.hasFocus()).toBe(true);
+    } finally {
+        app.destroy();
+    }
 });
