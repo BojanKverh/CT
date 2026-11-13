@@ -203,8 +203,14 @@ export class CScrollArea extends CFrame {
             return;
         }
 
-        this.scrollTo(this.#m_scrollX + dx / 4, this.#m_scrollY + dy / 4);
-        event.accept();
+        const previousX = this.#m_scrollX;
+        const previousY = this.#m_scrollY;
+        this.scrollTo(previousX + dx / 4, previousY + dy / 4);
+        if (this.#m_scrollX !== previousX || this.#m_scrollY !== previousY) {
+            event.accept();
+        } else {
+            event.ignore();
+        }
     }
 
 	/** Handles update scroll bars behavior. */

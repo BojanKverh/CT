@@ -164,6 +164,46 @@ afterEach(() => {
         CApplication.instance().destroy();
 });
 
+test.each(["horizontal", "vertical"])("wheel continues in the outer scroll area at both $axis edges", axis => {
+    const canvas = createTestCanvas();
+    new CApplication(canvas);
+    const outer = new CScrollArea();
+    outer.resize(300, 300);
+    const content = new CWidget();
+    content.resize(500, 500);
+    outer.setWidget(content);
+    const inner = new CScrollArea(content);
+    inner.setGeometry(60, 60, 150, 150);
+    const innerContent = new CWidget();
+    innerContent.resize(350, 350);
+    inner.setWidget(innerContent);
+
+    const horizontal = axis === "horizontal";
+    const offset = (area: CScrollArea) => horizontal ? area.scrollX() : area.scrollY();
+    const wheel = (delta: number): void => {
+        canvas.dispatchEvent({
+            type: "pointermove", clientX: 100, clientY: 100, pointerId: 1
+        } as PointerEvent);
+        canvas.dispatchEvent({
+            type: "wheel", clientX: 100, clientY: 100,
+            deltaX: horizontal ? delta : 0, deltaY: horizontal ? 0 : delta
+        } as WheelEvent);
+    };
+
+    wheel(80);
+    expect(offset(inner)).toBe(20);
+    expect(offset(outer)).toBe(0);
+    inner.scrollTo(horizontal ? 500 : 0, horizontal ? 0 : 500);
+    const end = offset(inner);
+    wheel(80);
+    expect(offset(inner)).toBe(end);
+    expect(offset(outer)).toBe(20);
+    inner.scrollTo(0, 0);
+    wheel(-80);
+    expect(offset(inner)).toBe(0);
+    expect(offset(outer)).toBe(0);
+});
+
 describe("touch scrolling", () => {
     function setup(contentWidth = 140, contentHeight = 400) {
         const canvas = createTestCanvas();
