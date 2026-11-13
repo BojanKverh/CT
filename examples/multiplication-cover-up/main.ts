@@ -1,5 +1,5 @@
 import {
-    CApplication, CFont, CHBoxLayout, CLabel, CMouseButton, CProgressBar, CPushButton, CRect,
+    CApplication, CCursorShape, CFont, CHBoxLayout, CLabel, CMouseButton, CProgressBar, CPushButton, CRect,
     CVBoxLayout, CWidget, type CMouseEvent, type CPainter
 } from "../../src/index.js";
 
@@ -37,7 +37,24 @@ class CoveringGame extends CWidget {
     cancelDrag(): void {
         if (this.drag === null) return;
         this.drag = null;
+        this.updateTileCursor(-1, -1);
         this.update();
+    }
+
+    private tileAt(x: number, y: number): number {
+        const { tray, cell } = this.geometryForGrids();
+        return this.indexAt(x, y, tray, cell);
+    }
+
+    private updateTileCursor(x: number, y: number): void {
+        const shape = this.playing && this.tiles[this.tileAt(x, y)] != null
+            ? CCursorShape.Grab : CCursorShape.Arrow;
+        this.setCursor(shape);
+        CApplication.instance().canvas().style.cursor = shape === CCursorShape.Grab ? "grab" : "default";
+    }
+
+    keepDragCursor(): void {
+        if (this.drag !== null) CApplication.instance().canvas().style.cursor = "grabbing";
     }
 
     private geometryForGrids() {
@@ -102,16 +119,20 @@ class CoveringGame extends CWidget {
     }
 
     protected override mousePressEvent(event: CMouseEvent): void {
-        const { tray, cell } = this.geometryForGrids();
-        const index = this.indexAt(event.x(), event.y(), tray, cell);
+        const index = this.tileAt(event.x(), event.y());
         if (!this.playing || event.button() !== CMouseButton.LeftButton || this.tiles[index] == null) return;
         this.drag = { index, x: event.x(), y: event.y() };
+        this.setCursor(CCursorShape.Grabbing);
+        this.keepDragCursor();
         this.update();
         event.accept();
     }
 
     protected override mouseMoveEvent(event: CMouseEvent): void {
-        if (this.drag === null) return;
+        if (this.drag === null) {
+            this.updateTileCursor(event.x(), event.y());
+            return;
+        }
         this.drag.x = event.x();
         this.drag.y = event.y();
         this.update();
@@ -129,6 +150,7 @@ class CoveringGame extends CWidget {
             this.tiles[index] = null;
             this.onPlace(this.covered.size);
         }
+        this.updateTileCursor(event.x(), event.y());
         this.update();
         event.accept();
     }
@@ -172,7 +194,10 @@ const game = new CoveringGame(root, placed => {
         updateClock();
     }
 });
+// The dragged tile keeps its cursor even when another widget is under the pointer.
+canvas.addEventListener("pointermove", () => game.keepDragCursor());
 canvas.addEventListener("pointercancel", () => game.cancelDrag());
+canvas.addEventListener("lostpointercapture", () => game.cancelDrag());
 start.clicked.connect(() => {
     window.clearInterval(timer);
     game.start();
