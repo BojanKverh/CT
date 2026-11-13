@@ -724,6 +724,15 @@ export class CWidget extends CObject {
     /** @internal Allows containers to reveal a descendant reached by Tab. */
     revealTabFocus(_widget: CWidget): void {}
 
+    /** @internal */
+    acceptsExternalFiles(): boolean { return false; }
+
+    /** @internal */
+    externalFileDragChanged(_active: boolean): void {}
+
+    /** @internal */
+    dropExternalFiles(_files: readonly File[]): void {}
+
     /** @internal Returns a touch pan owner, false to stop the search, or null to continue. */
     touchScrollAreaFor(_child: CWidget): CScrollArea | false | null { return null; }
 

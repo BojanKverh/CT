@@ -49,6 +49,7 @@ export { CMenuBar } from "./widgets/CMenuBar.js";
 export { CDialog } from "./dialogs/CDialog.js";
 export { CStandardButton, CDialogButtonBox } from "./dialogs/CDialogButtonBox.js";
 export { CSelectionMode, CListWidget } from "./widgets/CListWidget.js";
+export { CUploadWidget } from "./widgets/CUploadWidget.js";
 export { CListWidgetItem } from "./widgets/CListWidgetItem.js";
 export { CStackedWidget } from "./widgets/CStackedWidget.js";
 export { CTabWidget } from "./widgets/CTabWidget.js";

@@ -265,6 +265,49 @@ export class CApplication extends CObject {
 		this.#releasePointer(event);
 	};
 
+    #externalFileTarget: CWidget | null = null;
+
+    #setExternalFileTarget(target: CWidget | null): void {
+        if (this.#externalFileTarget === target) return;
+        this.#externalFileTarget?.externalFileDragChanged(false);
+        this.#externalFileTarget = target;
+        target?.externalFileDragChanged(true);
+    }
+
+    #externalFileTargetAt(event: DragEvent): CWidget | null {
+        const boundary = this.#m_popupWidgets.at(-1) ?? this.topModalWidget();
+        for (let widget = this.#touchTargetAt(this.#canvasPosition(event)); widget !== null; widget = widget.parent()) {
+            if (widget.acceptsExternalFiles()) return widget;
+            if (widget === boundary || this.isWindowWidget(widget)) break;
+        }
+        return null;
+    }
+
+    #onExternalFileOver = (event: DragEvent): void => {
+        const transfer = event.dataTransfer;
+        if (!transfer?.types.includes("Files")) return;
+
+        // Suppress browser navigation even when the canvas has no eligible target.
+        event.preventDefault();
+        const target = this.#externalFileTargetAt(event);
+        transfer.dropEffect = target === null ? "none" : "copy";
+        this.#setExternalFileTarget(target);
+    };
+
+    #onExternalFileLeave = (): void => {
+        this.#setExternalFileTarget(null);
+    };
+
+    #onExternalFileDrop = (event: DragEvent): void => {
+        const transfer = event.dataTransfer;
+        this.#setExternalFileTarget(null);
+        if (!transfer || (!transfer.types.includes("Files") && transfer.files.length === 0)) return;
+
+        event.preventDefault();
+        const target = this.#externalFileTargetAt(event);
+        target?.dropExternalFiles(Array.from(transfer.files));
+    };
+
 	#onContextMenu = (event: PointerEvent): void => {
 		this.#dispatchContextMenuEvent(event);
 	}
@@ -304,6 +347,10 @@ export class CApplication extends CObject {
 		canvas.addEventListener("pointermove", this.#onPointerMove);
 		canvas.addEventListener("wheel", this.#onWheel);
 		canvas.addEventListener("pointercancel", this.#onPointerCancel);
+        canvas.addEventListener("dragenter", this.#onExternalFileOver);
+        canvas.addEventListener("dragover", this.#onExternalFileOver);
+        canvas.addEventListener("dragleave", this.#onExternalFileLeave);
+        canvas.addEventListener("drop", this.#onExternalFileDrop);
         canvas.addEventListener("lostpointercapture", this.#onLostPointerCapture);
 		canvas.addEventListener("contextmenu", this.#onContextMenu);
 
@@ -359,6 +406,11 @@ export class CApplication extends CObject {
 		canvas.removeEventListener("pointermove", this.#onPointerMove);
 		canvas.removeEventListener("wheel", this.#onWheel);
 		canvas.removeEventListener("pointercancel", this.#onPointerCancel);
+        canvas.removeEventListener("dragenter", this.#onExternalFileOver);
+        canvas.removeEventListener("dragover", this.#onExternalFileOver);
+        canvas.removeEventListener("dragleave", this.#onExternalFileLeave);
+        canvas.removeEventListener("drop", this.#onExternalFileDrop);
+        this.#setExternalFileTarget(null);
         canvas.removeEventListener("lostpointercapture", this.#onLostPointerCapture);
         if (this.#m_touchPan !== null) {
             this.#releasePointerCapture(this.#m_touchPan.pointerId);

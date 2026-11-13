@@ -8,6 +8,7 @@ import { CBusyIndicator } from "../../src/widgets/CBusyIndicator.js";
 import { CRatingWidget } from "../../src/widgets/CRatingWidget.js";
 import { CNavigationPath } from "../../src/widgets/CNavigationPath.js";
 import { CSplitButton } from "../../src/widgets/CSplitButton.js";
+import { CUploadWidget } from "../../src/index.js";
 import { CSettings } from "../../src/core/CSettings.js";
 import { CPaletteColorRole } from "../../src/gui/CPalette.js";
 import {CApplication, CWidget, CPainter, CRect, CPoint, CMouseEvent, CMouseButton, CPushButton, CLabel, CAlignment,
@@ -3247,6 +3248,32 @@ toolsMenu.addAction(navigationPathDemoAction);
 const splitButtonDemoAction = new CAction("Split button demo…", mainWindow);
 splitButtonDemoAction.triggered.connect(() => showSplitButtonDemo(parent));
 toolsMenu.addAction(splitButtonDemoAction);
+const uploadDemoAction = new CAction("File selection demo…", mainWindow);
+uploadDemoAction.triggered.connect(() => {
+    const dialog = new CDialog(parent);
+    dialog.setWindowTitle("File selection");
+    dialog.setGeometry(0, 0, 540, 360);
+
+    const files = new CUploadWidget(dialog);
+    files.setAccept("image/*,.pdf");
+    const status = new CLabel(dialog);
+    status.setText("Choose or drop images and PDFs.");
+    status.setMaximumSize(Number.MAX_SAFE_INTEGER, 26);
+    const submit = new CPushButton(dialog);
+    submit.setText("Use all files");
+    submit.setMaximumSize(150, 36);
+    submit.setEnabled(false);
+    files.filesChanged.connect(() => submit.setEnabled(files.files().length > 0));
+    submit.clicked.connect(() => status.setText(`Application received ${files.files().length} file(s).`));
+
+    const layout = new CVBoxLayout();
+    layout.addWidget(files, 1);
+    layout.addWidget(status);
+    layout.addWidget(submit);
+    dialog.setLayout(layout);
+    dialog.exec();
+});
+toolsMenu.addAction(uploadDemoAction);
 toolsMenu.addAction(new CAction("Options"));
 toolsMenu.addAction(new CAction("Customize"));
 toolsMenu.addSeparator();
