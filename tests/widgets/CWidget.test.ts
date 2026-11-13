@@ -1,3 +1,4 @@
+import { CPushButton } from "../../src/widgets/CPushButton.js";
 import { CObject } from "../../src/core/CObject.js";
 import { CPaletteColorRole } from "../../src/gui/CPalette.js";
 import { CColor } from "../../src/gui/CColor.js";
@@ -928,52 +929,40 @@ describe("CWidget", () => {
 		expect(parent.widgetAt(50, 50)).toBe(child);
 	});
 
-	test("mouse event can bubble past a disabled child", () => {
-		let parentCalls = 0;
-		let childCalls = 0;
+    test.each(["button", "panel"])("click on a disabled %s does not reach the parent button", disabled => {
+        const app = CApplication.instance();
+        const card = new CPushButton();
+        card.resize(300, 200);
+        const panel = new CWidget(card);
+        panel.setGeometry(10, 10, 150, 80);
+        const button = new CPushButton(panel);
+        button.resize(100, 30);
+        const cardClicked = vi.fn();
+        const buttonClicked = vi.fn();
+        card.clicked.connect(cardClicked);
+        button.clicked.connect(buttonClicked);
 
-		class ParentWidget extends CWidget {
-			protected override mousePressEvent(
-				event: CMouseEvent
-			): void {
-				++parentCalls;
-				event.accept();
-			}
-		}
+        const blocked = disabled === "button" ? button : panel;
+        blocked.setEnabled(false);
+        const click = (x: number): void => {
+            for (const type of ["pointerdown", "pointerup"]) {
+                app.canvas().dispatchEvent({
+                    type, clientX: x, clientY: 20, button: 0, pointerId: 1
+                } as PointerEvent);
+            }
+        };
 
-		class ChildWidget extends CWidget {
-			protected override mousePressEvent(
-				event: CMouseEvent
-			): void {
-				++childCalls;
-				event.accept();
-			}
-		}
+        click(20);
+        expect(cardClicked).not.toHaveBeenCalled();
+        expect(buttonClicked).not.toHaveBeenCalled();
 
-		const parent = new ParentWidget();
-		parent.resize(300, 200);
-
-		const child = new ChildWidget(parent);
-		child.setGeometry(20, 20, 100, 80);
-		child.setEnabled(false);
-
-		let target: CWidget | null = parent.widgetAt(50, 50);
-
-		while (target !== null) {
-			const event = new CMouseEvent(
-				CEventType.MousePress, 10, 10,
-				CMouseButton.LeftButton
-			);
-
-			if (target.event(event))
-				break;
-
-			target = target.parent();
-		}
-
-		expect(childCalls).toBe(0);
-		expect(parentCalls).toBe(1);
-	});
+        blocked.setEnabled(true);
+        click(20);
+        expect(buttonClicked).toHaveBeenCalledOnce();
+        expect(cardClicked).not.toHaveBeenCalled();
+        click(220);
+        expect(cardClicked).toHaveBeenCalledOnce();
+    });
 
 	test("dispatches key press event to keyPressEvent", () => {
 		class KeyPressWidget extends CWidget {

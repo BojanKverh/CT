@@ -1373,6 +1373,12 @@ export class CApplication extends CObject {
 		if (target === null)
 			target = this.#widgetAt(position.x(), position.y());
 
+        if (target !== null && !target.isEnabled() && type !== CEventType.MouseMove) {
+            if (type === CEventType.MouseRelease) this.#releasePointer(pointerEvent);
+            else this.#m_lastClick = null;
+            return;
+        }
+
 		if (type === CEventType.MousePress && target !== null)
 			this.#m_clickCount = this.#countMouseClicks(target, pointerEvent, position);
 		if (type === CEventType.MouseMove && this.#m_lastClick !== null
@@ -1413,6 +1419,7 @@ export class CApplication extends CObject {
 	#dispatchDoubleClick(mouseEvent: MouseEvent): void {
 		const position = this.#canvasPosition(mouseEvent);
 		let target = this.#widgetAt(position.x(), position.y());
+        if (target !== null && !target.isEnabled()) return;
 		this.#m_clickCount = Math.max(2, mouseEvent.detail || 2);
 		if (target !== null)
 			this.#m_lastClick = { widget: target, button: mouseEvent.button,
