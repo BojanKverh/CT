@@ -1,6 +1,12 @@
 import { CStyleOptionButton } from "./CStyleOptionButton.js";
 import { CStyleState } from "./CStyleOption.js";
+import type { CIcon } from "./CIcon.js";
 import type { CPushButton } from "../widgets/CPushButton.js";
+
+export enum CIconPosition {
+    Left,
+    Right
+}
 
 /**
  * Contains style information used to render a push button.
@@ -13,6 +19,10 @@ text = "";
 
 radius: number = 3;
     defaultButton = false;
+    static readonly IconExtent = 16;
+    static readonly IconSpacing = 6;
+    icon: CIcon | null = null;
+    iconPosition = CIconPosition.Left;
 
 		/**
 	 * Creates a new CStyleOptionPushButton instance.
@@ -28,6 +38,8 @@ constructor(other: CStyleOptionPushButton | null = null) {
 		this.text = other.text;
         this.radius = other.radius;
         this.defaultButton = other.defaultButton;
+        this.icon = other.icon;
+        this.iconPosition = other.iconPosition;
 	}
 
 		/**
@@ -40,6 +52,8 @@ initFromPushButton(button: CPushButton): void {
 
 		this.text = button.text();
         this.defaultButton = button.isDefault();
+        this.icon = button.icon();
+        this.iconPosition = button.iconPosition();
 
 		if (button.isHovered())
 			this.state |= CStyleState.MouseOver;

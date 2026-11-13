@@ -10,7 +10,8 @@ import { CToolButtonStyle } from "../gui/CToolButtonStyle.js";
 import { CStyleOptionToolButton } from "../gui/CStyleOptionToolButton.js";
 import { CIconMode, CIconState } from "./CIcon.js";
 import { CStyleState, type CStyleOption } from "./CStyleOption.js";
-import { CStyleOptionPushButton } from "./CStyleOptionPushButton.js";
+import { CSize } from "../geometry/CSize.js";
+import { CIconPosition, CStyleOptionPushButton } from "./CStyleOptionPushButton.js";
 import { CFont, CFontStyle, CFontWeight } from "./CFont.js";
 import { CStyleOptionCheckBox } from "./CStyleOptionCheckBox.js";
 import { CStyleOptionRadioButton } from "./CStyleOptionRadioButton.js";
@@ -218,8 +219,29 @@ override drawPushButton(painter: CPainter, option: CStyleOptionPushButton): void
 		painter.setTextAlign("center");
 		painter.setTextBaseline("middle");
 
-		painter.drawText(option.text, option.rect.width() / 2, option.rect.height() / 2);
-		this.#drawButtonFocus(painter, option, textRole);
+        const extent = CStyleOptionPushButton.IconExtent;
+        const mode = !enabled ? CIconMode.Disabled : hovered || down ? CIconMode.Active : CIconMode.Normal;
+        const state = (option.state & CStyleState.On) !== 0 ? CIconState.On : CIconState.Off;
+        const pixmap = option.icon?.pixmap(new CSize(extent, extent), mode, state);
+        const centerY = option.rect.height() / 2;
+        if (pixmap && pixmap.width() > 0 && pixmap.height() > 0) {
+            const scale = Math.min(extent / pixmap.width(), extent / pixmap.height());
+            const width = pixmap.width() * scale;
+            const height = pixmap.height() * scale;
+            const textWidth = option.text ? painter.textWidth(option.text) : 0;
+            const gap = option.text ? CStyleOptionPushButton.IconSpacing : 0;
+            const left = (option.rect.width() - extent - gap - textWidth) / 2;
+            const iconOnLeft = option.iconPosition === CIconPosition.Left;
+            const iconX = iconOnLeft ? left : left + textWidth + gap;
+            painter.drawPixmap(pixmap, iconX + (extent - width) / 2, centerY - height / 2, width, height);
+            if (option.text) {
+                const textX = iconOnLeft ? left + extent + gap : left;
+                painter.drawText(option.text, textX + textWidth / 2, centerY);
+            }
+        } else {
+            painter.drawText(option.text, option.rect.width() / 2, centerY);
+        }
+        this.#drawButtonFocus(painter, option, textRole);
 	}
 
 		/**

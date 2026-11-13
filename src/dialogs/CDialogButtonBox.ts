@@ -1,3 +1,8 @@
+import { CApplication } from "../core/CApplication.js";
+import { CIcon } from "../gui/CIcon.js";
+import { CCanvasPaintDevice } from "../painting/CCanvasPaintDevice.js";
+import { CPainter } from "../painting/CPainter.js";
+import { CPixmap } from "../painting/CPixmap.js";
 import { CSignal } from "../core/CSignal.js";
 import { CSize } from "../geometry/CSize.js";
 import { CHBoxLayout } from "../layouts/CHBoxLayout.js";
@@ -36,6 +41,27 @@ export enum CStandardButton {
  * No button.
  */
 	No = 1 << 5
+}
+
+function standardButtonIcon(accept: boolean): CIcon | null {
+    const document = CApplication.instance().canvas().ownerDocument;
+    if (!document) return null;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 32;
+    if (!canvas.getContext("2d")) return null;
+
+    const painter = new CPainter(new CCanvasPaintDevice(canvas));
+    painter.setPen(accept ? "#219653" : "#e44848");
+    painter.setLineWidth(5);
+    if (accept) {
+        painter.drawLine(6, 16, 13, 23);
+        painter.drawLine(13, 23, 26, 9);
+    } else {
+        painter.drawLine(8, 8, 24, 24);
+        painter.drawLine(24, 8, 8, 24);
+    }
+    return new CIcon(new CPixmap(canvas, 32, 32));
 }
 
 /**
@@ -114,7 +140,7 @@ export class CDialogButtonBox extends CWidget
 			this.#addButton("No", false);
 
 		if (buttons & CStandardButton.Ok)
-			this.#addButton("OK", true);
+			this.#addButton("OK", true, standardButtonIcon(true));
 
 		if (buttons & CStandardButton.Apply)
 			this.#addButton("Apply");
@@ -123,15 +149,16 @@ export class CDialogButtonBox extends CWidget
 			this.#addButton("Close", false);
 
 		if (buttons & CStandardButton.Cancel)
-			this.#addButton("Cancel", false);
+			this.#addButton("Cancel", false, standardButtonIcon(false));
 
 		this.update();
 	}
 
-	#addButton(text: string, accept?: boolean): void
+	#addButton(text: string, accept?: boolean, icon: CIcon | null = null): void
 	{
 		const button = new CPushButton(this);
 		button.setText(text);
+        if (icon !== null) button.setIcon(icon);
 
 		button.clicked.connect(() =>
 		{

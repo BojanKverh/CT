@@ -7,7 +7,8 @@ import { CAbstractButton } from "./CAbstractButton.js";
 import { CWidget } from "./CWidget.js";
 import { CFontMetrics } from "../gui/CFontMetrics.js";
 import { CSize } from "../geometry/CSize.js";
-import { CStyleOptionPushButton } from "../gui/CStyleOptionPushButton.js";
+import type { CIcon } from "../gui/CIcon.js";
+import { CIconPosition, CStyleOptionPushButton } from "../gui/CStyleOptionPushButton.js";
 
 /** Implements the push button widget. */
 export class CPushButton extends CAbstractButton {
@@ -15,6 +16,8 @@ export class CPushButton extends CAbstractButton {
 	#m_hovered = false;
 	#m_radius = 3;
     #m_default = false;
+    #icon: CIcon | null = null;
+    #iconPosition = CIconPosition.Left;
 
 	/** Creates a new instance. */
 	constructor(parent: CWidget | null = null) {
@@ -67,10 +70,30 @@ export class CPushButton extends CAbstractButton {
 		this.#m_radius = r;
 	}
 
+    icon(): CIcon | null { return this.#icon; }
+
+    setIcon(icon: CIcon | null): void {
+        this.#icon = icon;
+        this.updateGeometry();
+        this.update();
+    }
+
+    iconPosition(): CIconPosition { return this.#iconPosition; }
+
+    setIconPosition(position: CIconPosition): void {
+        this.#iconPosition = position;
+        this.update();
+    }
+
 	/** Returns the preferred size of the widget. */
 	override sizeHint(): CSize {
 		const fm = new CFontMetrics(this.font());
-		return new CSize(Math.max(80, fm.textWidth(this.text()) + 24), 30);
+        const text = this.text();
+        const iconWidth = this.#icon && !this.#icon.isNull()
+            ? CStyleOptionPushButton.IconExtent + (text ? CStyleOptionPushButton.IconSpacing : 0)
+            : 0;
+        const width = fm.textWidth(text);
+        return new CSize(iconWidth > 0 ? width + iconWidth + 12 : Math.max(80, width + 24), 30);
 	}
 
 	/** Handles the mouse press event. */

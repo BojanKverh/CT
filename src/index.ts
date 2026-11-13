@@ -23,6 +23,7 @@ export { CFocusPolicy } from "./gui/CFocusPolicy.js";
 export { CFont, CFontStyle, CFontWeight, CFontStretch, CFontCapitalization } from "./gui/CFont.js";
 export { CApplication } from "./core/CApplication.js";
 export { CWidget } from "./widgets/CWidget.js";
+export { CIconPosition } from "./gui/CStyleOptionPushButton.js";
 export { CPushButton } from "./widgets/CPushButton.js";
 export { CAlignment } from "./core/CAlignment.js";
 export { CLabel } from "./widgets/CLabel.js";
