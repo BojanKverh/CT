@@ -1166,11 +1166,14 @@ override drawSplitterHandle(painter: CPainter,
 		const palette = option.palette;
 		const rect = option.rect;
 
-		painter.setFillStyle(palette.color(CPaletteColorRole.Window).toCss());
-		painter.fillRect(rect);
+        const focused = (option.state & CStyleState.HasFocus) !== 0;
+        painter.setFillStyle(palette.color(focused
+            ? CPaletteColorRole.Highlight : CPaletteColorRole.Window).toCss());
+        painter.fillRect(rect);
 
-		painter.setStrokeStyle(palette.color(CPaletteColorRole.Mid).toCss());
-		painter.setLineWidth(3);
+        painter.setStrokeStyle(palette.color(focused
+            ? CPaletteColorRole.HighlightedText : CPaletteColorRole.Mid).toCss());
+        painter.setLineWidth(3);
 
 		if (option.orientation === COrientation.Horizontal) {
 			const x = rect.width() / 2;

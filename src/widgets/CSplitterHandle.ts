@@ -2,6 +2,7 @@ import { CWidget } from "./CWidget.js";
 import { CSize } from "../geometry/CSize.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
+import type { CKeyEvent } from "../events/CKeyEvent.js";
 import type { CSplitter } from "./CSplitter.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CCursorShape } from "../gui/CCursorShape.js";
@@ -27,7 +28,7 @@ export class CSplitterHandle extends CWidget
 
         this.setCursor(orientation === COrientation.Horizontal? CCursorShape.SplitH
 			: CCursorShape.SplitV);
-		this.setFocusPolicy(CFocusPolicy.ClickFocus);
+		this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
 	/** Provides orientation behavior. */
@@ -80,6 +81,21 @@ export class CSplitterHandle extends CWidget
 
 		this.style().drawSplitterHandle(painter, option);
 	}
+
+    protected override keyPressEvent(event: CKeyEvent): void {
+        const horizontal = this.#m_orientation === COrientation.Horizontal;
+        const backward = horizontal ? "ArrowLeft" : "ArrowUp";
+        const forward = horizontal ? "ArrowRight" : "ArrowDown";
+        if (event.key() !== backward && event.key() !== forward) {
+            event.ignore();
+            return;
+        }
+
+        const position = horizontal ? this.x() : this.y();
+        const step = event.key() === backward ? -10 : 10;
+        this.#m_splitter.moveSplitter(position + step, this.#m_index);
+        event.accept();
+    }
 
 	/** Handles the mouse press event. */
 	protected override mousePressEvent(event: CMouseEvent): void

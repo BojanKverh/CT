@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { CApplication } from "../../src/core/CApplication.js";
 import { COrientation } from "../../src/gui/COrientation.js";
 import { CMouseButton, CMouseEvent } from "../../src/events/CMouseEvent.js";
+import { CKeyEvent } from "../../src/events/CKeyEvent.js";
 import { CEventType } from "../../src/events/CEvent.js";
 import { CSize } from "../../src/geometry/CSize.js";
 import { CSplitter } from "../../src/widgets/CSplitter.js";
@@ -481,6 +482,37 @@ describe("CSplitter", () => {
 		expect(splitter.sizes()[0]).toBeLessThanOrEqual(120);
 		expect(splitter.sizes()[1]).toBeGreaterThanOrEqual(280);
 	});
+
+    test.each([
+        { orientation: COrientation.Horizontal, backward: "ArrowLeft", forward: "ArrowRight", ignored: "ArrowUp" },
+        { orientation: COrientation.Vertical, backward: "ArrowUp", forward: "ArrowDown", ignored: "ArrowLeft" }
+    ])("supports Tab and axis-specific arrows for orientation $orientation", ({ orientation, backward, forward, ignored }) => {
+        const app = CApplication.instance();
+        const splitter = new CSplitter(orientation);
+        const extent = 400 + splitter.handleWidth();
+        splitter.resize(extent, extent);
+        for (let index = 0; index < 2; index++) {
+            const panel = new CWidget();
+            panel.setMinimumSize(190, 190);
+            splitter.addWidget(panel);
+            splitter.setCollapsible(index, false);
+        }
+        splitter.setSizes([200, 200]);
+
+        const handle = splitter.handle(1)!;
+        expect(app.focusNextWidget()).toBe(true);
+        expect(app.focusWidget()).toBe(handle);
+        const press = (key: string) => handle.event(new CKeyEvent(CEventType.KeyPress, key));
+        expect(press(ignored)).toBe(false);
+        expect(splitter.sizes()).toEqual([200, 200]);
+        expect(press(backward)).toBe(true);
+        press(backward);
+        expect(splitter.sizes()).toEqual([190, 210]);
+        press(forward);
+        press(forward);
+        press(forward);
+        expect(splitter.sizes()).toEqual([210, 190]);
+    });
 
 	test("moveSplitter moves horizontal handle", () => {
 		const splitter = new CSplitter();
