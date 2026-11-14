@@ -8,7 +8,7 @@ export function createTestCanvas(width = 800, height = 600): HTMLCanvasElement {
 
     const capturedPointers = new Set<number>();
 
-    const context = {
+    const createContext = () => ({
         save: vi.fn(),
         restore: vi.fn(),
         translate: vi.fn(),
@@ -35,11 +35,23 @@ export function createTestCanvas(width = 800, height = 600): HTMLCanvasElement {
 			actualBoundingBoxAscent: 10,
 			actualBoundingBoxDescent: 3
 		}),
-    } as unknown as CanvasRenderingContext2D;
+    } as unknown as CanvasRenderingContext2D);
+    const context = createContext();
 
     return {
         width,
         height,
+        ownerDocument: {
+            createElement: (tag: string) => {
+                if (tag !== "canvas") throw new Error(`Unexpected element: ${tag}`);
+                const measurementContext = createContext();
+                return {
+                    width: 300,
+                    height: 150,
+                    getContext: (type: string) => type === "2d" ? measurementContext : null
+                };
+            }
+        },
 
         style: {
 			cursor: ""
