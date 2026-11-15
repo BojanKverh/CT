@@ -33,7 +33,7 @@ try {
 
     execFileSync(process.execPath, ["--input-type=module", "--eval", `
         import assert from "node:assert/strict";
-        import { CApplication, CPushButton, CGridLayout } from "canvas-toolkit";
+        import { CApplication, CPushButton, CGridLayout } from "canvas-toolkit-lib";
 
         assert.equal(typeof CApplication.prototype.run, "function");
         assert.equal(typeof CPushButton, "function");
