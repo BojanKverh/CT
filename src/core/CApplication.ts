@@ -169,6 +169,7 @@ export class CApplication extends CObject {
         clientX: number;
         clientY: number;
         lastPosition: CPoint;
+        outermost: CScrollArea;
         mode: "pending" | "horizontal" | "vertical" | "cancelled";
     } | null = null;
 
@@ -1249,7 +1250,7 @@ export class CApplication extends CObject {
                 this.#m_touchPan = {
                     pointerId: event.pointerId, target, area, origin,
                     clientX: event.clientX, clientY: event.clientY,
-                    lastPosition: origin, mode: "pending"
+                    lastPosition: origin, outermost: area, mode: "pending"
                 };
                 this.#dismissToolTip();
                 this.canvas().setPointerCapture(event.pointerId);
@@ -1264,10 +1265,10 @@ export class CApplication extends CObject {
         const pan = this.#m_touchPan;
         if (pan === null || pan.mode === "cancelled") return;
 
-        const viewport = pan.area.viewport();
+        const viewport = pan.outermost.viewport();
         const hit = this.#touchTargetAt(pan.origin, pan.mode === "pending" ? undefined : viewport);
         if (hit === null || !this.#belongsToModal(hit, viewport)
-            || pan.area.touchScrollAreaFor(viewport) === null) {
+            || !pan.area.isVisible() || !pan.area.isEnabled()) {
             pan.mode = "cancelled";
             return;
         }
@@ -1282,18 +1283,33 @@ export class CApplication extends CObject {
 
         const horizontal = pan.mode === "horizontal";
         const orientation = horizontal ? COrientation.Horizontal : COrientation.Vertical;
-        if (!pan.area.canTouchScroll(orientation)) {
+        const position = this.#canvasPosition(event);
+        let remaining = horizontal
+            ? pan.lastPosition.x() - position.x()
+            : pan.lastPosition.y() - position.y();
+        pan.lastPosition = position;
+
+        const boundary = this.#m_popupWidgets.at(-1) ?? this.topModalWidget();
+        if (boundary !== null && !this.#belongsToModal(pan.area, boundary)) {
             pan.mode = "cancelled";
             return;
         }
+        let area: CScrollArea | null = pan.area;
+        for (let child: CWidget | null = pan.area; child !== null; child = child.parent()) {
+            if (area !== null && area.canTouchScroll(orientation)) {
+                const before = horizontal ? area.scrollX() : area.scrollY();
+                if (horizontal) area.setScrollX(before + remaining);
+                else area.setScrollY(before + remaining);
+                const moved = (horizontal ? area.scrollX() : area.scrollY()) - before;
+                if (moved !== 0 && this.#belongsToModal(pan.outermost, area)) pan.outermost = area;
+                remaining -= moved;
+            }
 
-        const position = this.#canvasPosition(event);
-        if (horizontal) {
-            pan.area.setScrollX(pan.area.scrollX() + pan.lastPosition.x() - position.x());
-        } else {
-            pan.area.setScrollY(pan.area.scrollY() + pan.lastPosition.y() - position.y());
+            if (Math.abs(remaining) < 1e-9 || child === boundary || this.isWindowWidget(child)) break;
+            const nextArea = child.parent()?.touchScrollAreaFor(child);
+            if (nextArea === false) break;
+            area = nextArea ?? null;
         }
-        pan.lastPosition = position;
     }
 
     #onLostPointerCapture = (event: PointerEvent): void => {
