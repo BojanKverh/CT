@@ -73,11 +73,15 @@ type CNativeTextEditor = CWidget & {
 
 type TabPosition = { widgets: CWidget[]; index: number };
 type SavedFocus = { boundary: CWidget | null; widget: CWidget | null; position: TabPosition | null };
+type CApplicationPaintDevice = CPaintDevice & {
+    resize(width: number, height: number, pixelRatio: number): boolean;
+};
 
 export class CApplication extends CObject {
 	static #m_instance: CApplication | null = null;
 
-	#m_paintDevice: CCanvasPaintDevice;
+    #m_canvas: HTMLCanvasElement;
+	#m_paintDevice: CApplicationPaintDevice;
     #nativeEditContext: CNativeEditContext | null = null;
     #nativeEditor: CNativeTextEditor | null = null;
     #applyingNativeText = false;
@@ -316,15 +320,17 @@ export class CApplication extends CObject {
 /**
  * Creates the application for an HTML canvas element.
  * @param canvas Canvas used for rendering and pointer input.
+ * @param paintDevice Optional paint device targeting the same canvas. Defaults to Canvas 2D.
  * @throws Error if another CApplication instance already exists.
  */
-	constructor(canvas: HTMLCanvasElement) {
+	constructor(canvas: HTMLCanvasElement, paintDevice?: CApplicationPaintDevice) {
 		super();
 
 		if (CApplication.#m_instance !== null)
 			throw new Error("Only one CApplication instance can exist.");
 
-		this.#m_paintDevice = new CCanvasPaintDevice(canvas);
+		this.#m_canvas = canvas;
+		this.#m_paintDevice = paintDevice ?? new CCanvasPaintDevice(canvas);
 		CApplication.#m_instance = this;
         const EditContext = (globalThis as { EditContext?: new () => CNativeEditContext }).EditContext;
         if (typeof EditContext === "function" && "editContext" in canvas) {
@@ -400,7 +406,7 @@ export class CApplication extends CObject {
         this.#m_canvasObserver = null;
         if (typeof window !== "undefined") window.removeEventListener("resize", this.#syncCanvasSize);
 
-		const canvas = this.#m_paintDevice.canvas();
+		const canvas = this.canvas();
 		canvas.removeEventListener("pointerdown", this.#onPointerDown);
 		canvas.removeEventListener("dblclick", this.#onDoubleClick);
 		canvas.removeEventListener("pointerup", this.#onPointerUp);
@@ -489,7 +495,7 @@ export class CApplication extends CObject {
  * @returns Application canvas element.
  */
 	canvas(): HTMLCanvasElement {
-		return this.#m_paintDevice.canvas();
+		return this.#m_canvas;
 	}
 
 /**
@@ -1159,7 +1165,7 @@ export class CApplication extends CObject {
 	}
 
 	#canvasPosition(event: MouseEvent): CPoint {
-		const canvas = this.#m_paintDevice.canvas();
+		const canvas = this.canvas();
 		const rect = canvas.getBoundingClientRect();
 
 		return new CPoint(
@@ -1413,7 +1419,7 @@ export class CApplication extends CObject {
 						target.setFocus();
 
 					this.grabMouse(target);
-					this.#m_paintDevice.canvas().setPointerCapture(pointerEvent.pointerId);
+					this.canvas().setPointerCapture(pointerEvent.pointerId);
 				}
 				break;
 			}
@@ -1886,7 +1892,7 @@ export class CApplication extends CObject {
 		}
 
 		if (shape.length > 0)
-			this.#m_paintDevice.canvas().style.cursor = shape;
+			this.canvas().style.cursor = shape;
 	}
 
     #tabOrderRoot(widget: CWidget): CWidget {

@@ -175,7 +175,7 @@ export class CDialogButtonBox extends CWidget
 	{
 		for (const child of [...this.children()]) {
 			if (child instanceof CPushButton)
-				child.setParent(null);
+				child.destroy();
 		}
 
 		this.#m_layout.clear();

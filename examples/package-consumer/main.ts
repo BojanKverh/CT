@@ -1,4 +1,4 @@
-import { CApplication, CLabel, CLineEdit, CPushButton, CVBoxLayout, CWidget } from "canvas-toolkit";
+import { CApplication, CLabel, CLineEdit, CPushButton, CVBoxLayout, CWidget } from "canvas-toolkit-lib";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#form");
 if (canvas === null) {

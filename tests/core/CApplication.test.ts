@@ -440,8 +440,9 @@ describe("CApplication", () => {
         vi.stubGlobal("EditContext", TestEditContext);
         try {
             const body = {};
-            const ownerDocument = { body, activeElement: body };
-            const canvas = Object.assign(createTestCanvas(), {
+            const testCanvas = createTestCanvas();
+            const ownerDocument = { ...testCanvas.ownerDocument, body, activeElement: body };
+            const canvas = Object.assign(testCanvas, {
                 editContext: null as TestEditContext | null,
                 ownerDocument,
                 focus: () => { ownerDocument.activeElement = canvas; }

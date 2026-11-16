@@ -5,6 +5,8 @@ import { CFont } from "./CFont.js";
  * Provides measurements for text rendered with a specific font.
  */
 export class CFontMetrics {
+    static #contexts = new WeakMap<Document, CanvasRenderingContext2D>();
+
 	#m_font: CFont;
 	#m_context: CanvasRenderingContext2D;
 
@@ -16,10 +18,18 @@ export class CFontMetrics {
 constructor(font: CFont) {
 		this.#m_font = new CFont(font);
 
-		const context = CApplication.instance().canvas().getContext("2d");
+		const document = CApplication.instance().canvas().ownerDocument;
+		let context = CFontMetrics.#contexts.get(document);
+		if (context === undefined) {
+			const canvas = document.createElement("canvas");
+			canvas.width = canvas.height = 1;
+			const measurementContext = canvas.getContext("2d");
+			if (measurementContext === null)
+				throw new Error("Canvas 2D text measurement context is not available.");
 
-		if (context === null)
-			throw new Error("Canvas 2D context is not available.");
+			context = measurementContext;
+			CFontMetrics.#contexts.set(document, context);
+		}
 
 		this.#m_context = context;
 	}
@@ -41,10 +51,6 @@ font(): CFont {
 	 * @returns The resulting value.
 	 */
 textWidth(text: string): number {
-
-		if (this.#m_context === null)
-			throw new Error("Canvas 2D context is not available.");
-
 		this.#m_context.save();
 		this.#m_context.font = this.#m_font.toCss();
 
@@ -61,9 +67,6 @@ textWidth(text: string): number {
 	 * @returns The resulting value.
 	 */
 height(): number {
-		if (this.#m_context === null)
-			throw new Error("Canvas 2D context is not available.");
-
 		this.#m_context.save();
 		this.#m_context.font = this.#m_font.toCss();
 

@@ -222,6 +222,7 @@ describe("CDialogButtonBox", () =>
 			"Yes",
 			"No"
 		]);
+		expect(CApplication.instance().topLevelWidgets()).toEqual([buttonBox]);
 	});
 
 	test("setting same standard buttons keeps button set unchanged", () =>

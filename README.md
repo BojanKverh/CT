@@ -2,7 +2,7 @@
 
 Canvas Toolkit is a framework-independent TypeScript UI toolkit that renders widgets directly onto an HTML `<canvas>`. Its object ownership, signals, widgets, layouts and model/view APIs are inspired by Qt. It does not require React, Vue or Angular.
 
-The package is currently version **0.1.0**. The API is under active development and may change.
+The package is currently version **0.9.0**. The API is under active development and may change.
 
 ## Getting started
 
@@ -60,7 +60,7 @@ app.run();
 // Call app.destroy() when the application is no longer needed.
 ```
 
-Adjust the import path for your entry file. For a consumer that resolves this package as `canvas-toolkit`, import from `"canvas-toolkit"` after building the library with `npm run build`.
+Adjust the import path for your entry file. For a consumer that resolves this package as `canvas-toolkit-lib`, import from `"canvas-toolkit-lib"` after building the library with `npm run build`.
 
 Only one `CApplication` may exist at a time. Widgets created without a parent are registered as top-level widgets automatically; child widgets receive their parent through the constructor. Rendering is enabled with `run()` and scheduled when widgets request updates.
 
