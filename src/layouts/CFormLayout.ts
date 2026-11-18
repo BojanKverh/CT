@@ -37,17 +37,28 @@ export class CFormLayout extends CLayout {
 	#m_labelAlignment = CAlignment.Right | CAlignment.VCenter;
 
 	/**
-	 * Adds a row to the form.
-	 *
-	 * The row may consist of a generated text label and field, an explicit
-	 * label widget and field, or a single widget spanning the whole row.
-     * Generated labels automatically use the field as their buddy. Explicit
-     * label widgets keep their existing buddy association.
+	 * Appends a label/field row and assigns the generated label's buddy to the field.
+	 * @param labelText Text for the generated label.
+	 * @param field Field widget to place beside the generated label.
 	 */
 	addRow(labelText: string, field: CWidget): void;
+	/**
+	 * Appends a label/field row and preserves the existing label's buddy association.
+	 * @param label Existing label widget.
+	 * @param field Field widget to place beside the label.
+	 */
 	addRow(label: CWidget, field: CWidget): void;
+	/**
+	 * Appends a row containing one widget across both columns.
+	 * @param widget Widget to span both columns.
+	 */
 	addRow(widget: CWidget): void;
 
+	/**
+	 * Appends a label/field row or a row spanning both columns.
+	 * @param labelOrWidget Text or widget for the label when a field is given, or a spanning widget otherwise.
+	 * @param field Optional field for a two-column row.
+	 */
 	addRow(
 		labelOrWidget: string | CWidget,
 		field?: CWidget
@@ -60,11 +71,33 @@ export class CFormLayout extends CLayout {
 			this.insertRow(this.#m_rows.length, labelOrWidget, field);
 	}
 
-	/** Inserts a row at the specified position. */
+	/**
+	 * Inserts a label/field row and assigns the field as the generated label's buddy.
+	 * @param row Zero-based insertion position, clamped to the row range.
+	 * @param labelText Text for the generated label.
+	 * @param field Field widget to place beside the generated label.
+	 */
 	insertRow(row: number, labelText: string, field: CWidget): void;
+	/**
+	 * Inserts a row with an existing label and field. The label's buddy association is retained.
+	 * @param row Zero-based insertion position, clamped to the row range.
+	 * @param label Existing label widget.
+	 * @param field Field widget to place beside the label.
+	 */
 	insertRow(row: number, label: CWidget, field: CWidget): void;
+	/**
+	 * Inserts a row containing one widget across both columns.
+	 * @param row Zero-based insertion position, clamped to the row range.
+	 * @param widget Widget to span both columns.
+	 */
 	insertRow(row: number, widget: CWidget): void;
 
+	/**
+	 * Inserts a label/field row or a spanning row. A generated label uses the field as its buddy.
+	 * @param row Zero-based insertion position. Finite values are truncated and clamped. Nonfinite values append.
+	 * @param labelOrWidget Label text or widget when a field is given, or a spanning widget otherwise.
+	 * @param field Optional field for a two-column row.
+	 */
 	insertRow(
 		row: number,
 		labelOrWidget: string | CWidget,
@@ -123,12 +156,18 @@ export class CFormLayout extends CLayout {
 		this.update();
 	}
 
-	/** Returns the number of rows in the form. */
+	/**
+	 * Counts the form rows, including rows with spanning widgets.
+	 * @returns Number of rows.
+	 */
 	rowCount(): number {
 		return this.#m_rows.length;
 	}
 
-	/** Removes the row at the specified position. */
+	/**
+	 * Removes the row and its layout items. The widgets retain their parent and invalid indices are ignored.
+	 * @param row Zero-based integer row index.
+	 */
 	removeRow(row: number): void {
 		if (!Number.isInteger(row) || row < 0 || row >= this.#m_rows.length)
 			return;
@@ -149,7 +188,11 @@ export class CFormLayout extends CLayout {
 		this.update();
 	}
 
-	/** Returns the label associated with a field widget. */
+	/**
+	 * Finds the label paired with a field in a two-column row.
+	 * @param field Field widget to look up.
+	 * @returns The associated label widget, or `null` when none is found.
+	 */
 	labelForField(field: CWidget): CWidget | null {
 		for (const row of this.#m_rows) {
 			if (row.fieldItem?.widget() === field)
@@ -158,12 +201,18 @@ export class CFormLayout extends CLayout {
 		return null;
 	}
 
-	/** Returns the effective width of the label column. */
+	/**
+	 * Gets the configured label width or calculates the automatic width from the label items.
+	 * @returns Effective label-column width in logical pixels.
+	 */
 	labelColumnWidth(): number {
 		return this.#m_labelColumnWidth ?? this.#automaticLabelColumnWidth();
 	}
 
-	/** Sets a fixed label-column width, or `null` for automatic sizing. */
+	/**
+	 * Sets a fixed width for the label column or enables automatic sizing, then updates geometry if needed.
+	 * @param width Width in logical pixels, clamped to zero or greater, or `null` for automatic sizing.
+	 */
 	setLabelColumnWidth(width: number | null): void {
 		const normalized = width === null ? null : Math.max(0, width);
 		if (normalized === this.#m_labelColumnWidth)
@@ -172,12 +221,18 @@ export class CFormLayout extends CLayout {
 		this.update();
 	}
 
-	/** Returns the alignment applied to label widgets. */
+	/**
+	 * Reads the alignment configured for labels.
+	 * @returns The current label alignment flags.
+	 */
 	labelAlignment(): CAlignment {
 		return this.#m_labelAlignment;
 	}
 
-	/** Sets the alignment of all label widgets. */
+	/**
+	 * Changes the form's label alignment and applies it immediately to existing `CLabel` widgets.
+	 * @param alignment Alignment flags to use for labels.
+	 */
 	setLabelAlignment(alignment: CAlignment): void {
 		if (alignment === this.#m_labelAlignment)
 			return;
@@ -190,12 +245,18 @@ export class CFormLayout extends CLayout {
 		this.update();
 	}
 
-	/** Returns the horizontal spacing between labels and fields. */
+	/**
+	 * Gets the gap between labels and fields.
+	 * @returns The horizontal override, or the base layout spacing, in logical pixels.
+	 */
 	horizontalSpacing(): number {
 		return this.#m_horizontalSpacing ?? this.spacing();
 	}
 
-	/** Sets the horizontal spacing between labels and fields. */
+	/**
+	 * Overrides spacing between labels and fields and updates geometry if needed.
+	 * @param spacing New horizontal gap in logical pixels, clamped to zero or greater.
+	 */
 	setHorizontalSpacing(spacing: number): void {
 		spacing = Math.max(0, spacing);
 
@@ -206,12 +267,18 @@ export class CFormLayout extends CLayout {
 		this.update();
 	}
 
-	/** Returns the vertical spacing between rows. */
+	/**
+	 * Gets the gap between rows.
+	 * @returns The vertical override, or the base layout spacing, in logical pixels.
+	 */
 	verticalSpacing(): number {
 		return this.#m_verticalSpacing ?? this.spacing();
 	}
 
-	/** Sets the vertical spacing between rows. */
+	/**
+	 * Overrides spacing between rows and updates geometry if needed.
+	 * @param spacing New vertical gap in logical pixels, clamped to zero or greater.
+	 */
 	setVerticalSpacing(spacing: number): void {
 		spacing = Math.max(0, spacing);
 
@@ -222,10 +289,26 @@ export class CFormLayout extends CLayout {
 		this.update();
 	}
 
-	/** Returns a widget by flat index or by row and item role. */
+	/**
+	 * Looks up a widget in the form's flat item order.
+	 * @param index Zero-based layout item index.
+	 * @returns The represented widget, or `null` if none is present.
+	 */
 	override widgetAt(index: number): CWidget | null;
+	/**
+	 * Looks up the widget with a given role in a row.
+	 * @param row Zero-based row index.
+	 * @param role The label, field or spanning role.
+	 * @returns The widget in that role, or `null` if the row or role is absent.
+	 */
 	override widgetAt(row: number, role: CFormLayoutItemRole): CWidget | null;
 
+	/**
+	 * Looks up a widget by flat item position or by form row and role.
+	 * @param indexOrRow Zero-based item index when no role is given, or zero-based row index otherwise.
+	 * @param role Optional label, field or spanning role.
+	 * @returns The matching widget, or `null` if none is present.
+	 */
 	override widgetAt(
 		indexOrRow: number,
 		role?: CFormLayoutItemRole
@@ -252,18 +335,24 @@ export class CFormLayout extends CLayout {
 		return null;
 	}
 
-	/** Removes all rows and layout items. */
+	/** Clears the form's row records and removes every layout item. The widgets retain their parents. */
 	override clear(): void {
 		this.#m_rows.length = 0;
 		super.clear();
 	}
 
-    /** Returns the content width below which each label sits above its field. */
+    /**
+     * Returns the content width below which each label sits above its field.
+     * @returns The stack below width.
+     */
     stackBelowWidth(): number | null {
         return this.#stackBelowWidth;
     }
 
-    /** Sets the stacking threshold in content pixels, or null to keep two columns. */
+    /**
+     * Sets the stacking threshold in content pixels, or null to keep two columns.
+     * @param width Width threshold in logical pixels, or null to disable stacking.
+     */
     setStackBelowWidth(width: number | null): void {
         if (width !== null && (!Number.isFinite(width) || width < 0))
             throw new RangeError("Stacking width must be a finite, non-negative number.");
@@ -273,6 +362,10 @@ export class CFormLayout extends CLayout {
         this.parentWidget()?.updateGeometry();
     }
 
+    /**
+     * Checks whether the form layout has height for width.
+     * @returns `true` if the form layout has height for width, otherwise `false`.
+     */
     override hasHeightForWidth(): boolean {
         return (this.#stackBelowWidth !== null && this.#m_rows.some(row =>
             row.labelItem !== null && row.fieldItem !== null)) || super.hasHeightForWidth();
@@ -296,6 +389,11 @@ export class CFormLayout extends CLayout {
         return rows;
     }
 
+    /**
+     * Fits label and field widgets to the columns available at the requested width, then measures the resulting rows.
+     * @param width Outer layout width in logical pixels.
+     * @returns Preferred height with margins and row gaps, or `-1` if the layout has no width-dependent height.
+     */
     override heightForWidth(width: number): number {
         if (!this.hasHeightForWidth()) return -1;
         const margins = this.contentsMargins();
@@ -403,7 +501,10 @@ export class CFormLayout extends CLayout {
 		}
 	}
 
-	/** Returns the preferred size required by the form. */
+	/**
+	 * Combines the preferred widths and row heights of the form contents.
+	 * @returns The preferred form size in logical pixels.
+	 */
 	sizeHint(): CSize {
 		const margins = this.contentsMargins();
 		const horizontalSpacing = this.horizontalSpacing();

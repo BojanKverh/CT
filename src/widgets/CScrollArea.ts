@@ -42,17 +42,27 @@ export class CScrollArea extends CFrame {
 		this.#updateGeometry();
 	}
 
-	/** Provides viewport behavior. */
+	/**
+	 * Reads the viewport.
+	 * @returns The viewport.
+	 */
 	viewport(): CWidget {
 		return this.#m_viewport;
 	}
 
-	/** Provides widget behavior. */
+	/**
+	 * Reads the widget.
+	 * @returns The widget.
+	 */
 	widget(): CWidget | null {
 		return this.#m_widget;
 	}
 
-	/** Sets the widget. */
+	/**
+	 * Detaches the previous content, installs the replacement in the viewport and resets both scroll offsets.
+	 * @param widget Widget to install in the viewport.
+	 * @returns The previous widget, or `null` when there was no previous widget or the supplied widget is already installed.
+	 */
 	setWidget(widget: CWidget): CWidget | null {
 		/** Provides if behavior. */
 		if (this.#m_widget === widget)
@@ -77,7 +87,11 @@ export class CScrollArea extends CFrame {
 		return oldWidget;
 	}
 
-    /** @internal Reveals a focused control within the scroll content. */
+    /**
+     * Scrolls a focused descendant into view using the minimum required change on each axis.
+     * @param widget Focused widget to reveal within the scroll content.
+     * @internal
+     */
     override revealTabFocus(widget: CWidget): void {
         const content = this.#m_widget;
         if (content === null) return;
@@ -100,41 +114,67 @@ export class CScrollArea extends CFrame {
         );
     }
 
-    /** @internal Touch panning starts in the viewport, including its content. */
+    /**
+     * Selects this scroll area for a touch gesture originating in its viewport when either axis can pan.
+     * @param child Direct child on the gesture's hit path.
+     * @returns This area if the viewport can pan, `null` if neither axis can pan, or `false` for a child outside the viewport.
+     * @internal
+     */
     override touchScrollAreaFor(child: CWidget): CScrollArea | false | null {
         if (child !== this.#m_viewport) return false;
         return this.canTouchScroll(COrientation.Horizontal) || this.canTouchScroll(COrientation.Vertical)
             ? this : null;
     }
 
-    /** @internal Returns whether the viewport can be panned along this axis. */
+    /**
+     * Checks whether the requested scrollbar is visible and has a nonempty range.
+     * @param orientation Axis to test.
+     * @returns `true` if the viewport can pan along the requested axis.
+     * @internal
+     */
     canTouchScroll(orientation: COrientation): boolean {
         const bar = orientation === COrientation.Horizontal
             ? this.#m_horizontalScrollBar : this.#m_verticalScrollBar;
         return bar.isVisible() && bar.maximum() > bar.minimum();
     }
 
-    /** Provides scroll x behavior. */
+    /**
+     * Reads the horizontal scroll offset.
+     * @returns The scroll x.
+     */
     scrollX(): number {
 		return this.#m_scrollX;
 	}
 
-	/** Provides scroll y behavior. */
+	/**
+	 * Reads the vertical scroll offset.
+	 * @returns The scroll y.
+	 */
 	scrollY(): number {
 		return this.#m_scrollY;
 	}
 
-	/** Sets the scroll x. */
+	/**
+	 * Sets the scroll x.
+	 * @param x Horizontal coordinate.
+	 */
 	setScrollX(x: number): void {
 		this.scrollTo(x, this.#m_scrollY);
 	}
 
-	/** Sets the scroll y. */
+	/**
+	 * Sets the scroll y.
+	 * @param y Vertical coordinate.
+	 */
 	setScrollY(y: number): void {
 		this.scrollTo(this.#m_scrollX, y);
 	}
 
-    /** Provides scroll to behavior. */
+    /**
+     * Scrolls the to. May update the scroll x, the scroll y. May request a repaint.
+     * @param x Horizontal coordinate.
+     * @param y Vertical coordinate.
+     */
     scrollTo(x: number, y: number): void {
 	    const maxX = Math.max(0,
 		    (this.#m_widget?.width() ?? 0) - this.#m_viewport.width());
@@ -163,35 +203,56 @@ export class CScrollArea extends CFrame {
 	    this.update();
     }
 
-	/** Provides horizontal scroll bar behavior. */
+	/**
+	 * Reads the horizontal scroll bar.
+	 * @returns The horizontal scroll bar.
+	 */
 	horizontalScrollBar(): CScrollBar {
 		return this.#m_horizontalScrollBar;
 	}
 
-	/** Provides vertical scroll bar behavior. */
+	/**
+	 * Reads the vertical scroll bar.
+	 * @returns The vertical scroll bar.
+	 */
 	verticalScrollBar(): CScrollBar {
 		return this.#m_verticalScrollBar;
 	}
 	
-	/** Sets the geometry. */
+	/**
+	 * Sets the geometry.
+	 * @param x Horizontal position in parent coordinates.
+	 * @param y Vertical position in parent coordinates.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override setGeometry(x: number, y: number, width: number, height: number): void {
 		super.setGeometry(x, y, width, height);
 		this.#updateGeometry();
 	}
 
-	/** Provides resize behavior. */
+	/**
+	 * Resizes the width.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 		this.#updateGeometry();
 	}
 
-	/** Handles frame changed behavior. */
+	/**
+	 * Refreshes the scroll area in response to a change in frame.
+	 */
 	protected override frameChanged(): void
 	{
 		this.#updateGeometry();
 	}
 
-    /** Handles the wheel event. */
+    /**
+     * Scrolls visible axes using the wheel deltas. Shift routes vertical input to horizontal scrolling if the browser has not already done so. Accepts the event only if an offset changed.
+     * @param event Wheel event containing axis deltas and the Shift state.
+     */
     protected override wheelEvent(event: CWheelEvent): void {
         const shift = event.shiftKey();
         // Use the browser's horizontal delta when it already remapped the wheel.
@@ -213,7 +274,9 @@ export class CScrollArea extends CFrame {
         }
     }
 
-	/** Handles update scroll bars behavior. */
+	/**
+	 * Updates the scroll bars.
+	 */
 	protected updateScrollBars(): void
 	{
 		this.#updateGeometry();

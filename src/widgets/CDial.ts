@@ -28,22 +28,34 @@ export class CDial extends CWidget {
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
-	/** Returns the minimum . */
+	/**
+	 * Returns the minimum .
+	 * @returns The minimum.
+	 */
 	minimum(): number {
 		return this.#m_minimum;
 	}
 
-	/** Returns the maximum . */
+	/**
+	 * Returns the maximum .
+	 * @returns The maximum.
+	 */
 	maximum(): number {
 		return this.#m_maximum;
 	}
 
-	/** Provides value behavior. */
+	/**
+	 * Reads the value.
+	 * @returns The value.
+	 */
 	value(): number {
 		return this.#m_value;
 	}
 
-	/** Sets the value. */
+	/**
+	 * Sets the value.
+	 * @param value New value.
+	 */
 	setValue(value: number): void {
 		const clamped = Math.max(
 			this.#m_minimum,
@@ -59,7 +71,11 @@ export class CDial extends CWidget {
 		this.update();
 	}
 
-	/** Sets the range. */
+	/**
+	 * Sets the range.
+	 * @param minimum Minimum.
+	 * @param maximum Maximum.
+	 */
 	setRange(minimum: number, maximum: number): void {
 		/** Provides if behavior. */
 		if (minimum > maximum)
@@ -79,37 +95,58 @@ export class CDial extends CWidget {
 		this.update();
 	}
 
-	/** Sets the minimum. */
+	/**
+	 * Sets the minimum.
+	 * @param minimum Minimum.
+	 */
 	setMinimum(minimum: number): void {
 		this.setRange(minimum, this.#m_maximum);
 	}
 
-	/** Sets the maximum. */
+	/**
+	 * Sets the maximum.
+	 * @param maximum Maximum.
+	 */
 	setMaximum(maximum: number): void {
 		this.setRange(this.#m_minimum, maximum);
 	}
 
-	/** Provides single step behavior. */
+	/**
+	 * Reads the single step.
+	 * @returns The single step.
+	 */
 	singleStep(): number {
 		return this.#m_singleStep;
 	}
 
-	/** Sets the single step. */
+	/**
+	 * Sets the single step.
+	 * @param step Step.
+	 */
 	setSingleStep(step: number): void {
 		this.#m_singleStep = Math.max(0, step);
 	}
 
-	/** Provides page step behavior. */
+	/**
+	 * Reads the page step.
+	 * @returns The page step.
+	 */
 	pageStep(): number {
 		return this.#m_pageStep;
 	}
 
-	/** Sets the page step. */
+	/**
+	 * Sets the page step.
+	 * @param step Step.
+	 */
 	setPageStep(step: number): void {
 		this.#m_pageStep = Math.max(0, step);
 	}
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the dial through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionSlider();
 		option.initFrom(this);
@@ -120,7 +157,10 @@ export class CDial extends CWidget {
 		this.style().drawDial(painter, option);
 	}
 
-	/** Handles the mouse press event. */
+	/**
+	 * Responds to a pointer button press for the dial. May update the dragging. May accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button press.
+	 */
 	protected override mousePressEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
@@ -133,7 +173,10 @@ export class CDial extends CWidget {
 		event.accept();
 	}
 
-	/** Handles the mouse move event. */
+	/**
+	 * Responds to pointer movement for the dial. May accept or ignore the event depending on the input.
+	 * @param event Event for pointer movement.
+	 */
 	protected override mouseMoveEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (!this.#m_dragging) {
@@ -145,7 +188,10 @@ export class CDial extends CWidget {
 		event.accept();
 	}
 
-	/** Handles the mouse release event. */
+	/**
+	 * Responds to a pointer button release for the dial. May update the dragging. May accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button release.
+	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (
@@ -161,7 +207,10 @@ export class CDial extends CWidget {
 		event.accept();
 	}
 
-	/** Handles the key press event. */
+	/**
+	 * Responds to a key press for the dial. May accept or ignore the event depending on the input.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
 		/** Provides switch behavior. */
 		switch (event.key()) {

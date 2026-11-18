@@ -370,8 +370,12 @@ export class CApplication extends CObject {
         }
 	}
 
-    /** Resizes the logical viewport and its high resolution bitmap.
+    /**
+     * Resizes the logical viewport and its high resolution bitmap.
      * Only top-level widgets already filling the old viewport follow its size.
+     * @param width Requested logical canvas width as a positive finite number.
+     * @param height Requested logical canvas height as a positive finite number.
+     * @param pixelRatio Pixel ratio. Defaults to `typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1`.
      */
     resizeCanvas(width: number, height: number,
         pixelRatio = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1): void {
@@ -821,14 +825,23 @@ export class CApplication extends CObject {
 		this.#m_modalWidgets.push(widget);
 	}
 
-    /** @internal Records focus before opening a non-modal dialog. */
+    /**
+     * Dismisses popups and stores a focus snapshot for restoration after a nonmodal window closes.
+     * @param dialog Dialog being opened.
+     * @internal
+     */
     rememberNonModalFocus(dialog: CWidget): void {
         // Menu actions can open a dialog before the menu has dismissed itself.
         this.closeAllPopups();
         this.#m_nonModalFocus.set(dialog, this.#saveFocus(dialog));
     }
 
-    /** @internal Discards the saved focus and optionally restores it after hiding the dialog. */
+    /**
+     * Restores the non modal focus.
+     * @internal Discards the saved focus and optionally restores it after hiding the dialog.
+     * @param dialog Dialog.
+     * @param hadFocus Had focus flag.
+     */
     restoreNonModalFocus(dialog: CWidget, hadFocus: boolean): void {
         const previous = this.#m_nonModalFocus.get(dialog);
         this.#m_nonModalFocus.delete(dialog);
@@ -950,7 +963,11 @@ export class CApplication extends CObject {
 		return true;
 	}
 
-    /** @internal Keeps the current tab position when a focused subtree is about to be hidden. */
+    /**
+     * Saves the focused widget's tab position if focus is inside the subtree about to be hidden.
+     * @param subtree Root of the subtree being hidden.
+     * @internal
+     */
     rememberFocusBeforeHide(subtree: CWidget): void {
         const focused = this.#m_focusWidget;
         if (focused === null || !this.#belongsToModal(focused, subtree)) return;
@@ -979,7 +996,12 @@ export class CApplication extends CObject {
         return forward ? 0 : widgets.length - 1;
     }
 
-    /** @internal Focus transfer shared by label clicks and Alt mnemonics. */
+    /**
+     * Resolves an eligible focus target for the label's buddy and requests keyboard focus for it.
+     * @param label Label widget initiating focus transfer.
+     * @param buddy Buddy widget associated with the label.
+     * @returns `true` if the eligible target acquired focus.
+     */
     focusLabelBuddy(label: CWidget, buddy: CWidget): boolean {
         if (!this.#canFocusLabelBuddy(label, buddy)) return false;
         const target = this.#labelBuddyFocusTarget(buddy)!;
@@ -1063,7 +1085,12 @@ export class CApplication extends CObject {
         return true;
     }
 
-    /** @internal Called by CWidget.setTabOrder(). */
+    /**
+     * Sets the tab order.
+     * @internal Called by CWidget.setTabOrder().
+     * @param first First.
+     * @param second Second.
+     */
     setTabOrder(first: CWidget, second: CWidget): void {
         if (first === second) return;
         const root = this.#tabOrderRoot(first);

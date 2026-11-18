@@ -20,15 +20,31 @@ export class CGridLayout extends CLayout
 	#m_columnStretch = new Map<number, number>();
 
 	/**
-	 * Adds a widget to the grid.
-	 *
-	 * Without coordinates, the widget is placed automatically. Explicit
-	 * coordinates may also specify row and column spans.
+	 * Appends a widget in column zero of a new row.
+	 * @param widget Widget to add.
 	 */
 	override addWidget(widget: CWidget): void;
+	/**
+	 * Places a widget at a grid location, optionally spanning several cells.
+	 * @param widget Widget to add.
+	 * @param row Zero-based starting row.
+	 * @param column Zero-based starting column.
+	 * @param rowSpan Number of rows to occupy. Defaults to one.
+	 * @param columnSpan Number of columns to occupy. Defaults to one.
+	 * @param alignment Alignment flags within the allocated cells. Defaults to zero.
+	 */
 	override addWidget(widget: CWidget, row: number, column: number,
 		rowSpan?: number, columnSpan?: number, alignment?: CAlignment | 0): void;
 
+	/**
+	 * Places a widget explicitly or appends it to a new row when either coordinate is omitted. Negative indices and spans below one are ignored.
+	 * @param widget Widget to add.
+	 * @param row Optional zero-based starting row.
+	 * @param column Optional zero-based starting column.
+	 * @param rowSpan Number of rows to occupy. Defaults to one.
+	 * @param columnSpan Number of columns to occupy. Defaults to one.
+	 * @param alignment Alignment flags within the allocated cells. Defaults to zero.
+	 */
 	override addWidget(widget: CWidget, row?: number, column?: number,
 		rowSpan = 1, columnSpan = 1, alignment: CAlignment | 0 = 0): void
 	{
@@ -48,7 +64,14 @@ export class CGridLayout extends CLayout
         this.addItem(item);
 	}
 
-    /** Adds a spacer at a grid position, optionally spanning several cells. */
+    /**
+     * Adds an empty item at a grid location. Invalid coordinates or spans and duplicate spacers are ignored.
+     * @param spacer Spacer item to add.
+     * @param row Nonnegative safe integer starting row.
+     * @param column Nonnegative safe integer starting column.
+     * @param rowSpan Positive safe integer row span. Defaults to one.
+     * @param columnSpan Positive safe integer column span. Defaults to one.
+     */
     addSpacerItem(spacer: CSpacerItem, row: number, column: number, rowSpan = 1, columnSpan = 1): void {
         if (![row, column, rowSpan, columnSpan].every(Number.isSafeInteger)
             || row < 0 || column < 0 || rowSpan < 1 || columnSpan < 1 || this.items().includes(spacer)) return;
@@ -57,13 +80,17 @@ export class CGridLayout extends CLayout
         this.addItem(spacer);
     }
 
+    /** Clears all items and spacer positions. Existing row and column stretch settings are retained. */
     override clear(): void { this.#m_spacerPositions.clear(); super.clear(); }
 
     #position(item: CLayoutItem) {
         return this.#m_spacerPositions.get(item) ?? item as CGridLayoutItem;
     }
 
-	/** Returns the number of rows currently occupied by grid items. */
+	/**
+	 * Measures the grid's occupied vertical extent, including spans and gaps.
+	 * @returns One past the greatest occupied row, or zero for an empty grid.
+	 */
 	rowCount(): number {
 		let count = 0;
 
@@ -76,7 +103,10 @@ export class CGridLayout extends CLayout
 		return count;
 	}
 
-	/** Returns the number of columns currently occupied by grid items. */
+	/**
+	 * Measures the grid's occupied horizontal extent, including spans and gaps.
+	 * @returns One past the greatest occupied column, or zero for an empty grid.
+	 */
 	columnCount(): number {
 		let count = 0;
 
@@ -89,7 +119,11 @@ export class CGridLayout extends CLayout
 		return count;
 	}
 
-	/** Sets the non-negative stretch factor for a row. */
+	/**
+	 * Sets a row's growth weight and updates geometry. Negative arguments are ignored.
+	 * @param row Zero-based row index.
+	 * @param stretch Nonnegative stretch weight. Zero clears the custom setting.
+	 */
 	setRowStretch(row: number, stretch: number): void {
 		if (row < 0 || stretch < 0)
 			return;
@@ -102,7 +136,11 @@ export class CGridLayout extends CLayout
 		this.update();
 	}
 
-	/** Sets the non-negative stretch factor for a column. */
+	/**
+	 * Sets a column's growth weight and updates geometry. Negative arguments are ignored.
+	 * @param column Zero-based column index.
+	 * @param stretch Nonnegative stretch weight. Zero clears the custom setting.
+	 */
 	setColumnStretch(column: number, stretch: number): void {
 		if (column < 0 || stretch < 0)
 			return;
@@ -115,17 +153,28 @@ export class CGridLayout extends CLayout
 		this.update();
 	}
 
-	/** Returns the stretch factor for a row. */
+	/**
+	 * Looks up the growth weight configured for a row.
+	 * @param row Zero-based row index.
+	 * @returns The configured stretch weight, or zero if unset.
+	 */
 	rowStretch(row: number): number {
 		return this.#m_rowStretch.get(row) ?? 0;
 	}
 
-	/** Returns the stretch factor for a column. */
+	/**
+	 * Looks up the growth weight configured for a column.
+	 * @param column Zero-based column index.
+	 * @returns The configured stretch weight, or zero if unset.
+	 */
 	columnStretch(column: number): number {
 		return this.#m_columnStretch.get(column) ?? 0;
 	}
 
-	/** Returns the preferred size required by the grid. */
+	/**
+	 * Combines preferred row and column sizes with spacing and margins.
+	 * @returns A new preferred grid size, or a zero size for an empty grid.
+	 */
 	override sizeHint(): CSize {
 		const rows = this.rowCount();
 		const columns = this.columnCount();
@@ -154,6 +203,11 @@ export class CGridLayout extends CLayout
 		return new CSize(width, height);
 	}
 
+    /**
+     * Allocates column widths and measures preferred row heights at those widths.
+     * @param width Available width including horizontal margins, in logical pixels.
+     * @returns Preferred height including row spacing and margins, or `-1` when no widget has height-for-width.
+     */
     override heightForWidth(width: number): number {
         if (!this.hasHeightForWidth()) return -1;
         const margins = this.contentsMargins();
@@ -163,7 +217,7 @@ export class CGridLayout extends CLayout
             + Math.max(0, this.rowCount() - 1) * this.spacing() + margins.top + margins.bottom;
     }
 
-	/** Recalculates and applies grid-cell geometries. */
+	/** Allocates rows and columns in the parent widget's contents and applies aligned item geometry. With no parent, geometry is left as-is. */
 	override update(): void {
 		const parent = this.parentWidget();
 

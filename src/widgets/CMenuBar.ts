@@ -32,7 +32,12 @@ export class CMenuBar extends CWidget
 		this.resize(this.width(), CMenuBar.DefaultHeight);
 	}
 
-	/** Adds menu. */
+	/**
+	 * Adds a menu entry and restores focus to the menu bar when its active popup closes.
+	 * @param text Caption displayed on the menu bar.
+	 * @param menu Menu to open for the entry.
+	 * @returns The same menu instance.
+	 */
 	addMenu(text: string, menu: CMenu): CMenu
 	{
 		menu.setMenuBar(this);
@@ -73,13 +78,20 @@ export class CMenuBar extends CWidget
 		this.update();
 	}
 
-	/** Provides count behavior. */
+	/**
+	 * Counts the entries in the menu bar.
+	 * @returns The number of entries in the items.
+	 */
 	count(): number
 	{
 		return this.#m_items.length;
 	}
 
-	/** Provides menu at behavior. */
+	/**
+	 * Looks up a menu among the menu bar's entries.
+	 * @param index Zero-based entry index, including action entries.
+	 * @returns The menu, or `null` if the entry is absent or is an action.
+	 */
 	menuAt(index: number): CMenu | null
 	{
 		const item = this.#m_items[index];
@@ -91,18 +103,27 @@ export class CMenuBar extends CWidget
 		return item.menu;
 	}
 
-	/** Provides select menu behavior. */
+	/**
+	 * Selects the menu.
+	 * @param direction Direction.
+	 */
 	selectMenu(direction: 1 | -1): void
 	{
 		this.#selectMenu(direction);
 	}
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns A new `CSize`.
+	 */
 	override sizeHint(): CSize {
 		return new CSize(0, CMenuBar.DefaultHeight);
 	}
 
-    /** Handles the mouse move event. */
+    /**
+     * Responds to pointer movement for the menu bar. May accept the event.
+     * @param event Event for pointer movement.
+     */
     protected override mouseMoveEvent(event: CMouseEvent): void
 	{
 		const index = this.#itemIndexAt(event.x(), event.y());
@@ -112,7 +133,10 @@ export class CMenuBar extends CWidget
 		event.accept();
 	}
 
-	/** Handles the mouse leave event. */
+	/**
+	 * Responds to pointer exit for the menu bar. May update the hovered index. May request a repaint and accept the event.
+	 * @param event Event for pointer exit.
+	 */
 	protected override mouseLeaveEvent(event: CMouseEvent): void
 	{
 		/** Provides if behavior. */
@@ -124,7 +148,10 @@ export class CMenuBar extends CWidget
 		event.accept();
 	}
 
-	/** Handles the mouse press event. */
+	/**
+	 * Responds to a pointer button press for the menu bar. May update the open menu, the hovered index. May request a repaint and accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button press.
+	 */
 	protected override mousePressEvent(event: CMouseEvent): void
 	{
 		const index = this.#itemIndexAt(event.x(), event.y());
@@ -177,7 +204,10 @@ export class CMenuBar extends CWidget
 		event.accept();
 	}
 
-	/** Handles the key press event. */
+	/**
+	 * Responds to a key press for the menu bar. May accept or ignore the event depending on the input.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void
 	{
 		/** Provides switch behavior. */
@@ -203,7 +233,10 @@ export class CMenuBar extends CWidget
 		}
 	}
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the menu bar through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void
 	{
 		painter.setBrush(this.palette().color(CPaletteColorRole.Base).toCss());

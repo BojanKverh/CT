@@ -19,15 +19,17 @@ export class CBoxLayoutItem extends CWidgetItem {
 		this.#m_stretch = Math.max(0, stretch);
 	}
 
-	/** Returns the item's stretch factor. */
+	/**
+	 * Reads the item's main-axis stretch weight.
+	 * @returns The stored stretch weight.
+	 */
 	stretch(): number {
 		return this.#m_stretch;
 	}
 
 	/**
-	 * Sets the item's stretch factor.
-	 *
-	 * Negative values are clamped to zero.
+	 * Changes this item's stretch weight for future layout calculations.
+	 * @param stretch Requested weight. Negative values are clamped to zero.
 	 */
 	setStretch(stretch: number): void {
 		this.#m_stretch = Math.max(0, stretch);

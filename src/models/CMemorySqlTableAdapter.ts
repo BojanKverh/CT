@@ -19,7 +19,12 @@ export class CMemorySqlTableAdapter extends CSqlTableAdapter {
 			this.setTable(name, rows);
 	}
 
-	/** Creates or replaces a table with independent copies of the rows. */
+	/**
+	 * Creates or replaces a table with shallow copies of the supplied records.
+	 * @param table Table name.
+	 * @param rows Records to copy into the table.
+	 * @param autoIncrementColumn Column for generated integer values, or `null` to disable generation. Defaults to `id`.
+	 */
 	setTable(
 		table: string,
 		rows: readonly CSqlRow[],
@@ -29,16 +34,30 @@ export class CMemorySqlTableAdapter extends CSqlTableAdapter {
 		this.#m_autoIncrementColumns.set(table, autoIncrementColumn);
 	}
 
-	/** Returns independent copies of all records in a table. */
+	/**
+	 * Reads the current records of an existing table.
+	 * @param table Table name. An unknown table throws an error.
+	 * @returns An array of shallow record copies in storage order.
+	 */
 	rows(table: string): CSqlRow[] {
 		return this.#table(table).map(row => ({ ...row }));
 	}
 
+	/**
+	 * Changes the key generation setting for future inserts. An unknown table throws an error.
+	 * @param table Existing table name.
+	 * @param column Column to populate for missing values, or `null` to disable generation.
+	 */
 	setAutoIncrementColumn(table: string, column: string | null): void {
 		this.#table(table);
 		this.#m_autoIncrementColumns.set(table, column);
 	}
 
+	/**
+	 * Applies all filters, then sorts, pages and projects the matching records.
+	 * @param request Table and query options. Offset and limit are floored and clamped to zero or greater. An empty projection requests all columns.
+	 * @returns A promise resolving to the page and total filtered count before paging.
+	 */
 	override async select(
 		request: CSqlSelectRequest
 	): Promise<CSqlSelectResult> {
@@ -118,6 +137,12 @@ export class CMemorySqlTableAdapter extends CSqlTableAdapter {
 		return String(left).localeCompare(String(right));
 	}
 
+	/**
+	 * Appends a copy of the supplied values, generating the configured integer value when it is nullish.
+	 * @param table Existing table name.
+	 * @param values Values keyed by column name.
+	 * @returns A promise resolving to a shallow copy of the inserted row.
+	 */
 	override async insert(
 		table: string,
 		values: Readonly<CSqlRow>
@@ -139,6 +164,14 @@ export class CMemorySqlTableAdapter extends CSqlTableAdapter {
 		return { ...row };
 	}
 
+	/**
+	 * Changes the first row with an `Object.is` key match. The primary-key column is excluded from updates.
+	 * @param table Existing table name.
+	 * @param primaryKeyColumn Column to match against.
+	 * @param primaryKey Value identifying the target row.
+	 * @param values Changed values keyed by column.
+	 * @returns A promise that resolves on success or rejects for a missing table or record.
+	 */
 	override async update(
 		table: string,
 		primaryKeyColumn: string,
@@ -153,6 +186,13 @@ export class CMemorySqlTableAdapter extends CSqlTableAdapter {
 		}
 	}
 
+	/**
+	 * Deletes the first row with an `Object.is` key match.
+	 * @param table Existing table name.
+	 * @param primaryKeyColumn Column to match against.
+	 * @param primaryKey Value identifying the target row.
+	 * @returns A promise that resolves on success or rejects for a missing table or record.
+	 */
 	override async remove(
 		table: string,
 		primaryKeyColumn: string,

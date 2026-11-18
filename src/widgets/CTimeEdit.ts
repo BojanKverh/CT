@@ -100,13 +100,19 @@ export class CTimeEdit extends CWidget
         this.#m_downButton.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
-	/** Provides time behavior. */
+	/**
+	 * Reads the time of the time edit.
+	 * @returns A new `Date`.
+	 */
 	time(): Date
 	{
 		return new Date(this.#m_time);
 	}
 
-	/** Sets the time. */
+	/**
+	 * Sets the time.
+	 * @param time Time.
+	 */
 	setTime(time: Date): void
 	{
 		/** Provides if behavior. */
@@ -137,13 +143,19 @@ export class CTimeEdit extends CWidget
 		this.update();
 	}
 
-	/** Returns the minimum time. */
+	/**
+	 * Returns the minimum time.
+	 * @returns A new `Date`.
+	 */
 	minimumTime(): Date
 	{
 		return new Date(this.#m_minimumTime);
 	}
 
-	/** Sets the minimum time. */
+	/**
+	 * Sets the minimum time.
+	 * @param time Time.
+	 */
 	setMinimumTime(time: Date): void
 	{
 		/** Provides if behavior. */
@@ -169,13 +181,19 @@ export class CTimeEdit extends CWidget
 			this.setTime(this.#m_minimumTime);
 	}
 
-	/** Returns the maximum time. */
+	/**
+	 * Returns the maximum time.
+	 * @returns A new `Date`.
+	 */
 	maximumTime(): Date
 	{
 		return new Date(this.#m_maximumTime);
 	}
 
-	/** Sets the maximum time. */
+	/**
+	 * Sets the maximum time.
+	 * @param time Time.
+	 */
 	setMaximumTime(time: Date): void
 	{
 		/** Provides if behavior. */
@@ -201,13 +219,19 @@ export class CTimeEdit extends CWidget
 			this.setTime(this.#m_maximumTime);
 	}
 
-	/** Provides display format behavior. */
+	/**
+	 * Reads the display format.
+	 * @returns The display format.
+	 */
 	displayFormat(): string
 	{
 		return this.#m_displayFormat;
 	}
 
-	/** Sets the display format. */
+	/**
+	 * Sets the display format.
+	 * @param format Format.
+	 */
 	setDisplayFormat(format: string): void
 	{
 		/** Provides if behavior. */
@@ -220,13 +244,16 @@ export class CTimeEdit extends CWidget
 		this.update();
 	}
 
-	/** Provides line edit behavior. */
+	/**
+	 * Reads the line edit.
+	 * @returns The line edit.
+	 */
 	lineEdit(): CSectionLineEdit
 	{
 		return this.#m_lineEdit;
 	}
 
-	/** Performs step up. */
+	/** Increments the active time section by one step and focuses the text editor. */
 	stepUp(): void
 	{
 		this.#stepSection(
@@ -236,7 +263,7 @@ export class CTimeEdit extends CWidget
         this.#m_lineEdit.setFocus();
 	}
 
-	/** Performs step down. */
+	/** Decrements the active time section by one step and focuses the text editor. */
 	stepDown(): void
 	{
 		this.#stepSection(
@@ -246,7 +273,13 @@ export class CTimeEdit extends CWidget
         this.#m_lineEdit.setFocus();
 	}
 
-	/** Sets the geometry. */
+	/**
+	 * Sets the geometry.
+	 * @param x Horizontal position in parent coordinates.
+	 * @param y Vertical position in parent coordinates.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override setGeometry(
 		x: number, y: number, width: number, height: number
 	): void
@@ -256,7 +289,11 @@ export class CTimeEdit extends CWidget
 		this.#updateGeometry();
 	}
 
-	/** Provides resize behavior. */
+	/**
+	 * Resizes the width.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override resize(width: number, height: number): void
 	{
 		super.resize(width, height);
@@ -264,7 +301,10 @@ export class CTimeEdit extends CWidget
 		this.#updateGeometry();
 	}
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns A new `CSize`.
+	 */
 	override sizeHint(): CSize
 	{
 		return new CSize(100, 30);

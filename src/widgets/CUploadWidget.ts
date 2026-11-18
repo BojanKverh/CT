@@ -15,6 +15,10 @@ class EmptyFileList extends CWidget {
     dragActive = false;
     singleFile = false;
 
+    /**
+     * Draws the empty file list through the supplied painter.
+     * @param painter Painter for the current drawing operation.
+     */
     protected override paintEvent(painter: CPainter): void {
         const x = this.width() / 2;
         const y = this.height() / 2;
@@ -51,12 +55,23 @@ class FileRow extends CWidget {
         this.#remove.clicked.connect(remove);
     }
 
+    /**
+     * Sets the geometry.
+     * @param x Horizontal position in parent coordinates.
+     * @param y Vertical position in parent coordinates.
+     * @param width Width in logical pixels.
+     * @param height Height in logical pixels.
+     */
     override setGeometry(x: number, y: number, width: number, height: number): void {
         super.setGeometry(x, y, width, height);
         const buttonWidth = Math.min(24, width);
         this.#remove.setGeometry(0, 2, buttonWidth, 24);
     }
 
+    /**
+     * Draws the file row through the supplied painter.
+     * @param painter Painter for the current drawing operation.
+     */
     protected override paintEvent(painter: CPainter): void {
         const nameX = 32;
         const sizeRight = this.width() - 6;
@@ -96,21 +111,40 @@ class FileList extends CScrollArea {
         this.setWidget(this.#content);
     }
 
+    /**
+     * Adds a file.
+     * @param file File.
+     * @param remove Remove.
+     */
     addFile(file: File, remove: () => void): void {
         this.#rows.push(new FileRow(this.#content, file, remove));
         this.#layoutRows();
     }
 
+    /**
+     * Removes the file.
+     * @param index Zero-based item index.
+     */
     removeFile(index: number): void {
         this.#rows.splice(index, 1)[0]!.destroy();
         this.#layoutRows();
     }
 
+    /**
+     * Clears the contents of the file list.
+     */
     clear(): void {
         for (const row of this.#rows.splice(0)) row.destroy();
         this.#layoutRows();
     }
 
+    /**
+     * Sets the geometry.
+     * @param x Horizontal position in parent coordinates.
+     * @param y Vertical position in parent coordinates.
+     * @param width Width in logical pixels.
+     * @param height Height in logical pixels.
+     */
     override setGeometry(x: number, y: number, width: number, height: number): void {
         super.setGeometry(x, y, width, height);
         this.#layoutRows();
@@ -169,18 +203,25 @@ export class CUploadWidget extends CWidget {
         this.setLayout(layout);
     }
 
-    /** Sets a comma-separated list of MIME types, wildcards and file extensions. */
+    /**
+     * Sets the filters used by the file picker and when adding dropped files.
+     * @param accept Comma-separated MIME types, MIME wildcards or filename extensions. An empty string accepts any type.
+     */
     setAccept(accept: string): void {
         this.#accept = accept;
     }
 
+    /**
+     * Reads the configured file type filters.
+     * @returns The filter string as supplied to `setAccept()`.
+     */
     accept(): string {
         return this.#accept;
     }
 
     /**
-     * Limits further additions. Existing files are kept if the limit is lowered.
-     * Pass Infinity to allow any number of files.
+     * Limits future additions while keeping files already selected. Invalid limits throw `RangeError`.
+     * @param count Nonnegative safe integer or `Infinity` for no limit.
      */
     setMaxFileCount(count: number): void {
         if (count !== Infinity && (!Number.isSafeInteger(count) || count < 0)) {
@@ -192,11 +233,18 @@ export class CUploadWidget extends CWidget {
         this.#empty.update();
     }
 
-    /** Returns a snapshot of the files selected so far. */
+    /**
+     * Lists the files collected by the widget.
+     * @returns A new array containing the selected `File` objects in selection order.
+     */
     files(): File[] {
         return [...this.#files];
     }
 
+    /**
+     * Removes a selected file, updates the list and emits `filesChanged`. Invalid indexes are ignored.
+     * @param index Zero-based integer index in the current file list.
+     */
     removeFile(index: number): void {
         if (!Number.isInteger(index) || index < 0 || index >= this.#files.length) return;
         this.#files.splice(index, 1);
@@ -205,6 +253,7 @@ export class CUploadWidget extends CWidget {
         this.filesChanged.emit();
     }
 
+    /** Removes all selected files and emits `filesChanged` when the list was nonempty. */
     clear(): void {
         if (this.#files.length === 0) return;
         this.#files.length = 0;
@@ -213,12 +262,20 @@ export class CUploadWidget extends CWidget {
         this.filesChanged.emit();
     }
 
-    /** @internal */
+    /**
+     * Checks whether the widget is a live external file drop target.
+     * @returns `true` until the widget has been destroyed.
+     * @internal
+     */
     override acceptsExternalFiles(): boolean {
         return !this.#disposed;
     }
 
-    /** @internal */
+    /**
+     * Updates the drag highlight and status message.
+     * @param active `true` while an external file drag is active over the target.
+     * @internal
+     */
     override externalFileDragChanged(active: boolean): void {
         this.#dragActive = active;
         this.#empty.dragActive = active;
@@ -226,7 +283,11 @@ export class CUploadWidget extends CWidget {
         this.#status.setText(active ? "Release to add files." : "");
     }
 
-    /** @internal */
+    /**
+     * Adds files that match the filters and fit within the limit. Duplicates are identified by name, size and last modification time. Rejections are reported in the status label.
+     * @param files Browser `File` objects to consider in the supplied order.
+     * @internal
+     */
     override dropExternalFiles(files: readonly File[]): void {
         const filters = this.#accept.toLowerCase().split(",").map(value => value.trim()).filter(Boolean);
         const fileKey = (file: File): string => JSON.stringify([file.name, file.size, file.lastModified]);
@@ -274,6 +335,10 @@ export class CUploadWidget extends CWidget {
         }
     }
 
+    /**
+     * Draws the drop-target border while an external file drag is active.
+     * @param painter Painter for the widget's local bounds.
+     */
     protected override paintEvent(painter: CPainter): void {
         if (!this.#dragActive) return;
         painter.setPen(this.palette().color(CPaletteColorRole.Highlight).toCss());
@@ -281,6 +346,7 @@ export class CUploadWidget extends CWidget {
         painter.strokeRect(this.rect());
     }
 
+    /** Marks the widget disposed so pending picker results are ignored, then destroys the widget. */
     override destroy(): void {
         this.#disposed = true;
         super.destroy();

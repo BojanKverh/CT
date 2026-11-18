@@ -32,12 +32,18 @@ export class CGroupBox extends CWidget {
 		this.#m_title = title;
 	}
 
-	/** Provides title behavior. */
+	/**
+	 * Reads the title.
+	 * @returns The title.
+	 */
 	title(): string {
 		return this.#m_title;
 	}
 
-	/** Sets the title. */
+	/**
+	 * Sets the title.
+	 * @param title Title.
+	 */
 	setTitle(title: string): void {
 		/** Provides if behavior. */
 		if (this.#m_title === title)
@@ -48,9 +54,20 @@ export class CGroupBox extends CWidget {
 		this.update();
 	}
 
+    /**
+     * Checks whether the group box is collapsible.
+     * @returns `true` if the group box is collapsible, otherwise `false`.
+     */
     isCollapsible(): boolean { return this.#collapsible; }
+    /**
+     * Checks whether the group box is collapsed.
+     * @returns `true` if the group box is collapsed, otherwise `false`.
+     */
     isCollapsed(): boolean { return this.#collapsed; }
-    /** Disabling collapsing also expands the contents and restores the previous focus policy. */
+    /**
+     * Disabling collapsing also expands the contents and restores the previous focus policy.
+     * @param collapsible Collapsible flag.
+     */
     setCollapsible(collapsible: boolean): void {
         if (this.#collapsible === collapsible) return;
         if (!collapsible) this.setCollapsed(false);
@@ -59,7 +76,10 @@ export class CGroupBox extends CWidget {
         else this.setFocusPolicy(this.#savedFocusPolicy);
         this.layout()?.update(); this.updateGeometry(); this.update();
     }
-    /** Ignored unless collapsible is enabled. */
+    /**
+     * Ignored unless collapsible is enabled.
+     * @param collapsed Collapsed flag.
+     */
     setCollapsed(collapsed: boolean): void {
         if (!this.#collapsible || this.#collapsed === collapsed) return;
         const app = CApplication.instance();
@@ -80,15 +100,34 @@ export class CGroupBox extends CWidget {
         if (!collapsed) this.layout()?.update();
         this.updateGeometry(); this.update(); this.collapsedChanged.emit(collapsed);
     }
+    /**
+     * Reads the header height of the group box.
+     * @returns The header height.
+     */
     headerHeight(): number { return this.#collapsible ? Math.max(24, Math.ceil(this.fontMetrics().height()) + 8) : this.fontMetrics().height(); }
-    /** The entire title row is clickable; empty titles still expose the chevron. */
+    /**
+     * The entire title row is clickable; empty titles still expose the chevron.
+     * @returns A new `CRect`.
+     */
     headerRect(): CRect { return new CRect(0, 0, this.width(), Math.min(this.height(), this.headerHeight())); }
+    /**
+     * Controls whether child widgets participate in the group box's display.
+     * @returns `true` while the group box is expanded.
+     */
     protected override childrenAreVisible(): boolean { return !this.#collapsed; }
+    /**
+     * Reads the size policy of the group box.
+     * @returns The size policy.
+     */
     override sizePolicy(): CSizePolicy {
         const policy = super.sizePolicy();
         if (this.#collapsed) { policy.setVerticalPolicy(CSizePolicyType.Fixed); policy.setHeightForWidth(false); }
         return policy;
     }
+    /**
+     * Reads the size hint of the group box.
+     * @returns The size hint.
+     */
     override sizeHint(): CSize {
         const hint = super.sizeHint(); if (!this.#collapsible) return hint;
         const width = Math.max(this.fontMetrics().textWidth(this.title()) + 40, this.#collapsed ? this.#expandedWidthHint : hint.width());
@@ -102,12 +141,26 @@ export class CGroupBox extends CWidget {
         }
         return new CSize(preferredWidth, this.#collapsed ? this.headerHeight() : height);
     }
+    /**
+     * Checks whether the group box has height for width.
+     * @returns `true` if the group box has height for width, otherwise `false`.
+     */
     override hasHeightForWidth(): boolean { return !this.#collapsed && super.hasHeightForWidth(); }
+    /**
+     * Computes the preferred height for a width, including the collapsible header when applicable. A collapsed box only needs its header.
+     * @param width Available width in logical pixels.
+     * @returns Preferred height, or the base widget's negative sentinel when no width-dependent value is available.
+     */
     override heightForWidth(width: number): number {
         if (this.#collapsed) return this.headerHeight();
         const height = super.heightForWidth(width);
         return height < 0 || !this.#collapsible ? height : this.headerHeight() + height;
     }
+    /**
+     * Sets the font. May refresh layout geometry.
+     * @param font Font to use.
+     * @param propagate Whether to apply the change to descendants. Defaults to `false`.
+     */
     override setFont(font: CFont, propagate = false): void {
         super.setFont(font, propagate);
         if (this.#collapsible) {
@@ -117,14 +170,26 @@ export class CGroupBox extends CWidget {
     }
     #hit(event: CMouseEvent): boolean { return event.x() >= 0 && event.x() < this.width() && event.y() >= 0 && event.y() < this.headerRect().height(); }
     #cancel(): void { this.#pressed = this.#spacePressed = false; }
+    /**
+     * Responds to a pointer button press for the group box. May update the space pressed, the pressed. May request focus and accept the event and request a repaint.
+     * @param event Event for a pointer button press.
+     */
     protected override mousePressEvent(event: CMouseEvent): void {
         if (!this.#collapsible || event.button() !== CMouseButton.LeftButton || !this.#hit(event)) { super.mousePressEvent(event); return; }
         this.#spacePressed = false; this.#pressed = true; this.setFocus(); event.accept(); this.update();
     }
+    /**
+     * Responds to a pointer button release for the group box. May update the pressed. May accept the event.
+     * @param event Event for a pointer button release.
+     */
     protected override mouseReleaseEvent(event: CMouseEvent): void {
         if (event.button() !== CMouseButton.LeftButton || !this.#pressed) { super.mouseReleaseEvent(event); return; }
         const toggle = this.#hit(event); this.#pressed = false; event.accept(); if (toggle) this.setCollapsed(!this.#collapsed);
     }
+    /**
+     * Responds to a key press for the group box. May update the space pressed. May accept the event.
+     * @param event Event for a key press.
+     */
     protected override keyPressEvent(event: CKeyEvent): void {
         if (!this.#collapsible || event.ctrl() || event.alt() || event.meta()) { super.keyPressEvent(event); return; }
         switch (event.key()) {
@@ -136,23 +201,44 @@ export class CGroupBox extends CWidget {
             default: super.keyPressEvent(event);
         }
     }
+    /**
+     * Responds to a key release for the group box. May update the space pressed. May accept the event.
+     * @param event Event for a key release.
+     */
     protected override keyReleaseEvent(event: CKeyEvent): void {
         if (event.key() !== " " || !this.#spacePressed) { super.keyReleaseEvent(event); return; }
         this.#spacePressed = false; event.accept();
         if (!event.ctrl() && !event.alt() && !event.meta()) this.setCollapsed(!this.#collapsed);
     }
+    /**
+     * Responds to focus exit for the group box.
+     * @param event Event for focus exit.
+     */
     protected override focusOutEvent(event: CFocusEvent): void { this.#cancel(); super.focusOutEvent(event); }
+    /**
+     * Responds to the visibility change event for the group box.
+     */
     protected override visibilityChangeEvent(): void { this.#cancel(); }
+    /**
+     * Sets the enabled.
+     * @param enabled Whether to enable the feature.
+     */
     override setEnabled(enabled: boolean): void { if (!enabled) this.#cancel(); super.setEnabled(enabled); }
 
-	/** Returns the widget's contents rectangle. */
+	/**
+	 * Returns the widget's contents rectangle.
+	 * @returns A new `CRect`.
+	 */
 	override contentsRect(): CRect {
 		const titleHeight = this.headerHeight();
 		const top = titleHeight;
 		return new CRect(0, top, this.width(), this.#collapsed ? 0 : Math.max(0, this.height() - top));
 	}
 
-    /** Handles the paint event. */
+    /**
+     * Draws the group box through the supplied painter.
+     * @param painter Painter for the current drawing operation.
+     */
     protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionGroupBox();
 		option.initFromGroupBox(this);

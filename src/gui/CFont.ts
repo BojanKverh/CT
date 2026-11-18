@@ -81,74 +81,143 @@ export class CFont {
 		this.setItalic(italic);
 	}
 
+	/**
+	 * Reads the family.
+	 * @returns The family.
+	 */
 	family(): string {
 		return this.#m_family;
 	}
 
+	/**
+	 * Sets the family.
+	 * @param family Family.
+	 */
 	setFamily(family: string): void {
 		const trimmed = family.trim();
 		if (trimmed.length > 0)
 			this.#m_family = trimmed;
 	}
 
+	/**
+	 * Reads the pixel size.
+	 * @returns The pixel size.
+	 */
 	pixelSize(): number {
 		return this.#m_pixelSize;
 	}
 
+	/**
+	 * Sets the pixel size. The implementation checks whether `pixelSize` is finite.
+	 * @param pixelSize Pixel size.
+	 */
 	setPixelSize(pixelSize: number): void {
 		if (Number.isFinite(pixelSize) && pixelSize > 0)
 			this.#m_pixelSize = pixelSize;
 	}
 
+	/**
+	 * Reads the weight.
+	 * @returns The weight.
+	 */
 	weight(): number {
 		return this.#m_weight;
 	}
 
+	/**
+	 * Sets the weight. The implementation checks whether `weight` is finite.
+	 * @param weight Weight.
+	 */
 	setWeight(weight: number): void {
 		if (Number.isFinite(weight))
 			this.#m_weight = Math.max(1, Math.min(1000, Math.round(weight)));
 	}
 
+	/**
+	 * Checks whether the font is bold.
+	 * @returns `true` if the font is bold, otherwise `false`.
+	 */
 	isBold(): boolean {
 		return this.#m_weight >= CFontWeight.Bold;
 	}
 
+	/**
+	 * Sets the bold.
+	 * @param bold Bold flag.
+	 */
 	setBold(bold: boolean): void {
 		this.#m_weight = bold ? CFontWeight.Bold : CFontWeight.Normal;
 	}
 
+	/**
+	 * Reads the style.
+	 * @returns The style.
+	 */
 	style(): CFontStyle {
 		return this.#m_style;
 	}
 
+	/**
+	 * Sets the style.
+	 * @param style Style.
+	 */
 	setStyle(style: CFontStyle): void {
 		this.#m_style = style;
 	}
 
+	/**
+	 * Checks whether the font is italic.
+	 * @returns `true` if the font is italic, otherwise `false`.
+	 */
 	isItalic(): boolean {
 		return this.#m_style === CFontStyle.Italic;
 	}
 
+	/**
+	 * Sets the italic.
+	 * @param italic Italic flag.
+	 */
 	setItalic(italic: boolean): void {
 		this.#m_style = italic ? CFontStyle.Italic : CFontStyle.Normal;
 	}
 
+	/**
+	 * Reads the stretch.
+	 * @returns The stretch.
+	 */
 	stretch(): CFontStretch {
 		return this.#m_stretch;
 	}
 
+	/**
+	 * Sets the stretch.
+	 * @param stretch Stretch.
+	 */
 	setStretch(stretch: CFontStretch): void {
 		this.#m_stretch = stretch;
 	}
 
+	/**
+	 * Reads the capitalization.
+	 * @returns The capitalization.
+	 */
 	capitalization(): CFontCapitalization {
 		return this.#m_capitalization;
 	}
 
+	/**
+	 * Sets the capitalization.
+	 * @param capitalization Capitalization.
+	 */
 	setCapitalization(capitalization: CFontCapitalization): void {
 		this.#m_capitalization = capitalization;
 	}
 
+	/**
+	 * Checks whether the font is equal.
+	 * @param other Other.
+	 * @returns `true` if the font is equal, otherwise `false`.
+	 */
 	isEqual(other: CFont): boolean {
 		return this.#m_family === other.#m_family &&
 			this.#m_pixelSize === other.#m_pixelSize &&
@@ -158,7 +227,10 @@ export class CFont {
 			this.#m_capitalization === other.#m_capitalization;
 	}
 
-	/** Returns a CSS font shorthand suitable for a canvas 2D context. */
+	/**
+	 * Returns a CSS font shorthand suitable for a canvas 2D context.
+	 * @returns The CSS representation.
+	 */
 	toCss(): string {
 		const parts: string[] = [];
 
@@ -175,7 +247,11 @@ export class CFont {
 		return parts.join(" ");
 	}
 
-	/** Creates a font from the common CSS shorthand returned by a canvas. */
+	/**
+	 * Creates a font from the common CSS shorthand returned by a canvas.
+	 * @param css Css.
+	 * @returns The resulting font.
+	 */
 	static fromCss(css: string): CFont {
 		const tokens = css.trim().split(/\s+/);
 		const sizeIndex = tokens.findIndex(token => /^\d+(?:\.\d+)?px$/.test(token));

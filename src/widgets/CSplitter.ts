@@ -34,13 +34,19 @@ export class CSplitter extends CWidget
 		this.#m_orientation = orientation;
 	}
 
-	/** Provides orientation behavior. */
+	/**
+	 * Reads the orientation.
+	 * @returns The orientation.
+	 */
 	orientation(): COrientation
 	{
 		return this.#m_orientation;
 	}
 
-	/** Sets the orientation. */
+	/**
+	 * Sets the orientation.
+	 * @param orientation Horizontal or vertical orientation.
+	 */
 	setOrientation(orientation: COrientation): void
 	{
 		/** Provides if behavior. */
@@ -56,13 +62,20 @@ export class CSplitter extends CWidget
 		this.#relayout(true);
 	}
 
-	/** Adds widget. */
+	/**
+	 * Appends a pane and rebuilds the handles and sizes.
+	 * @param widget Widget to append as a pane.
+	 */
 	addWidget(widget: CWidget): void
 	{
 		this.insertWidget(this.#m_items.length, widget);
 	}
 
-	/** Inserts widget. */
+	/**
+	 * Inserts a pane or moves an existing pane, then rebuilds handles and redistributes space.
+	 * @param index Requested insertion position, clamped to the pane range after accounting for an existing pane.
+	 * @param widget Widget to insert or move.
+	 */
 	insertWidget(index: number, widget: CWidget): void
 	{
 		const oldIndex = this.indexOf(widget);
@@ -91,7 +104,12 @@ export class CSplitter extends CWidget
 		this.#relayout(true);
 	}
 
-	/** Provides replace widget behavior. */
+	/**
+	 * Replaces the pane widget without destroying the old widget. A widget already in another pane is rejected.
+	 * @param index Zero-based pane index.
+	 * @param widget Replacement widget.
+	 * @returns Detached widget, or `null` for an invalid index or a replacement already present in another pane.
+	 */
 	replaceWidget(index: number, widget: CWidget): CWidget | null
 	{
 		/** Provides if behavior. */
@@ -115,49 +133,77 @@ export class CSplitter extends CWidget
 		return oldWidget;
 	}
 
-	/** Provides count behavior. */
+	/**
+	 * Counts the entries in the splitter.
+	 * @returns The number of entries in the items.
+	 */
 	count(): number
 	{
 		return this.#m_items.length;
 	}
 
-	/** Provides widget behavior. */
+	/**
+	 * Looks up a managed splitter pane.
+	 * @param index Zero-based pane index.
+	 * @returns Pane widget, or `null` if absent.
+	 */
 	widget(index: number): CWidget | null
 	{
 		return this.#m_items[index]?.widget ?? null;
 	}
 
-	/** Provides index of behavior. */
+	/**
+	 * Finds a widget among the managed panes.
+	 * @param widget Widget to look up by identity.
+	 * @returns Zero-based pane index, or `-1` if absent.
+	 */
 	indexOf(widget: CWidget): number
 	{
 		return this.#m_items.findIndex(item => item.widget === widget);
 	}
 
-	/** Provides handle behavior. */
+	/**
+	 * Looks up a splitter handle by its slot.
+	 * @param index Handle index, with visible separators between panes.
+	 * @returns Handle widget in the slot, or `null` if absent.
+	 */
 	handle(index: number): CSplitterHandle | null
 	{
 		return this.#m_handles[index] ?? null;
 	}
 
-	/** Provides handle width behavior. */
+	/**
+	 * Reads the handle width of the splitter.
+	 * @returns The handle width.
+	 */
 	handleWidth(): number
 	{
 		return this.style().splitterHandleWidth()
 	}
 
-	/** Provides children collapsible behavior. */
+	/**
+	 * Reads the default rule for collapsing splitter panes.
+	 * @returns `true` if panes may collapse by default. Individual pane settings may override it.
+	 */
 	childrenCollapsible(): boolean
 	{
 		return this.#m_childrenCollapsible;
 	}
 
-	/** Sets the children collapsible. */
+	/**
+	 * Sets the children collapsible.
+	 * @param collapsible Collapsible flag.
+	 */
 	setChildrenCollapsible(collapsible: boolean): void
 	{
 		this.#m_childrenCollapsible = collapsible;
 	}
 
-	/** Returns whether the collapsible condition is active. */
+	/**
+	 * Checks whether the splitter is collapsible.
+	 * @param index Zero-based item index.
+	 * @returns `true` if the splitter is collapsible, otherwise `false`.
+	 */
 	isCollapsible(index: number): boolean
 	{
 		const item = this.#m_items[index];
@@ -169,7 +215,11 @@ export class CSplitter extends CWidget
 		return item.collapsible ?? this.#m_childrenCollapsible;
 	}
 
-	/** Sets the collapsible. */
+	/**
+	 * Sets the collapsible.
+	 * @param index Zero-based item index.
+	 * @param collapsible Collapsible flag.
+	 */
 	setCollapsible(index: number, collapsible: boolean): void
 	{
 		const item = this.#m_items[index];
@@ -181,13 +231,19 @@ export class CSplitter extends CWidget
 		item.collapsible = collapsible;
 	}
 
-	/** Provides sizes behavior. */
+	/**
+	 * Reads the sizes of the splitter.
+	 * @returns The sizes.
+	 */
 	sizes(): number[]
 	{
 		return this.#m_items.map(item => item.size);
 	}
 
-	/** Sets the sizes. */
+	/**
+	 * Sets the sizes.
+	 * @param sizes Sizes.
+	 */
 	setSizes(sizes: number[]): void
 	{
 		/** Provides for behavior. */
@@ -202,7 +258,11 @@ export class CSplitter extends CWidget
 		this.#applyGeometry();
 	}
 
-	/** Sets the stretch factor. */
+	/**
+	 * Sets the stretch factor.
+	 * @param index Zero-based item index.
+	 * @param stretch Stretch.
+	 */
 	setStretchFactor(index: number, stretch: number): void
 	{
 		const item = this.#m_items[index];
@@ -214,7 +274,11 @@ export class CSplitter extends CWidget
 		item.stretch = Math.max(0, stretch);
 	}
 
-	/** Provides move splitter behavior. */
+	/**
+	 * Moves the splitter. May emit `splitterMoved`.
+	 * @param pos Pos.
+	 * @param index Zero-based item index.
+	 */
 	moveSplitter(pos: number, index: number): void
 	{
 		/** Provides if behavior. */
@@ -246,7 +310,12 @@ export class CSplitter extends CWidget
 		);
 	}
 
-	/** Provides closest legal position behavior. */
+	/**
+	 * Fits a requested handle position to the growth and shrink capacity of panes on both sides.
+	 * @param pos Requested position along the splitter axis in local coordinates.
+	 * @param index Handle index, greater than zero and less than the pane count.
+	 * @returns Closest permitted position, or zero for an invalid handle.
+	 */
 	closestLegalPosition(pos: number, index: number): number
 	{
 		/** Provides if behavior. */
@@ -274,7 +343,10 @@ export class CSplitter extends CWidget
 		return current - Math.min(-delta, amount);
 	}
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns The size hint.
+	 */
 	override sizeHint(): CSize
 	{
 		const count = this.#m_items.length;
@@ -335,7 +407,13 @@ export class CSplitter extends CWidget
 		return new CSize(width, height);
 	}
 
-	/** Sets the geometry. */
+	/**
+	 * Sets the geometry.
+	 * @param x Horizontal position in parent coordinates.
+	 * @param y Vertical position in parent coordinates.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override setGeometry(
 		x: number,
 		y: number,
@@ -356,7 +434,10 @@ export class CSplitter extends CWidget
 			this.#applyGeometry();
 	}
 
-	/** Handles child visibility changed behavior. */
+	/**
+	 * Refreshes the splitter in response to a change in child visibility.
+	 * @param child Child.
+	 */
 	protected override childVisibilityChanged(child: CWidget): void
 	{
 		super.childVisibilityChanged(child);

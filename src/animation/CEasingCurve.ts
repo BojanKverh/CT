@@ -15,7 +15,15 @@ export class CEasingCurve {
             this.#damping = curve.#damping;
         } else this.setType(curve);
     }
+    /**
+     * Reads the easing function currently configured.
+     * @returns Easing curve identifier.
+     */
     type(): CEasingCurveType { return this.#type; }
+    /**
+     * Changes the easing function and rejects unknown identifiers.
+     * @param type Supported easing curve identifier.
+     */
     setType(type: CEasingCurveType): void {
         if (![CEasingCurveType.Linear, CEasingCurveType.InQuad, CEasingCurveType.OutQuad,
             CEasingCurveType.InOutQuad, CEasingCurveType.OutCubic,
@@ -23,21 +31,40 @@ export class CEasingCurve {
             throw new RangeError("Unknown easing curve.");
         this.#type = type;
     }
-    /** Oscillation frequency over the full duration; zero disables oscillation. */
+    /**
+     * Reads the elastic curve's oscillation setting.
+     * @returns Number of oscillations over the full duration. Zero disables them.
+     */
     oscillations(): number { return this.#oscillations; }
+    /**
+     * Changes the number of oscillations used by elastic easing. Invalid values throw `RangeError`.
+     * @param oscillations Nonnegative finite count with finite angular frequency.
+     */
     setOscillations(oscillations: number): void {
         if (!Number.isFinite(oscillations) || oscillations < 0
             || !Number.isFinite(2 * Math.PI * oscillations))
             throw new RangeError("Oscillations must be nonnegative with a finite angular frequency.");
         this.#oscillations = Math.max(0, oscillations);
     }
-    /** Exponential decay over the duration. Larger values settle more quickly. */
+    /**
+     * Reads the elastic curve's decay setting.
+     * @returns Exponential damping factor. Higher factors settle faster.
+     */
     damping(): number { return this.#damping; }
+    /**
+     * Changes the exponential decay used by elastic easing. Invalid values throw `RangeError`.
+     * @param damping Nonnegative finite damping factor.
+     */
     setDamping(damping: number): void {
         if (!Number.isFinite(damping) || damping < 0)
             throw new RangeError("Damping must be finite and nonnegative.");
         this.#damping = Math.max(0, damping);
     }
+    /**
+     * Evaluates the configured easing function at normalized animation progress.
+     * @param progress Progress, clamped to `[0, 1]`. `NaN` is treated as zero.
+     * @returns Eased progress. The endpoints remain zero and one, and elastic easing can overshoot.
+     */
     valueForProgress(progress: number): number {
         const t = Number.isNaN(progress) ? 0 : Math.max(0, Math.min(1, progress));
         if (t === 0 || t === 1) return t;

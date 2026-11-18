@@ -17,20 +17,43 @@ export class CFlowLayout extends CLayout {
     #updating = false;
     #lastSizing = "";
 
+    /**
+     * Reads the gap between items in a row.
+     * @returns The horizontal override or base spacing, in logical pixels.
+     */
     horizontalSpacing(): number { return this.#horizontalSpacing ?? this.spacing(); }
+    /**
+     * Reads the gap between wrapped rows.
+     * @returns The vertical override or base spacing, in logical pixels.
+     */
     verticalSpacing(): number { return this.#verticalSpacing ?? this.spacing(); }
+    /**
+     * Reads the alignment used for each row within the content width.
+     * @returns `Left`, `HCenter` or `Right`.
+     */
     rowAlignment(): CAlignment { return this.#rowAlignment; }
-    /** Sets both axes, replacing any independent spacing overrides. */
+    /**
+     * Sets the spacing on both axes and clears independent overrides.
+     * @param spacing Finite gap in logical pixels. Fractional values are rounded down and negative values become zero.
+     */
     override setSpacing(spacing: number): void {
         const next = this.#spacing(spacing);
         this.#horizontalSpacing = this.#verticalSpacing = null;
         if (this.spacing() === next) this.update(); else super.setSpacing(next);
     }
+    /**
+     * Overrides the gap between items in a row and updates the layout if the effective gap changes.
+     * @param spacing Finite gap in logical pixels, rounded down and clamped to zero.
+     */
     setHorizontalSpacing(spacing: number): void {
         const next = this.#spacing(spacing);
         if (next === this.horizontalSpacing()) return;
         this.#horizontalSpacing = next; this.update();
     }
+    /**
+     * Overrides the gap between wrapped rows and updates the layout if the effective gap changes.
+     * @param spacing Finite gap in logical pixels, rounded down and clamped to zero.
+     */
     setVerticalSpacing(spacing: number): void {
         const next = this.#spacing(spacing);
         if (next === this.verticalSpacing()) return;
@@ -40,12 +63,20 @@ export class CFlowLayout extends CLayout {
         if (!Number.isFinite(value)) throw new RangeError("Flow spacing must be finite.");
         return Math.max(0, Math.floor(value));
     }
+    /**
+     * Sets row placement and updates the geometry. Unsupported flags throw `RangeError`.
+     * @param alignment Exactly `Left`, `HCenter` or `Right`.
+     */
     setRowAlignment(alignment: CAlignment): void {
         if (![CAlignment.Left, CAlignment.HCenter, CAlignment.Right].includes(alignment))
             throw new RangeError("Row alignment must be Left, HCenter or Right.");
         if (alignment === this.#rowAlignment) return;
         this.#rowAlignment = alignment; this.update();
     }
+    /**
+     * Indicates that wrapping depends on the allocated width.
+     * @returns Always `true`.
+     */
     override hasHeightForWidth(): boolean { return true; }
     #visibleItems(): CLayoutItem[] {
         return this.items().filter(item => {
@@ -55,7 +86,10 @@ export class CFlowLayout extends CLayout {
             return hint.width() > 0 || hint.height() > 0;
         });
     }
-    /** Preferred unwrapped size, including contents margins. */
+    /**
+     * Measures eligible items on one unwrapped row.
+     * @returns Preferred unwrapped size including margins and horizontal gaps.
+     */
     override sizeHint(): CSize {
         const margins = this.contentsMargins(), items = this.#visibleItems();
         let width = 0, height = 0;
@@ -88,11 +122,21 @@ export class CFlowLayout extends CLayout {
         return { rows, available, height: m.top + m.bottom + rows.reduce((sum, r) => sum + r.height, 0)
             + Math.max(0, rows.length - 1) * this.verticalSpacing() };
     }
+    /**
+     * Measures the rows needed to fit the items at the supplied width.
+     * @param width Outer width in logical pixels. Nonfinite values are treated as zero.
+     * @returns Wrapped height including margins and row gaps.
+     */
     override heightForWidth(width: number): number { return this.#plan(width).height; }
-    /** Number of nonempty rows at the given outer width. */
+    /**
+     * Counts nonempty rows after wrapping the eligible items.
+     * @param width Outer width in logical pixels. Defaults to the parent's contents width or the preferred unwrapped width.
+     * @returns Number of nonempty rows.
+     */
     rowCount(width = this.parentWidget()?.contentsRect().width() ?? this.sizeHint().width()): number {
         return this.#plan(width).rows.length;
     }
+    /** Wraps eligible items into rows using the parent contents width, aligns the rows and applies their geometry. Notifies the parent when sizing requirements change. */
     override update(): void {
         const parent = this.parentWidget();
         if (parent === null || this.#updating) return;

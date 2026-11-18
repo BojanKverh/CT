@@ -126,12 +126,10 @@ constructor(pal: CPalette | null = null) {
 	}
 
 		/**
-	 * Returns the color assigned to the specified palette role.
-	 *
-	 * @param role Role.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Reads the color assigned to a palette role. An unknown role throws.
+ * @param role Palette role to look up.
+ * @returns Independent copy of the assigned color.
+ */
 color(role: CPaletteColorRole): CColor {
 		const color = this.#m_colors.get(role);
 
@@ -144,7 +142,7 @@ color(role: CPaletteColorRole): CColor {
 		/**
 	 * Assigns a color to the specified palette role.
 	 *
-	 * @param role Role.
+	 * @param role Palette role whose color should be replaced.
 	 * @param color Color.
 	 */
 setColor(role: CPaletteColorRole, color: CColor): void {
@@ -152,12 +150,10 @@ setColor(role: CPaletteColorRole, color: CColor): void {
 	}
 
 		/**
-	 * Returns whether this palette is equal to another palette.
-	 *
-	 * @param other Other.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Compares the assigned colors by role.
+ * @param other Palette to compare.
+ * @returns `true` if the corresponding role colors match.
+ */
 isEqual(other: CPalette): boolean {
 		for (const [role, color] of this.#m_colors) {
 			if (!color.equals(other.color(role)))

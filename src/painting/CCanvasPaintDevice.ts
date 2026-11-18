@@ -23,17 +23,29 @@ export class CCanvasPaintDevice extends CPaintDevice {
         this.#m_paintEngine = new CCanvasPaintEngine(context);
     }
 
-    /** Returns the logical canvas width in CSS pixels. */
+    /**
+     * Reads the canvas width exposed to painters.
+     * @returns Logical width, before the device pixel ratio is applied.
+     */
     width(): number {
         return this.#m_width;
     }
 
-    /** Returns the logical canvas height in CSS pixels. */
+    /**
+     * Reads the canvas height exposed to painters.
+     * @returns Logical height, before the device pixel ratio is applied.
+     */
     height(): number {
         return this.#m_height;
     }
 
-    /** Synchronizes the backing bitmap without changing the CSS size. */
+    /**
+     * Updates the logical size and canvas bitmap, then sets the context scale to preserve logical drawing coordinates. Throws `RangeError` for invalid or oversized dimensions.
+     * @param width Positive finite logical width.
+     * @param height Positive finite logical height.
+     * @param pixelRatio Positive finite bitmap pixels per logical pixel. Defaults to one.
+     * @returns `true` if the logical or bitmap dimensions changed.
+     */
     resize(width: number, height: number, pixelRatio = 1): boolean {
         if (![width, height, pixelRatio].every(Number.isFinite) ||
             width <= 0 || height <= 0 || pixelRatio <= 0)
@@ -56,12 +68,18 @@ export class CCanvasPaintDevice extends CPaintDevice {
         return true;
     }
 
-    /** Returns the underlying HTML canvas element. */
+    /**
+     * Exposes the DOM element that receives the drawing output.
+     * @returns The backing `HTMLCanvasElement`.
+     */
     canvas(): HTMLCanvasElement {
         return this.#m_canvas;
     }
 
-    /** Returns the canvas paint engine used by this device. */
+    /**
+     * Looks up the renderer bound to the canvas context.
+     * @returns The device's canvas paint engine.
+     */
     paintEngine(): CCanvasPaintEngine {
         return this.#m_paintEngine;
     }

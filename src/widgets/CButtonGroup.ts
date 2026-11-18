@@ -24,7 +24,10 @@ export class CButtonGroup extends CObject {
 		super(parent);
 	}
 
-	/** Adds button. */
+	/**
+	 * Adds button.
+	 * @param button Button.
+	 */
 	addButton(button: CAbstractButton): void {
 		/** Provides if behavior. */
 		if (this.#m_buttons.has(button))
@@ -48,7 +51,10 @@ export class CButtonGroup extends CObject {
 			this.#uncheckOthers(button);
 	}
 
-	/** Removes button. */
+	/**
+	 * Removes button.
+	 * @param button Button.
+	 */
 	removeButton(button: CAbstractButton): void {
 		const connections = this.#m_buttons.get(button);
 
@@ -62,17 +68,26 @@ export class CButtonGroup extends CObject {
 		this.#m_buttons.delete(button);
 	}
 
-	/** Provides buttons behavior. */
+	/**
+	 * Reads the buttons of the button group.
+	 * @returns The buttons.
+	 */
 	buttons(): CAbstractButton[] {
 		return [...this.#m_buttons.keys()];
 	}
 
-	/** Returns whether the exclusive condition is active. */
+	/**
+	 * Checks whether the button group is exclusive.
+	 * @returns `true` if the button group is exclusive, otherwise `false`.
+	 */
 	isExclusive(): boolean {
 		return this.#m_exclusive;
 	}
 
-	/** Sets the exclusive. */
+	/**
+	 * Sets the exclusive.
+	 * @param exclusive Exclusive flag.
+	 */
 	setExclusive(exclusive: boolean): void {
 		/** Provides if behavior. */
 		if (this.#m_exclusive === exclusive)
@@ -90,7 +105,10 @@ export class CButtonGroup extends CObject {
 		}
 	}
 
-	/** Provides checked button behavior. */
+	/**
+	 * Finds the first checked button in the group.
+	 * @returns Checked button in registration order, or `null` if none is checked.
+	 */
 	checkedButton(): CAbstractButton | null {
 		/** Provides for behavior. */
 		for (const button of this.#m_buttons.keys()) {

@@ -38,12 +38,18 @@ export class CTextBrowser extends CTextEdit {
 		});
 	}
 
-	/** Sets the read only. */
+	/**
+	 * Sets the read only.
+	 * @param _readOnly Read only flag. Defaults to `true`. This implementation ignores the argument.
+	 */
 	override setReadOnly(_readOnly: boolean = true): void {
 		super.setReadOnly(true);
 	}
 
-	/** Provides cursor behavior. */
+	/**
+	 * Reads the cursor of the text browser.
+	 * @returns The cursor.
+	 */
 	override cursor(): CCursorShape {
 		/** Provides if behavior. */
 		if (this.#m_hoveredAnchor !== null)
@@ -52,7 +58,10 @@ export class CTextBrowser extends CTextEdit {
 		return super.cursor();
 	}
 
-	/** Sets the plain text. */
+	/**
+	 * Discards HTML display mode and link state, replaces the contents and moves the cursor to the beginning.
+	 * @param text Plain text to display.
+	 */
 	override setPlainText(text: string): void {
 		this.#m_htmlMode = false;
 		this.#m_htmlSource = null;
@@ -62,7 +71,10 @@ export class CTextBrowser extends CTextEdit {
 		this.setCursorPosition(0);
 	}
 
-	/** Sets the html. */
+	/**
+	 * Sets the html.
+	 * @param html Html.
+	 */
 	override setHtml(html: string): void {
 		this.#m_htmlMode = false;
 		this.#m_htmlSource = null;
@@ -75,7 +87,10 @@ export class CTextBrowser extends CTextEdit {
 		this.setCursorPosition(0);
 	}
 
-	/** Provides to html behavior. */
+	/**
+	 * Returns the original markup when available and otherwise serializes the document in HTML mode.
+	 * @returns Original or serialized HTML, or an empty string outside HTML mode.
+	 */
 	override toHtml(): string {
 		/** Provides if behavior. */
 		if (!this.#m_htmlMode)
@@ -92,27 +107,40 @@ export class CTextBrowser extends CTextEdit {
 		super.clear();
 	}
 
-	/** Returns whether undo is currently possible. */
+	/**
+	 * Returns whether undo is currently possible.
+	 * @returns `false` in this implementation.
+	 */
 	override canUndo(): boolean {
 		return false;
 	}
 
-	/** Returns whether redo is currently possible. */
+	/**
+	 * Returns whether redo is currently possible.
+	 * @returns `false` in this implementation.
+	 */
 	override canRedo(): boolean {
 		return false;
 	}
 
-	/** Provides undo behavior. */
+	/**
+	 * Provides the subclass hook for undo. This implementation does nothing.
+	 */
 	override undo(): void {
 		// CTextBrowser is not user-editable.
 	}
 
-	/** Provides redo behavior. */
+	/**
+	 * Provides the subclass hook for redo. This implementation does nothing.
+	 */
 	override redo(): void {
 		// CTextBrowser is not user-editable.
 	}
 
-	/** Provides handle mouse press behavior. */
+	/**
+	 * Records the link under a left press before delegating to text selection.
+	 * @param event Mouse event with button and pointer coordinates in the content widget.
+	 */
 	override handleMousePress(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() === CMouseButton.LeftButton) {
@@ -126,7 +154,10 @@ export class CTextBrowser extends CTextEdit {
 		super.handleMousePress(event);
 	}
 
-	/** Provides handle mouse move behavior. */
+	/**
+	 * Updates link hover highlighting and forwards movement to the editor while a press is active.
+	 * @param event Mouse event with button and pointer coordinates in the content widget.
+	 */
 	override handleMouseMove(event: CMouseEvent): void {
 		const hoveredAnchor = this.#anchorAt(
 			event.x(),
@@ -148,7 +179,10 @@ export class CTextBrowser extends CTextEdit {
 		event.accept();
 	}
 
-	/** Provides handle mouse release behavior. */
+	/**
+	 * Finishes text selection and emits `anchorClicked` if a left press and release hit the same link and no text was selected.
+	 * @param event Mouse event with button and pointer coordinates in the content widget.
+	 */
 	override handleMouseRelease(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {

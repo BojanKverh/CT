@@ -48,47 +48,75 @@ export class CScrollBar extends CWidget {
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
-    /** Provides orientation behavior. */
+    /**
+     * Reads the orientation.
+     * @returns The orientation.
+     */
     orientation() : COrientation {
         return this.#m_orientation;
     }
 
-	/** Returns the minimum . */
+	/**
+	 * Returns the minimum .
+	 * @returns The minimum.
+	 */
 	minimum(): number {
 		return this.#m_minimum;
 	}
 
-	/** Returns the maximum . */
+	/**
+	 * Returns the maximum .
+	 * @returns The maximum.
+	 */
 	maximum(): number {
 		return this.#m_maximum;
 	}
 
-	/** Provides value behavior. */
+	/**
+	 * Reads the value.
+	 * @returns The value.
+	 */
 	value(): number {
 		return this.#m_value;
 	}
 
-	/** Provides single step behavior. */
+	/**
+	 * Reads the single step.
+	 * @returns The single step.
+	 */
 	singleStep(): number {
 		return this.#m_singleStep;
 	}
 
-	/** Provides page step behavior. */
+	/**
+	 * Reads the page step.
+	 * @returns The page step.
+	 */
 	pageStep(): number {
 		return this.#m_pageStep;
 	}
 
-	/** Sets the minimum. */
+	/**
+	 * Sets the minimum.
+	 * @param minimum Minimum.
+	 */
 	setMinimum(minimum: number): void {
 		this.setRange(minimum, this.#m_maximum);
 	}
 
-	/** Sets the maximum. */
+	/**
+	 * Sets the maximum.
+	 * @param maximum Maximum.
+	 */
 	setMaximum(maximum: number): void {
 		this.setRange(this.#m_minimum, maximum);
 	}
 
-	/** Sets the range. */
+	/**
+	 * Sets the range.
+	 * @param minimum Minimum.
+	 * @param maximum Maximum.
+	 */
 	setRange(minimum: number, maximum: number): void {
 		/** Provides if behavior. */
 		if (minimum > maximum)
@@ -101,7 +129,10 @@ export class CScrollBar extends CWidget {
 		this.update();
 	}
 
-	/** Sets the value. */
+	/**
+	 * Sets the value.
+	 * @param value New value.
+	 */
 	setValue(value: number): void {
 		const clamped = Math.max(
 			this.#m_minimum,
@@ -118,53 +149,71 @@ export class CScrollBar extends CWidget {
 		this.update();
 	}
 
-	/** Sets the single step. */
+	/**
+	 * Sets the single step.
+	 * @param step Step.
+	 */
 	setSingleStep(step: number): void {
 		this.#m_singleStep = Math.max(0, step);
 	}
 
-	/** Sets the page step. */
+	/**
+	 * Sets the page step.
+	 * @param step Step.
+	 */
 	setPageStep(step: number): void {
 		this.#m_pageStep = Math.max(0, step);
 	}
 
-	/** Performs step backward. */
+	/** Subtracts one single step, clamping at the minimum. */
 	stepBackward(): void {
 		this.setValue(this.#m_value - this.#m_singleStep);
 	}
 
-	/** Performs step forward. */
+	/** Adds one single step, clamping at the maximum. */
 	stepForward(): void {
 		this.setValue(this.#m_value + this.#m_singleStep);
 	}
 
-	/** Provides page backward behavior. */
+	/** Subtracts one page step, clamping at the minimum. */
 	pageBackward(): void {
 		this.setValue(this.#m_value - this.#m_pageStep);
 	}
 
-	/** Provides page forward behavior. */
+	/** Adds one page step, clamping at the maximum. */
 	pageForward(): void {
 		this.setValue(this.#m_value + this.#m_pageStep);
 	}
 
-    /** Provides track start behavior. */
+    /**
+     * Reads the track start of the scroll bar.
+     * @returns The track start.
+     */
     trackStart(): number {
 	    return this.buttonSize();
     }
 
-    /** Provides button size behavior. */
+    /**
+     * Reads the button size of the scroll bar.
+     * @returns The button size.
+     */
     buttonSize(): number {
 	    return this.#m_orientation === COrientation.Horizontal? this.height() : this.width();
     }
 
-    /** Provides track length behavior. */
+    /**
+     * Reads the track length of the scroll bar.
+     * @returns The track length.
+     */
     trackLength(): number {
 	    const totalLength = this.#m_orientation === COrientation.Horizontal? this.width() : this.height();
 	    return Math.max(0, totalLength - 2 * this.buttonSize());
     }
 
-    /** Provides thumb length behavior. */
+    /**
+     * Reads the thumb length of the scroll bar.
+     * @returns The thumb length.
+     */
     thumbLength(): number {
 	    const range = this.#m_maximum - this.#m_minimum;
 	    const pageStep = this.#m_pageStep;
@@ -175,7 +224,10 @@ export class CScrollBar extends CWidget {
 	    return Math.min(trackLength, Math.max(16, trackLength * ratio));
     }
 
-    /** Provides thumb start behavior. */
+    /**
+     * Reads the thumb start of the scroll bar.
+     * @returns The thumb start.
+     */
     thumbStart(): number {
 	    const range = this.#m_maximum - this.#m_minimum;
 	    const travel = Math.max(0, this.trackLength() - this.thumbLength());
@@ -183,7 +235,13 @@ export class CScrollBar extends CWidget {
 	    return this.trackStart() + travel * ratio;
     }
 
-    /** Sets the geometry. */
+    /**
+     * Sets the geometry.
+     * @param x Horizontal position in parent coordinates.
+     * @param y Vertical position in parent coordinates.
+     * @param width Width in logical pixels.
+     * @param height Height in logical pixels.
+     */
     override setGeometry(x: number, y: number, width: number, height: number) : void {
         super.setGeometry(x, y, width, height);
         const size = this.buttonSize();
@@ -197,7 +255,10 @@ export class CScrollBar extends CWidget {
         }
     }
 
-    /** Handles the mouse press event. */
+    /**
+     * Responds to a pointer button press for the scroll bar. May update the dragging, the drag offset. May accept or ignore the event depending on the input.
+     * @param event Event for a pointer button press.
+     */
     protected override mousePressEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
@@ -226,7 +287,10 @@ export class CScrollBar extends CWidget {
 		event.accept();
 	}
 
-	/** Handles the mouse move event. */
+	/**
+	 * Responds to pointer movement for the scroll bar. May accept or ignore the event depending on the input.
+	 * @param event Event for pointer movement.
+	 */
 	protected override mouseMoveEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (!this.#m_dragging) {
@@ -238,7 +302,10 @@ export class CScrollBar extends CWidget {
 		event.accept();
 	}
 
-    /** Handles the mouse release event. */
+    /**
+     * Responds to a pointer button release for the scroll bar. May update the dragging. May accept or ignore the event depending on the input.
+     * @param event Event for a pointer button release.
+     */
     protected override mouseReleaseEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton || !this.#m_dragging) {
@@ -251,7 +318,10 @@ export class CScrollBar extends CWidget {
 		event.accept();
 	}
 
-    /** Handles the key press event. */
+    /**
+     * Responds to a key press for the scroll bar. May accept the event.
+     * @param event Event for a key press.
+     */
     protected override keyPressEvent(event: CKeyEvent): void {
 	    /** Provides switch behavior. */
 	    switch (event.key()) {
@@ -315,7 +385,10 @@ export class CScrollBar extends CWidget {
 	    super.keyPressEvent(event);
     }
 
-    /** Handles the paint event. */
+    /**
+     * Draws the scroll bar through the supplied painter.
+     * @param painter Painter for the current drawing operation.
+     */
     protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionScrollBar();
 		option.initFromScrollBar(this);

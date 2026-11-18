@@ -41,12 +41,23 @@ export class CTabWidget extends CWidget {
         this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
-	/** Adds tab. */
+	/**
+	 * Appends a tab unless the widget already has one.
+	 * @param widget Widget to show as a tab page.
+	 * @param text Text to show in the tab header.
+	 * @returns Zero-based index of the added or existing tab.
+	 */
 	addTab(widget: CWidget, text: string): number {
 		return this.insertTab(this.#m_tabs.length, widget, text);
 	}
 
-	/** Inserts tab. */
+	/**
+	 * Inserts an enabled tab and its page at the requested position. If the page is already present, returns its original index.
+	 * @param index Zero-based insertion position, clamped to the current tab range.
+	 * @param widget Widget to show as the tab page.
+	 * @param text Text to show in the tab header.
+	 * @returns Zero-based index of the added or existing tab.
+	 */
 	insertTab(index: number, widget: CWidget, text: string): number {
 		const existingIndex = this.indexOf(widget);
 
@@ -69,7 +80,11 @@ export class CTabWidget extends CWidget {
 		return result;
 	}
 
-	/** Removes tab. */
+	/**
+	 * Removes a tab and detaches its page without destroying it. Updates hover and press tracking.
+	 * @param index Zero-based tab index.
+	 * @returns Detached tab page, or `null` for an out-of-range index.
+	 */
 	removeTab(index: number): CWidget | null {
 		/** Provides if behavior. */
 		if (index < 0 || index >= this.#m_tabs.length)
@@ -96,22 +111,34 @@ export class CTabWidget extends CWidget {
 		return widget;
 	}
 
-	/** Provides count behavior. */
+	/**
+	 * Counts the entries in the tab widget.
+	 * @returns The number of entries in the tabs.
+	 */
 	count(): number {
 		return this.#m_tabs.length;
 	}
 
-	/** Returns the current index. */
+	/**
+	 * Returns the current index.
+	 * @returns The current index.
+	 */
 	currentIndex(): number {
 		return this.#m_stack.currentIndex();
 	}
 
-	/** Returns the current widget. */
+	/**
+	 * Looks up the page of the current tab.
+	 * @returns The current tab widget, or `null` if no tab is active.
+	 */
 	currentWidget(): CWidget | null {
 		return this.#m_stack.currentWidget();
 	}
 
-	/** Sets the current index. */
+	/**
+	 * Sets the current index.
+	 * @param index Zero-based item index.
+	 */
 	setCurrentIndex(index: number): void {
 		/** Provides if behavior. */
 		if (!this.isTabEnabled(index))
@@ -120,7 +147,10 @@ export class CTabWidget extends CWidget {
 		this.#m_stack.setCurrentIndex(index);
 	}
 
-	/** Sets the current widget. */
+	/**
+	 * Finds the tab for a registered widget and attempts to select it. Unregistered widgets are ignored.
+	 * @param widget Tab page to select.
+	 */
 	setCurrentWidget(widget: CWidget): void {
 		const index = this.indexOf(widget);
 
@@ -129,22 +159,38 @@ export class CTabWidget extends CWidget {
 			this.setCurrentIndex(index);
 	}
 
-	/** Provides widget behavior. */
+	/**
+	 * Looks up a registered page without making it current.
+	 * @param index Zero-based page index.
+	 * @returns The page widget, or `null` if the index is absent.
+	 */
 	widget(index: number): CWidget | null {
 		return this.#m_stack.widget(index);
 	}
 
-	/** Provides index of behavior. */
+	/**
+	 * Finds a registered page by widget identity.
+	 * @param widget Page widget to look up.
+	 * @returns Zero-based page index, or `-1` if the widget is not registered.
+	 */
 	indexOf(widget: CWidget): number {
 		return this.#m_stack.indexOf(widget);
 	}
 
-	/** Provides tab text behavior. */
+	/**
+	 * Reads the caption of a tab.
+	 * @param index Zero-based tab index.
+	 * @returns Caption, or an empty string if the tab does not exist.
+	 */
 	tabText(index: number): string {
 		return this.#m_tabs[index]?.text ?? "";
 	}
 
-	/** Sets the tab text. */
+	/**
+	 * Changes a tab header caption and repaints the tabs. A missing tab is ignored.
+	 * @param index Zero-based tab index.
+	 * @param text New header caption.
+	 */
 	setTabText(index: number, text: string): void {
 		const tab = this.#m_tabs[index];
 
@@ -160,12 +206,20 @@ export class CTabWidget extends CWidget {
 		this.update();
 	}
 
-	/** Returns whether the tab enabled condition is active. */
+	/**
+	 * Checks whether the tab widget is tab enabled.
+	 * @param index Zero-based item index.
+	 * @returns `true` if the tab widget is tab enabled, otherwise `false`.
+	 */
 	isTabEnabled(index: number): boolean {
 		return this.#m_tabs[index]?.enabled ?? false;
 	}
 
-	/** Sets the tab enabled. */
+	/**
+	 * Sets the tab enabled.
+	 * @param index Zero-based item index.
+	 * @param enabled Whether to enable the feature.
+	 */
 	setTabEnabled(index: number, enabled: boolean): void {
 		const tab = this.#m_tabs[index];
 
@@ -186,17 +240,29 @@ export class CTabWidget extends CWidget {
 		this.update();
 	}
 
-	/** Returns whether the tab hovered condition is active. */
+	/**
+	 * Checks whether the tab widget is tab hovered.
+	 * @param index Zero-based item index.
+	 * @returns `true` if the tab widget is tab hovered, otherwise `false`.
+	 */
 	isTabHovered(index: number): boolean {
 		return index === this.#m_hoveredIndex;
 	}
 
-	/** Returns whether the tab pressed condition is active. */
+	/**
+	 * Checks whether the tab widget is tab pressed.
+	 * @param index Zero-based item index.
+	 * @returns `true` if the tab widget is tab pressed, otherwise `false`.
+	 */
 	isTabPressed(index: number): boolean {
 		return index === this.#m_pressedIndex;
 	}
 
-    /** Provides tab width behavior. */
+    /**
+     * Measures the header caption with padding and applies the minimum tab width.
+     * @param i Zero-based tab index.
+     * @returns Width in logical pixels, or zero if the tab is absent.
+     */
     tabWidth(i: number): number {
         /** Provides if behavior. */
         if (this.#m_tabs[i] !== undefined && this.#m_tabs[i].text !== undefined)
@@ -208,17 +274,30 @@ export class CTabWidget extends CWidget {
             return 0;
     }
 
-	/** Provides tab height behavior. */
+	/**
+	 * Reads the tab height of the tab widget.
+	 * @returns The tab height.
+	 */
 	tabHeight(): number {
 		return CTabWidget.#TAB_HEIGHT;
 	}
 
-	/** Sets the geometry. */
+	/**
+	 * Sets the geometry.
+	 * @param x Horizontal position in parent coordinates.
+	 * @param y Vertical position in parent coordinates.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override setGeometry(x: number, y: number, width: number, height: number): void {
 		super.setGeometry(x, y, width, height);
 		this.#updateStackGeometry();
 	}
 
+    /**
+     * Responds to a key press for the tab widget. May accept or ignore the event depending on the input.
+     * @param event Event for a key press.
+     */
     protected override keyPressEvent(event: CKeyEvent): void {
         const key = event.key();
         if (!this.hasFocus() || (key !== "ArrowLeft" && key !== "ArrowRight")
@@ -240,7 +319,10 @@ export class CTabWidget extends CWidget {
         event.ignore();
     }
 
-    /** Handles the mouse press event. */
+    /**
+     * Responds to a pointer button press for the tab widget. May update the pressed index. May request a repaint and accept or ignore the event depending on the input.
+     * @param event Event for a pointer button press.
+     */
     protected override mousePressEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
@@ -262,7 +344,10 @@ export class CTabWidget extends CWidget {
 		this.update();
 	}
 
-	/** Handles the mouse release event. */
+	/**
+	 * Responds to a pointer button release for the tab widget. May update the pressed index. May request a repaint and accept or ignore the event depending on the input. May emit `tabClicked`.
+	 * @param event Event for a pointer button release.
+	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
@@ -290,7 +375,10 @@ export class CTabWidget extends CWidget {
 		this.tabClicked.emit(index);
 	}
 
-	/** Handles the mouse move event. */
+	/**
+	 * Responds to pointer movement for the tab widget. May update the hovered index. May request a repaint and accept or ignore the event depending on the input.
+	 * @param event Event for pointer movement.
+	 */
 	protected override mouseMoveEvent(event: CMouseEvent): void {
 		const index = this.#tabAt(event.x(), event.y());
 
@@ -306,7 +394,10 @@ export class CTabWidget extends CWidget {
 		this.update();
 	}
 
-	/** Handles the mouse leave event. */
+	/**
+	 * Responds to pointer exit for the tab widget. May update the hovered index. May request a repaint and accept or ignore the event depending on the input.
+	 * @param event Event for pointer exit.
+	 */
 	protected override mouseLeaveEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (this.#m_hoveredIndex === -1) {
@@ -320,7 +411,10 @@ export class CTabWidget extends CWidget {
 		this.update();
 	}
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the tab widget through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionTabWidget();
 		option.initFromTabWidget(this);

@@ -29,33 +29,49 @@ export class CDropEvent extends CEvent {
 		this.#m_dropAction = proposedAction;
 	}
 
-	/** Returns the widget-relative drop position. */
+	/**
+	 * Looks up the location of the drag or drop.
+	 * @returns The stored point in coordinates relative to the receiving widget.
+	 */
 	pos(): CPoint {
 		return this.#m_pos;
 	}
 
-	/** Returns the MIME data carried by the drag operation. */
+	/**
+	 * Exposes the payload carried by the drag.
+	 * @returns The MIME data object supplied by the drag source.
+	 */
 	mimeData(): CMimeData {
 		return this.#m_mimeData;
 	}
 
-	/** Returns the actions supported by the drag source. */
+	/**
+	 * Looks up which actions the drag source supports.
+	 * @returns A bit mask of supported drop actions.
+	 */
 	possibleActions(): CDropAction {
 		return this.#m_possibleActions;
 	}
 
-	/** Returns the action proposed by the drag source. */
+	/**
+	 * Looks up the action suggested by the drag source.
+	 * @returns The original proposed action.
+	 */
 	proposedAction(): CDropAction {
 		return this.#m_proposedAction;
 	}
 
-	/** Returns the currently selected drop action. */
+	/**
+	 * Looks up the currently selected action. It starts as the proposed action.
+	 * @returns The selected drop action.
+	 */
 	dropAction(): CDropAction {
 		return this.#m_dropAction;
 	}
 
-	/** Sets the drop action when it is supported by the drag source.
-	 * @param action Drop action to select.
+	/**
+	 * Changes the selected action without changing the event's acceptance. Unsupported actions are ignored.
+	 * @param action `IgnoreAction` or an action supported by the source.
 	 */
 	setDropAction(action: CDropAction): void {
 		if (action !== CDropAction.IgnoreAction &&
@@ -65,7 +81,7 @@ export class CDropEvent extends CEvent {
 		this.#m_dropAction = action;
 	}
 
-	/** Selects the proposed action and accepts the event. */
+	/** Restores the source's proposed action as the selected action and marks the event accepted. */
 	acceptProposedAction(): void {
 		this.#m_dropAction = this.#m_proposedAction;
 		this.accept();

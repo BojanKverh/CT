@@ -21,6 +21,10 @@ class CItemDelegateLineEdit extends CLineEdit {
 	readonly accepted = new CSignal<[]>();
 	readonly canceled = new CSignal<[]>();
 
+	/**
+	 * Responds to a key press for the item delegate line edit. May accept the event. May emit `accepted`, `canceled`.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
     	if (event.key() === "Enter") {
         	event.accept();
@@ -47,6 +51,10 @@ class CItemDelegateSpinBox extends CSpinBox {
 	readonly accepted = new CSignal<[]>();
 	readonly canceled = new CSignal<[]>();
 
+	/**
+	 * Responds to a key press for the item delegate spin box. May accept the event. May emit `accepted`, `canceled`.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
 		if (event.key() === "Enter") {
 			super.keyPressEvent(event);
@@ -68,6 +76,10 @@ class CItemDelegateDoubleSpinBox extends CDoubleSpinBox {
 	readonly accepted = new CSignal<[]>();
 	readonly canceled = new CSignal<[]>();
 
+	/**
+	 * Responds to a key press for the item delegate double spin box. May accept the event. May emit `accepted`, `canceled`.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
 		if (event.key() === "Enter") {
 			super.keyPressEvent(event);
@@ -89,10 +101,17 @@ class CItemDelegateDateEdit extends CDateEdit {
 	readonly accepted = new CSignal<[]>();
 	readonly canceled = new CSignal<[]>();
 
+	/**
+	 * Sets the focus.
+	 */
 	override setFocus(): void {
 		this.lineEdit().setFocus();
 	}
 
+	/**
+	 * Responds to a key press for the item delegate date edit. May accept the event. May emit `accepted`, `canceled`.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
 		if (event.key() === "Enter") {
 			event.accept();
@@ -121,11 +140,22 @@ export class CItemDelegate extends CAbstractItemDelegate {
 		this.#m_checkBox.hide();
 	}
 
+	/**
+	 * Releases resources held by the item delegate.
+	 */
 	override destroy(): void {
 		this.#m_checkBox.destroy();
 		super.destroy();
 	}
 
+	/**
+	 * Draws a checkbox for a Boolean cell.
+	 * @param painter Painter for drawing the cell.
+	 * @param rect Cell bounds in the view.
+	 * @param index Model index supplying the Boolean value.
+	 * @param widget View widget supplying the visual context.
+	 * @returns `true` if a checkbox was drawn, or `false` if the value is not Boolean.
+	 */
 	override paint(
 		painter: CPainter,
 		rect: CRect,
@@ -157,6 +187,14 @@ export class CItemDelegate extends CAbstractItemDelegate {
 		return true;
 	}
 
+	/**
+	 * Toggles an editable Boolean cell on a left-button press inside the checkbox or a Space key press.
+	 * @param event Input event to test.
+	 * @param model Model to update.
+	 * @param index Index of the target cell.
+	 * @param rect Cell bounds used for the checkbox hit test.
+	 * @returns `true` if the model accepted the toggle and the event was accepted.
+	 */
 	override editorEvent(
 		event: CEvent,
 		model: CAbstractItemModel,
@@ -186,6 +224,12 @@ export class CItemDelegate extends CAbstractItemDelegate {
 		return true;
 	}
 
+	/**
+	 * Chooses an editor based on the cell value. Valid dates use a date editor, finite numbers use an integer or decimal spin box, and other editable values use a line edit.
+	 * @param parent Widget that will own the editor.
+	 * @param index Model index supplying the cell value.
+	 * @returns New editor, or `null` for a Boolean cell edited inline.
+	 */
 	override createEditor(
 		parent: CWidget,
 		index: CModelIndex
@@ -239,6 +283,11 @@ export class CItemDelegate extends CAbstractItemDelegate {
 		return editor;
 	}
 
+	/**
+	 * Populates the matching editor with the cell value converted for the editor type.
+	 * @param editor Editor widget created for the cell.
+	 * @param index Model index supplying the initial value.
+	 */
 	override setEditorData(
 		editor: CWidget,
 		index: CModelIndex
@@ -270,6 +319,12 @@ export class CItemDelegate extends CAbstractItemDelegate {
 		}
 	}
 
+	/**
+	 * Writes the editor's value appropriate to the editor back to the target cell when the editor is applicable.
+	 * @param editor Editor containing the edited value.
+	 * @param model Model to update.
+	 * @param index Index receiving the edited value.
+	 */
 	override setModelData(
 		editor: CWidget,
 		model: CAbstractItemModel,

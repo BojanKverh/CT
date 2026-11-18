@@ -14,27 +14,43 @@ export class CIntValidator extends CValidator {
 		this.setRange(bottom, top);
 	}
 
-	/** Returns the lower bound. */
+	/**
+	 * Reads the inclusive lower limit.
+	 * @returns The minimum accepted integer.
+	 */
 	bottom(): number {
 		return this.#m_bottom;
 	}
 
-	/** Returns the upper bound. */
+	/**
+	 * Reads the inclusive upper limit.
+	 * @returns The maximum accepted integer.
+	 */
 	top(): number {
 		return this.#m_top;
 	}
 
-	/** Sets the lower bound. */
+	/**
+	 * Changes the lower bound. The upper bound is raised if necessary to keep the range ordered.
+	 * @param bottom Finite lower bound, truncated toward zero.
+	 */
 	setBottom(bottom: number): void {
 		this.setRange(bottom, this.#m_top);
 	}
 
-	/** Sets the upper bound. */
+	/**
+	 * Changes the upper bound without allowing it below the current lower bound.
+	 * @param top Finite upper bound, truncated toward zero.
+	 */
 	setTop(top: number): void {
 		this.setRange(this.#m_bottom, top);
 	}
 
-	/** Sets the accepted range. */
+	/**
+	 * Changes both inclusive bounds. Nonfinite inputs are ignored. A reversed range collapses to the lower bound.
+	 * @param bottom Finite lower bound, truncated toward zero.
+	 * @param top Finite upper bound, truncated toward zero.
+	 */
 	setRange(bottom: number, top: number): void {
 		if (!Number.isFinite(bottom) || !Number.isFinite(top))
 			return;
@@ -49,7 +65,11 @@ export class CIntValidator extends CValidator {
 		this.#m_top = top;
 	}
 
-	/** Validates integer text. */
+	/**
+	 * Classifies signed decimal integer text against the configured bounds.
+	 * @param input Raw text without leading or trailing whitespace.
+	 * @returns `Acceptable` for an in-range safe integer, `Intermediate` for an out-of-range safe integer, empty text or an allowed standalone sign, and `Invalid` otherwise.
+	 */
 	override validate(input: string): CValidatorState {
 		if (input === "")
 			return CValidatorState.Intermediate;

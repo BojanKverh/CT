@@ -64,27 +64,34 @@ export class CWidget extends CObject {
     }
 
     /**
-     * Places second immediately after first in the keyboard focus order.
-     * Call pairs in sequence to build a chain. Widgets must belong to the
-     * same parent hierarchy; identical widgets or different roots are ignored.
-     * Hidden, disabled and non-Tab-focusable widgets keep their position but
-     * are skipped during navigation. This does not change the current focus.
+     * Places the second widget immediately after the first in the keyboard focus order. Both widgets must share a root. Hidden, disabled and non-Tab-focusable widgets are skipped during navigation.
+     * @param first First widget in the pair.
+     * @param second Widget to place after the first.
      */
     static setTabOrder(first: CWidget, second: CWidget): void {
         CApplication.instance().setTabOrder(first, second);
     }
 
-    /** Provides parent behavior. */
+    /**
+     * Looks up the immediate parent widget.
+     * @returns The parent widget, or `null` for a top-level widget.
+     */
     override parent(): CWidget | null {
         return super.parent() as CWidget | null;
     }
 
-    /** Provides children behavior. */
+    /**
+     * Lists the direct children.
+     * @returns A read-only view of the child widgets.
+     */
     override children(): readonly CWidget[] {
         return super.children() as readonly CWidget[];
     }
 
-    /** Sets the parent. */
+    /**
+     * Sets the parent.
+     * @param parent Owning object or parent item.
+     */
     override setParent(parent: CWidget | null): void {
         const oldParent = this.parent();
 
@@ -109,37 +116,61 @@ export class CWidget extends CObject {
         this.update();
     }
 
-    /** Provides geometry behavior. */
+    /**
+     * Reads the widget position and size.
+     * @returns A new rectangle in parent coordinates, or canvas coordinates for a top-level widget.
+     */
     geometry(): CRect {
         return new CRect(this.x(), this.y(), this.width(), this.height());
     }
 
-    /** Provides rect behavior. */
+    /**
+     * Reads the widget bounds in local coordinates.
+     * @returns A new rectangle starting at `(0, 0)` with the widget's width and height.
+     */
     rect(): CRect {
         return new CRect(0, 0, this.width(), this.height());
     }
 
-    /** Provides x behavior. */
+    /**
+     * Reads the left edge of the widget.
+     * @returns Horizontal position relative to the parent, or to the canvas for a top-level widget.
+     */
     x(): number {
         return this.#m_geometry.x();
     }
 
-    /** Provides y behavior. */
+    /**
+     * Reads the top edge of the widget.
+     * @returns Vertical position relative to the parent, or to the canvas for a top-level widget.
+     */
     y(): number {
         return this.#m_geometry.y();
     }
 
-    /** Provides width behavior. */
+    /**
+     * Reads the current width of the widget.
+     * @returns Width in logical pixels.
+     */
     width(): number {
         return this.#m_geometry.width();
     }
 
-    /** Provides height behavior. */
+    /**
+     * Reads the current height of the widget.
+     * @returns Height in logical pixels.
+     */
     height(): number {
         return this.#m_geometry.height();
     }
 
-    /** Sets the geometry. */
+    /**
+     * Sets the geometry.
+     * @param x Horizontal position in parent coordinates.
+     * @param y Vertical position in parent coordinates.
+     * @param width Width in logical pixels.
+     * @param height Height in logical pixels.
+     */
     setGeometry(x: number, y: number, width: number, height: number): void {
         /** Provides if behavior. */
         if (x === this.x() && y === this.y() && width === this.width()
@@ -152,17 +183,28 @@ export class CWidget extends CObject {
         this.update();
     }
 
-    /** Provides move behavior. */
+    /**
+     * Moves the widget while keeping its current size.
+     * @param x Horizontal position in parent or canvas coordinates.
+     * @param y Vertical position in parent or canvas coordinates.
+     */
     move(x: number, y: number): void {
         this.setGeometry(x, y, this.width(), this.height());
     }
 
-    /** Provides resize behavior. */
+    /**
+     * Resizes the widget while keeping its current position.
+     * @param width New width in logical pixels.
+     * @param height New height in logical pixels.
+     */
     resize(width: number, height: number): void {
         this.setGeometry(this.x(), this.y(), width, height);
     }
 
-    /** Sets the visible. */
+    /**
+     * Sets the visible.
+     * @param visible Whether to show the target.
+     */
     setVisible(visible: boolean): void {
 	    /** Provides if behavior. */
 	    if (this.#m_visible === visible)
@@ -182,7 +224,10 @@ export class CWidget extends CObject {
     /** Called when this widget or an ancestor changes visibility or parent. */
     protected visibilityChangeEvent(): void {}
 
-    /** Controls effective child visibility without changing each child's explicit show/hide state. */
+    /**
+     * Controls effective child visibility without changing each child's explicit show/hide state.
+     * @returns `true` in this implementation.
+     */
     protected childrenAreVisible(): boolean { return true; }
 
     /** Notify descendants after a change to childrenAreVisible(). */
@@ -198,7 +243,10 @@ export class CWidget extends CObject {
             if (child instanceof CWidget) child.#notifyVisibilityChange();
     }
 
-    /** Sets this widget's own enabled state. A disabled ancestor disables its descendants. */
+    /**
+     * Sets this widget's own enabled state. A disabled ancestor disables its descendants.
+     * @param enabled Whether to enable the feature.
+     */
     setEnabled(enabled: boolean): void {
         if (this.#m_enabled === enabled)
             return;
@@ -226,22 +274,35 @@ export class CWidget extends CObject {
         }
     }
 
-    /** Returns whether the visible condition is active. */
+    /**
+     * Checks whether the widget is visible.
+     * @returns `true` if the widget is visible, otherwise `false`.
+     */
     isVisible(): boolean {
         return this.#m_visible && (this.parent()?.childrenAreVisible() ?? true);
     }
 
-	/** Provides font behavior. */
+	/**
+	 * Reads the font configured for the widget.
+	 * @returns An independent copy of the current font.
+	 */
 	font(): CFont {
 		return new CFont(this.#m_font);
 	}
 
-    /** Provides font metrics behavior. */
+    /**
+     * Looks up the measurements for the widget's current font.
+     * @returns The cached font metrics object.
+     */
     fontMetrics() : CFontMetrics {
         return this.#m_fontMetrics;
     }
 
-	/** Sets the font. */
+	/**
+	 * Copies the font, refreshes its metrics and updates layout and painting if the font changed.
+	 * @param font Font to copy.
+	 * @param propagate Whether to apply the font recursively to descendants. Defaults to `false`.
+	 */
 	setFont(font: CFont, propagate = false): void {
 		const changed = !this.#m_font.isEqual(font);
 
@@ -265,8 +326,10 @@ export class CWidget extends CObject {
         }
 	}
 
-    /** Returns an independent copy of the effective palette. Widgets without a
+    /**
+     * Returns an independent copy of the effective palette. Widgets without a
      * local palette inherit from their nearest explicit ancestor or application.
+     * @returns The palette.
      */
     palette(): CPalette {
         let owner: CWidget | null = this;
@@ -277,13 +340,19 @@ export class CWidget extends CObject {
         return new CPalette(CApplication.instance().palette());
     }
 
-    /** Whether setPalette() has installed a local override, even if its colors
-     * happen to equal the inherited palette. */
+    /**
+     * Whether setPalette() has installed a local override, even if its colors
+     * happen to equal the inherited palette.
+     * @returns `true` if the widget has explicit palette, otherwise `false`.
+     */
     hasExplicitPalette(): boolean { return this.#m_palette !== null; }
 
-    /** Installs a local palette snapshot. Inheriting descendants follow it;
+    /**
+     * Installs a local palette snapshot. Inheriting descendants follow it;
      * descendants with explicit palettes keep theirs. Passing propagate=true
      * explicitly replaces palettes on all widget descendants, as before.
+     * @param palette Palette.
+     * @param propagate Whether to apply the change to descendants. Defaults to `false`.
      */
     setPalette(palette: CPalette, propagate = false): void {
         const changed = !this.palette().isEqual(palette);
@@ -295,8 +364,11 @@ export class CWidget extends CObject {
         if (changed) this.update();
     }
 
-    /** Removes the local override and resumes inheritance. With propagate=true,
-     * removes explicit overrides from all widget descendants as well. */
+    /**
+     * Removes the local override and resumes inheritance. With propagate=true,
+     * removes explicit overrides from all widget descendants as well.
+     * @param propagate Whether to apply the change to descendants. Defaults to `false`.
+     */
     resetPalette(propagate = false): void {
         this.#m_palette = null;
         if (propagate) {
@@ -306,53 +378,74 @@ export class CWidget extends CObject {
         this.update();
     }
 
-    /** Provides style behavior. */
+    /**
+     * Looks up the application's active drawing style.
+     * @returns The shared application style.
+     */
     style(): CStyle {
 	    return CApplication.instance().style();
     }
 
-	/** Sets the cursor. */
+	/**
+	 * Configures the pointer shape associated with the widget.
+	 * @param cursor Cursor shape to use over the widget.
+	 */
 	setCursor(cursor: CCursorShape): void
 	{
 		this.#m_cursor = cursor;
 	}
 
-	/** Provides cursor behavior. */
+	/**
+	 * Reads the configured pointer shape.
+	 * @returns The widget's cursor shape.
+	 */
 	cursor(): CCursorShape
 	{
 		return this.#m_cursor;
 	}
 
-    /** Shows the widget. */
+    /** Sets the widget's local visibility flag and notifies the parent if the widget becomes visible. */
     show(): void {
         this.setVisible(true);
     }
 
-    /** Hides the widget. */
+    /** Clears the widget's local visibility flag and notifies the parent if the widget becomes hidden. */
     hide(): void {
         this.setVisible(false);
     }
 
-    /** Provides accepts click focus behavior. */
+    /**
+     * Tests whether the configured policy allows focus by clicking.
+     * @returns `true` if the click-focus flag is set.
+     */
     acceptsClickFocus(): boolean {
 		/** Provides return behavior. */
 		return (this.#m_focusPolicy
 			& CFocusPolicy.ClickFocus) !== 0;
 	}
 
-	/** Provides accepts tab focus behavior. */
+	/**
+	 * Tests whether the configured policy allows keyboard focus traversal.
+	 * @returns `true` if the Tab-focus flag is set.
+	 */
 	acceptsTabFocus(): boolean {
 		/** Provides return behavior. */
 		return (this.#m_focusPolicy
 			& CFocusPolicy.TabFocus) !== 0;
 	}
 
-    /** Provides focus policy behavior. */
+    /**
+     * Reads the widget's configured focus policy.
+     * @returns The local focus policy.
+     */
     focusPolicy(): CFocusPolicy {
 		return this.#m_focusPolicy;
 	}
 
-    /** Sets the policy and propagates it to an assigned focus proxy. */
+    /**
+     * Sets the policy, forwards it to an assigned proxy and clears current focus when the policy changes to `NoFocus`.
+     * @param policy New policy for acquiring focus.
+     */
     setFocusPolicy(policy: CFocusPolicy): void {
         this.#m_focusProxy?.setFocusPolicy(policy);
         if (this.#m_focusPolicy === policy) return;
@@ -360,13 +453,15 @@ export class CWidget extends CObject {
         if (policy === CFocusPolicy.NoFocus && this.hasFocus()) this.clearFocus();
     }
 
-    /** Returns the direct focus proxy, or null. */
+    /**
+     * Looks up the widget's direct focus redirection target.
+     * @returns The assigned proxy widget, or `null` if no proxy is assigned.
+     */
     focusProxy(): CWidget | null { return this.#m_focusProxy; }
 
     /**
-     * Redirects focus to another widget in the same parent hierarchy.
-     * Throws RangeError for self references, cycles, destroyed targets or
-     * targets in a different hierarchy. Null removes the redirection.
+     * Redirects focus to another live widget in the same hierarchy. Throws `RangeError` if this widget is destroyed or the proposed proxy is destroyed, forms a cycle or belongs to another hierarchy.
+     * @param proxy Direct proxy, or `null` to remove the redirection.
      */
     setFocusProxy(proxy: CWidget | null): void {
         if (this.#m_destroyed) throw new RangeError("Cannot set a focus proxy on a destroyed widget.");
@@ -391,14 +486,22 @@ export class CWidget extends CObject {
         this.update();
     }
 
-    /** @internal Returns the final widget in the proxy chain. */
+    /**
+     * Follows the focus proxy chain.
+     * @returns The final proxy target, or this widget when no proxy is assigned.
+     * @internal
+     */
     focusTarget(): CWidget {
         let target: CWidget = this;
         while (target.#m_focusProxy !== null) target = target.#m_focusProxy;
         return target;
     }
 
-    /** @internal Whether programmatic focus can reach the final proxy target. */
+    /**
+     * Checks whether the widget can receive focus.
+     * @internal Whether programmatic focus can reach the final proxy target.
+     * @returns `true` if the widget can receive focus, otherwise `false`.
+     */
     canReceiveFocus(): boolean {
         for (let target: CWidget | null = this; target !== null; target = target.#m_focusProxy) {
             if (target.inputBlocker() !== null) return false;
@@ -426,7 +529,7 @@ export class CWidget extends CObject {
         }
     }
 
-	/** Releases resources owned by the widget. */
+	/** Releases focus and proxy references, destroys owned objects, releases any mouse grab and removes the widget from the visible hierarchy. */
 	override destroy(): void
 	{
         if (this.#m_destroyed) return;
@@ -459,7 +562,11 @@ export class CWidget extends CObject {
 		this.hide();
 	}
 
-    /** @internal Installs a direct-child input shield, rendered above normal children. */
+    /**
+     * Sets the input blocker. May request a repaint.
+     * @internal Installs a direct-child input shield, rendered above normal children.
+     * @param blocker Blocker.
+     */
     setInputBlocker(blocker: CWidget | null): void {
         if (blocker !== null && (blocker.parent() !== this || blocker === this))
             throw new RangeError("An input blocker must be a direct child.");
@@ -469,7 +576,11 @@ export class CWidget extends CObject {
         blocker?.setGeometry(0, 0, this.width(), this.height());
         this.update();
     }
-    /** Returns the shield blocking input to this widget, excluding the shield's own subtree. */
+    /**
+     * Walks the widget hierarchy for a visible input blocker, skipping a blocker that contains this widget in its own branch.
+     * @returns The nearest applicable blocker, or `null` if there is none.
+     * @internal
+     */
     inputBlocker(): CWidget | null {
         let branch: CWidget | null = null;
         for (let owner: CWidget | null = this; owner !== null; owner = owner.parent()) {
@@ -480,17 +591,23 @@ export class CWidget extends CObject {
         return null;
     }
 
-    /** Returns whether this widget and its ancestors are enabled. */
+    /**
+     * Returns whether this widget and its ancestors are enabled.
+     * @returns `true` if the widget is enabled, otherwise `false`.
+     */
     isEnabled(): boolean {
         return this.#m_enabled && (this.parent()?.isEnabled() ?? true);
     }
 
-	/** Returns whether this object has focus. */
+	/**
+	 * Checks whether the final proxy target is the application's current focus widget.
+	 * @returns `true` if the widget is alive and its focus target has focus.
+	 */
 	hasFocus(): boolean {
 		return !this.#m_destroyed && CApplication.instance().focusWidget() === this.focusTarget();
 	}
 
-    /** Sets the focus. */
+    /** Requests focus for the widget or its final proxy when the focus hierarchy permits it. */
     setFocus(): void {
 		/** Provides if behavior. */
 		if (!this.canReceiveFocus())
@@ -499,14 +616,17 @@ export class CWidget extends CObject {
 		CApplication.instance().setFocusWidget(this);
 	}
 
-	/** Clears focus. */
+	/** Clears the application's focus if this widget or its final proxy currently holds it. */
 	clearFocus(): void {
 		/** Provides if behavior. */
 		if (this.hasFocus())
 			CApplication.instance().setFocusWidget(null);
 	}
 
-	/** Renders the widget. */
+	/**
+	 * Renders the widget.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	render(painter: CPainter): void {
 		/** Provides if behavior. */
 		if (!this.isVisible())
@@ -558,17 +678,28 @@ export class CWidget extends CObject {
 		}
 	}
 
-    /** Returns the widget's contents rectangle. */
+    /**
+     * Reads the area available for content. The base implementation uses the full widget bounds.
+     * @returns Content rectangle in widget-local coordinates.
+     */
     contentsRect(): CRect {
 	    return this.rect();
     }
 
-	/** Handles child offset behavior. */
+	/**
+	 * Supplies a translation used when painting and hit-testing children and mapping their coordinates.
+	 * @returns The child translation in local coordinates. The base implementation returns `(0, 0)`.
+	 */
 	protected childOffset(): CPoint {
 		return new CPoint(0, 0);
 	}
 
-    /** Provides widget at behavior. */
+    /**
+     * Hit-tests the widget and its visible descendants in reverse stacking order. A visible input blocker takes precedence over normal descendants.
+     * @param x Horizontal coordinate in this widget.
+     * @param y Vertical coordinate in this widget.
+     * @returns Topmost hit widget, or `null` if the widget is hidden or the point is outside its bounds.
+     */
     widgetAt(x: number, y: number): CWidget | null {
         /** Provides if behavior. */
         if (!this.isVisible())
@@ -611,12 +742,18 @@ export class CWidget extends CObject {
         return this;
     }
 
-    /** Provides layout behavior. */
+    /**
+     * Looks up the layout attached to this widget.
+     * @returns The current layout, or `null` if none is attached.
+     */
     layout(): CLayout | null {
 	    return this.#m_layout;
     }
 
-    /** Sets the layout. */
+    /**
+     * Attaches the layout to the widget and immediately updates it.
+     * @param layout Layout to attach and associate with this widget.
+     */
     setLayout(layout: CLayout): void {
 	    /** Provides if behavior. */
 	    if (this.#m_layout === layout)
@@ -627,11 +764,28 @@ export class CWidget extends CObject {
 	    layout.update();
     }
 
-    /** Returns a copy; apply changes with setSizePolicy(). */
+    /**
+     * Reads the widget's layout preferences.
+     * @returns An independent policy copy. Apply edits with `setSizePolicy()`.
+     */
     sizePolicy(): CSizePolicy { return new CSizePolicy(this.#m_sizePolicy); }
 
+    /**
+     * Sets a copy of the widget's size policy and updates the parent layout when the policy changes.
+     * @param policy Size policy to copy.
+     */
     setSizePolicy(policy: CSizePolicy): void;
+    /**
+     * Sets the widget's axis preferences and updates the parent layout when the policy changes.
+     * @param horizontal Policy for the horizontal axis.
+     * @param vertical Policy for the vertical axis.
+     */
     setSizePolicy(horizontal: CSizePolicyType, vertical: CSizePolicyType): void;
+    /**
+     * Sets the widget's layout preferences and updates the parent layout when they change.
+     * @param policy Policy object to copy, or the horizontal policy.
+     * @param vertical Vertical policy when the first argument is an axis policy. Defaults to `Preferred`.
+     */
     setSizePolicy(policy: CSizePolicy | CSizePolicyType, vertical = CSizePolicyType.Preferred): void {
         const next = policy instanceof CSizePolicy ? new CSizePolicy(policy) : new CSizePolicy(policy, vertical);
         if (this.#m_sizePolicy.isEqual(next)) return;
@@ -640,37 +794,59 @@ export class CWidget extends CObject {
         if (parent instanceof CWidget) parent.layout()?.update();
     }
 
-    /** Returns the minimum size. */
+    /**
+     * Reads the lower size bounds used by layouts.
+     * @returns A new size containing the minimum width and height.
+     */
     minimumSize(): CSize {
 	    return new CSize(this.#m_minimumSize.width(), this.#m_minimumSize.height());
     }
 
-    /** Returns the minimum width. */
+    /**
+     * Reads the lower horizontal size bound used by layouts.
+     * @returns Minimum width in logical pixels.
+     */
     minimumWidth(): number {
         return this.#m_minimumSize.width();
     }
 
-    /** Returns the maximum width. */
+    /**
+     * Reads the upper horizontal size bound used by layouts.
+     * @returns Maximum width in logical pixels.
+     */
     maximumWidth(): number {
         return this.#m_maximumSize.width();
     }
 
-    /** Returns the minimum height. */
+    /**
+     * Reads the lower vertical size bound used by layouts.
+     * @returns Minimum height in logical pixels.
+     */
     minimumHeight(): number {
         return this.#m_minimumSize.height();
     }
 
-    /** Returns the maximum height. */
+    /**
+     * Reads the upper vertical size bound used by layouts.
+     * @returns Maximum height in logical pixels.
+     */
     maximumHeight(): number {
         return this.#m_maximumSize.height();
     }
 
-    /** Returns the maximum size. */
+    /**
+     * Reads the upper size bounds used by layouts.
+     * @returns A new size containing the maximum width and height.
+     */
     maximumSize(): CSize {
 	    return new CSize(this.#m_maximumSize.width(), this.#m_maximumSize.height());
     }
 
-    /** Sets the minimum size. */
+    /**
+     * Changes the lower layout bounds and updates the enclosing layout. Negative values are clamped to zero. A bound above the corresponding maximum is ignored along with the other bound.
+     * @param width Requested minimum width in logical pixels.
+     * @param height Requested minimum height in logical pixels.
+     */
     setMinimumSize(width: number, height: number): void {
         width = Math.max(0, width);
 	    height = Math.max(0, height);
@@ -689,7 +865,11 @@ export class CWidget extends CObject {
 	    	parent.layout()?.update();
     }
 
-    /** Sets the maximum size. */
+    /**
+     * Changes the upper layout bounds and updates the enclosing layout. Negative values are clamped to zero. A bound below the corresponding minimum is ignored along with the other bound.
+     * @param width Requested maximum width in logical pixels.
+     * @param height Requested maximum height in logical pixels.
+     */
     setMaximumSize(width: number, height: number): void {
         width = Math.max(0, width);
 	    height = Math.max(0, height);
@@ -708,7 +888,11 @@ export class CWidget extends CObject {
 	    	parent.layout()?.update();
     }
 
-    /** Sets the fixed size. */
+    /**
+     * Sets the minimum and maximum layout bounds to the requested dimensions and resizes the widget.
+     * @param width Fixed width in logical pixels.
+     * @param height Fixed height in logical pixels.
+     */
     setFixedSize(width: number, height: number): void {
         this.setMinimumSize(width, height);
         this.setMaximumSize(width, height);
@@ -716,32 +900,60 @@ export class CWidget extends CObject {
         this.resize(width, height);
     }
 
-    /** Whether the preferred height depends on the available width. */
+    /**
+     * Queries the attached layout for width-dependent height, falling back to the size policy when there is no layout.
+     * @returns `true` if the preferred height depends on width.
+     */
     hasHeightForWidth(): boolean {
         return this.#m_layout?.hasHeightForWidth() ?? this.#m_sizePolicy.hasHeightForWidth();
     }
 
-    /** @internal Allows containers to reveal a descendant reached by Tab. */
+    /**
+     * Provides the subclass hook to bring a descendant into view after tab focus moves. The base widget has no viewport to adjust.
+     * @param _widget Descendant receiving tab focus.
+     * @internal
+     */
     revealTabFocus(_widget: CWidget): void {}
 
-    /** @internal */
+    /**
+     * Reads the accepts external files of the widget.
+     * @internal
+     * @returns `false` in this implementation.
+     */
     acceptsExternalFiles(): boolean { return false; }
 
-    /** @internal */
+    /**
+     * Provides the subclass hook for external file drag changed. This implementation does nothing.
+     * @internal
+     * @param _active Active flag. This implementation ignores the argument.
+     */
     externalFileDragChanged(_active: boolean): void {}
 
-    /** @internal */
+    /**
+     * Provides the subclass hook for drop external files. This implementation does nothing.
+     * @internal
+     * @param _files Files. This implementation ignores the argument.
+     */
     dropExternalFiles(_files: readonly File[]): void {}
 
-    /** @internal Returns a touch pan owner, false to stop the search, or null to continue. */
+    /**
+     * Provides the ancestor hook for resolving a touch-scroll target. The base implementation leaves the ancestor search open.
+     * @param _child Direct child on the gesture's hit path.
+     * @returns `null` in the base implementation so the search can continue.
+     * @internal
+     */
     touchScrollAreaFor(_child: CWidget): CScrollArea | false | null { return null; }
 
-    /** Preferred height at the supplied width, or -1 when independent. */
+    /**
+     * Queries the attached layout for the preferred height at a given width.
+     * @param width Available width in logical pixels.
+     * @returns The preferred height in logical pixels, or `-1` when no height is supplied.
+     */
     heightForWidth(width: number): number {
         return this.#m_layout?.heightForWidth(width) ?? -1;
     }
 
-    /** Notifies enclosing layouts after a change to preferred geometry. */
+    /** Updates enclosing layouts recursively after this widget's preferred geometry changes. */
     updateGeometry(): void {
         const parent = this.parent();
         if (parent instanceof CWidget) {
@@ -750,7 +962,10 @@ export class CWidget extends CObject {
         }
     }
 
-    /** Returns the preferred size of the widget. */
+    /**
+     * Queries the attached layout for the preferred size.
+     * @returns The layout's preferred size, or a zero size when there is no layout.
+     */
     sizeHint(): CSize {
         /** Provides if behavior. */
         if (this.#m_layout !== null)
@@ -759,34 +974,50 @@ export class CWidget extends CObject {
 	        return new CSize(0, 0);
     }
 
-    /** Sets the tool tip. */
+    /**
+     * Stores the text used for this widget's tooltip.
+     * @param toolTip Tooltip text. Use an empty string to clear it.
+     */
     setToolTip(toolTip: string): void
 	{
 		this.#m_toolTip = toolTip;
 	}
 
-	/** Provides tool tip behavior. */
+	/**
+	 * Reads the configured tooltip.
+	 * @returns The tooltip text, which may be empty.
+	 */
 	toolTip(): string
 	{
 		return this.#m_toolTip;
 	}
 
-    /** Provides accept drops behavior. */
+    /**
+     * Checks whether the widget is configured as a drop target.
+     * @returns `true` if the widget accepts drop targeting.
+     */
     acceptDrops(): boolean {
 		return this.#m_acceptDrops;
 	}
 
-	/** Sets the accept drops. */
+	/**
+	 * Enables or disables drop targeting for the widget.
+	 * @param accept `true` to allow drop targeting.
+	 */
 	setAcceptDrops(accept: boolean): void {
 		this.#m_acceptDrops = accept;
 	}
 
-    /** Provides update behavior. */
+    /** Schedules an application repaint. */
     update(): void {
         CApplication.instance().requestRepaint();
     }
 
-    /** Provides event behavior. */
+    /**
+     * Dispatches events to the matching widget hook. An input blocker consumes non-focus events except Tab presses. Disabled widgets still receive focus-out events.
+     * @param event Event to dispatch. Its acceptance state may change.
+     * @returns `true` if the blocker consumed the event or the matching handler accepted it. Returns `false` for ignored or unsupported events.
+     */
     event(event: CEvent): boolean {
         if (event.type() !== CEventType.FocusIn && event.type() !== CEventType.FocusOut && this.inputBlocker() !== null) {
             if (event.type() === CEventType.KeyPress && (event as CKeyEvent).key() === "Tab") { event.ignore(); return false; }
@@ -869,7 +1100,12 @@ export class CWidget extends CObject {
 		return false;
 	}
 
-    /** Provides map from canvas behavior. */
+    /**
+     * Converts a canvas point to widget-local coordinates, accounting for positions and child offsets in the hierarchy.
+     * @param x Horizontal canvas coordinate.
+     * @param y Vertical canvas coordinate.
+     * @returns A new point in widget-local coordinates.
+     */
     mapFromCanvas(x: number, y: number): CPoint {
         let widget: CWidget | null = this;
         let localX = x;
@@ -896,7 +1132,12 @@ export class CWidget extends CObject {
         return new CPoint(localX, localY);
     }
 
-    /** Provides map to canvas behavior. */
+    /**
+     * Converts a widget-local point to canvas coordinates, accounting for positions and child offsets in the hierarchy.
+     * @param x Horizontal widget-local coordinate.
+     * @param y Vertical widget-local coordinate.
+     * @returns A new point in canvas coordinates.
+     */
     mapToCanvas(x: number, y: number): CPoint {
 	    let widget: CWidget | null = this;
 	    let canvasX = x;
@@ -919,94 +1160,148 @@ export class CWidget extends CObject {
 	    return new CPoint(canvasX, canvasY);
     }
 
-    /** Handles the paint event. */
+    /**
+     * Provides the subclass drawing hook. The base implementation draws nothing.
+     * @param _painter Painter translated to the widget origin and clipped to its local bounds.
+     */
     protected paintEvent(_painter: CPainter): void {
     }
 
-    /** Handles the mouse press event. */
+    /**
+     * Provides the subclass hook for a pointer button press. The base implementation marks the event ignored.
+     * @param event Event dispatched for a pointer button press.
+     */
     protected mousePressEvent(event: CMouseEvent): void {
         event.ignore();
     }
 
-    /** Handles the mouse release event. */
+    /**
+     * Provides the subclass hook for a pointer button release. The base implementation marks the event ignored.
+     * @param event Event dispatched for a pointer button release.
+     */
     protected mouseReleaseEvent(event: CMouseEvent): void {
         event.ignore();
     }
 
-    /** Handles the mouse double-click event. */
+    /**
+     * Provides the subclass hook for a pointer double click. The base implementation marks the event ignored.
+     * @param event Event dispatched for a pointer double click.
+     */
     protected mouseDoubleClickEvent(event: CMouseEvent): void {
         event.ignore();
     }
 
-    /** Handles the mouse move event. */
+    /**
+     * Provides the subclass hook for pointer movement. The base implementation marks the event ignored.
+     * @param event Event dispatched for pointer movement.
+     */
     protected mouseMoveEvent(event: CMouseEvent): void {
         event.ignore();
     }
 
-    /** Handles the mouse enter event. */
+    /**
+     * Provides the subclass hook for pointer entry. The base implementation marks the event ignored.
+     * @param event Event dispatched for pointer entry.
+     */
     protected mouseEnterEvent(event: CMouseEvent): void {
         event.ignore();
     }
 
-    /** Handles the mouse leave event. */
+    /**
+     * Provides the subclass hook for pointer exit. The base implementation marks the event ignored.
+     * @param event Event dispatched for pointer exit.
+     */
     protected mouseLeaveEvent(event: CMouseEvent): void {
         event.ignore();
     }
 
-    /** Handles the focus in event. */
+    /**
+     * Accepts focus entry and requests repainting to reflect the new focus state.
+     * @param event Event describing how focus entered the widget.
+     */
     protected focusInEvent(event: CFocusEvent): void {
 	    event.accept();
 	    this.update();
     }
 
-    /** Handles the focus out event. */
+    /**
+     * Accepts focus exit and requests repainting to reflect the new focus state.
+     * @param event Event describing how focus left the widget.
+     */
     protected focusOutEvent(event: CFocusEvent): void {
         event.accept();
 	    this.update();
     }
 
-    /** Handles the key press event. */
+    /**
+     * Provides the subclass hook for a key press. The base implementation marks the event ignored.
+     * @param event Event dispatched for a key press.
+     */
     protected keyPressEvent(event: CKeyEvent): void {
         event.ignore();
     }
 
-    /** Handles the key release event. */
+    /**
+     * Provides the subclass hook for a key release. The base implementation marks the event ignored.
+     * @param event Event dispatched for a key release.
+     */
     protected keyReleaseEvent(event: CKeyEvent): void {
         event.ignore();
     }
 
-    /** Handles the wheel event. */
+    /**
+     * Provides the subclass hook for wheel movement. The base implementation marks the event ignored.
+     * @param event Event dispatched for wheel movement.
+     */
     protected wheelEvent(event: CWheelEvent): void {
 	    event.ignore();
     }
 
-    /** Handles the context menu event. */
+    /**
+     * Provides the subclass hook for a context menu request. The base implementation marks the event ignored.
+     * @param event Event dispatched for a context menu request.
+     */
     protected contextMenuEvent(event: CContextMenuEvent): void {
         event.ignore();
     }
 
-    /** Handles child visibility changed behavior. */
+    /**
+     * Updates the layout and requests repainting when a direct child's local visibility changes.
+     * @param _child Child widget whose visibility changed.
+     */
     protected childVisibilityChanged(_child: CWidget): void {
 	    this.#m_layout?.update();
 	    this.update();
     }
 
-	/** Handles the drag enter event. */
+	/**
+	 * Provides the subclass hook for drag entry. The base implementation marks the event ignored.
+	 * @param event Event dispatched for drag entry.
+	 */
 	protected dragEnterEvent(event: CDragEnterEvent): void {
 		event.ignore();
 	}
 
-	/** Handles the drag move event. */
+	/**
+	 * Provides the subclass hook for drag movement. The base implementation marks the event ignored.
+	 * @param event Event dispatched for drag movement.
+	 */
 	protected dragMoveEvent(event: CDragMoveEvent): void {
 		event.ignore();
 	}
 
-	/** Handles the drag leave event. */
+	/**
+	 * Provides the subclass hook for drag exit. The base implementation marks the event ignored.
+	 * @param event Event dispatched for drag exit.
+	 */
 	protected dragLeaveEvent(event: CDragLeaveEvent): void {
 		event.ignore();
 	}
 
-	/** Handles the drop event. */
+	/**
+	 * Provides the subclass hook for a drop. The base implementation marks the event ignored.
+	 * @param event Event dispatched for a drop.
+	 */
 	protected dropEvent(event: CDropEvent): void {
 		event.ignore();
 	}

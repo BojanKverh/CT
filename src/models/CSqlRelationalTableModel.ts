@@ -15,7 +15,11 @@ export class CSqlRelationalTableModel extends CSqlTableModel {
 		super(adapter);
 	}
 
-	/** Assigns or removes the relation for a model column. */
+	/**
+	 * Sets or removes a relation, invalidates that column's lookup rows and emits a reset. Call `select()` to load lookup data.
+	 * @param column Nonnegative integer model-column index.
+	 * @param relation Relation to assign, or `null` or an invalid relation to remove it.
+	 */
 	setRelation(column: number, relation: CSqlRelation | null): void {
 		if (!Number.isInteger(column) || column < 0)
 			return;
@@ -30,18 +34,30 @@ export class CSqlRelationalTableModel extends CSqlTableModel {
 		this.resetModel();
 	}
 
-	/** Returns the relation assigned to a column. */
+	/**
+	 * Looks up the relation configured for a column.
+	 * @param column Zero-based model column.
+	 * @returns The relation, or `null` if unset.
+	 */
 	relation(column: number): CSqlRelation | null {
 		return this.#m_relations.get(column) ?? null;
 	}
 
-	/** Returns independent copies of the loaded records for a relation. */
+	/**
+	 * Reads the cached lookup records for a column.
+	 * @param column Zero-based model column.
+	 * @returns Shallow copies of the loaded lookup records, or an empty array.
+	 */
 	relationRows(column: number): readonly CSqlRow[] {
 		return (this.#m_relationRows.get(column) ?? [])
 			.map(row => ({ ...row }));
 	}
 
-	/** Returns display values in the same order as relationRows(). */
+	/**
+	 * Converts cached display values to strings in lookup row order.
+	 * @param column Zero-based model column.
+	 * @returns Display strings with empty strings for missing values, or an empty array when no lookup is loaded.
+	 */
 	relationDisplayValues(column: number): string[] {
 		const relation = this.relation(column);
 		if (relation === null)
@@ -51,7 +67,12 @@ export class CSqlRelationalTableModel extends CSqlTableModel {
 			String(row[relation.displayColumn()] ?? ""));
 	}
 
-	/** Returns a relation key by its loaded row position. */
+	/**
+	 * Reads the foreign-key value at a loaded lookup position.
+	 * @param column Zero-based model column with a relation.
+	 * @param row Zero-based row in the lookup cache.
+	 * @returns The stored key, or `undefined` if unavailable.
+	 */
 	relationKeyAt(column: number, row: number): unknown {
 		const relation = this.relation(column);
 		if (relation === null)
@@ -62,11 +83,20 @@ export class CSqlRelationalTableModel extends CSqlTableModel {
 		];
 	}
 
-	/** Returns the unformatted value stored by CSqlTableModel. */
+	/**
+	 * Reads the underlying cell without applying a relation lookup.
+	 * @param index Index in this model.
+	 * @returns Raw cell value, or `null` for a missing value.
+	 */
 	rawData(index: CModelIndex): unknown {
 		return super.data(index);
 	}
 
+	/**
+	 * Replaces a stored foreign key with its display value when a matching lookup row supplies one.
+	 * @param index Index in this model.
+	 * @returns The display value, or the raw cell value when no display value is available.
+	 */
 	override data(index: CModelIndex): unknown {
 		const value = super.data(index);
 		const relation = this.relation(index.column());
@@ -78,6 +108,12 @@ export class CSqlRelationalTableModel extends CSqlTableModel {
 		return related?.[relation.displayColumn()] ?? value;
 	}
 
+	/**
+	 * Resolves a relation edit to a stored key. It prefers an exact key match before looking for a matching display value.
+	 * @param index Target index in this model.
+	 * @param value Raw key or display value. Nullish values are forwarded directly.
+	 * @returns `true` if the base model accepts the edit, or `false` if the value cannot be resolved or the cell rejects it.
+	 */
 	override setItemData(index: CModelIndex, value: unknown): boolean {
 		const relation = this.relation(index.column());
 		if (relation === null || value === null || value === undefined)
@@ -101,7 +137,10 @@ export class CSqlRelationalTableModel extends CSqlTableModel {
 		);
 	}
 
-	/** Loads the main table and all configured relation tables. */
+	/**
+	 * Loads the first page of the main table, then loads each configured relation in pages and emits another reset on success.
+	 * @returns A promise resolving to `true` only if the main load and all relation loads succeed.
+	 */
 	override async select(): Promise<boolean> {
 		if (!await super.select())
 			return false;

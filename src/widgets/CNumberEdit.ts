@@ -32,12 +32,31 @@ export class CNumberEdit extends CLineEdit {
         });
     }
 
+    /**
+     * Reads the expression of the number edit.
+     * @returns The expression.
+     */
     expression(): string { return this.text(); }
+    /**
+     * Reads the value.
+     * @returns The value.
+     */
     value(): number { return this.#m_value; }
+    /**
+     * Reads the decimals.
+     * @returns The decimals.
+     */
     decimals(): number { return this.#m_decimals; }
+    /**
+     * Reads the error.
+     * @returns The error.
+     */
     errorString(): string { return this.#m_error; }
 
-    /** Maximum displayed decimal places; trailing zeros are omitted. */
+    /**
+     * Maximum displayed decimal places; trailing zeros are omitted.
+     * @param decimals Decimals.
+     */
     setDecimals(decimals: number): void {
         if (!Number.isFinite(decimals))
             throw new RangeError("Decimal places must be finite.");
@@ -46,9 +65,9 @@ export class CNumberEdit extends CLineEdit {
     }
 
     /**
-     * Sets and evaluates an expression. Forbidden characters reject the whole
-     * assignment. Invalid arithmetic keeps the expression for correction and
-     * leaves value() unchanged. Returns whether evaluation succeeded.
+     * Stores expression input using permitted characters and attempts to evaluate it. An unevaluable expression remains in the editor for correction.
+     * @param expression Expression text to display and evaluate.
+     * @returns `true` if the expression was accepted and evaluated, or `false` for disallowed input or an evaluation error.
      */
     setExpression(expression: string): boolean {
         if (!isNumberExpressionInput(expression)) return false;
@@ -58,16 +77,26 @@ export class CNumberEdit extends CLineEdit {
         return this.commit();
     }
 
+    /**
+     * Routes text assignment through numeric expression validation and evaluation.
+     * @param text Expression text to assign.
+     */
     override setText(text: string): void { this.setExpression(text); }
 
-    /** Replaces the expression with a numeric literal. */
+    /**
+     * Replaces the expression with a numeric literal.
+     * @param value New value.
+     */
     setValue(value: number): void {
         if (!Number.isFinite(value))
             throw new RangeError("The value must be finite.");
         this.setExpression(decimalLiteral(value));
     }
 
-    /** Text currently painted; text()/expression() always return the formula. */
+    /**
+     * Text currently painted; text()/expression() always return the formula.
+     * @returns The display text.
+     */
     override displayText(): string {
         if (this.hasFocus()) return this.expression();
         if (this.hasValidationError()) return "ERR";
@@ -75,12 +104,18 @@ export class CNumberEdit extends CLineEdit {
         return rounded === 0 ? "0" : decimalLiteral(rounded);
     }
 
-    /** Rejects an entire insertion/paste if any character is forbidden. */
+    /**
+     * Inserts text through the line editor only when the fragment contains permitted expression input.
+     * @param text Expression fragment to insert at the cursor or replace the selection.
+     */
     override insert(text: string): void {
         if (isNumberExpressionInput(text)) super.insert(text);
     }
 
-    /** Commits a complete expression without rounding the stored value. */
+    /**
+     * Evaluates the current expression. A successful evaluation clears the validation error and emits `valueChanged` when the numeric value changes.
+     * @returns `true` if evaluation succeeded, or `false` if the expression was invalid.
+     */
     commit(): boolean {
         let value: number;
         try {
@@ -100,6 +135,10 @@ export class CNumberEdit extends CLineEdit {
         return true;
     }
 
+    /**
+     * Responds to a key press for the number edit. May clear focus and accept the event. May emit `returnPressed`, `editingFinished`.
+     * @param event Event for a key press.
+     */
     protected override keyPressEvent(event: CKeyEvent): void {
         if (event.key() === "Enter" || event.key() === "Return") {
             if (this.commit()) {
@@ -121,17 +160,29 @@ export class CNumberEdit extends CLineEdit {
         super.keyPressEvent(event);
     }
 
+    /**
+     * Responds to focus entry for the number edit. May request a repaint.
+     * @param event Event for focus entry.
+     */
     protected override focusInEvent(event: CFocusEvent): void {
         super.focusInEvent(event);
         this.update();
     }
 
+    /**
+     * Responds to focus exit for the number edit. May request a repaint.
+     * @param event Event for focus exit.
+     */
     protected override focusOutEvent(event: CFocusEvent): void {
         this.commit();
         super.focusOutEvent(event);
         this.update();
     }
 
+    /**
+     * Draws the number edit through the supplied painter.
+     * @param painter Painter for the current drawing operation.
+     */
     protected override paintEvent(painter: CPainter): void {
         if (this.hasFocus()) {
             super.paintEvent(painter);

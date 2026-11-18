@@ -24,18 +24,30 @@ export class CWheelEvent extends CEvent {
         this.#m_pos = x !== undefined && y !== undefined && Number.isFinite(x) && Number.isFinite(y) ? new CPoint(x, y) : null;
 	}
 
-    /** Position relative to the receiving widget, or null for legacy delta-only events. */
+    /**
+     * Looks up the optional pointer location associated with the scrolling event.
+     * @returns A copy of the widget-local point, or `null` if both finite coordinates were not supplied.
+     */
     pos(): CPoint | null { return this.#m_pos === null ? null : new CPoint(this.#m_pos.x(), this.#m_pos.y()); }
 
-    /** Returns whether Shift was held during the wheel event. */
+    /**
+     * Reads the Shift modifier recorded for this wheel event.
+     * @returns `true` if the event was created with Shift active.
+     */
     shiftKey(): boolean { return this.#m_shiftKey; }
 
-	/** Returns the horizontal scroll delta. */
+	/**
+	 * Reads the horizontal amount recorded by the wheel event.
+	 * @returns The signed horizontal scroll delta supplied at construction.
+	 */
 	deltaX(): number {
 		return this.#m_deltaX;
 	}
 
-	/** Returns the vertical scroll delta. */
+	/**
+	 * Reads the vertical amount recorded by the wheel event.
+	 * @returns The signed vertical scroll delta supplied at construction.
+	 */
 	deltaY(): number {
 		return this.#m_deltaY;
 	}

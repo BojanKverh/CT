@@ -28,15 +28,21 @@ export class CEvent {
      */
     constructor(type: CEventType) { this.#m_type = type; }
 
-    /** Returns the event type. */
+    /**
+     * Identifies the kind of event to dispatch.
+     * @returns The event type specified at construction.
+     */
     type(): CEventType { return this.#m_type; }
 
-    /** Returns whether the event is accepted. */
+    /**
+     * Checks the mutable acceptance state. New events start accepted.
+     * @returns `true` if the event is currently accepted.
+     */
     isAccepted(): boolean { return this.#m_accepted; }
 
-    /** Marks the event as accepted. */
+    /** Marks the event as handled by the receiver. */
     accept(): void { this.#m_accepted = true; }
 
-    /** Marks the event as ignored. */
+    /** Marks the event as unhandled by the receiver. */
     ignore(): void { this.#m_accepted = false; }
 }

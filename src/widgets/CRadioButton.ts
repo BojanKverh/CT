@@ -16,7 +16,10 @@ export class CRadioButton extends CAbstractButton {
 		this.setText(text);
 	}
 
-	/** Handles the mouse press event. */
+	/**
+	 * Responds to a pointer button press for the radio button. May accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button press.
+	 */
 	protected override mousePressEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
@@ -27,7 +30,10 @@ export class CRadioButton extends CAbstractButton {
 		event.accept();
 	}
 
-	/** Handles the mouse release event. */
+	/**
+	 * Responds to a pointer button release for the radio button. May accept or ignore the event depending on the input. May emit `clicked`.
+	 * @param event Event for a pointer button release.
+	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton || !this.rect().contains(event.pos())) {
@@ -43,7 +49,10 @@ export class CRadioButton extends CAbstractButton {
 		event.accept();
 	}
 
-	/** Handles the key press event. */
+	/**
+	 * Responds to a key press for the radio button. May accept the event. May emit `clicked`.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
 		/** Provides if behavior. */
 		if (event.type() !== CEventType.KeyPress) {
@@ -65,7 +74,10 @@ export class CRadioButton extends CAbstractButton {
 		super.keyPressEvent(event);
 	}
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the radio button through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionRadioButton();
 		option.initFromRadioButton(this);

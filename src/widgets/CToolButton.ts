@@ -30,21 +30,31 @@ export class CToolButton extends CAbstractButton {
 		super(parent);
 	}
 
-	/** Sets the text. */
+	/**
+	 * Changes the caption and switches to text-only styling.
+	 * @param text Text to display.
+	 */
 	override setText(text: string): void {
 		super.setText(text);
 		this.#m_toolButtonStyle = CToolButtonStyle.TextOnly;
 		this.update();
 	}
 
-	/** Sets the icon. */
+	/**
+	 * Sets the icon.
+	 * @param icon Icon.
+	 */
 	setIcon(icon: CIcon | null): void {
 		this.#m_icon = icon;
 		this.#m_toolButtonStyle = CToolButtonStyle.IconOnly;
 		this.update();
 	}
 
-	/** Sets the text and icon. */
+	/**
+	 * Sets the caption and icon and switches to text-under-icon styling.
+	 * @param text Caption displayed below the icon.
+	 * @param icon Icon to display, or `null` for none.
+	 */
 	setTextAndIcon(text: string, icon: CIcon | null): void {
 		super.setText(text);
 		this.#m_icon = icon;
@@ -52,27 +62,42 @@ export class CToolButton extends CAbstractButton {
 		this.update();
 	}
 
-	/** Provides icon behavior. */
+	/**
+	 * Reads the icon.
+	 * @returns The icon.
+	 */
 	icon(): CIcon | null {
 		return this.#m_icon;
 	}
 
-	/** Returns whether the down condition is active. */
+	/**
+	 * Checks whether the tool button is down.
+	 * @returns `true` if the tool button is down, otherwise `false`.
+	 */
 	isDown(): boolean {
 		return this.#m_down;
 	}
 
-	/** Returns whether the hovered condition is active. */
+	/**
+	 * Checks whether the tool button is hovered.
+	 * @returns `true` if the tool button is hovered, otherwise `false`.
+	 */
 	isHovered(): boolean {
 		return this.#m_hovered;
 	}
 
-	/** Provides auto raise behavior. */
+	/**
+	 * Reads whether the tool button uses auto-raise styling.
+	 * @returns `true` if auto-raise is enabled.
+	 */
 	autoRaise(): boolean {
 		return this.#m_autoRaise;
 	}
 
-	/** Sets the auto raise. */
+	/**
+	 * Sets the auto raise.
+	 * @param autoRaise Auto raise flag.
+	 */
 	setAutoRaise(autoRaise: boolean): void {
 		/** Provides if behavior. */
 		if (this.#m_autoRaise === autoRaise)
@@ -82,12 +107,18 @@ export class CToolButton extends CAbstractButton {
 		this.update();
 	}
 
-	/** Provides tool button style behavior. */
+	/**
+	 * Reads the tool button style.
+	 * @returns The tool button style.
+	 */
 	toolButtonStyle(): CToolButtonStyle {
 		return this.#m_toolButtonStyle;
 	}
 
-	/** Sets the tool button style. */
+	/**
+	 * Sets the tool button style.
+	 * @param style Style.
+	 */
 	setToolButtonStyle(style: CToolButtonStyle): void {
 		/** Provides if behavior. */
 		if (this.#m_toolButtonStyle === style)
@@ -97,24 +128,36 @@ export class CToolButton extends CAbstractButton {
 		this.update();
 	}
 
-    /** Provides icon size behavior. */
+    /**
+     * Reads the icon size.
+     * @returns The icon size.
+     */
     iconSize(): CSize {
     	return this.#m_iconSize;
     }
 
-    /** Sets the icon size. */
+    /**
+     * Changes the icon dimensions used for drawing.
+     * @param size Requested icon width and height in logical pixels.
+     */
     setIconSize(size: CSize): void {
 	    this.#m_iconSize = size;
 	    this.update();
     }
 
 
-	/** Provides default action behavior. */
+	/**
+	 * Reads the default action.
+	 * @returns The default action.
+	 */
 	defaultAction(): CAction | null {
 		return this.#m_defaultAction;
 	}
 
-	/** Sets the default action. */
+	/**
+	 * Sets the default action.
+	 * @param action Action.
+	 */
 	setDefaultAction(action: CAction | null): void {
 		/** Provides if behavior. */
 		if (this.#m_defaultAction === action)
@@ -140,7 +183,10 @@ export class CToolButton extends CAbstractButton {
 		this.#syncFromAction();
 	}
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns The size hint.
+	 */
 	override sizeHint(): CSize {
 		const margin = 6;
 		const spacing = 6;
@@ -191,7 +237,10 @@ export class CToolButton extends CAbstractButton {
 		}
 	}
 
-	/** Handles the mouse press event. */
+	/**
+	 * Responds to a pointer button press for the tool button. May update the down. May request a repaint and accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button press.
+	 */
 	protected override mousePressEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
@@ -208,7 +257,10 @@ export class CToolButton extends CAbstractButton {
 			this.startAutoRepeat();
 	}
 
-	/** Handles the mouse release event. */
+	/**
+	 * Responds to a pointer button release for the tool button. May update the down. May request a repaint and accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button release.
+	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
@@ -234,21 +286,30 @@ export class CToolButton extends CAbstractButton {
 			this.stopAutoRepeat();
 	}
 
-	/** Handles the mouse enter event. */
+	/**
+	 * Responds to pointer entry for the tool button. May update the hovered. May accept the event and request a repaint.
+	 * @param event Event for pointer entry.
+	 */
 	protected override mouseEnterEvent(event: CMouseEvent): void {
 		this.#m_hovered = true;
 		event.accept();
 		this.update();
 	}
 
-	/** Handles the mouse leave event. */
+	/**
+	 * Responds to pointer exit for the tool button. May update the hovered. May accept the event and request a repaint.
+	 * @param event Event for pointer exit.
+	 */
 	protected override mouseLeaveEvent(event: CMouseEvent): void {
 		this.#m_hovered = false;
 		event.accept();
 		this.update();
 	}
 
-	/** Handles the key press event. */
+	/**
+	 * Responds to a key press for the tool button. May update the down. May request a repaint and accept or ignore the event depending on the input.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
 		/** Provides if behavior. */
 		if (event.key() === " ") {
@@ -268,7 +329,10 @@ export class CToolButton extends CAbstractButton {
 		event.ignore();
 	}
 
-	/** Handles the key release event. */
+	/**
+	 * Responds to a key release for the tool button. May update the down. May request a repaint and accept or ignore the event depending on the input.
+	 * @param event Event for a key release.
+	 */
 	protected override keyReleaseEvent(event: CKeyEvent): void {
 		/** Provides if behavior. */
 		if (event.key() !== " ") {
@@ -286,7 +350,10 @@ export class CToolButton extends CAbstractButton {
 			this.#trigger();
 	}
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the tool button through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void {
 		
 		const option = new CStyleOptionToolButton();

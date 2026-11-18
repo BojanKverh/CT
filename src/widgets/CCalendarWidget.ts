@@ -55,13 +55,19 @@ export class CCalendarWidget extends CWidget
         this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
-	/** Returns the selected date. */
+	/**
+	 * Returns the selected date.
+	 * @returns A new `Date`.
+	 */
 	selectedDate(): Date
 	{
 		return new Date(this.#m_selectedDate);
 	}
 
-	/** Sets the selected date. */
+	/**
+	 * Sets the selected date.
+	 * @param date Date.
+	 */
 	setSelectedDate(date: Date): void
 	{
 		const value = this.#normalizedDate(date);
@@ -89,13 +95,19 @@ export class CCalendarWidget extends CWidget
 		this.update();
 	}
 
-	/** Returns the minimum date. */
+	/**
+	 * Returns the minimum date.
+	 * @returns A new `Date`.
+	 */
 	minimumDate(): Date
 	{
 		return new Date(this.#m_minimumDate);
 	}
 
-	/** Sets the minimum date. */
+	/**
+	 * Sets the minimum date.
+	 * @param date Date.
+	 */
 	setMinimumDate(date: Date): void
 	{
 		const value = this.#normalizedDate(date);
@@ -117,13 +129,19 @@ export class CCalendarWidget extends CWidget
 		this.update();
 	}
 
-	/** Returns the maximum date. */
+	/**
+	 * Returns the maximum date.
+	 * @returns A new `Date`.
+	 */
 	maximumDate(): Date
 	{
 		return new Date(this.#m_maximumDate);
 	}
 
-	/** Sets the maximum date. */
+	/**
+	 * Sets the maximum date.
+	 * @param date Date.
+	 */
 	setMaximumDate(date: Date): void
 	{
 		const value = this.#normalizedDate(date);
@@ -145,13 +163,19 @@ export class CCalendarWidget extends CWidget
 		this.update();
 	}
 
-	/** Provides year shown behavior. */
+	/**
+	 * Reads the shown year.
+	 * @returns The shown year.
+	 */
 	yearShown(): number
 	{
 		return this.#m_shownYear;
 	}
 
-	/** Provides month shown behavior. */
+	/**
+	 * Reads the month shown of the calendar widget.
+	 * @returns The month shown.
+	 */
 	monthShown(): number
 	{
 		return this.#m_shownMonth + 1;
@@ -205,7 +229,11 @@ export class CCalendarWidget extends CWidget
 		);
 	}
 
-	/** Sets the current page. */
+	/**
+	 * Sets the current page.
+	 * @param year Year.
+	 * @param month Month.
+	 */
 	setCurrentPage(year: number, month: number): void
 	{
 		/** Provides if behavior. */
@@ -215,20 +243,32 @@ export class CCalendarWidget extends CWidget
 		this.#setCurrentPageInternal(year, month - 1);
 	}
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns A new `CSize`.
+	 */
 	override sizeHint(): CSize
 	{
 		return new CSize(240, 200);
 	}
 
-	/** Sets the geometry. */
+	/**
+	 * Sets the geometry.
+	 * @param x Horizontal position in parent coordinates.
+	 * @param y Vertical position in parent coordinates.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override setGeometry(x: number, y: number, width: number, height: number): void
 	{
 		super.setGeometry(x, y, width, height);
 		this.#updateButtonGeometry();
 	}
 
-	/** Handles the mouse release event. */
+	/**
+	 * Responds to a pointer button release for the calendar widget. May update the shown year, the shown month. May request a repaint and accept or ignore the event depending on the input. May emit `clicked`, `currentPageChanged`.
+	 * @param event Event for a pointer button release.
+	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void
 	{
        /** Provides if behavior. */
@@ -273,7 +313,10 @@ export class CCalendarWidget extends CWidget
 		this.update();
 	}
 
-    /** Handles the mouse move event. */
+    /**
+     * Responds to pointer movement for the calendar widget. May update the hover date. May request a repaint and accept the event.
+     * @param event Event for pointer movement.
+     */
     protected override mouseMoveEvent(event: CMouseEvent): void {
         const pos = event.pos();
         const date = this.#dateAt(pos.x(), pos.y());
@@ -285,7 +328,10 @@ export class CCalendarWidget extends CWidget
         event.accept();
     }
 
-    /** Handles the mouse leave event. */
+    /**
+     * Responds to pointer exit for the calendar widget. May update the hover date. May request a repaint and accept or ignore the event depending on the input.
+     * @param event Event for pointer exit.
+     */
     protected override mouseLeaveEvent(event: CMouseEvent): void {
         /** Provides if behavior. */
         if (this.#m_hoverDate === null) {
@@ -297,7 +343,10 @@ export class CCalendarWidget extends CWidget
         }
     }
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the calendar widget through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void
 	{
 		const palette = this.palette();

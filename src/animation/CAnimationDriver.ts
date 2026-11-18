@@ -5,8 +5,17 @@ export class CAnimationDriver {
     static #dispatching = false;
     static #ticket = 0;
 
+    /**
+     * Reads the monotonic clock used for playback.
+     * @returns Current timestamp in milliseconds on the `performance.now()` time base.
+     */
     static now(): number { return performance.now(); }
 
+    /**
+     * Registers a callback for shared frame ticks and starts scheduling when needed.
+     * @param tick Callback receiving the frame timestamp in milliseconds.
+     * @returns A function that unregisters the callback and cancels scheduling if no callbacks remain.
+     */
     static add(tick: (now: number) => void): () => void {
         this.#ticks.add(tick);
         this.#schedule();

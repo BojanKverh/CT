@@ -29,17 +29,26 @@ export class CContextMenuEvent extends CEvent {
 		this.#m_globalPos = globalPos;
 	}
 
-	/** Returns the reason the context menu was requested. */
+	/**
+	 * Identifies what triggered the menu request.
+	 * @returns The mouse or keyboard reason recorded for the event.
+	 */
 	reason(): CContextMenuReason {
 		return this.#m_reason;
 	}
 
-	/** Returns the position relative to the receiving widget. */
+	/**
+	 * Looks up the menu request location in the receiving widget.
+	 * @returns The stored point in widget-local coordinates.
+	 */
 	pos(): CPoint {
 		return this.#m_pos;
 	}
 
-	/** Returns the position in global canvas coordinates. */
+	/**
+	 * Looks up the menu request location on the canvas.
+	 * @returns The stored point in canvas coordinates.
+	 */
 	globalPos(): CPoint {
 		return this.#m_globalPos;
 	}

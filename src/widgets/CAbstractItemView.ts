@@ -36,12 +36,18 @@ export abstract class CAbstractItemView extends CWidget {
 		this.#connectDelegate(this.#m_itemDelegate);
 	}
 
-	/** Returns the current model. */
+	/**
+	 * Returns the current model.
+	 * @returns The model.
+	 */
 	model(): CAbstractItemModel | null {
 		return this.#m_model;
 	}
 
-	/** Sets the model used by the view. */
+	/**
+	 * Sets the model used by the view.
+	 * @param model Model.
+	 */
 	setModel(model: CAbstractItemModel | null): void {
 		if (this.#m_model === model)
 			return;
@@ -112,18 +118,27 @@ export abstract class CAbstractItemView extends CWidget {
 		this.modelChanged(oldModel, model);
 	}
 
-	/** Returns the selection model. */
+	/**
+	 * Returns the selection model.
+	 * @returns The selection model.
+	 */
 	selectionModel(): CItemSelectionModel | null {
 		return this.#m_selectionModel;
 	}
 
-	/** Returns the current index. */
+	/**
+	 * Returns the current index.
+	 * @returns The current index.
+	 */
 	currentIndex(): CModelIndex {
 		return this.#m_selectionModel?.currentIndex()
 			?? new CModelIndex();
 	}
 
-	/** Sets the current index. */
+	/**
+	 * Updates the selection model's current index and invokes the view's current-index hook. A valid foreign index is ignored.
+	 * @param index Index owned by the view's model, or an invalid index to clear the current item.
+	 */
 	setCurrentIndex(index: CModelIndex): void {
 		if (this.#m_selectionModel === null)
 			return;
@@ -135,12 +150,18 @@ export abstract class CAbstractItemView extends CWidget {
 		this.currentIndexChanged(index);
 	}
 
-	/** Returns the default item delegate. */
+	/**
+	 * Returns the default item delegate.
+	 * @returns The item delegate.
+	 */
 	itemDelegate(): CAbstractItemDelegate {
 		return this.#m_itemDelegate;
 	}
 
-	/** Sets the default item delegate. */
+	/**
+	 * Sets the default item delegate.
+	 * @param delegate Delegate.
+	 */
 	setItemDelegate(delegate: CAbstractItemDelegate): void {
 		if (this.#m_itemDelegate === delegate)
 			return;
@@ -150,7 +171,11 @@ export abstract class CAbstractItemView extends CWidget {
 		this.#connectDelegate(delegate);
 	}
 
-	/** Sets the delegate used for a row. */
+	/**
+	 * Sets the delegate used for a row.
+	 * @param row Zero-based row.
+	 * @param delegate Delegate.
+	 */
 	setItemDelegateForRow(
 		row: number,
 		delegate: CAbstractItemDelegate | null
@@ -166,7 +191,11 @@ export abstract class CAbstractItemView extends CWidget {
 		this.#connectDelegate(delegate);
 	}
 
-	/** Sets the delegate used for a column. */
+	/**
+	 * Sets the delegate used for a column.
+	 * @param column Zero-based column.
+	 * @param delegate Delegate.
+	 */
 	setItemDelegateForColumn(
 		column: number,
 		delegate: CAbstractItemDelegate | null
@@ -182,14 +211,22 @@ export abstract class CAbstractItemView extends CWidget {
 		this.#connectDelegate(delegate);
 	}
 
-	/** Returns the delegate used for an index. */
+	/**
+	 * Resolves the row delegate first, then the column delegate and finally the default delegate.
+	 * @param index Index whose row and column identify delegate overrides.
+	 * @returns Delegate that should handle the item.
+	 */
 	itemDelegateForIndex(index: CModelIndex): CAbstractItemDelegate {
 		return this.#m_rowDelegates.get(index.row())
 			?? this.#m_columnDelegates.get(index.column())
 			?? this.#m_itemDelegate;
 	}
 
-	/** Starts editing an item through its delegate. */
+	/**
+	 * Opens the delegate editor for an editable item. If another item is being edited, commits and closes its editor first.
+	 * @param index Valid index owned by the current model.
+	 * @returns `true` if the item already had the active editor or an editor was opened. Returns `false` for an invalid, foreign or read-only item, or if the delegate supplies no editor.
+	 */
 	edit(index: CModelIndex): boolean {
 		const model = this.#m_model;
 
@@ -227,13 +264,24 @@ export abstract class CAbstractItemView extends CWidget {
 		return true;
 	}
 
-	/** Returns the item rectangle in editor-parent coordinates. */
+	/**
+	 * Computes the item bounds used to position an editor.
+	 * @param index Index to locate in the view.
+	 * @returns Item bounds in editor-parent coordinates.
+	 */
 	abstract visualRect(index: CModelIndex): CRect;
 
-	/** Returns the widget used as editor parent. */
+	/**
+	 * Returns the widget used as editor parent.
+	 * @returns The editor parent.
+	 */
 	protected abstract editorParent(): CWidget;
 
-	/** Called after the model changes. */
+	/**
+	 * Called after the model changes.
+	 * @param _oldModel Old model. This implementation ignores the argument.
+	 * @param _newModel New model. This implementation ignores the argument.
+	 */
 	protected modelChanged(
 		_oldModel: CAbstractItemModel | null,
 		_newModel: CAbstractItemModel | null
@@ -256,7 +304,12 @@ export abstract class CAbstractItemView extends CWidget {
 		this.update();
 	}
 
-	/** Called after rows are inserted into the current model. */
+	/**
+	 * Called after rows are inserted into the current model.
+	 * @param _parent Owning object or parent item. This implementation ignores the argument.
+	 * @param _first First. This implementation ignores the argument.
+	 * @param _last Last. This implementation ignores the argument.
+	 */
 	protected modelRowsInserted(
 		_parent: CModelIndex,
 		_first: number,
@@ -265,7 +318,12 @@ export abstract class CAbstractItemView extends CWidget {
 		this.update();
 	}
 
-	/** Called after rows are removed from the current model. */
+	/**
+	 * Called after rows are removed from the current model.
+	 * @param _parent Owning object or parent item. This implementation ignores the argument.
+	 * @param _first First. This implementation ignores the argument.
+	 * @param _last Last. This implementation ignores the argument.
+	 */
 	protected modelRowsRemoved(
 		_parent: CModelIndex,
 		_first: number,
@@ -274,6 +332,10 @@ export abstract class CAbstractItemView extends CWidget {
 		this.update();
 	}
 
+	/**
+	 * Commits and closes an active editor if the new current index differs from its item, then requests repainting.
+	 * @param index New current model index.
+	 */
 	protected currentIndexChanged(index: CModelIndex): void {
 		if (this.#m_editor !== null
 			&& !this.#m_editorIndex.equals(index)) {

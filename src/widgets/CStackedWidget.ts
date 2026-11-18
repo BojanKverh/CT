@@ -17,13 +17,22 @@ export class CStackedWidget extends CFrame {
 		super(parent);
 	}
 
-	/** Adds widget. */
+	/**
+	 * Appends a page or returns its existing position if already registered.
+	 * @param widget Page widget to add.
+	 * @returns Zero-based page index.
+	 */
 	addWidget(widget: CWidget): number
 	{
 		return this.insertWidget(this.#m_widgets.length, widget);
 	}
 
-	/** Inserts widget. */
+	/**
+	 * Inserts a page, reparents it and sizes it to the stack. Preserves the current widget when one exists.
+	 * @param index Zero-based insertion position, clamped to the range from zero to the current count.
+	 * @param widget Page widget to insert.
+	 * @returns Inserted index or the existing index when the widget was already registered.
+	 */
 	insertWidget(index: number, widget: CWidget): number
 	{
 		const existingIndex = this.indexOf(widget);
@@ -56,7 +65,11 @@ export class CStackedWidget extends CFrame {
 		return index;
 	}
 
-	/** Removes widget. */
+	/**
+	 * Removes, hides and detaches a page without destroying it. Updates the current page when needed.
+	 * @param index Zero-based page index.
+	 * @returns Detached widget, or `null` if the index is out of range.
+	 */
 	removeWidget(index: number): CWidget | null
 	{
 		/** Provides if behavior. */
@@ -98,19 +111,28 @@ export class CStackedWidget extends CFrame {
 		return widget;
 	}
 
-	/** Provides count behavior. */
+	/**
+	 * Counts the entries in the stacked widget.
+	 * @returns The number of entries in the widgets.
+	 */
 	count(): number
 	{
 		return this.#m_widgets.length;
 	}
 
-	/** Returns the current index. */
+	/**
+	 * Returns the current index.
+	 * @returns The current index.
+	 */
 	currentIndex(): number
 	{
 		return this.#m_currentIndex;
 	}
 
-	/** Returns the current widget. */
+	/**
+	 * Looks up the widget currently presented by the stack.
+	 * @returns The active page, or `null` when no page is active.
+	 */
 	currentWidget(): CWidget | null
 	{
 		/** Provides if behavior. */
@@ -120,19 +142,30 @@ export class CStackedWidget extends CFrame {
 		return this.#m_widgets[this.#m_currentIndex] ?? null;
 	}
 
-	/** Provides index of behavior. */
+	/**
+	 * Finds a registered page by widget identity.
+	 * @param widget Page widget to look up.
+	 * @returns Zero-based page index, or `-1` if the widget is not registered.
+	 */
 	indexOf(widget: CWidget): number
 	{
 		return this.#m_widgets.indexOf(widget);
 	}
 
-	/** Provides widget behavior. */
+	/**
+	 * Looks up a registered page without making it current.
+	 * @param index Zero-based page index.
+	 * @returns The page widget, or `null` if the index is absent.
+	 */
 	widget(index: number): CWidget | null
 	{
 		return this.#m_widgets[index] ?? null;
 	}
 
-	/** Sets the current index. */
+	/**
+	 * Sets the current index.
+	 * @param index Zero-based item index.
+	 */
 	setCurrentIndex(index: number): void
 	{
 		/** Provides if behavior. */
@@ -156,7 +189,10 @@ export class CStackedWidget extends CFrame {
 		this.update();
 	}
 
-	/** Sets the current widget. */
+	/**
+	 * Makes a registered page current through the index-based selection rules. Unregistered widgets are ignored.
+	 * @param widget Page widget to show.
+	 */
 	setCurrentWidget(widget: CWidget): void
 	{
 		const index = this.indexOf(widget);
@@ -166,7 +202,13 @@ export class CStackedWidget extends CFrame {
 			this.setCurrentIndex(index);
 	}
 
-	/** Sets the geometry. */
+	/**
+	 * Sets the geometry.
+	 * @param x Horizontal position in parent coordinates.
+	 * @param y Vertical position in parent coordinates.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override setGeometry(
 		x: number, y: number, width: number, height: number
 	): void

@@ -50,28 +50,25 @@ constructor(text = "") {
 	}
 
 		/**
-	 * Returns the document contents as plain text.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Reads the stored document without formatting markup.
+ * @returns Plain text, including line breaks.
+ */
 toPlainText(): string {
 		return this.#m_text;
 	}
 
 		/**
-	 * Returns the number of characters in the document.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Measures the stored text in the units used for document offsets.
+ * @returns Number of UTF-16 code units.
+ */
 length(): number {
 		return this.#m_text.length;
 	}
 
 		/**
-	 * Creates an independent copy of this object.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Copies the text and deep-copies its character-format ranges.
+ * @returns An independent document with the same text and formatting.
+ */
 clone(): CTextDocument {
 		const document = new CTextDocument();
 
@@ -84,10 +81,9 @@ clone(): CTextDocument {
 	}
 
 		/**
-	 * Replaces the document contents with plain text.
-	 *
-	 * @param text Text.
-	 */
+ * Replaces all text and resets formatting to the default.
+ * @param text New plain contents, or an empty string to clear the document.
+ */
 setPlainText(text: string): void {
 		this.#m_text = text;
 		this.#m_ranges = text.length === 0
@@ -99,19 +95,16 @@ setPlainText(text: string): void {
 			}];
 	}
 
-		/**
-	 * Clears the current contents.
-	 */
+		/** Removes all text and character-format ranges. */
 clear(): void {
 		this.#m_text = "";
 		this.#m_ranges = [];
 	}
 
 		/**
-	 * Returns the character-format ranges in the document.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Lists the character-format runs in document order.
+ * @returns A new array of UTF-16 ranges with independent format copies.
+ */
 formatRanges(): readonly CTextFormatRange[] {
 		return this.#m_ranges.map(range => ({
 			start: range.start,
@@ -121,12 +114,10 @@ formatRanges(): readonly CTextFormatRange[] {
 	}
 
 		/**
-	 * Returns the character format at the specified position.
-	 *
-	 * @param position Position.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Reads the format at a document offset. Negative offsets and offsets beyond the end throw `RangeError`.
+ * @param position UTF-16 offset. An offset equal to the length reads the last range's format.
+ * @returns A copy of the matching format, or a new default format if none applies.
+ */
 charFormatAt(position: number): CTextCharFormat {
 		if (position < 0 || position > this.#m_text.length)
 			throw new RangeError("Text position is out of range.");
@@ -145,12 +136,11 @@ charFormatAt(position: number): CTextCharFormat {
 	}
 
 		/**
-	 * Inserts text at the specified position.
-	 *
-	 * @param position Position.
-	 * @param text Text.
-	 * @param format Format.
-	 */
+ * Inserts text and adjusts the stored ranges, merging consecutive runs with equal formats.
+ * @param position Integer UTF-16 insertion offset from zero through the document length.
+ * @param text Plain text to insert. An empty string leaves the document unchanged.
+ * @param format Explicit format to copy, or `null` to inherit from the preceding character, the first character at offset zero, or the default for an empty document.
+ */
 insert(
 		position: number,
 		text: string,
@@ -208,11 +198,10 @@ insert(
 	}
 
 		/**
-	 * Removes a range of text from the document.
-	 *
-	 * @param start Start.
-	 * @param length Length.
-	 */
+ * Deletes text and closes the gap in its character-format ranges.
+ * @param start Nonnegative integer start offset in UTF-16 code units.
+ * @param length Nonnegative number of code units to remove. The range must lie within the document.
+ */
 remove(start: number, length: number): void {
 		this.#checkRange(start, length);
 
@@ -261,12 +250,11 @@ remove(start: number, length: number): void {
 	}
 
 		/**
-	 * Applies a character format to a range of text.
-	 *
-	 * @param start Start.
-	 * @param length Length.
-	 * @param format Format.
-	 */
+ * Replaces the formatting across a document range without modifying its text.
+ * @param start Nonnegative integer start offset in UTF-16 code units.
+ * @param length Nonnegative number of code units to format. The range must lie within the document.
+ * @param format Format to copy into the affected range.
+ */
 setCharFormat(
 		start: number,
 		length: number,

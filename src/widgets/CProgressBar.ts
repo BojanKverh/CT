@@ -15,32 +15,51 @@ export class CProgressBar extends CWidget {
 		super(parent);
 	}
 
-	/** Returns the minimum . */
+	/**
+	 * Returns the minimum .
+	 * @returns The minimum.
+	 */
 	minimum(): number {
 		return this.#m_minimum;
 	}
 
-	/** Returns the maximum . */
+	/**
+	 * Returns the maximum .
+	 * @returns The maximum.
+	 */
 	maximum(): number {
 		return this.#m_maximum;
 	}
 
-	/** Provides value behavior. */
+	/**
+	 * Reads the value.
+	 * @returns The value.
+	 */
 	value(): number {
 		return this.#m_value;
 	}
 
-	/** Sets the minimum. */
+	/**
+	 * Sets the minimum.
+	 * @param minimum Minimum.
+	 */
 	setMinimum(minimum: number): void {
 		this.setRange(minimum, this.#m_maximum);
 	}
 
-	/** Sets the maximum. */
+	/**
+	 * Sets the maximum.
+	 * @param maximum Maximum.
+	 */
 	setMaximum(maximum: number): void {
 		this.setRange(this.#m_minimum, maximum);
 	}
 
-	/** Sets the range. */
+	/**
+	 * Sets the range.
+	 * @param minimum Minimum.
+	 * @param maximum Maximum.
+	 */
 	setRange(minimum: number, maximum: number): void {
 		/** Provides if behavior. */
 		if (minimum > maximum)
@@ -60,7 +79,10 @@ export class CProgressBar extends CWidget {
 		this.update();
 	}
 
-	/** Sets the value. */
+	/**
+	 * Sets the value.
+	 * @param value New value.
+	 */
 	setValue(value: number): void {
 		const clamped = Math.max(
 			this.#m_minimum,
@@ -75,17 +97,23 @@ export class CProgressBar extends CWidget {
 		this.update();
 	}
 
-    /** Provides reset behavior. */
+    /** Returns progress to the configured minimum. */
     reset(): void {
 		this.setValue(this.#m_minimum);
 	}
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns A new `CSize`.
+	 */
 	override sizeHint(): CSize {
 		return new CSize(200, 30);
 	}
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the progress bar through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionProgressBar();
 		option.initFromProgressBar(this);

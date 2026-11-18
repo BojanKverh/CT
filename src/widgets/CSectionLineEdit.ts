@@ -41,7 +41,10 @@ export class CSectionLineEdit extends CLineEdit
 		this.setReadOnly(true);
 	}
 
-	/** Provides sections behavior. */
+	/**
+	 * Reads the sections of the section line edit.
+	 * @returns The sections.
+	 */
 	sections(): readonly CLineEditSection[]
 	{
 		return this.#m_sections.map(section => ({
@@ -50,7 +53,10 @@ export class CSectionLineEdit extends CLineEdit
 		}));
 	}
 
-	/** Sets the sections. */
+	/**
+	 * Sets the sections.
+	 * @param sections Sections.
+	 */
 	setSections(sections: CLineEditSection[]): void
 	{
 		this.#m_sections = sections.map(section => ({
@@ -69,13 +75,19 @@ export class CSectionLineEdit extends CLineEdit
 		this.#updateSelection();
 	}
 
-	/** Returns the current section. */
+	/**
+	 * Returns the current section.
+	 * @returns The current section.
+	 */
 	currentSection(): number
 	{
 		return this.#m_currentSection;
 	}
 
-	/** Sets the current section. */
+	/**
+	 * Sets the current section.
+	 * @param section Section.
+	 */
 	setCurrentSection(section: number): void
 	{
         /** Provides if behavior. */
@@ -94,13 +106,19 @@ export class CSectionLineEdit extends CLineEdit
 		this.sectionChanged.emit(section);
 	}
 
-    /** Handles the focus out event. */
+    /**
+     * Responds to focus exit for the section line edit. May accept the event.
+     * @param event Event for focus exit.
+     */
     protected override focusOutEvent(event: CFocusEvent): void {
         this.clearSelection();
         event.accept();
     }
 
-	/** Handles the mouse press event. */
+	/**
+	 * Responds to a pointer button press for the section line edit. May request focus and accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button press.
+	 */
 	protected override mousePressEvent(event: CMouseEvent): void
 	{
 		/** Provides if behavior. */
@@ -123,13 +141,19 @@ export class CSectionLineEdit extends CLineEdit
 		event.accept();
 	}
 
-	/** Handles the mouse move event. */
+	/**
+	 * Responds to pointer movement for the section line edit. May mark the event ignored.
+	 * @param event Event for pointer movement.
+	 */
 	protected override mouseMoveEvent(event: CMouseEvent): void
 	{
 		event.ignore();
 	}
 
-	/** Handles the mouse release event. */
+	/**
+	 * Responds to a pointer button release for the section line edit. May accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button release.
+	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void
 	{
 		/** Provides if behavior. */
@@ -141,7 +165,10 @@ export class CSectionLineEdit extends CLineEdit
 		event.accept();
 	}
 
-	/** Handles the key press event. */
+	/**
+	 * Responds to a key press for the section line edit. May accept or ignore the event depending on the input. May emit `digitEntered`, `stepRequested`.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void
 	{
 		/** Provides if behavior. */

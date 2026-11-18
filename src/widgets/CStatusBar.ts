@@ -30,12 +30,19 @@ export class CStatusBar extends CWidget {
 		});
 	}
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns A new `CSize`.
+	 */
 	override sizeHint(): CSize {
 		return new CSize(0, CStatusBar.DefaultHeight);
 	}
 
-	/** Adds widget. */
+	/**
+	 * Appends a normal widget, reparents it to the status bar and updates item geometry.
+	 * @param widget Widget to add to the normal area.
+	 * @returns The same widget instance.
+	 */
 	addWidget(widget: CWidget): CWidget {
 		widget.setParent(this);
 
@@ -45,7 +52,11 @@ export class CStatusBar extends CWidget {
 		return widget;
 	}
 
-	/** Adds permanent widget. */
+	/**
+	 * Appends a permanent widget, reparents it to the status bar and updates item geometry.
+	 * @param widget Widget to add to the permanent area.
+	 * @returns The same widget instance.
+	 */
 	addPermanentWidget(widget: CWidget): CWidget {
 		widget.setParent(this);
 
@@ -55,7 +66,10 @@ export class CStatusBar extends CWidget {
 		return widget;
 	}
 
-	/** Removes widget. */
+	/**
+	 * Removes a registered normal or permanent widget and detaches it without destroying it.
+	 * @param widget Widget to remove.
+	 */
 	removeWidget(widget: CWidget): void {
 		let index = this.#m_widgets.indexOf(widget);
 
@@ -83,12 +97,19 @@ export class CStatusBar extends CWidget {
 		this.update();
 	}
 
-	/** Returns the current message. */
+	/**
+	 * Returns the current message.
+	 * @returns The current message.
+	 */
 	currentMessage(): string {
 		return this.#m_currentMessage;
 	}
 
-	/** Shows message. */
+	/**
+	 * Shows message.
+	 * @param message Message.
+	 * @param timeout Timeout. Defaults to `0`.
+	 */
 	showMessage(message: string, timeout = 0): void {
 		this.#stopMessageTimer();
 
@@ -126,7 +147,13 @@ export class CStatusBar extends CWidget {
 		this.update();
 	}
 
-	/** Sets the geometry. */
+	/**
+	 * Sets the geometry.
+	 * @param x Horizontal position in parent coordinates.
+	 * @param y Vertical position in parent coordinates.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override setGeometry(
 		x: number,
 		y: number,
@@ -138,14 +165,21 @@ export class CStatusBar extends CWidget {
 		this.#updateItemGeometry();
 	}
 
-	/** Provides resize behavior. */
+	/**
+	 * Resizes the width.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 
 		this.#updateItemGeometry();
 	}
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the status bar through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void {
         const palette = this.palette();
 

@@ -28,12 +28,19 @@ export class CSizeGrip extends CWidget
         this.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
-    /** Hiding or disabling a grip terminates any active pointer resize. */
+    /**
+     * Hiding or disabling a grip terminates any active pointer resize.
+     * @param visible Whether to show the target.
+     */
     override setVisible(visible: boolean): void {
         if (!visible) this.#cancelResize();
         super.setVisible(visible);
     }
 
+    /**
+     * Sets the enabled.
+     * @param enabled Whether to enable the feature.
+     */
     override setEnabled(enabled: boolean): void {
         if (!enabled) this.#cancelResize();
         super.setEnabled(enabled);
@@ -45,13 +52,19 @@ export class CSizeGrip extends CWidget
             CApplication.instance().releaseMouse();
     }
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns A new `CSize`.
+	 */
 	override sizeHint(): CSize
 	{
 		return new CSize(16, 16);
 	}
 
-	/** Handles the mouse press event. */
+	/**
+	 * Responds to a pointer button press for the size grip. May update the pressed, the press x, the press y, the press width. May accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button press.
+	 */
 	protected override mousePressEvent(event: CMouseEvent): void
 	{
 		/** Provides if behavior. */
@@ -79,7 +92,10 @@ export class CSizeGrip extends CWidget
 		event.accept();
 	}
 
-	/** Handles the mouse move event. */
+	/**
+	 * Responds to pointer movement for the size grip. May accept or ignore the event depending on the input.
+	 * @param event Event for pointer movement.
+	 */
 	protected override mouseMoveEvent(event: CMouseEvent): void
 	{
 		/** Provides if behavior. */
@@ -117,7 +133,10 @@ export class CSizeGrip extends CWidget
 		event.accept();
 	}
 
-	/** Handles the mouse release event. */
+	/**
+	 * Responds to a pointer button release for the size grip. May update the pressed. May accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button release.
+	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void
 	{
 		/** Provides if behavior. */
@@ -131,7 +150,10 @@ export class CSizeGrip extends CWidget
 		event.accept();
 	}
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the size grip through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionSizeGrip();
 		option.initFromSizeGrip(this);

@@ -17,7 +17,14 @@ export abstract class CAbstractItemDelegate extends CObject {
 	/** Emitted when an editor wants to be closed. */
 	readonly closeEditor = new CSignal<[CWidget]>();
 
-	/** Paints an item and returns whether the delegate handled it. */
+	/**
+	 * Provides the custom cell-drawing hook. The base implementation leaves drawing to the view.
+	 * @param _painter Painter to use for the cell.
+	 * @param _rect Cell bounds in view content coordinates.
+	 * @param _index Model index supplying the cell value.
+	 * @param _widget View widget supplying the visual context.
+	 * @returns `false` in the base implementation, meaning the delegate did not paint the cell.
+	 */
 	paint(
 		_painter: CPainter,
 		_rect: CRect,
@@ -27,7 +34,14 @@ export abstract class CAbstractItemDelegate extends CObject {
 		return false;
 	}
 
-	/** Handles an item event and returns whether it was consumed. */
+	/**
+	 * Provides the inline edit event hook. The base implementation leaves the event unhandled.
+	 * @param _event Event offered to the cell.
+	 * @param _model Model containing the cell.
+	 * @param _index Index of the target cell.
+	 * @param _rect Cell rectangle used for hit testing.
+	 * @returns `false` in the base implementation.
+	 */
 	editorEvent(
 		_event: CEvent,
 		_model: CAbstractItemModel,
@@ -38,10 +52,10 @@ export abstract class CAbstractItemDelegate extends CObject {
 	}
 
 	/**
-	 * Creates an editor for an item.
-	 *
-	 * @param parent Parent widget for the editor.
-	 * @param index Model index being edited.
+	 * Creates an editor for a model cell when this delegate supports a separate editor.
+	 * @param parent Parent widget that will own the editor.
+	 * @param index Model index of the cell to edit.
+	 * @returns New editor widget, or `null` when the delegate supplies no editor.
 	 */
 	abstract createEditor(
 		parent: CWidget,
@@ -49,7 +63,9 @@ export abstract class CAbstractItemDelegate extends CObject {
 	): CWidget | null;
 
 	/**
-	 * Copies model data into an editor.
+	 * Loads the model value into an editor created by the delegate.
+	 * @param editor Editor to populate.
+	 * @param index Model index supplying the initial value.
 	 */
 	abstract setEditorData(
 		editor: CWidget,
@@ -57,7 +73,10 @@ export abstract class CAbstractItemDelegate extends CObject {
 	): void;
 
 	/**
-	 * Writes editor data back to the model.
+	 * Writes the editor's current value to the model cell.
+	 * @param editor Editor containing the edited value.
+	 * @param model Model to update.
+	 * @param index Index of the destination cell.
 	 */
 	abstract setModelData(
 		editor: CWidget,
@@ -65,12 +84,18 @@ export abstract class CAbstractItemDelegate extends CObject {
 		index: CModelIndex
 	): void;
 
-	/** Called after an editor has been positioned, shown and focused. */
+	/**
+	 * Provides a hook for post-show actions such as displaying an editor popup. The base implementation has no effect.
+	 * @param _editor Editor just shown by the view.
+	 * @param _index Index of the cell being edited.
+	 */
 	editorShown(_editor: CWidget, _index: CModelIndex): void {
 	}
 
 	/**
 	 * Updates the editor geometry to match an item rectangle.
+	 * @param editor Editor.
+	 * @param rect Rectangle defining the bounds.
 	 */
 	updateEditorGeometry(editor: CWidget, rect: CRect): void {
 		editor.setGeometry(

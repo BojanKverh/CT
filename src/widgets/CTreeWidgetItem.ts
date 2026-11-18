@@ -9,7 +9,11 @@ export class CTreeWidgetItem {
 		this.#m_texts = [...texts];
 	}
 
-	/** Provides text behavior. */
+	/**
+	 * Reads the display text stored for a column.
+	 * @param column Zero-based column.
+	 * @returns Column text, or an empty string if none is stored.
+	 */
 	text(column: number): string {
 		/** Provides if behavior. */
 		if (column < 0)
@@ -18,7 +22,11 @@ export class CTreeWidgetItem {
 		return this.#m_texts[column] ?? "";
 	}
 
-	/** Sets the text. */
+	/**
+	 * Stores display text in a column, filling intervening columns with empty strings as needed.
+	 * @param column Nonnegative zero-based column index.
+	 * @param text Text to display in that column.
+	 */
 	setText(column: number, text: string): void {
 		/** Provides if behavior. */
 		if (column < 0)
@@ -31,37 +39,61 @@ export class CTreeWidgetItem {
 		this.#m_texts[column] = text;
 	}
 
-	/** Provides column count behavior. */
+	/**
+	 * Reads the number of entries in the texts.
+	 * @returns The number of entries in the texts.
+	 */
 	columnCount(): number {
 		return this.#m_texts.length;
 	}
 
-	/** Provides parent behavior. */
+	/**
+	 * Reads the parent.
+	 * @returns The parent.
+	 */
 	parent(): CTreeWidgetItem | null {
 		return this.#m_parent;
 	}
 
-	/** Provides child behavior. */
+	/**
+	 * Looks up an immediate child.
+	 * @param index Zero-based child index.
+	 * @returns The child, or `null` if absent.
+	 */
 	child(index: number): CTreeWidgetItem | null {
 		return this.#m_children[index] ?? null;
 	}
 
-	/** Provides child count behavior. */
+	/**
+	 * Reads the number of entries in the children.
+	 * @returns The number of entries in the children.
+	 */
 	childCount(): number {
 		return this.#m_children.length;
 	}
 
-	/** Provides index of child behavior. */
+	/**
+	 * Finds an immediate child by identity.
+	 * @param child Child item to look up.
+	 * @returns Zero-based child index, or `-1` if absent.
+	 */
 	indexOfChild(child: CTreeWidgetItem): number {
 		return this.#m_children.indexOf(child);
 	}
 
-	/** Adds child. */
+	/**
+	 * Adds child.
+	 * @param child Child.
+	 */
 	addChild(child: CTreeWidgetItem): void {
 		this.insertChild(this.#m_children.length, child);
 	}
 
-	/** Inserts child. */
+	/**
+	 * Inserts child.
+	 * @param index Zero-based item index.
+	 * @param child Child.
+	 */
 	insertChild(index: number, child: CTreeWidgetItem): void {
 		/** Provides if behavior. */
 		if (child === this)
@@ -94,7 +126,10 @@ export class CTreeWidgetItem {
 		child.#m_parent = this;
 	}
 
-	/** Removes child. */
+	/**
+	 * Removes child.
+	 * @param child Child.
+	 */
 	removeChild(child: CTreeWidgetItem): void {
 		const index = this.#m_children.indexOf(child);
 
@@ -105,7 +140,11 @@ export class CTreeWidgetItem {
 		this.takeChild(index);
 	}
 
-	/** Removes and returns child. */
+	/**
+	 * Removes an immediate child and clears its parent link.
+	 * @param index Zero-based child index.
+	 * @returns Detached item, or `null` for an invalid or absent position.
+	 */
 	takeChild(index: number): CTreeWidgetItem | null {
 		/** Provides if behavior. */
 		if (index < 0 || index >= this.#m_children.length)

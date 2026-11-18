@@ -34,19 +34,17 @@ constructor(other: CTextCharFormat | null = null) {
 	}
 
 		/**
-	 * Creates an independent copy of this object.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Copies the typography, foreground and link attributes.
+ * @returns Independent copy of this format.
+ */
 clone(): CTextCharFormat {
 		return new CTextCharFormat(this);
 	}
 
 		/**
-	 * Returns the font weight setting.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Reads the stored font weight.
+ * @returns Current font weight.
+ */
 fontWeight(): CFontWeight {
 		return this.#m_fontWeight;
 	}
@@ -61,10 +59,9 @@ setFontWeight(weight: CFontWeight): void {
 	}
 
 		/**
-	 * Returns the font bold setting.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Tests this format's explicit bold setting.
+ * @returns `true` if the weight is the string `bold`.
+ */
 fontBold(): boolean {
 		return this.#m_fontWeight === "bold";
 	}
@@ -79,10 +76,9 @@ setFontBold(bold: boolean): void {
 	}
 
 		/**
-	 * Returns the font italic setting.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Reads the italic flag.
+ * @returns `true` if italic styling is enabled.
+ */
 fontItalic(): boolean {
 		return this.#m_italic;
 	}
@@ -97,10 +93,9 @@ setFontItalic(italic: boolean): void {
 	}
 
 		/**
-	 * Returns or updates the foreground value.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Reads the foreground override.
+ * @returns Color string, or `null` to inherit the surrounding foreground.
+ */
 foreground(): string | null {
 		return this.#m_foreground;
 	}
@@ -115,10 +110,9 @@ setForeground(color: string | null): void {
 	}
 
 		/**
-	 * Returns the font family setting.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Reads the font family override.
+ * @returns Family name, or `null` if no override is set.
+ */
 fontFamily(): string | null {
 		return this.#m_fontFamily;
 	}
@@ -133,10 +127,9 @@ setFontFamily(family: string | null): void {
 	}
 
 		/**
-	 * Returns the font size setting.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Reads the font size override.
+ * @returns Font size in pixels, or `null` if no override is set.
+ */
 fontSize(): number | null {
 		return this.#m_fontSize;
 	}
@@ -144,7 +137,7 @@ fontSize(): number | null {
 		/**
 	 * Sets the font size.
 	 *
-	 * @param size Size.
+	 * @param size Font size in pixels, or null to clear the explicit size.
 	 */
 setFontSize(size: number | null): void {
 		if (size !== null && size <= 0)
@@ -154,10 +147,9 @@ setFontSize(size: number | null): void {
 	}
 
 		/**
-	 * Returns the font underline setting.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Reads the underline flag.
+ * @returns `true` if underline styling is enabled.
+ */
 fontUnderline(): boolean {
 		return this.#m_underline;
 	}
@@ -172,10 +164,9 @@ setFontUnderline(underline: boolean): void {
 	}
 
 		/**
-	 * Returns or updates the anchor href value.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Reads the anchor target attached to the format.
+ * @returns Link target string, or `null` for a non-link format.
+ */
 anchorHref(): string | null {
 		return this.#m_anchorHref;
 	}
@@ -190,12 +181,10 @@ setAnchorHref(href: string | null): void {
 	}
 
 		/**
-	 * Returns whether this object is equal to another object.
-	 *
-	 * @param other Other.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Compares all stored typography, foreground and anchor attributes.
+ * @param other Format to compare.
+ * @returns `true` if all attributes match.
+ */
 equals(other: CTextCharFormat): boolean {
 		return this.#m_fontWeight === other.#m_fontWeight
 			&& this.#m_italic === other.#m_italic

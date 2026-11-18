@@ -21,6 +21,10 @@ class PatternParser {
         }
         this.#source = source;
     }
+    /**
+     * Parses the supported regular-expression subset and rejects unconsumed syntax.
+     * @returns Root node of the parsed pattern.
+     */
     parse(): Node {
         const result = this.#choice();
         if (this.#at !== this.#source.length) throw new SyntaxError("Unsupported regular expression syntax.");
@@ -185,14 +189,25 @@ export class CRegularExpressionValidator extends CValidator {
         const snapshot = new RegExp(expression.source, expression.flags);
         this.#program = compile(snapshot); this.#expression = snapshot;
     }
-    /** Returns an independent copy; lastIndex never participates in validation. */
+    /**
+     * Reads the currently configured pattern as an independent expression.
+     * @returns New `RegExp` with the same source and flags.
+     */
     regularExpression(): RegExp { return new RegExp(this.#expression.source, this.#expression.flags); }
-    /** Compiles before committing so invalid/unsupported patterns leave the old validator intact. */
+    /**
+     * Compiles a snapshot before replacing the active pattern. An unsupported expression leaves the previous pattern in place.
+     * @param expression A `RegExp` from the supported syntax subset described on the class.
+     */
     setRegularExpression(expression: RegExp): void {
         if (!(expression instanceof RegExp)) throw new TypeError("A RegExp is required.");
         const snapshot = new RegExp(expression.source, expression.flags), program = compile(snapshot);
         this.#expression = snapshot; this.#program = program;
     }
+    /**
+     * Tests the whole input and checks whether appending more text could complete a match.
+     * @param input Raw text to test, interpreted as UTF-16 code units.
+     * @returns `Acceptable` for a full match, `Intermediate` for an incomplete prefix that can still match, or `Invalid` when no suffix can complete it.
+     */
     override validate(input: string): CValidatorState {
         const program = this.#program;
         let active = closure(program, [program.start]);

@@ -17,12 +17,18 @@ export class CFrame extends CWidget {
 		super(parent);
 	}
 
-	/** Provides frame shape behavior. */
+	/**
+	 * Reads the frame shape.
+	 * @returns The frame shape.
+	 */
 	frameShape(): CFrameShape {
 		return this.#m_frameShape;
 	}
 
-	/** Sets the frame shape. */
+	/**
+	 * Sets the frame shape.
+	 * @param shape Shape.
+	 */
 	setFrameShape(shape: CFrameShape): void {
 		/** Provides if behavior. */
 		if (this.#m_frameShape === shape)
@@ -33,12 +39,18 @@ export class CFrame extends CWidget {
 		this.update();
 	}
 
-	/** Provides frame shadow behavior. */
+	/**
+	 * Reads the frame shadow.
+	 * @returns The frame shadow.
+	 */
 	frameShadow(): CFrameShadow {
 		return this.#m_frameShadow;
 	}
 
-	/** Sets the frame shadow. */
+	/**
+	 * Sets the frame shadow.
+	 * @param shadow Shadow.
+	 */
 	setFrameShadow(shadow: CFrameShadow): void {
 		/** Provides if behavior. */
 		if (this.#m_frameShadow === shadow)
@@ -49,12 +61,18 @@ export class CFrame extends CWidget {
 		this.update();
 	}
 
-	/** Provides line width behavior. */
+	/**
+	 * Reads the line width.
+	 * @returns The line width.
+	 */
 	lineWidth(): number {
 		return this.#m_lineWidth;
 	}
 
-	/** Sets the line width. */
+	/**
+	 * Sets the line width.
+	 * @param width Width.
+	 */
 	setLineWidth(width: number): void {
 		width = Math.max(0, width);
 
@@ -67,12 +85,18 @@ export class CFrame extends CWidget {
 		this.update();
 	}
 
-	/** Provides mid line width behavior. */
+	/**
+	 * Reads the mid line width.
+	 * @returns The mid line width.
+	 */
 	midLineWidth(): number {
 		return this.#m_midLineWidth;
 	}
 
-	/** Sets the mid line width. */
+	/**
+	 * Sets the mid line width.
+	 * @param width Width.
+	 */
 	setMidLineWidth(width: number): void {
 		width = Math.max(0, width);
 
@@ -85,7 +109,10 @@ export class CFrame extends CWidget {
 		this.update();
 	}
 
-	/** Provides frame width behavior. */
+	/**
+	 * Reads the frame width of the frame.
+	 * @returns The frame width.
+	 */
 	frameWidth(): number {
 		/** Provides if behavior. */
 		if (this.#m_frameShape === CFrameShape.NoFrame)
@@ -102,12 +129,18 @@ export class CFrame extends CWidget {
 		return 2 * this.#m_lineWidth + this.#m_midLineWidth;
 	}
 
-	/** Provides frame rect behavior. */
+	/**
+	 * Reads the frame rect of the frame.
+	 * @returns The frame rect.
+	 */
 	frameRect(): CRect {
 		return this.rect();
 	}
 
-	/** Returns the widget's contents rectangle. */
+	/**
+	 * Returns the widget's contents rectangle.
+	 * @returns A new `CRect`.
+	 */
 	override contentsRect(): CRect {
 		const frameWidth = this.frameWidth();
 		return new CRect(frameWidth, frameWidth, Math.max(0, this.width() - 2 * frameWidth),
@@ -115,7 +148,10 @@ export class CFrame extends CWidget {
 		);
 	}
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the frame through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void {
 		super.paintEvent(painter);
 
@@ -129,7 +165,9 @@ export class CFrame extends CWidget {
 		this.style().drawFrame(painter, option);
 	}
 
-	/** Handles frame changed behavior. */
+	/**
+	 * Provides the subclass hook for frame changed. This implementation does nothing.
+	 */
 	protected frameChanged(): void
 	{
 	}

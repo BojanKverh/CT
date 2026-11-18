@@ -72,16 +72,40 @@ export class CVariantAnimation<T extends CAnimationValue = number> extends CAbst
     #keys: CAnimationKeyValue<CAnimationValue>[] = [];
     readonly valueChanged = new CSignal<[T]>();
 
+    /**
+     * Reads the value at the start of interpolation.
+     * @returns The starting value. Geometry values are copied.
+     */
     startValue(): T { return copy(this.#start) as T; }
+    /**
+     * Reads the value at the end of interpolation.
+     * @returns The ending value. Geometry values are copied.
+     */
     endValue(): T { return copy(this.#end) as T; }
+    /**
+     * Reads the most recently computed interpolated value.
+     * @returns The current value. Geometry values are copied.
+     */
     currentValue(): T { return copy(this.#value) as T; }
+    /**
+     * Replaces the initial value and recomputes the current interpolated value.
+     * @param value Finite value of the same kind as the other keys and endpoints.
+     */
     setStartValue(value: T): void {
         this.#checkValue(value); this.#start = copy(value); this.updateCurrentTime(this.currentLoopTime());
     }
+    /**
+     * Replaces the final value and recomputes the current interpolated value.
+     * @param value Finite value of the same kind as the other keys and endpoints.
+     */
     setEndValue(value: T): void {
         this.#checkValue(value); this.#end = copy(value); this.updateCurrentTime(this.currentLoopTime());
     }
-    /** Exact key lookup, including the implicit start (0) and end (1); null if absent. */
+    /**
+     * Looks up an exact key, including the endpoints at zero and one.
+     * @param step Finite eased progress step in the range zero through one.
+     * @returns The value at that exact step, with geometry copied, or `null` if the step has no key.
+     */
     keyValueAt(step: number): T | null {
         this.#checkStep(step);
         if (step === 0) return this.startValue();
@@ -89,14 +113,21 @@ export class CVariantAnimation<T extends CAnimationValue = number> extends CAbst
         const key = this.#keys.find(key => key[0] === step);
         return key === undefined ? null : copy(key[1]) as T;
     }
-    /** A sorted, independent snapshot including start and end. Geometry is copied. */
+    /**
+     * Lists all configured keys, including both endpoints.
+     * @returns A new array of `[step, value]` pairs sorted by step. Geometry values are copied.
+     */
     keyValues(): CAnimationKeyValue<T>[] {
         const result: CAnimationKeyValue<T>[] = [[0, this.startValue()]];
         for (const [step, value] of this.#keys) result.push([step, copy(value) as T]);
         result.push([1, this.endValue()]);
         return result;
     }
-    /** Keys refer to eased progress, not necessarily elapsed time. Replaces equal steps. */
+    /**
+     * Inserts or replaces a key and recomputes the current interpolated value. At zero or one, updates the corresponding endpoint.
+     * @param step Finite eased progress step in the range zero through one.
+     * @param value Finite value matching the animation's value kind.
+     */
     setKeyValueAt(step: number, value: T): void {
         this.#checkStep(step);
         if (step === 0) { this.setStartValue(value); return; }
@@ -108,9 +139,8 @@ export class CVariantAnimation<T extends CAnimationValue = number> extends CAbst
         this.updateCurrentTime(this.currentLoopTime());
     }
     /**
-     * Atomically replaces intermediate keys. Supplied 0/1 keys replace endpoints;
-     * omitted endpoints retain their values. [] clears intermediate keys.
-     * Input may be unsorted; the last occurrence of a duplicate step wins.
+     * Atomically replaces intermediate keys. Supplied endpoint keys replace their endpoint and omitted endpoints are retained. The last key at a duplicate step wins.
+     * @param values Pairs of finite steps from zero through one and finite values of a consistent kind. An empty array clears intermediate keys.
      */
     setKeyValues(values: readonly CAnimationKeyValue<T>[]): void {
         const keys = new Map<number, CAnimationValue>();
@@ -137,12 +167,20 @@ export class CVariantAnimation<T extends CAnimationValue = number> extends CAbst
         if (!Number.isFinite(step) || step < 0 || step > 1)
             throw new RangeError("Animation key steps must be finite numbers from 0 to 1.");
     }
+    /**
+     * Reads the curve used to map elapsed progress to interpolation progress.
+     * @returns An independent copy of the easing curve.
+     */
     easingCurve(): CEasingCurve { return new CEasingCurve(this.#curve); }
+    /**
+     * Copies the new curve and recomputes the current interpolated value.
+     * @param curve Easing curve object or a supported curve type.
+     */
     setEasingCurve(curve: CEasingCurve | CEasingCurveType): void {
         this.#curve = new CEasingCurve(curve);
         this.updateCurrentTime(this.currentLoopTime());
     }
-    /** Re-emits a copy even when the current value has not changed. */
+    /** Emits a snapshot of the current value even if it has not changed. */
     override applyCurrentValue(): void {
         if (!this.isDestroyed()) this.valueChanged.emit(this.currentValue());
     }
@@ -162,6 +200,10 @@ export class CVariantAnimation<T extends CAnimationValue = number> extends CAbst
         this.#kind = type;
     }
     #checkValue(value: T): void { this.#adoptKind(this.#validateValue(value, this.#kind)); }
+    /**
+     * Eases playback progress, interpolates the enclosing key segment and emits `valueChanged` only when the result differs.
+     * @param time Direction-adjusted elapsed time in milliseconds within the current pass.
+     */
     protected override updateCurrentTime(time: number): void {
         const progress = this.duration() === 0 ? (this.currentDirection() === CAnimationDirection.Backward ? 0 : 1) : this.#curve.valueForProgress(time / this.duration());
         const keys: CAnimationKeyValue<CAnimationValue>[] = [[0, this.#start], ...this.#keys, [1, this.#end]];

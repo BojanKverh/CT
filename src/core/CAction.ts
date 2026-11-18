@@ -39,9 +39,16 @@ export class CAction {
 		this.#m_shortcutParent = shortcutParent;
 	}
 
-	/** Shortcut active in shortcutParent() and its descendants. */
+	/**
+	 * Reads the configured keyboard sequence for the action.
+	 * @returns The normalized sequence, or an empty string when none is configured.
+	 */
 	shortcut(): string { return this.#m_shortcutKey; }
 
+	/**
+	 * Normalizes the sequence, updates the binding in the configured scope and emits `changed` when the normalized sequence changes.
+	 * @param key Keyboard sequence to bind. Use an empty string to clear it.
+	 */
 	setShortcut(key: string): void {
 		const normalized = CShortcut.normalizeSequence(key);
 		if (normalized === this.#m_shortcutKey) return;
@@ -50,9 +57,16 @@ export class CAction {
 		this.changed.emit();
 	}
 
+	/**
+	 * Looks up the widget that scopes the action's keyboard binding.
+	 * @returns The scope widget, or `null` if there is no scope.
+	 */
 	shortcutParent(): CWidget | null { return this.#m_shortcutParent; }
 
-	/** Assigns one explicit scope shared by all presentations of this action. */
+	/**
+	 * Recreates the binding under the supplied widget when a sequence is configured. The action has one shared scope across its presentations.
+	 * @param parent Scope widget, or `null` to remove the active binding.
+	 */
 	setShortcutParent(parent: CWidget | null): void {
 		if (parent === this.#m_shortcutParent) return;
 		this.#m_shortcut?.destroy();
@@ -93,9 +107,9 @@ export class CAction {
 	}
 
 /**
- * Sets the action text.
- * @param text New display text.
- */
+	 * Sets the text. May emit `changed`.
+	 * @param text New display text.
+	 */
 	setText(text: string): void {
 		if (this.#m_text === text)
 			return;
@@ -113,9 +127,9 @@ export class CAction {
 	}
 
 /**
- * Sets the action icon.
- * @param icon New icon, or `null` to remove it.
- */
+	 * Sets the icon. May emit `changed`.
+	 * @param icon New icon, or `null` to remove it.
+	 */
 	setIcon(icon: CIcon | null): void {
 		if (this.#m_icon === icon)
 			return;

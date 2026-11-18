@@ -17,7 +17,12 @@ export class CSqlError extends Error {
 		this.originalError = originalError;
 	}
 
-	/** Converts an arbitrary rejected value to a CSqlError. */
+	/**
+	 * Converts a thrown value into a model error. An existing `CSqlError` is kept as-is.
+	 * @param operation Operation to associate with a newly wrapped error.
+	 * @param error Thrown value to convert.
+	 * @returns The existing error or a new `CSqlError` retaining the original value.
+	 */
 	static from(
 		operation: CSqlOperation,
 		error: unknown

@@ -21,31 +21,42 @@ export class CPixmap {
 		this.#m_height = height;
 	}
 
-	/** Returns the underlying canvas image source. */
+	/**
+	 * Exposes the source used by canvas image drawing.
+	 * @returns The original canvas-compatible image source.
+	 */
 	image(): CanvasImageSource {
 		return this.#m_image;
 	}
 
-	/** Returns the pixmap width in pixels. */
+	/**
+	 * Reads the stored source width.
+	 * @returns Pixmap width in pixels.
+	 */
 	width(): number {
 		return this.#m_width;
 	}
 
-	/** Returns the pixmap height in pixels. */
+	/**
+	 * Reads the stored source height.
+	 * @returns Pixmap height in pixels.
+	 */
 	height(): number {
 		return this.#m_height;
 	}
 
-	/** Returns whether the pixmap has non-positive dimensions. */
+	/**
+	 * Checks whether the pixmap has usable dimensions.
+	 * @returns `true` if either dimension is zero or negative.
+	 */
 	isNull(): boolean {
 		return this.#m_width <= 0 || this.#m_height <= 0;
 	}
 
     /**
-     * Loads an image URL and creates a pixmap using its natural dimensions.
-     *
-     * @param url Image URL to load.
-     * @returns A promise resolving to the loaded pixmap.
+     * Loads an image through the browser and wraps it at its natural dimensions.
+     * @param url Image URL that the browser can load.
+     * @returns A promise resolving to a pixmap, or rejecting if the image fails to load.
      */
     static async fromUrl(url: string): Promise<CPixmap> {
 	    const image = new Image();

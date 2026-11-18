@@ -79,10 +79,9 @@ export class CDialog extends CWidget
 	}
 
 /**
- * Returns the full dialog rectangle, including the title bar.
- *
- * @returns The dialog rectangle.
- */
+	 * Computes the complete frame bounds, including the title bar.
+	 * @returns A new rectangle in dialog-local coordinates with the title bar included in its height.
+	 */
 	override rect(): CRect {
 		return new CRect(
 			0,
@@ -93,68 +92,106 @@ export class CDialog extends CWidget
 	}
 
 /**
- * Returns the rectangle available to dialog contents.
- *
- * @returns The content rectangle.
- */
+	 * Computes the area used to lay out child widgets, reserving a bottom strip when the size grip is enabled.
+	 * @returns Body rectangle in the child coordinate system, with height clamped to zero or greater.
+	 */
 	override contentsRect(): CRect {
 		return new CRect(0, 0, this.width(), Math.max(0, this.height()
             - (this.isSizeGripEnabled() ? CDialog.#SizeGripExtent : 0)));
 	}
 
+    /**
+     * Gets the layout's preferred body size and adds the size-grip strip when applicable.
+     * @returns Preferred body size in logical pixels, excluding the title bar.
+     */
     override sizeHint(): CSize {
         const hint = super.sizeHint();
         return this.layout() !== null && this.isSizeGripEnabled()
             ? new CSize(hint.width(), hint.height() + CDialog.#SizeGripExtent) : hint;
     }
 
+    /**
+     * Gets the layout's preferred height for a width and adds the size-grip allowance when applicable.
+     * @param width Available width in logical pixels.
+     * @returns Preferred body height, or `-1` if the layout supplies no width-dependent height.
+     */
     override heightForWidth(width: number): number {
         const height = super.heightForWidth(width);
         return height < 0 ? height : height + (this.isSizeGripEnabled() ? CDialog.#SizeGripExtent : 0);
     }
 
+    /**
+     * Changes visibility and hides or refreshes the resize grip. Use `open()` or `close()` to change window registration.
+     * @param visible Whether to show the dialog.
+     */
     override setVisible(visible: boolean): void {
         if (!visible) this.#m_sizeGrip?.hide();
         super.setVisible(visible);
         if (visible) this.#syncSizeGrip();
     }
 
-    /** Effective setting: automatic with a layout, unless explicitly overridden.
-     * A dialog fixed on both axes never exposes a resize grip. */
+    /**
+     * Checks the explicit setting or the layout-based default and whether at least one axis can resize.
+     * @returns `true` if the dialog is alive and its resize grip is enabled.
+     */
     isSizeGripEnabled(): boolean {
         return !this.#m_disposed && (this.#m_sizeGripMode ?? this.layout() !== null)
             && (this.minimumWidth() < this.maximumWidth() || this.minimumHeight() < this.maximumHeight());
     }
 
-    /** Overrides automatic behavior. The grip occupies its own bottom strip. */
+    /**
+     * Overrides automatic grip selection and refreshes the reserved layout strip if needed.
+     * @param enabled `true` to enable the grip on a resizable dialog, or `false` to hide it.
+     */
     setSizeGripEnabled(enabled: boolean): void {
         if (this.#m_disposed) return;
         this.#m_sizeGripMode = enabled;
         this.#syncSizeGrip();
     }
 
-    /** Restores automatic enabling whenever this dialog has a layout. */
+    /** Clears the explicit override and updates the grip based on layout presence and size constraints. */
     resetSizeGripEnabled(): void {
         if (this.#m_disposed) return;
         this.#m_sizeGripMode = null;
         this.#syncSizeGrip();
     }
 
+    /**
+     * Installs and updates a layout and recalculates the resize-grip reservation.
+     * @param layout Layout to attach to the dialog body.
+     */
     override setLayout(layout: CLayout): void {
         super.setLayout(layout);
         this.#syncSizeGrip();
     }
 
+    /**
+     * Changes the window position and body size and repositions the resize grip.
+     * @param x Horizontal position in parent coordinates, or canvas coordinates for a top-level window.
+     * @param y Vertical position in parent coordinates, or canvas coordinates for a top-level window.
+     * @param width Dialog width in logical pixels.
+     * @param height Body height in logical pixels, excluding the title bar.
+     */
     override setGeometry(x: number, y: number, width: number, height: number): void {
         super.setGeometry(x, y, width, height);
         this.#syncSizeGrip();
     }
 
+    /**
+     * Updates the minimum body size and refreshes resize-grip availability.
+     * @param width Minimum width in logical pixels.
+     * @param height Minimum body height in logical pixels.
+     */
     override setMinimumSize(width: number, height: number): void {
         super.setMinimumSize(width, height);
         this.#syncSizeGrip();
     }
 
+    /**
+     * Updates the maximum body size and refreshes resize-grip availability.
+     * @param width Maximum width in logical pixels.
+     * @param height Maximum body height in logical pixels.
+     */
     override setMaximumSize(width: number, height: number): void {
         super.setMaximumSize(width, height);
         this.#syncSizeGrip();
@@ -179,6 +216,7 @@ export class CDialog extends CWidget
         this.update();
     }
 
+    /** Closes the window, marks it disposed and destroys owned widgets. */
     override destroy(): void {
         if (this.#m_disposed) return;
         this.#m_disposed = true;
@@ -188,29 +226,26 @@ export class CDialog extends CWidget
     }
 
 /**
- * Returns the offset applied to child widgets below the title bar.
- *
- * @returns The child content offset.
- */
+	 * Positions child widgets below the title bar.
+	 * @returns A new point offset vertically by the title-bar height.
+	 */
 	protected override childOffset(): CPoint {
 		return new CPoint(0, CDialog.TitleBarHeight);
 	}
 
 /**
- * Returns the dialog window title.
- *
- * @returns The current window title.
- */
+	 * Reads the text drawn in the title bar.
+	 * @returns Current window title.
+	 */
 	windowTitle(): string
 	{
 		return this.#m_windowTitle;
 	}
 
 /**
- * Sets the dialog window title.
- *
- * @param title New window title.
- */
+	 * Updates the title bar and requests repainting when its text changes.
+	 * @param title New title text.
+	 */
 	setWindowTitle(title: string): void
 	{
 		if (this.#m_windowTitle === title)
@@ -221,30 +256,27 @@ export class CDialog extends CWidget
 	}
 
 /**
- * Returns whether the dialog is currently open.
- *
- * @returns `true` if the dialog is open.
- */
+	 * Checks whether the dialog was opened and has not been closed.
+	 * @returns `true` if the dialog is open.
+	 */
 	isOpen(): boolean
 	{
 		return this.#m_open;
 	}
 
 /**
- * Returns whether the dialog is modal.
- *
- * @returns `true` if the dialog is modal.
- */
+	 * Reads the configured modality.
+	 * @returns `true` if the dialog is configured as modal.
+	 */
 	isModal(): boolean
 	{
 		return this.#m_modal;
 	}
 
 /**
- * Sets whether the dialog is modal.
- *
- * @param modal `true` to make the dialog modal.
- */
+	 * Changes the modality flag used when the dialog opens. Changing it on an open dialog does not update its current registration.
+	 * @param modal Whether to register as a modal dialog on opening.
+	 */
 	setModal(modal: boolean): void
 	{
 		if (this.#m_modal === modal)
@@ -254,21 +286,26 @@ export class CDialog extends CWidget
 	}
 
 /**
- * Returns the current dialog result.
- *
- * @returns The current acceptance result.
- */
+	 * Reads the result of the current or most recent run.
+	 * @returns `Accepted` after acceptance, or `Rejected` after rejection or at the start of a run.
+	 */
 	result(): CDialogResult
 	{
 		return this.#m_result;
 	}
 
-    /** Returns the explicitly configured default button, including if disabled. */
+    /**
+     * Finds the explicitly designated default button among this dialog's descendants, excluding nested dialogs.
+     * @returns The designated button even when disabled, or `null` if none is designated.
+     */
     defaultButton(): CPushButton | null {
         return this.#pushButtons().find(button => button.isDefault()) ?? null;
     }
 
-    /** Sets the default button; null clears it. Buttons from other dialogs are ignored. */
+    /**
+     * Marks one descendant as the default and clears that flag on the other buttons. Buttons outside this dialog are ignored.
+     * @param button Button in this dialog to designate, or `null` to clear the default.
+     */
     setDefaultButton(button: CPushButton | null): void {
         const buttons = this.#pushButtons();
         if (button !== null && !buttons.includes(button)) return;
@@ -309,9 +346,7 @@ export class CDialog extends CWidget
         return button.event(event);
     }
 
-/**
- * Opens the dialog.
- */
+/** Opens and focuses the dialog, resets its result to `Rejected` and registers its window and modality. An already open dialog is left as-is. */
 	open(): void
 	{
 		if (this.#m_open)
@@ -333,18 +368,14 @@ export class CDialog extends CWidget
 		this.setFocus();
 	}
 
-/**
- * Opens the dialog modally.
- */
+/** Sets modal mode and opens the dialog without blocking. Observe `accepted` or `rejected` to handle its result. */
 	exec(): void
 	{
 		this.setModal(true);
 		this.open();
 	}
 
-/**
- * Closes the dialog without changing its current result.
- */
+/** Hides and unregisters the dialog and restores prior nonmodal focus when applicable. It preserves the result and emits neither result signal. */
 	close(): void
 	{
 		if (!this.#m_open)
@@ -360,9 +391,7 @@ export class CDialog extends CWidget
         app.restoreNonModalFocus(this, focused === this);
 	}
 
-/**
- * Accepts and closes the dialog, then emits `accepted`.
- */
+/** Records acceptance, closes the dialog and emits `accepted`. A closed dialog ignores the request. */
 	accept(): void
 	{
 		if (!this.#m_open)
@@ -374,9 +403,7 @@ export class CDialog extends CWidget
 		this.accepted.emit();
 	}
 
-/**
- * Rejects and closes the dialog, then emits `rejected`.
- */
+/** Records rejection, closes the dialog and emits `rejected`. A closed dialog ignores the request. */
 	reject(): void
 	{
 		if (!this.#m_open)
@@ -389,12 +416,9 @@ export class CDialog extends CWidget
 	}
 
 /**
- * Handles keyboard input for the dialog.
- *
- * Pressing Escape rejects the dialog.
- *
- * @param event Key event to handle.
- */
+	 * Routes unmodified Enter or Return to an eligible default button and rejects on Escape. Other keys are ignored.
+	 * @param event Keyboard event containing the key and modifier states.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void
 	{
         if ((event.key() === "Enter" || event.key() === "Return")
@@ -411,10 +435,9 @@ export class CDialog extends CWidget
 	}
 
 /**
- * Paints the dialog frame and title bar.
- *
- * @param painter Painter used to render the dialog.
- */
+	 * Draws the frame, highlighted title bar, title text and close button using the dialog palette.
+	 * @param painter Painter clipped and translated to the dialog's local bounds.
+	 */
 	protected override paintEvent(painter: CPainter): void
     {
 	    const base = this.palette().color(CPaletteColorRole.Base).toCss();
@@ -449,10 +472,9 @@ export class CDialog extends CWidget
     }
 
 /**
- * Handles mouse presses on the title bar and close button.
- *
- * @param event Mouse event to handle.
- */
+     * Accepts a left press on the close button or starts dragging from the title bar. Other presses are ignored.
+     * @param event Mouse event with button and local pointer coordinates.
+     */
     protected override mousePressEvent(event: CMouseEvent): void
     {
 	    if (event.button() !== CMouseButton.LeftButton) {
@@ -478,10 +500,9 @@ export class CDialog extends CWidget
     }
 
 /**
- * Handles dialog dragging and close-button hover state.
- *
- * @param event Mouse event to handle.
- */
+     * Refreshes the close-button hover state and moves the window when a title-bar drag is active.
+     * @param event Mouse event with local pointer coordinates.
+     */
     protected override mouseMoveEvent(event: CMouseEvent): void
     {
 	    const closeButtonHovered = this.#isCloseButtonAt(event.x(), event.y());
@@ -500,10 +521,9 @@ export class CDialog extends CWidget
     }
 
 /**
- * Finishes a title-bar drag or activates the close button.
- *
- * @param event Mouse event to handle.
- */
+     * Rejects on a left release over the close button or ends an active title-bar drag.
+     * @param event Mouse event with button and local pointer coordinates.
+     */
     protected override mouseReleaseEvent(event: CMouseEvent): void
     {
 	    if (event.button() !== CMouseButton.LeftButton) {
@@ -528,10 +548,9 @@ export class CDialog extends CWidget
     }
 
 /**
- * Clears title-bar hover state when the pointer leaves the dialog.
- *
- * @param event Mouse event to handle.
- */
+     * Clears close-button hover highlighting, requests repainting and accepts the event.
+     * @param event Mouse leave event delivered to the dialog.
+     */
     protected override mouseLeaveEvent(event: CMouseEvent): void {
         this.#m_closeButtonHovered = false;
         this.update();
@@ -544,19 +563,23 @@ export class CDialog extends CWidget
 		    y < CDialog.TitleBarHeight;
     }
 
-    /** Whether opening the dialog centers it on the logical canvas. Defaults to true. */
+    /**
+     * Checks whether the next open operation will center the window.
+     * @returns `true` if automatic centering is enabled.
+     */
     isCenterOnOpen(): boolean {
         return this.#m_centerOnOpen;
     }
 
-    /** Disable before open()/exec() to preserve an explicitly configured position. */
+    /**
+     * Controls whether `open()` moves the window to the center of the canvas.
+     * @param enabled `true` to center when opening, or `false` to keep the configured position.
+     */
     setCenterOnOpen(enabled: boolean): void {
         this.#m_centerOnOpen = enabled;
     }
 
-    /** Centers the complete window, including its title bar, on the logical canvas.
-     * Owner offsets are removed because dialog geometry uses parent coordinates.
-     */
+    /** Centers the complete window in the logical canvas, including the title bar. Converts the resulting coordinates to the parent's coordinate system. */
     centerOnCanvas(): void {
         const device = CApplication.instance().paintDevice();
         const origin = this.mapToCanvas(0, 0);

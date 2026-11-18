@@ -22,6 +22,10 @@ class CComboLineEdit extends CLineEdit {
         this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
+	/**
+	 * Responds to a pointer button press for the combo line edit. May mark the event ignored.
+	 * @param event Event for a pointer button press.
+	 */
 	protected override mousePressEvent(event: CMouseEvent): void {
 		if (!this.#m_comboBox.isEditable()) {
 			event.ignore();
@@ -31,6 +35,10 @@ class CComboLineEdit extends CLineEdit {
 		super.mousePressEvent(event);
 	}
 
+	/**
+	 * Responds to a key press for the combo line edit. May accept or ignore the event depending on the input.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void
 	{
 		switch (event.key()) {
@@ -107,12 +115,18 @@ export class CComboBox extends CWidget {
 		this.#updateGeometry();
 	}
 
-	/** Returns whether the editable condition is active. */
+	/**
+	 * Checks whether the combo box is editable.
+	 * @returns `true` if the combo box is editable, otherwise `false`.
+	 */
 	isEditable(): boolean {
 		return this.#m_editable;
 	}
 
-	/** Sets the editable. */
+	/**
+	 * Sets the editable.
+	 * @param editable Editable flag.
+	 */
 	setEditable(editable: boolean): void {
 		/** Provides if behavior. */
 		if (this.#m_editable === editable)
@@ -141,24 +155,37 @@ export class CComboBox extends CWidget {
 		this.update();
 	}
 
-	/** Provides line edit behavior. */
+	/**
+	 * Reads the line edit.
+	 * @returns The line edit.
+	 */
 	lineEdit(): CLineEdit {
 		return this.#m_lineEdit;
 	}
 
-	/** Adds item. */
+	/**
+	 * Appends a choice, selecting it immediately if it is the first choice.
+	 * @param text Display text for the new choice.
+	 */
 	addItem(text: string): void {
 		this.insertItem(this.#m_items.length, text);
 	}
 
-    /** Adds items. */
+    /**
+     * Adds items.
+     * @param items Items.
+     */
     addItems(items: string[]): void {
         /** Provides for behavior. */
         for (const item of items)
 			this.addItem(item);
     }
 
-	/** Inserts item. */
+	/**
+	 * Inserts a choice and preserves the current item when one already exists.
+	 * @param index Insertion index, clamped from zero through the item count.
+	 * @param text Display text for the new choice.
+	 */
 	insertItem(index: number, text: string): void {
 		index = Math.max(0, Math.min(index, this.#m_items.length));
 
@@ -179,7 +206,10 @@ export class CComboBox extends CWidget {
 		this.update();
 	}
 
-	/** Removes item. */
+	/**
+	 * Removes item.
+	 * @param index Zero-based item index.
+	 */
 	removeItem(index: number): void {
 		/** Provides if behavior. */
 		if (index < 0 || index >= this.#m_items.length)
@@ -218,17 +248,28 @@ export class CComboBox extends CWidget {
 		this.update();
 	}
 
-	/** Provides count behavior. */
+	/**
+	 * Counts the entries in the combo box.
+	 * @returns The number of entries in the items.
+	 */
 	count(): number {
 		return this.#m_items.length;
 	}
 
-	/** Provides item text behavior. */
+	/**
+	 * Looks up the display text for a choice.
+	 * @param index Zero-based choice index.
+	 * @returns Display text, or an empty string for an absent choice.
+	 */
 	itemText(index: number): string {
 		return this.#m_items[index] ?? "";
 	}
 
-	/** Sets the item text. */
+	/**
+	 * Changes a choice caption and updates the popup. Emits `currentTextChanged` if the displayed current text changes.
+	 * @param index Zero-based choice index.
+	 * @param text New display text.
+	 */
 	setItemText(index: number, text: string): void {
 		/** Provides if behavior. */
 		if (index < 0 || index >= this.#m_items.length)
@@ -261,12 +302,18 @@ export class CComboBox extends CWidget {
 		this.update();
 	}
 
-	/** Returns the current index. */
+	/**
+	 * Returns the current index.
+	 * @returns The current index.
+	 */
 	currentIndex(): number {
 		return this.#m_currentIndex;
 	}
 
-	/** Sets the current index. */
+	/**
+	 * Sets the current index.
+	 * @param index Zero-based item index.
+	 */
 	setCurrentIndex(index: number): void {
 		/** Provides if behavior. */
 		if (index < -1 || index >= this.#m_items.length)
@@ -275,12 +322,18 @@ export class CComboBox extends CWidget {
 		this.#setCurrentIndex(index);
 	}
 
-	/** Returns the current text. */
+	/**
+	 * Returns the current text.
+	 * @returns The current text.
+	 */
 	currentText(): string {
 		return this.#m_lineEdit.text();
 	}
 
-	/** Sets the current text. */
+	/**
+	 * Sets the editor text in editable mode. Otherwise selects the first exact matching choice if one exists.
+	 * @param text Text to show or match.
+	 */
 	setCurrentText(text: string): void {
 		/** Provides if behavior. */
 		if (this.#m_editable) {
@@ -295,22 +348,35 @@ export class CComboBox extends CWidget {
 			this.#setCurrentIndex(index);
 	}
 
-	/** Finds text. */
+	/**
+	 * Finds the first choice with exactly matching text.
+	 * @param text Text to compare with choice captions.
+	 * @returns Zero-based matching index, or `-1` if none matches.
+	 */
 	findText(text: string): number {
 		return this.#m_items.indexOf(text);
 	}
 
-	/** Returns whether the down condition is active. */
+	/**
+	 * Checks whether the combo box is down.
+	 * @returns `true` if the combo box is down, otherwise `false`.
+	 */
 	isDown(): boolean {
 		return this.#m_down;
 	}
 
-	/** Provides popup behavior. */
+	/**
+	 * Reads the popup.
+	 * @returns The popup.
+	 */
 	popup(): CPopupWidget {
 		return this.#m_popup;
 	}
 
-	/** Provides list widget behavior. */
+	/**
+	 * Reads the list widget.
+	 * @returns The list widget.
+	 */
 	listWidget(): CListWidget {
 		return this.#m_listWidget;
 	}
@@ -336,13 +402,19 @@ export class CComboBox extends CWidget {
 		this.#m_popup.close();
 	}
 
-    /** Returns whether the arrow hovered condition is active. */
+    /**
+     * Checks whether the combo box is arrow hovered.
+     * @returns `true` if the combo box is arrow hovered, otherwise `false`.
+     */
     isArrowHovered(): boolean
 	{
 		return this.#m_arrowHovered;
 	}
 
-	/** Provides handle combo key behavior. */
+	/**
+	 * Routes vertical arrow keys to the open choice list or changes the current selection when the list is closed. Escape closes the popup.
+	 * @param event Keyboard event to route.
+	 */
 	handleComboKey(event: CKeyEvent): void
 	{
 		/** Provides if behavior. */
@@ -384,7 +456,9 @@ export class CComboBox extends CWidget {
 		}
 	}
 
-	/** Provides activate popup item behavior. */
+	/**
+	 * Activates the popup item.
+	 */
 	activatePopupItem(): void
 	{
 		const item = this.#m_listWidget.currentItem();
@@ -396,7 +470,13 @@ export class CComboBox extends CWidget {
 		this.#itemActivated(item);
 	}
 
-	/** Sets the geometry. */
+	/**
+	 * Sets the geometry.
+	 * @param x Horizontal position in parent coordinates.
+	 * @param y Vertical position in parent coordinates.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override setGeometry(
 		x: number, y: number, width: number, height: number
 	): void {
@@ -405,14 +485,21 @@ export class CComboBox extends CWidget {
 		this.#updateGeometry();
 	}
 
-	/** Provides resize behavior. */
+	/**
+	 * Resizes the width.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 
 		this.#updateGeometry();
 	}
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns A new `CSize`.
+	 */
 	override sizeHint(): CSize {
 		return new CSize(120, 30);
 	}
@@ -425,7 +512,10 @@ export class CComboBox extends CWidget {
 		super.destroy();
 	}
 
-	/** Handles the mouse press event. */
+	/**
+	 * Responds to a pointer button press for the combo box. May update the down. May request a repaint and accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button press.
+	 */
 	protected override mousePressEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
@@ -448,7 +538,10 @@ export class CComboBox extends CWidget {
 		this.update();
 	}
 
-	/** Handles the mouse release event. */
+	/**
+	 * Responds to a pointer button release for the combo box. May update the down, the arrow hovered. May request a repaint and accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button release.
+	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
@@ -481,7 +574,10 @@ export class CComboBox extends CWidget {
 			this.showPopup();        
 	}
 
-	/** Handles the mouse move event. */
+	/**
+	 * Responds to pointer movement for the combo box. May update the arrow hovered. May request a repaint and accept the event.
+	 * @param event Event for pointer movement.
+	 */
 	protected override mouseMoveEvent(event: CMouseEvent): void
 	{
 		const hovered = event.x() >= this.width() - this.style().comboBoxArrowWidth();
@@ -495,7 +591,10 @@ export class CComboBox extends CWidget {
 		event.accept();
 	}
 
-	/** Handles the mouse leave event. */
+	/**
+	 * Responds to pointer exit for the combo box. May update the arrow hovered. May request a repaint and accept the event.
+	 * @param event Event for pointer exit.
+	 */
 	protected override mouseLeaveEvent(event: CMouseEvent): void
 	{
 		/** Provides if behavior. */
@@ -507,7 +606,10 @@ export class CComboBox extends CWidget {
 		event.accept();
 	}
 
-	/** Handles the key press event. */
+	/**
+	 * Responds to a key press for the combo box. May accept or ignore the event depending on the input.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void
 	{
 		/** Provides switch behavior. */
@@ -535,7 +637,10 @@ export class CComboBox extends CWidget {
 		}
 	}
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the combo box through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionComboBox();
 		option.initFromComboBox(this);

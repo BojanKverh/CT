@@ -33,11 +33,19 @@ class CListContentWidget extends CWidget
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
+	/**
+	 * Draws the list content widget through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void
 	{
 		this.#m_listWidget.paintItems(painter);
 	}
 
+	/**
+	 * Responds to pointer movement for the list content widget. May accept the event.
+	 * @param event Event for pointer movement.
+	 */
 	protected override mouseMoveEvent(event: CMouseEvent): void
 	{
 		this.#m_listWidget.setHoveredRow(
@@ -47,6 +55,10 @@ class CListContentWidget extends CWidget
 		event.accept();
 	}
 
+	/**
+	 * Responds to pointer exit for the list content widget. May accept the event.
+	 * @param event Event for pointer exit.
+	 */
 	protected override mouseLeaveEvent(event: CMouseEvent): void
 	{
 		this.#m_listWidget.setHoveredRow(-1);
@@ -54,7 +66,15 @@ class CListContentWidget extends CWidget
 		event.accept();
 	}
 
+    /**
+     * Responds to a key press for the list content widget.
+     * @param event Event for a key press.
+     */
     protected override keyPressEvent(event: CKeyEvent): void { this.#m_listWidget.contentKeyPressEvent(event); }
+    /**
+     * Responds to a double-click for the list content widget. May request focus and accept or ignore the event depending on the input. May emit `itemActivated`.
+     * @param event Event for a double-click.
+     */
     protected override mouseDoubleClickEvent(event: CMouseEvent): void {
         if (event.button() !== CMouseButton.LeftButton || this.#m_listWidget.viewMode() !== CListViewMode.IconMode) { event.ignore(); return; }
         const row = this.#m_listWidget.rowAt(event.y(), event.x());
@@ -65,6 +85,10 @@ class CListContentWidget extends CWidget
         this.#m_listWidget.itemActivated.emit(item); event.accept();
     }
 
+	/**
+	 * Responds to a pointer button press for the list content widget. May request focus and accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button press.
+	 */
 	protected override mousePressEvent(event: CMouseEvent): void
 	{
 		if (event.button() !== CMouseButton.LeftButton) {
@@ -121,7 +145,15 @@ export class CListWidget extends CScrollArea
 		this.#updateContentGeometry();
 	}
 
+    /**
+     * Reads the view mode of the list widget.
+     * @returns The view mode.
+     */
     viewMode(): CListViewMode { return this.#m_itemLayout.mode; }
+    /**
+     * Sets the view mode.
+     * @param mode Mode.
+     */
     setViewMode(mode: CListViewMode): void {
         if (mode !== CListViewMode.ListMode && mode !== CListViewMode.IconMode) return;
         if (this.#m_itemLayout.mode === mode) return;
@@ -130,13 +162,42 @@ export class CListWidget extends CScrollArea
         this.scrollTo(0, 0);
         this.#updateContentGeometry();
     }
+    /**
+     * Reads the grid size of the list widget.
+     * @returns The grid size.
+     */
     gridSize(): CSize { return this.#m_itemLayout.gridSize(); }
+    /**
+     * Changes the preferred size of an icon grid cell for valid dimensions.
+     * @param size Requested cell width and height in logical pixels.
+     */
     setGridSize(size: CSize): void { this.#m_itemLayout.setGridSize(size); this.#updateContentGeometry(); }
+    /**
+     * Reads the icon size of the list widget.
+     * @returns The icon size.
+     */
     iconSize(): CSize { return this.#m_itemLayout.iconSize(); }
+    /**
+     * Changes the preferred icon dimensions for valid sizes.
+     * @param size Requested icon width and height in logical pixels.
+     */
     setIconSize(size: CSize): void { this.#m_itemLayout.setIconSize(size); this.#updateContentGeometry(); }
+    /**
+     * Reads the spacing of the list widget.
+     * @returns The spacing.
+     */
     spacing(): number { return this.#m_itemLayout.spacing(); }
+    /**
+     * Sets the spacing.
+     * @param spacing Spacing.
+     */
     setSpacing(spacing: number): void { this.#m_itemLayout.setSpacing(spacing); this.#updateContentGeometry(); }
 
+    /**
+     * Computes the content rectangle of a managed list item using the current list or icon layout.
+     * @param item List item to locate by identity.
+     * @returns Item bounds in content coordinates, or an empty rectangle if absent.
+     */
     visualItemRect(item: CListWidgetItem): CRect {
         const row = this.row(item);
         return row < 0 ? new CRect() : this.#m_itemLayout.rect(row, this.#m_contentWidget.width());
@@ -145,14 +206,26 @@ export class CListWidget extends CScrollArea
         if (this.#m_itemConnections.has(item)) return;
         this.#m_itemConnections.set(item, item.changed.connect(() => this.#m_contentWidget.update()));
     }
+    /**
+     * Releases resources held by the list widget.
+     */
     override destroy(): void {
         for (const disconnect of this.#m_itemConnections.values()) disconnect();
         this.#m_itemConnections.clear(); super.destroy();
     }
-    /** Forwards keyboard input from the content widget to the owning list. */
+    /**
+     * Routes keyboard input from the content widget to the list's key handler.
+     * @param event Keyboard event to handle for the view.
+     */
     contentKeyPressEvent(event: CKeyEvent): void { this.keyPressEvent(event); }
 
-	/** Sets the geometry and updates the scrollable item area. */
+	/**
+	 * Sets the geometry and updates the scrollable item area.
+	 * @param x Horizontal position in parent coordinates.
+	 * @param y Vertical position in parent coordinates.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override setGeometry(
 		x: number,
 		y: number,
@@ -164,14 +237,21 @@ export class CListWidget extends CScrollArea
 		this.#updateContentGeometry();
 	}
 
-	/** Resizes the widget and updates the scrollable item area. */
+	/**
+	 * Resizes the widget and updates the scrollable item area.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override resize(width: number, height: number): void
 	{
 		super.resize(width, height);
 		this.#updateContentGeometry();
 	}
 
-	/** Adds item. */
+	/**
+	 * Adds item.
+	 * @param item Item to operate on.
+	 */
 	addItem(item: string | CListWidgetItem): void
 	{
 		const listItem = typeof item === "string"
@@ -193,7 +273,11 @@ export class CListWidget extends CScrollArea
 		}
 	}
 
-	/** Inserts item. */
+	/**
+	 * Inserts item.
+	 * @param index Zero-based item index.
+	 * @param item Item to operate on.
+	 */
 	insertItem(index: number, item: string | CListWidgetItem): void
 	{
 		index = Math.max(0, Math.min(index, this.#m_items.length));
@@ -233,7 +317,11 @@ export class CListWidget extends CScrollArea
 		}
 	}
 
-	/** Removes and returns item. */
+	/**
+	 * Removes an item and updates selection, current row and layout as needed.
+	 * @param index Zero-based row to remove.
+	 * @returns Removed item, or `null` if out of range.
+	 */
 	takeItem(index: number): CListWidgetItem | null
 	{
 		/** Provides if behavior. */
@@ -315,37 +403,57 @@ export class CListWidget extends CScrollArea
 			this.itemSelectionChanged.emit();
 	}
 
-	/** Provides count behavior. */
+	/**
+	 * Counts the entries in the list widget.
+	 * @returns The number of entries in the items.
+	 */
 	count(): number
 	{
 		return this.#m_items.length;
 	}
 
-	/** Provides item behavior. */
+	/**
+	 * Looks up a managed list item.
+	 * @param row Zero-based row.
+	 * @returns Item in that row, or `null` if absent.
+	 */
 	item(row: number): CListWidgetItem | null
 	{
 		return this.#m_items[row] ?? null;
 	}
 
-	/** Provides row behavior. */
+	/**
+	 * Finds the first occurrence of an item by identity.
+	 * @param item List item to locate.
+	 * @returns Zero-based row, or `-1` if the item is absent.
+	 */
 	row(item: CListWidgetItem): number
 	{
 		return this.#m_items.indexOf(item);
 	}
 
-	/** Returns the current row. */
+	/**
+	 * Returns the current row.
+	 * @returns The current row.
+	 */
 	currentRow(): number
 	{
 		return this.#m_currentRow;
 	}
 
-	/** Returns the current item. */
+	/**
+	 * Looks up the item at the current row.
+	 * @returns Current item, or `null` if no row is current.
+	 */
 	currentItem(): CListWidgetItem | null
 	{
 		return this.item(this.#m_currentRow);
 	}
 
-	/** Sets the current row. */
+	/**
+	 * Sets the current row.
+	 * @param row Zero-based row.
+	 */
 	setCurrentRow(row: number): void
 	{
 		/** Provides if behavior. */
@@ -382,13 +490,19 @@ export class CListWidget extends CScrollArea
 		this.currentRowChanged.emit(row);
 	}
 
-	/** Provides selection mode behavior. */
+	/**
+	 * Reads the selection mode.
+	 * @returns The selection mode.
+	 */
 	selectionMode(): CSelectionMode
 	{
 		return this.#m_selectionMode;
 	}
 
-	/** Sets the selection mode. */
+	/**
+	 * Sets the selection mode.
+	 * @param mode Mode.
+	 */
 	setSelectionMode(mode: CSelectionMode): void
 	{
 		/** Provides if behavior. */
@@ -415,13 +529,21 @@ export class CListWidget extends CScrollArea
 		this.#m_contentWidget.update();
 	}
 
-	/** Returns whether the item selected condition is active. */
+	/**
+	 * Checks whether the list widget is item selected.
+	 * @param row Zero-based row.
+	 * @returns `true` if the list widget is item selected, otherwise `false`.
+	 */
 	isItemSelected(row: number): boolean
 	{
 		return this.#m_selectedRows.has(row);
 	}
 
-	/** Sets the item selected. */
+	/**
+	 * Sets the item selected.
+	 * @param row Zero-based row.
+	 * @param selected Selected flag.
+	 */
 	setItemSelected(row: number, selected: boolean): void
 	{
 		/** Provides if behavior. */
@@ -470,13 +592,19 @@ export class CListWidget extends CScrollArea
 		this.itemSelectionChanged.emit();
 	}
 
-	/** Returns the selected rows. */
+	/**
+	 * Returns the selected rows.
+	 * @returns The selected rows.
+	 */
 	selectedRows(): number[]
 	{
 		return [...this.#m_selectedRows].sort((a, b) => a - b);
 	}
 
-	/** Returns the selected items. */
+	/**
+	 * Returns the selected items.
+	 * @returns The selected items.
+	 */
 	selectedItems(): CListWidgetItem[]
 	{
 		return this.selectedRows().map(
@@ -498,7 +626,12 @@ export class CListWidget extends CScrollArea
 	}
 
 	/** Provides row at behavior. */
-    /** Content coordinates; IconMode also requires x to identify a column. */
+    /**
+     * Hit-tests a position in the list content. Icon mode uses both coordinates and rejects grid gaps.
+     * @param y Vertical coordinate in list content.
+     * @param x Horizontal coordinate in list content, used in icon mode. Defaults to zero.
+     * @returns Hit row, or `-1` if the position hits no item.
+     */
     rowAt(y: number, x = 0): number {
         if (this.viewMode() === CListViewMode.IconMode)
             return this.#m_itemLayout.rowAt(x, y, this.#m_contentWidget.width(), this.count());
@@ -507,7 +640,10 @@ export class CListWidget extends CScrollArea
         return row < this.count() ? row : -1;
     }
 
-	/** Sets the hovered row. */
+	/**
+	 * Sets the hovered row.
+	 * @param row Zero-based row.
+	 */
 	setHoveredRow(row: number): void
 	{
 		/** Provides if behavior. */
@@ -519,7 +655,11 @@ export class CListWidget extends CScrollArea
 		this.#m_contentWidget.update();
 	}
 
-	/** Provides activate row behavior. */
+	/**
+	 * Activates the row. May emit `currentRowChanged`, `itemSelectionChanged`, `itemClicked`.
+	 * @param row Zero-based row.
+	 * @param modifiers Modifiers.
+	 */
 	activateRow(row: number, modifiers: number): void
 	{
 		/** Provides if behavior. */
@@ -572,7 +712,10 @@ export class CListWidget extends CScrollArea
 		this.itemClicked.emit(this.#m_items[row]!);
 	}
 
-	/** Provides paint items behavior. */
+	/**
+	 * Paints the items.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	paintItems(painter: CPainter): void
 	{
 		const palette = this.palette();
@@ -638,7 +781,10 @@ export class CListWidget extends CScrollArea
 		}
 	}
 
-	/** Handles the key press event. */
+	/**
+	 * Responds to a key press for the list widget. May accept or ignore the event depending on the input. May emit `itemActivated`, `itemClicked`.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void
 	{
         if (this.viewMode() === CListViewMode.IconMode) {

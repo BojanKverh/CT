@@ -24,6 +24,9 @@ type CTreeViewRow = {
 };
 
 class CTreeScrollArea extends CScrollArea {
+	/**
+	 * Updates the tree scroll bars.
+	 */
 	updateTreeScrollBars(): void {
 		this.updateScrollBars();
 	}
@@ -39,18 +42,34 @@ class CTreeViewContentWidget extends CWidget {
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
+	/**
+	 * Draws the tree view content widget through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void {
 		this.#m_view.paintRows(painter);
 	}
 
+	/**
+	 * Responds to a pointer button press for the tree view content widget.
+	 * @param event Event for a pointer button press.
+	 */
 	protected override mousePressEvent(event: CMouseEvent): void {
 		this.#m_view.contentMousePressEvent(event);
 	}
 
+	/**
+	 * Responds to a double-click for the tree view content widget.
+	 * @param event Event for a double-click.
+	 */
 	protected override mouseDoubleClickEvent(event: CMouseEvent): void {
 		this.#m_view.contentMouseDoubleClickEvent(event);
 	}
 
+	/**
+	 * Responds to a key press for the tree view content widget.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
 		this.#m_view.contentKeyPressEvent(event);
 	}
@@ -102,7 +121,11 @@ export class CTreeView extends CAbstractItemView {
 		});
 	}
 
-	/** Returns the item rectangle in content-widget coordinates. */
+	/**
+	 * Computes the cell bounds using the visible tree row and header section.
+	 * @param index Index in the current model identifying the item.
+	 * @returns Bounds in content coordinates, or an empty rectangle for invalid, foreign or hidden indexes.
+	 */
 	visualRect(index: CModelIndex): CRect {
 		if (!index.isValid() || index.model() !== this.model())
 			return new CRect();
@@ -120,64 +143,103 @@ export class CTreeView extends CAbstractItemView {
 		);
 	}
 
-	/** Provides header behavior. */
+	/**
+	 * Reads the header.
+	 * @returns The header.
+	 */
 	header(): CHeaderView {
 		return this.#m_header;
 	}
 
-	/** Provides viewport behavior. */
+	/**
+	 * Reads the viewport of the tree view.
+	 * @returns The viewport.
+	 */
 	viewport(): CWidget {
 		return this.#m_scrollArea.viewport();
 	}
 
-	/** Returns the tree content widget. */
+	/**
+	 * Returns the tree content widget.
+	 * @returns The content widget.
+	 */
 	widget(): CWidget {
 		return this.#m_contentWidget;
 	}
 
-	/** Provides horizontal scroll bar behavior. */
+	/**
+	 * Reads the horizontal scroll bar of the tree view.
+	 * @returns The horizontal scroll bar.
+	 */
 	horizontalScrollBar(): CScrollBar {
 		return this.#m_scrollArea.horizontalScrollBar();
 	}
 
-	/** Provides vertical scroll bar behavior. */
+	/**
+	 * Reads the vertical scroll bar of the tree view.
+	 * @returns The vertical scroll bar.
+	 */
 	verticalScrollBar(): CScrollBar {
 		return this.#m_scrollArea.verticalScrollBar();
 	}
 
-	/** Provides scroll x behavior. */
+	/**
+	 * Reads the horizontal scroll offset.
+	 * @returns The scroll x.
+	 */
 	scrollX(): number {
 		return this.#m_scrollArea.scrollX();
 	}
 
-	/** Provides scroll y behavior. */
+	/**
+	 * Reads the vertical scroll offset.
+	 * @returns The scroll y.
+	 */
 	scrollY(): number {
 		return this.#m_scrollArea.scrollY();
 	}
 
-	/** Sets the scroll x. */
+	/**
+	 * Sets the scroll x.
+	 * @param x Horizontal coordinate.
+	 */
 	setScrollX(x: number): void {
 		this.#m_scrollArea.setScrollX(x);
 	}
 
-	/** Sets the scroll y. */
+	/**
+	 * Sets the scroll y.
+	 * @param y Vertical coordinate.
+	 */
 	setScrollY(y: number): void {
 		this.#m_scrollArea.setScrollY(y);
 	}
 
-	/** Provides scroll to behavior. */
+	/**
+	 * Scrolls the to.
+	 * @param x Horizontal coordinate.
+	 * @param y Vertical coordinate.
+	 */
 	scrollTo(x: number, y: number): void {
 		this.#m_scrollArea.scrollTo(x, y);
 	}
 
-	/** Returns whether the expanded condition is active. */
+	/**
+	 * Checks whether the tree retains the index as expanded.
+	 * @param index Model index to compare with tracked expanded indexes.
+	 * @returns `true` if an equal index is recorded as expanded.
+	 */
 	isExpanded(index: CModelIndex): boolean {
 		return this.#m_expandedIndexes.some(
 			expanded => expanded.equals(index)
 		);
 	}
 
-	/** Sets the expanded. */
+	/**
+	 * Changes whether a branch's children are visible, emits the corresponding expansion or collapse signal and recalculates the layout.
+	 * @param index Valid index identifying a branch in the current model.
+	 * @param expanded `true` to reveal children or `false` to collapse them.
+	 */
 	setExpanded(index: CModelIndex, expanded: boolean): void {
 		const model = this.model();
 
@@ -215,27 +277,45 @@ export class CTreeView extends CAbstractItemView {
 		this.#m_contentWidget.update();
 	}
 
-	/** Provides expand behavior. */
+	/**
+	 * Reveals the children of the specified branch.
+	 * @param index Index in the current model identifying the item.
+	 */
 	expand(index: CModelIndex): void {
 		this.setExpanded(index, true);
 	}
 
-	/** Provides collapse behavior. */
+	/**
+	 * Hides the descendants of the specified branch.
+	 * @param index Index in the current model identifying the item.
+	 */
 	collapse(index: CModelIndex): void {
 		this.setExpanded(index, false);
 	}
 
-	/** Toggles expanded. */
+	/**
+	 * Inverts the expanded state of the specified branch.
+	 * @param index Index in the current model identifying the item.
+	 */
 	toggleExpanded(index: CModelIndex): void {
 		this.setExpanded(index, !this.isExpanded(index));
 	}
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns A new `CSize`.
+	 */
 	override sizeHint(): CSize {
 		return new CSize(400, 240);
 	}
 
-	/** Sets the geometry. */
+	/**
+	 * Sets the geometry.
+	 * @param x Horizontal position in parent coordinates.
+	 * @param y Vertical position in parent coordinates.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override setGeometry(
 		x: number,
 		y: number,
@@ -246,13 +326,20 @@ export class CTreeView extends CAbstractItemView {
 		this.#updateGeometry();
 	}
 
-	/** Provides resize behavior. */
+	/**
+	 * Resizes the width.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 		this.#updateGeometry();
 	}
 
-	/** Provides paint rows behavior. */
+	/**
+	 * Paints the rows.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	paintRows(painter: CPainter): void {
 		const model = this.model();
 
@@ -371,7 +458,10 @@ export class CTreeView extends CAbstractItemView {
 		}
 	}
     
-    /** Handles the content mouse press event. */
+    /**
+     * Handles a left press in the tree body, toggling disclosure controls or selecting the hit item.
+     * @param event Mouse event with button and pointer coordinates relative to tree content.
+     */
     contentMousePressEvent(event: CMouseEvent): void {
 		const model = this.model();
 		const selectionModel = this.selectionModel();
@@ -439,7 +529,10 @@ export class CTreeView extends CAbstractItemView {
 		event.accept();
 	}
 
-	/** Starts editing the tree cell under a double click. */
+	/**
+	 * Selects the hit tree item and attempts to edit it on a left double-click.
+	 * @param event Mouse event with button and pointer coordinates relative to tree content.
+	 */
 	contentMouseDoubleClickEvent(event: CMouseEvent): void {
 		const model = this.model();
 		const selectionModel = this.selectionModel();
@@ -485,7 +578,10 @@ export class CTreeView extends CAbstractItemView {
 		event.accept();
 	}
 
-	/** Handles the content key press event. */
+	/**
+	 * Handles tree navigation, expansion and edit keys for the current item.
+	 * @param event Keyboard event from the tree content.
+	 */
 	contentKeyPressEvent(event: CKeyEvent): void {
 		const model = this.model();
 		const selectionModel = this.selectionModel();
@@ -903,12 +999,19 @@ export class CTreeView extends CAbstractItemView {
 		);
 	}
 
-	/** Returns the widget used as editor parent. */
+	/**
+	 * Returns the widget used as editor parent.
+	 * @returns The content widget.
+	 */
 	protected override editorParent(): CWidget {
 		return this.#m_contentWidget;
 	}
 
-	/** Updates tree state after the model changes. */
+	/**
+	 * Updates tree state after the model changes.
+	 * @param _oldModel Old model. This implementation ignores the argument.
+	 * @param newModel New model.
+	 */
 	protected override modelChanged(
 		_oldModel: CAbstractItemModel | null,
 		newModel: CAbstractItemModel | null
@@ -943,6 +1046,7 @@ export class CTreeView extends CAbstractItemView {
 		this.#updateRowsAfterStructureChange();
 	}
 
+	/** Refreshes the visible row mapping after rows are removed from the model. */
 	protected override modelRowsRemoved(): void {
 		this.#updateRowsAfterStructureChange();
 	}
@@ -954,7 +1058,10 @@ export class CTreeView extends CAbstractItemView {
 		this.#m_header.update();
 	}
 
-	/** Scrolls to and repaints a newly selected current index. */
+	/**
+	 * Runs base edit cleanup, scrolls a valid current item into view and repaints the content.
+	 * @param index New current model index.
+	 */
 	protected override currentIndexChanged(index: CModelIndex): void {
 		super.currentIndexChanged(index);
 		if (index.isValid())

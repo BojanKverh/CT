@@ -34,8 +34,15 @@ export class CImageView extends CScrollArea {
         this.#layoutImage();
     }
 
+    /**
+     * Reads the pixmap.
+     * @returns The pixmap.
+     */
     pixmap(): CPixmap | null { return this.#pixmap; }
-    /** Invalid or null images clear the viewer. New images start in fit mode. */
+    /**
+     * Invalid or null images clear the viewer. New images start in fit mode.
+     * @param pixmap Pixmap.
+     */
     setPixmap(pixmap: CPixmap | null): void {
         this.#endDrag();
         this.#pixmap = pixmap !== null && !pixmap.isNull()
@@ -44,20 +51,51 @@ export class CImageView extends CScrollArea {
         this.scrollTo(0, 0);
         this.#layoutImage();
     }
+    /**
+     * Clears the contents of the image view.
+     */
     clear(): void { this.setPixmap(null); }
+    /**
+     * Reads the zoom.
+     * @returns The zoom.
+     */
     zoomFactor(): number { return this.#zoom; }
+    /**
+     * Checks whether the image view is fit to window.
+     * @returns `true` if the image view is fit to window, otherwise `false`.
+     */
     isFitToWindow(): boolean { return this.#fit; }
+    /**
+     * Reads whether transparent image regions are drawn against a checkerboard.
+     * @returns `true` if the checkerboard background is enabled.
+     */
     checkerboardVisible(): boolean { return this.#checkerboard; }
+    /**
+     * Sets the checkerboard visible.
+     * @param visible Whether to show the target.
+     */
     setCheckerboardVisible(visible: boolean): void {
         this.#checkerboard = visible; this.#surface.update();
     }
+    /**
+     * Reads the size hint of the image view.
+     * @returns A new `CSize`.
+     */
     override sizeHint(): CSize { return new CSize(480, 320); }
+    /**
+     * Reads the cursor of the image view.
+     * @returns The cursor.
+     */
     override cursor(): CCursorShape {
         return !this.isEnabled() ? CCursorShape.Disabled
             : this.#drag !== null ? CCursorShape.Grabbing : CCursorShape.Grab;
     }
 
-    /** Sets magnification around a viewport-relative anchor (centre by default). */
+    /**
+     * Sets magnification around a viewport-relative anchor (centre by default).
+     * @param factor Factor.
+     * @param anchor Optional anchor.
+     */
     setZoomFactor(factor: number, anchor?: CPoint): void {
         if (this.#pixmap === null || !Number.isFinite(factor) || factor <= 0) return;
         factor = Math.max(CImageView.MinimumZoom, Math.min(CImageView.MaximumZoom, factor));
@@ -73,12 +111,19 @@ export class CImageView extends CScrollArea {
         const rect = this.imageRect();
         this.scrollTo(rect.x() + imageX * factor - x, rect.y() + imageY * factor - y);
     }
+    /** Requests a zoom 25 percent higher than the current factor. */
     zoomIn(): void { this.setZoomFactor(this.#zoom * 1.25); }
+    /** Requests the current zoom factor divided by 1.25. */
     zoomOut(): void { this.setZoomFactor(this.#zoom / 1.25); }
+    /** Requests a zoom factor of one, showing the image at its natural logical size. */
     actualSize(): void { this.setZoomFactor(1); }
+    /** Enables fit mode, recalculates the image bounds and resets both scroll offsets. */
     fitToWindow(): void { this.#fit = true; this.#layoutImage(); this.scrollTo(0, 0); }
 
-    /** Image bounds in the scrolled content coordinate system. */
+    /**
+     * Image bounds in the scrolled content coordinate system.
+     * @returns A new `CRect`.
+     */
     imageRect(): CRect {
         const width = (this.#pixmap?.width() ?? 0) * this.#zoom;
         const height = (this.#pixmap?.height() ?? 0) * this.#zoom;
@@ -86,18 +131,36 @@ export class CImageView extends CScrollArea {
             Math.max(0, (this.viewport().height() - height) / 2), width, height);
     }
 
+    /**
+     * Sets the geometry.
+     * @param x Horizontal position in parent coordinates.
+     * @param y Vertical position in parent coordinates.
+     * @param width Width in logical pixels.
+     * @param height Height in logical pixels.
+     */
     override setGeometry(x: number, y: number, width: number, height: number): void {
         super.setGeometry(x, y, width, height);
         this.#layoutImage();
     }
+    /**
+     * Sets the visible.
+     * @param visible Whether to show the target.
+     */
     override setVisible(visible: boolean): void {
         if (!visible) this.#endDrag();
         super.setVisible(visible);
     }
+    /**
+     * Sets the enabled.
+     * @param enabled Whether to enable the feature.
+     */
     override setEnabled(enabled: boolean): void {
         if (!enabled) this.#endDrag();
         super.setEnabled(enabled);
     }
+    /**
+     * Releases resources held by the image view.
+     */
     override destroy(): void { this.#endDrag(); super.destroy(); }
 
     #setZoom(zoom: number): void {
@@ -127,6 +190,10 @@ export class CImageView extends CScrollArea {
         this.#drag = null;
         if (CApplication.exists()) CApplication.instance().releaseMouse();
     }
+    /**
+     * Responds to wheel scrolling for the image view. May accept or ignore the event depending on the input.
+     * @param event Event for wheel scrolling.
+     */
     protected override wheelEvent(event: CWheelEvent): void {
         if (!this.isEnabled() || this.#pixmap === null || !Number.isFinite(event.deltaY()) || event.deltaY() === 0) {
             event.ignore(); return;
@@ -136,6 +203,10 @@ export class CImageView extends CScrollArea {
         this.setZoomFactor(this.#zoom * Math.exp(-Math.max(-600, Math.min(600, event.deltaY())) * 0.002), anchor);
         event.accept();
     }
+    /**
+     * Responds to a pointer button press for the image view. May update the drag. May request focus and accept or ignore the event depending on the input.
+     * @param event Event for a pointer button press.
+     */
     protected override mousePressEvent(event: CMouseEvent): void {
         if (!this.isEnabled() || this.#pixmap === null || event.button() !== CMouseButton.LeftButton) {
             event.ignore(); return;
@@ -145,21 +216,37 @@ export class CImageView extends CScrollArea {
         CApplication.instance().grabMouse(this);
         event.accept();
     }
+    /**
+     * Responds to pointer movement for the image view. May accept or ignore the event depending on the input.
+     * @param event Event for pointer movement.
+     */
     protected override mouseMoveEvent(event: CMouseEvent): void {
         if (this.#drag === null) { event.ignore(); return; }
         this.scrollTo(this.#drag.scrollX + this.#drag.x - event.x(), this.#drag.scrollY + this.#drag.y - event.y());
         event.accept();
     }
+    /**
+     * Responds to a pointer button release for the image view. May accept or ignore the event depending on the input.
+     * @param event Event for a pointer button release.
+     */
     protected override mouseReleaseEvent(event: CMouseEvent): void {
         if (this.#drag === null || event.button() !== CMouseButton.LeftButton) { event.ignore(); return; }
         this.#endDrag(); event.accept();
     }
+    /**
+     * Responds to a double-click for the image view. May accept or ignore the event depending on the input.
+     * @param event Event for a double-click.
+     */
     protected override mouseDoubleClickEvent(event: CMouseEvent): void {
         if (!this.isEnabled() || this.#pixmap === null || event.button() !== CMouseButton.LeftButton) { event.ignore(); return; }
         this.#endDrag();
         if (this.#fit) this.actualSize(); else this.fitToWindow();
         event.accept();
     }
+    /**
+     * Responds to a key press for the image view. May accept or ignore the event depending on the input.
+     * @param event Event for a key press.
+     */
     protected override keyPressEvent(event: CKeyEvent): void {
         if (!this.isEnabled() || this.#pixmap === null) { event.ignore(); return; }
         switch (event.key()) {
@@ -180,7 +267,15 @@ export class CImageView extends CScrollArea {
 /** Internal content widget; ordinary events bubble to the viewer in local coordinates. */
 class CImageViewSurface extends CWidget {
     constructor(private readonly view: CImageView) { super(view.viewport()); }
+    /**
+     * Reads the cursor of the image view surface.
+     * @returns The cursor.
+     */
     override cursor(): CCursorShape { return this.view.cursor(); }
+    /**
+     * Draws the image view surface through the supplied painter.
+     * @param painter Painter for the current drawing operation.
+     */
     protected override paintEvent(painter: CPainter): void {
         const view = this.view, pixmap = view.pixmap();
         const left = view.scrollX(), top = view.scrollY();

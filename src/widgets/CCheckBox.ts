@@ -14,7 +14,10 @@ export class CCheckBox extends CAbstractButton {
 		this.setCheckable(true);
 	}
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the check box through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionCheckBox();
 		option.initFromCheckBox(this);
@@ -22,7 +25,10 @@ export class CCheckBox extends CAbstractButton {
 		this.style().drawCheckBox(painter, option);
 	}
 
-	/** Handles the mouse press event. */
+	/**
+	 * Responds to a pointer button press for the check box. May accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button press.
+	 */
 	protected override mousePressEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
@@ -33,7 +39,10 @@ export class CCheckBox extends CAbstractButton {
 		event.accept();
 	}
 
-	/** Handles the mouse release event. */
+	/**
+	 * Responds to a pointer button release for the check box. May accept or ignore the event depending on the input. May emit `clicked`.
+	 * @param event Event for a pointer button release.
+	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
@@ -52,7 +61,10 @@ export class CCheckBox extends CAbstractButton {
 		event.accept();
 	}
 
-	/** Handles the key press event. */
+	/**
+	 * Responds to a key press for the check box. May accept or ignore the event depending on the input. May emit `clicked`.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
 		/** Provides if behavior. */
 		if (event.key() !== " ") {

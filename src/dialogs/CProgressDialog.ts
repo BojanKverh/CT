@@ -92,91 +92,82 @@ export class CProgressDialog extends CDialog
 	}
 
 /**
- * Returns the operation label text.
- *
- * @returns Current label text.
- */
+	 * Reads the message shown above the progress bar.
+	 * @returns Current operation label.
+	 */
 	labelText(): string
 	{
 		return this.#m_label.text();
 	}
 
 /**
- * Sets the operation label text.
- *
- * @param text New label text.
- */
+	 * Updates the message displayed above the progress bar.
+	 * @param text New operation label.
+	 */
 	setLabelText(text: string): void
 	{
 		this.#m_label.setText(text);
 	}
 
 /**
- * Returns the minimum progress value.
- *
- * @returns Minimum value.
- */
+	 * Reads the start of the progress range.
+	 * @returns Inclusive minimum progress value.
+	 */
 	minimum(): number
 	{
 		return this.#m_progressBar.minimum();
 	}
 
 /**
- * Sets the minimum progress value.
- *
- * @param minimum Minimum value.
- */
+	 * Updates the progress bar's lower bound.
+	 * @param minimum Requested minimum progress value.
+	 */
 	setMinimum(minimum: number): void
 	{
 		this.#m_progressBar.setMinimum(minimum);
 	}
 
 /**
- * Returns the maximum progress value.
- *
- * @returns Maximum value.
- */
+	 * Reads the progress value treated as completion.
+	 * @returns Inclusive maximum progress value.
+	 */
 	maximum(): number
 	{
 		return this.#m_progressBar.maximum();
 	}
 
 /**
- * Sets the maximum progress value.
- *
- * @param maximum Maximum value.
- */
+	 * Updates the progress bar's upper bound.
+	 * @param maximum Requested maximum progress value.
+	 */
 	setMaximum(maximum: number): void
 	{
 		this.#m_progressBar.setMaximum(maximum);
 	}
 
 /**
- * Sets the progress range.
- *
- * @param minimum Minimum value.
- * @param maximum Maximum value.
- */
+	 * Updates the progress bar's lower and upper bounds.
+	 * @param minimum Requested inclusive minimum progress value.
+	 * @param maximum Requested inclusive maximum progress value.
+	 */
 	setRange(minimum: number, maximum: number): void
 	{
 		this.#m_progressBar.setRange(minimum, maximum);
 	}
 
 /**
- * Returns the current progress value.
- *
- * @returns Current value.
- */
+	 * Reads the current progress from the bar.
+	 * @returns Current value within the configured progress range.
+	 */
 	value(): number
 	{
 		return this.#m_progressBar.value();
 	}
 
 /**
- * Sets the current progress value.
- *
- * @param value New progress value.
- */
+	 * Updates the progress bar. At the maximum, accepts the dialog when auto-close is enabled or replaces the cancel control with OK otherwise.
+	 * @param value Requested progress value, constrained by the progress bar's range.
+	 */
 	setValue(value: number): void
 	{
 		this.#m_progressBar.setValue(value);
@@ -192,38 +183,33 @@ export class CProgressDialog extends CDialog
 	}
 
 /**
- * Returns whether completion automatically accepts and closes the dialog.
- *
- * @returns `true` when auto-close is enabled.
- */
+	 * Reads whether reaching maximum progress triggers acceptance.
+	 * @returns `true` if automatic acceptance at completion is enabled.
+	 */
 	autoClose(): boolean
 	{
 		return this.#m_autoClose;
 	}
 
 /**
- * Enables or disables automatic closing on completion.
- *
- * @param autoClose `true` to close automatically at the maximum value.
- */
+	 * Changes how subsequent progress updates handle completion.
+	 * @param autoClose `true` to accept and close on completion, or `false` to leave the completed dialog open.
+	 */
 	setAutoClose(autoClose: boolean): void
 	{
 		this.#m_autoClose = autoClose;
 	}
 
 /**
- * Returns whether the user canceled the operation.
- *
- * @returns `true` if cancellation was requested.
- */
+	 * Checks whether cancellation has been requested through `cancel()`.
+	 * @returns `true` once a cancellation request was recorded.
+	 */
 	wasCanceled(): boolean
 	{
 		return this.#m_wasCanceled;
 	}
 
-/**
- * Marks the operation as canceled, emits `canceled`, and rejects the dialog.
- */
+/** Records cancellation once, emits `canceled` and rejects the dialog if it is open. */
 	cancel(): void
 	{
 		if (this.#m_wasCanceled)

@@ -10,5 +10,9 @@ export class CPauseAnimation extends CAbstractAnimation {
         this.setDuration(duration);
     }
 
+    /**
+     * Leaves the rendered value unchanged while the pause occupies time in a timeline.
+     * @param _time Position within the pause in milliseconds. No value is applied.
+     */
     protected override updateCurrentTime(_time: number): void {}
 }

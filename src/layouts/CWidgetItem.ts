@@ -18,7 +18,10 @@ export class CWidgetItem extends CLayoutItem {
 		this.#m_widget = widget;
 	}
 
-	/** Returns the widget represented by this item. */
+	/**
+	 * Looks up the widget wrapped by this item.
+	 * @returns The widget supplied at construction, or `null`.
+	 */
 	override widget(): CWidget | null {
 		return this.#m_widget;
 	}

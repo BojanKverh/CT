@@ -26,32 +26,50 @@ export class CRect {
         this.#m_height = height;
     }
 
-    /** @returns The horizontal coordinate of the left edge. */
+    /**
+     * Returns the horizontal coordinate of the left edge.
+     * @returns The horizontal coordinate of the left edge.
+     */
     x(): number {
         return this.#m_x;
     }
 
-    /** @returns The vertical coordinate of the top edge. */
+    /**
+     * Returns the vertical coordinate of the top edge.
+     * @returns The vertical coordinate of the top edge.
+     */
     y(): number {
         return this.#m_y;
     }
 
-    /** @returns The rectangle width. */
+    /**
+     * Returns the rectangle width.
+     * @returns The rectangle width.
+     */
     width(): number {
         return this.#m_width;
     }
 
-    /** @returns The rectangle height. */
+    /**
+     * Returns the rectangle height.
+     * @returns The rectangle height.
+     */
     height(): number {
         return this.#m_height;
     }
 
-    /** @returns The horizontal coordinate immediately after the right edge. */
+    /**
+     * Returns the horizontal coordinate immediately after the right edge.
+     * @returns The horizontal coordinate immediately after the right edge.
+     */
     right(): number {
         return this.#m_x + this.#m_width;
     }
 
-    /** @returns The vertical coordinate immediately after the bottom edge. */
+    /**
+     * Returns the vertical coordinate immediately after the bottom edge.
+     * @returns The vertical coordinate immediately after the bottom edge.
+     */
     bottom(): number {
         return this.#m_y + this.#m_height;
     }
@@ -68,11 +86,13 @@ export class CRect {
     }
 
     /**
-     * Sets the rectangle position and dimensions.
-     *
+     * Sets the geometry. May update the x, the y, the width, the height.
      * @param x Horizontal coordinate of the left edge.
+     *
      * @param y Vertical coordinate of the top edge.
+     *
      * @param width New rectangle width.
+     *
      * @param height New rectangle height.
      */
     setGeometry(x: number, y: number, width: number, height: number): void {
@@ -97,6 +117,10 @@ export class CRect {
             && point.y() < this.bottom();
     }
 
+    /**
+     * Computes the midpoint between the rectangle's edges.
+     * @returns A new point at the center of the rectangle.
+     */
     center(): CPoint {
         return new CPoint(
             this.#m_x + this.#m_width / 2,

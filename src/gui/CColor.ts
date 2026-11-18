@@ -49,48 +49,42 @@ setAlpha(alpha: number)
 	}
 
 		/**
-	 * Returns or updates the red value.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Reads the red channel.
+ * @returns Red intensity from 0 through 255.
+ */
 red(): number {
 		return this.#m_red;
 	}
 
 		/**
-	 * Returns or updates the green value.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Reads the green channel.
+ * @returns Green intensity from 0 through 255.
+ */
 green(): number {
 		return this.#m_green;
 	}
 
 		/**
-	 * Returns or updates the blue value.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Reads the blue channel.
+ * @returns Blue intensity from 0 through 255.
+ */
 blue(): number {
 		return this.#m_blue;
 	}
 
 		/**
-	 * Returns or updates the alpha value.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Reads the alpha channel.
+ * @returns Alpha intensity from 0 through 255.
+ */
 alpha(): number {
 		return this.#m_alpha;
 	}
 
 		/**
-	 * Returns whether this object is equal to another object.
-	 *
-	 * @param other Other.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Compares the red, green, blue and alpha channels exactly.
+ * @param other Color to compare.
+ * @returns `true` if all four channels match.
+ */
 equals(other: CColor): boolean {
 		return this.#m_red === other.#m_red
 			&& this.#m_green === other.#m_green
@@ -99,19 +93,17 @@ equals(other: CColor): boolean {
 	}
 
 		/**
-	 * Returns the color as a CSS color string.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Serializes the color as CSS RGBA with normalized alpha.
+ * @returns CSS `rgba(...)` string with alpha between zero and one.
+ */
 toCss(): string {
 		return `rgba(${this.#m_red}, ${this.#m_green}, ${this.#m_blue}, ${this.#m_alpha / 255})`;
 	}
 
 		/**
-	 * Returns the color as a hexadecimal RGB string.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Serializes the red, green and blue channels as hexadecimal.
+ * @returns A `#rrggbb` string. Alpha is omitted.
+ */
 toHex(): string {
 		const hex = (value: number) => value.toString(16).padStart(2, "0");
 		return `#${hex(this.#m_red)}${hex(this.#m_green)}` + `${hex(this.#m_blue)}`;

@@ -10,7 +10,10 @@ import { CStyleOptionKeySequenceEdit } from "../gui/CStyleOptionKeySequenceEdit.
 
 /** Implements the key sequence edit widget. */
 export class CKeySequenceEdit extends CWidget {
-	/** Allows recording a combination without activating application shortcuts. */
+	/**
+	 * Allows recording a combination without activating application shortcuts.
+	 * @returns `true` in this implementation.
+	 */
 	capturesShortcuts(): boolean { return true; }
 	/** Signal emitted when key sequence changes. */
 	readonly keySequenceChanged = new CSignal<[string]>();
@@ -27,12 +30,18 @@ export class CKeySequenceEdit extends CWidget {
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
-	/** Provides key sequence behavior. */
+	/**
+	 * Reads the key sequence.
+	 * @returns The key sequence.
+	 */
 	keySequence(): string {
 		return this.#m_keySequence;
 	}
 
-	/** Sets the key sequence. */
+	/**
+	 * Sets the key sequence.
+	 * @param sequence Sequence.
+	 */
 	setKeySequence(sequence: string): void {
 		/** Provides if behavior. */
 		if (this.#m_keySequence === sequence)
@@ -48,12 +57,18 @@ export class CKeySequenceEdit extends CWidget {
 		this.setKeySequence("");
 	}
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns A new `CSize`.
+	 */
 	override sizeHint(): CSize {
 		return new CSize(160, 28);
 	}
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the key sequence edit through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionKeySequenceEdit();
 		option.initFromKeySequenceEdit(this);
@@ -61,7 +76,10 @@ export class CKeySequenceEdit extends CWidget {
 		this.style().drawKeySequenceEdit(painter, option);
 	}
 
-	/** Handles the key press event. */
+	/**
+	 * Responds to a key press for the key sequence edit. May accept the event.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
 		const key = event.key();
 
@@ -82,7 +100,10 @@ export class CKeySequenceEdit extends CWidget {
 		event.accept();
 	}
 
-	/** Handles the mouse press event. */
+	/**
+	 * Responds to a pointer button press for the key sequence edit. May accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button press.
+	 */
 	protected override mousePressEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
@@ -93,7 +114,10 @@ export class CKeySequenceEdit extends CWidget {
 		event.accept();
 	}
 
-	/** Handles the focus out event. */
+	/**
+	 * Responds to focus exit for the key sequence edit. May emit `editingFinished`.
+	 * @param event Event for focus exit.
+	 */
 	protected override focusOutEvent(event: CFocusEvent): void {
 		this.editingFinished.emit();
 		super.focusOutEvent(event);

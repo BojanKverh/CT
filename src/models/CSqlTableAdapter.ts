@@ -28,13 +28,32 @@ export interface CSqlSelectResult {
  * WASM or any other asynchronous storage mechanism.
  */
 export abstract class CSqlTableAdapter {
+	/**
+	 * Reads a page of records from a table.
+	 * @param request Table, projection, offset, limit and optional sorting and filtering.
+	 * @returns A promise resolving to the selected page and total matching count before paging.
+	 */
 	abstract select(request: CSqlSelectRequest): Promise<CSqlSelectResult>;
 
+	/**
+	 * Inserts a record into a table.
+	 * @param table Target table name.
+	 * @param values Initial values keyed by column name.
+	 * @returns A promise resolving to the stored record, including any generated values.
+	 */
 	abstract insert(
 		table: string,
 		values: Readonly<CSqlRow>
 	): Promise<CSqlRow>;
 
+	/**
+	 * Persists changes to an existing record identified by its primary key.
+	 * @param table Target table name.
+	 * @param primaryKeyColumn Name of the key column.
+	 * @param primaryKey Value identifying the record.
+	 * @param values Changed values keyed by column.
+	 * @returns A promise that resolves when the update completes.
+	 */
 	abstract update(
 		table: string,
 		primaryKeyColumn: string,
@@ -42,6 +61,13 @@ export abstract class CSqlTableAdapter {
 		values: Readonly<CSqlRow>
 	): Promise<void>;
 
+	/**
+	 * Deletes an existing record by its primary key.
+	 * @param table Target table name.
+	 * @param primaryKeyColumn Name of the key column.
+	 * @param primaryKey Value identifying the record.
+	 * @returns A promise that resolves when deletion completes.
+	 */
 	abstract remove(
 		table: string,
 		primaryKeyColumn: string,

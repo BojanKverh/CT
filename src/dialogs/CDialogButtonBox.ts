@@ -108,20 +108,18 @@ export class CDialogButtonBox extends CWidget
 	}
 
 /**
- * Returns the configured standard buttons.
- *
- * @returns Bitwise combination of standard buttons.
- */
+	 * Reads which standard buttons are configured.
+	 * @returns Bitwise mask of configured `CStandardButton` values.
+	 */
 	standardButtons(): CStandardButton
 	{
 		return this.#m_standardButtons;
 	}
 
 /**
- * Sets the standard buttons displayed by the box.
- *
- * @param buttons Bitwise combination of buttons to display.
- */
+	 * Rebuilds the displayed buttons when the mask changes. Yes and OK emit `accepted`. No, Close and Cancel emit `rejected`. Apply emits neither signal.
+	 * @param buttons Bitwise mask of buttons to show, or `NoButton` to clear them.
+	 */
 	setStandardButtons(buttons: CStandardButton): void
 	{
 		if (this.#m_standardButtons === buttons)
@@ -182,10 +180,9 @@ export class CDialogButtonBox extends CWidget
 	}
 
 /**
- * Returns the preferred size required by the contained buttons.
- *
- * @returns Preferred widget size.
- */
+	 * Measures the displayed buttons and horizontal gaps.
+	 * @returns Preferred width and maximum button height in logical pixels.
+	 */
 	override sizeHint(): CSize {
 		const n = this.#m_layout.count();
 		let w = 0;

@@ -176,20 +176,18 @@ export class CColorDialog extends CDialog
 	}
 
 /**
- * Returns a copy of the currently selected color.
- *
- * @returns Current color.
- */
+	 * Reads the selected color, including alpha.
+	 * @returns An independent copy of the current RGBA color.
+	 */
 	currentColor(): CColor {
 	    return new CColor(this.#m_color.red(), this.#m_color.green(), this.#m_color.blue(), 
             this.#m_color.alpha());
 	}
 
 /**
- * Sets the current color.
- *
- * @param color Color to select.
- */
+	 * Updates the color controls and emits `currentColorChanged` when the color differs.
+	 * @param color Color to select.
+	 */
 	setCurrentColor(color: CColor): void {
 		if (this.#m_color.equals(color))
 			return;
@@ -199,12 +197,11 @@ export class CColorDialog extends CDialog
 	}
 
 /**
- * Shows a modal color dialog.
- *
- * @param initial Initial color.
- * @param parent Optional parent widget.
- * @returns A promise resolving to the selected color, or `null` if rejected.
- */
+	 * Opens a modal color picker initialized to the supplied color.
+	 * @param initial Initial color to display.
+	 * @param parent Parent widget that owns the dialog, or `null` for a top-level dialog.
+	 * @returns A promise resolving to a copy of the accepted color, or `null` when rejected.
+	 */
 	static getColor(
 		initial: CColor,
 		parent: CWidget | null = null

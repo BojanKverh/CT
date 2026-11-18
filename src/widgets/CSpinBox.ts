@@ -56,37 +56,59 @@ export class CSpinBox extends CWidget {
 		this.#m_downButton.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
-	/** Returns the minimum . */
+	/**
+	 * Returns the minimum .
+	 * @returns The minimum.
+	 */
 	minimum(): number {
 		return this.#m_minimum;
 	}
 
-	/** Returns the maximum . */
+	/**
+	 * Returns the maximum .
+	 * @returns The maximum.
+	 */
 	maximum(): number {
 		return this.#m_maximum;
 	}
 
-	/** Provides value behavior. */
+	/**
+	 * Reads the value.
+	 * @returns The value.
+	 */
 	value(): number {
 		return this.#m_value;
 	}
 
-	/** Provides single step behavior. */
+	/**
+	 * Reads the single step.
+	 * @returns The single step.
+	 */
 	singleStep(): number {
 		return this.#m_singleStep;
 	}
 
-	/** Sets the minimum. */
+	/**
+	 * Sets the minimum.
+	 * @param minimum Minimum.
+	 */
 	setMinimum(minimum: number): void {
 		this.setRange(minimum, this.#m_maximum);
 	}
 
-	/** Sets the maximum. */
+	/**
+	 * Sets the maximum.
+	 * @param maximum Maximum.
+	 */
 	setMaximum(maximum: number): void {
 		this.setRange(this.#m_minimum, maximum);
 	}
 
-	/** Sets the range. */
+	/**
+	 * Sets the range.
+	 * @param minimum Minimum.
+	 * @param maximum Maximum.
+	 */
 	setRange(minimum: number, maximum: number): void {
 		/** Provides if behavior. */
 		if (minimum > maximum)
@@ -100,7 +122,10 @@ export class CSpinBox extends CWidget {
 		this.update();
 	}
 
-   /** Sets the value. */
+   /**
+    * Sets the value.
+    * @param value New value.
+    */
    setValue(value: number): void {
 	    const clamped = Math.max(this.#m_minimum, Math.min(value, this.#m_maximum));
 	    /** Provides if behavior. */
@@ -113,39 +138,57 @@ export class CSpinBox extends CWidget {
 	    this.update();
     }
 
-	/** Sets the single step. */
+	/**
+	 * Sets the single step.
+	 * @param step Step.
+	 */
 	setSingleStep(step: number): void {
 		this.#m_singleStep = Math.max(0, step);
 	}
 
-	/** Performs step up. */
+	/** Adds the single-step increment to the value, subject to the current bounds. */
 	stepUp(): void {
 		this.setValue(this.#m_value + this.#m_singleStep);
 	}
 
-	/** Performs step down. */
+	/** Subtracts the single-step increment from the value, subject to the current bounds. */
 	stepDown(): void {
 		this.setValue(this.#m_value - this.#m_singleStep);
 	}
 
-	/** Provides line edit behavior. */
+	/**
+	 * Reads the editor.
+	 * @returns The editor.
+	 */
 	lineEdit(): CLineEdit {
 		return this.#m_editor;
 	}
 
-    /** Sets the geometry. */
+    /**
+     * Sets the geometry.
+     * @param x Horizontal position in parent coordinates.
+     * @param y Vertical position in parent coordinates.
+     * @param width Width in logical pixels.
+     * @param height Height in logical pixels.
+     */
     override setGeometry(x: number, y: number, width: number, height: number): void {
         super.setGeometry(x, y, width, height);
         this.#updateChildGeometry();
     }
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns A new `CSize`.
+	 */
 	override sizeHint(): CSize {
 		return new CSize(16 + this.fontMetrics().textWidth(this.#m_maximum.toString()), 
 			Math.max(36, 6 + this.fontMetrics().height()));
 	}
 
-	/** Handles the key press event. */
+	/**
+	 * Responds to a key press for the spin box. May accept the event.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
 		/** Provides switch behavior. */
 		switch (event.key()) {
@@ -167,7 +210,10 @@ export class CSpinBox extends CWidget {
 		super.keyPressEvent(event);
 	}
 
-	/** Handles the wheel event. */
+	/**
+	 * Responds to wheel scrolling for the spin box. May accept or ignore the event depending on the input.
+	 * @param event Event for wheel scrolling.
+	 */
 	protected override wheelEvent(event: CWheelEvent): void {
 		/** Provides if behavior. */
 		if (event.deltaY() < 0)

@@ -10,6 +10,11 @@ class CTreeWidgetModel extends CAbstractItemModel {
 	#m_items: CTreeWidgetItem[] = [];
 	#m_headerLabels: string[] = [];
 
+	/**
+	 * Counts the children under a supplied parent index. An invalid parent denotes the root.
+	 * @param parent Parent index, or an omitted or invalid index for top-level items.
+	 * @returns Number of child items, or zero if a valid parent has no tree item.
+	 */
 	rowCount(parent: CModelIndex = new CModelIndex()): number {
 		if (!parent.isValid())
 			return this.#m_items.length;
@@ -22,6 +27,11 @@ class CTreeWidgetModel extends CAbstractItemModel {
 		return item.childCount();
 	}
 
+	/**
+	 * Measures the widest item across the whole tree and includes any configured headers.
+	 * @param _parent Parent index. The model uses one column count for the entire tree.
+	 * @returns Number of columns required by the headers and items.
+	 */
 	columnCount(_parent: CModelIndex = new CModelIndex()): number {
 		let count = this.#m_headerLabels.length;
 
@@ -42,6 +52,13 @@ class CTreeWidgetModel extends CAbstractItemModel {
 		return count;
 	}
 
+	/**
+	 * Builds an index that carries the corresponding tree item as its internal payload.
+	 * @param row Zero-based row among the parent's children.
+	 * @param column Zero-based column.
+	 * @param parent Parent index, or an invalid index for a root item.
+	 * @returns Owned index for an existing item and column, or an invalid index.
+	 */
 	override index(row: number, column: number,
 		parent: CModelIndex = new CModelIndex()): CModelIndex {
 		if (row < 0 || column < 0 ||
@@ -67,6 +84,11 @@ class CTreeWidgetModel extends CAbstractItemModel {
 		return this.createIndex(row, column, item);
 	}
 
+	/**
+	 * Resolves a tree item's parent and finds that parent among its own siblings.
+	 * @param index Index owned by this tree model.
+	 * @returns Parent index at column zero, or an invalid index for a root, foreign, invalid or unresolvable item.
+	 */
 	override parentIndex(index: CModelIndex): CModelIndex {
 		if (!index.isValid() || index.model() !== this)
 			return new CModelIndex();
@@ -96,6 +118,11 @@ class CTreeWidgetModel extends CAbstractItemModel {
 		return this.createIndex(row, 0, parent);
 	}
 
+	/**
+	 * Reads an item's text for the indexed column.
+	 * @param index Index owned by this tree model.
+	 * @returns Item text, or `null` when the index does not identify a tree item.
+	 */
 	data(index: CModelIndex): unknown {
 		if (!index.isValid() || index.model() !== this)
 			return null;
@@ -108,6 +135,12 @@ class CTreeWidgetModel extends CAbstractItemModel {
 		return item.text(index.column());
 	}
 
+    /**
+     * Reads a horizontal header label or uses the default row numbering for vertical headers.
+     * @param section Zero-based header section.
+     * @param orientation Horizontal for labels or vertical for row numbers.
+     * @returns Configured label, an empty string for an unset horizontal label, or a one-based vertical number.
+     */
     override headerData(section: number,
 		orientation: COrientation): string | number | null {
 	        if (orientation !== COrientation.Horizontal)
@@ -116,22 +149,45 @@ class CTreeWidgetModel extends CAbstractItemModel {
 		return this.#m_headerLabels[section] ?? "";
 	}
 
+	/**
+	 * Looks up a root item without changing the tree.
+	 * @param index Zero-based position among top-level items.
+	 * @returns The item at that position, or `null` if absent.
+	 */
 	topLevelItem(index: number): CTreeWidgetItem | null {
 		return this.#m_items[index] ?? null;
 	}
 
+	/**
+	 * Reads the number of entries in the items.
+	 * @returns The number of entries in the items.
+	 */
 	topLevelItemCount(): number {
 		return this.#m_items.length;
 	}
 
+	/**
+	 * Finds a root item by identity.
+	 * @param item Item to locate in the top-level list.
+	 * @returns Zero-based position, or `-1` if the item is not at the root.
+	 */
 	indexOfTopLevelItem(item: CTreeWidgetItem): number {
 		return this.#m_items.indexOf(item);
 	}
 
+	/**
+	 * Adds a top level item.
+	 * @param item Item to operate on.
+	 */
 	addTopLevelItem(item: CTreeWidgetItem): void {
 		this.insertTopLevelItem(this.#m_items.length, item);
 	}
 
+	/**
+	 * Inserts a top level item. May emit a model reset.
+	 * @param index Zero-based item index.
+	 * @param item Item to operate on.
+	 */
 	insertTopLevelItem(index: number, item: CTreeWidgetItem): void {
 		if (item.parent() !== null)
 			item.parent()?.removeChild(item);
@@ -151,6 +207,11 @@ class CTreeWidgetModel extends CAbstractItemModel {
 		this.resetModel();
 	}
 
+	/**
+	 * Removes a root item and its subtree from the tree and resets the model. The item remains usable by the caller.
+	 * @param index Zero-based position among top-level items.
+	 * @returns The removed item, or `null` if the position is invalid.
+	 */
 	takeTopLevelItem(index: number): CTreeWidgetItem | null {
 		if (index < 0 || index >= this.#m_items.length)
 			return null;
@@ -166,11 +227,20 @@ class CTreeWidgetModel extends CAbstractItemModel {
 		return item;
 	}
 
+	/**
+	 * Sets the header labels. May emit a model reset.
+	 * @param labels Labels.
+	 */
 	setHeaderLabels(labels: string[]): void {
 		this.#m_headerLabels = [...labels];
 		this.resetModel();
 	}
 
+	/**
+	 * Resolves a model index to its backing tree item.
+	 * @param index Index owned by this tree's model.
+	 * @returns The item stored in the index, or `null` for an invalid, foreign or unsuitable index.
+	 */
 	itemFromIndex(index: CModelIndex): CTreeWidgetItem | null {
 		if (!index.isValid() || index.model() !== this)
 			return null;
@@ -182,6 +252,12 @@ class CTreeWidgetModel extends CAbstractItemModel {
 			: null;
 	}
 
+	/**
+	 * Builds a model index from the item's position among its siblings.
+	 * @param item Tree item to locate.
+	 * @param column Zero-based column, defaulting to zero.
+	 * @returns Index for the item and column, or an invalid index if the position cannot be resolved.
+	 */
 	indexFromItem(item: CTreeWidgetItem,
 		column: number = 0): CModelIndex {
 		if (column < 0 || column >= this.columnCount())
@@ -238,47 +314,79 @@ export class CTreeWidget extends CTreeView {
 		);
 	}
 
-	/** Adds top level item. */
+	/**
+	 * Adds top level item.
+	 * @param item Item to operate on.
+	 */
 	addTopLevelItem(item: CTreeWidgetItem): void {
 		this.#m_treeModel.addTopLevelItem(item);
 	}
 
-	/** Inserts top level item. */
+	/**
+	 * Inserts top level item.
+	 * @param index Zero-based item index.
+	 * @param item Item to operate on.
+	 */
 	insertTopLevelItem(index: number, item: CTreeWidgetItem): void {
 		this.#m_treeModel.insertTopLevelItem(index, item);
 	}
 
-	/** Removes and returns top level item. */
+	/**
+	 * Removes a root item and its subtree from the tree and resets the model. The item remains usable by the caller.
+	 * @param index Zero-based position among top-level items.
+	 * @returns The removed item, or `null` if the position is invalid.
+	 */
 	takeTopLevelItem(index: number): CTreeWidgetItem | null {
 		return this.#m_treeModel.takeTopLevelItem(index);
 	}
 
-	/** Provides top level item behavior. */
+	/**
+	 * Looks up a root item without changing the tree.
+	 * @param index Zero-based position among top-level items.
+	 * @returns The item at that position, or `null` if absent.
+	 */
 	topLevelItem(index: number): CTreeWidgetItem | null {
 		return this.#m_treeModel.topLevelItem(index);
 	}
 
-	/** Provides top level item count behavior. */
+	/**
+	 * Reads the top level item count of the tree widget.
+	 * @returns The top level item count.
+	 */
 	topLevelItemCount(): number {
 		return this.#m_treeModel.topLevelItemCount();
 	}
 
-	/** Provides index of top level item behavior. */
+	/**
+	 * Finds a root item by identity.
+	 * @param item Item to locate in the top-level list.
+	 * @returns Zero-based position, or `-1` if the item is not at the root.
+	 */
 	indexOfTopLevelItem(item: CTreeWidgetItem): number {
 		return this.#m_treeModel.indexOfTopLevelItem(item);
 	}
 
-	/** Sets the header labels. */
+	/**
+	 * Sets the header labels.
+	 * @param labels Labels.
+	 */
 	setHeaderLabels(labels: string[]): void {
 		this.#m_treeModel.setHeaderLabels(labels);
 	}
 
-	/** Returns the current item. */
+	/**
+	 * Resolves the current model index to a tree item.
+	 * @returns Current item, or `null` if no current tree item is resolved.
+	 */
 	currentItem(): CTreeWidgetItem | null {
 		return this.#m_treeModel.itemFromIndex(this.currentIndex());
 	}
 
-	/** Sets the current item. */
+	/**
+	 * Sets the current item.
+	 * @param item Item to operate on.
+	 * @param column Zero-based column. Defaults to `0`.
+	 */
 	setCurrentItem(item: CTreeWidgetItem | null,
 		column: number = 0): void {
 		/** Provides if behavior. */
@@ -295,7 +403,10 @@ export class CTreeWidget extends CTreeView {
 			this.setCurrentIndex(index);
 	}
 
-	/** Returns the selected items. */
+	/**
+	 * Maps selected model indexes to items and deduplicates multi-column selections.
+	 * @returns A new array of selected items, in selection order.
+	 */
 	selectedItems(): CTreeWidgetItem[] {
 		const selectionModel = this.selectionModel();
 
@@ -318,12 +429,21 @@ export class CTreeWidget extends CTreeView {
 		return result;
 	}
 
-	/** Provides item from index behavior. */
+	/**
+	 * Resolves a model index to its backing tree item.
+	 * @param index Index owned by this tree's model.
+	 * @returns The item stored in the index, or `null` for an invalid, foreign or unsuitable index.
+	 */
 	itemFromIndex(index: CModelIndex): CTreeWidgetItem | null {
 		return this.#m_treeModel.itemFromIndex(index);
 	}
 
-	/** Provides index from item behavior. */
+	/**
+	 * Builds a model index from the item's position among its siblings.
+	 * @param item Tree item to locate.
+	 * @param column Zero-based column, defaulting to zero.
+	 * @returns Index for the item and column, or an invalid index if the position cannot be resolved.
+	 */
 	indexFromItem(item: CTreeWidgetItem,
 		column: number = 0): CModelIndex {
 		return this.#m_treeModel.indexFromItem(item, column);

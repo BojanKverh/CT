@@ -82,12 +82,18 @@ export class CMainWindow extends CWidget {
 		this.#updateGeometry();
 	}
 
-	/** Provides menu bar behavior. */
+	/**
+	 * Reads the menu bar.
+	 * @returns The menu bar.
+	 */
 	menuBar(): CMenuBar | null {
 		return this.#m_menuBar;
 	}
 
-	/** Sets the menu bar. */
+	/**
+	 * Sets the menu bar.
+	 * @param menuBar Menu bar.
+	 */
 	setMenuBar(menuBar: CMenuBar | null): void {
 		/** Provides if behavior. */
 		if (this.#m_menuBar === menuBar)
@@ -108,12 +114,23 @@ export class CMainWindow extends CWidget {
 		this.restoreWorkspace();
 	}
 
-	/** Adds tool bar. */
+	/**
+	 * Adds tool bar.
+	 * @param toolBar Tool bar.
+	 */
 	addToolBar(toolBar: CToolBar): void;
-	/** Adds tool bar. */
+	/**
+	 * Adds tool bar.
+	 * @param area Area.
+	 * @param toolBar Tool bar.
+	 */
 	addToolBar(area: CToolBarArea, toolBar: CToolBar): void;
 
-	/** Adds tool bar. */
+	/**
+	 * Adds tool bar.
+	 * @param areaOrToolBar Area or tool bar.
+	 * @param maybeToolBar Optional maybe tool bar.
+	 */
 	addToolBar(
 		areaOrToolBar: CToolBarArea | CToolBar,
 		maybeToolBar?: CToolBar
@@ -150,7 +167,10 @@ export class CMainWindow extends CWidget {
 		this.restoreWorkspace();
 	}
 
-	/** Removes tool bar. */
+	/**
+	 * Removes tool bar.
+	 * @param toolBar Tool bar.
+	 */
 	removeToolBar(toolBar: CToolBar): void {
 		const index = this.#m_toolBars.findIndex(
 			item => item.toolBar === toolBar
@@ -169,21 +189,34 @@ export class CMainWindow extends CWidget {
 		this.update();
 	}
 
-	/** Provides tool bars behavior. */
+	/**
+	 * Lists the toolbars registered with this window, optionally filtered by docking area.
+	 * @param area Docking area to filter by. Omit it to list every toolbar.
+	 * @returns A new array containing the matching toolbars.
+	 */
 	toolBars(area?: CToolBarArea): readonly CToolBar[] {
 		return this.#m_toolBars
 			.filter(item => area === undefined || item.area === area)
 			.map(item => item.toolBar);
 	}
 
-	/** Provides tool bar area behavior. */
+	/**
+	 * Looks up the area's assignment for a toolbar.
+	 * @param toolBar Toolbar to look up.
+	 * @returns The assigned area, or `null` for an unregistered toolbar.
+	 */
 	toolBarArea(toolBar: CToolBar): CToolBarArea | null {
 		return this.#m_toolBars.find(
 			item => item.toolBar === toolBar
 		)?.area ?? null;
 	}
 
-	/** Provides move tool bar behavior. */
+	/**
+	 * Moves the tool bar. May request a repaint.
+	 * @param toolBar Tool bar.
+	 * @param area Area.
+	 * @param index Optional index identifying the target item.
+	 */
 	moveToolBar(
 		toolBar: CToolBar,
 		area: CToolBarArea,
@@ -243,7 +276,10 @@ export class CMainWindow extends CWidget {
 
 
 
-	/** Provides begin tool bar drag behavior. */
+	/**
+	 * Begins the tool bar drag. May request a repaint.
+	 * @param toolBar Tool bar.
+	 */
 	beginToolBarDrag(toolBar: CToolBar): void {
 		const item = this.#m_toolBars.find(
 			item => item.toolBar === toolBar
@@ -271,7 +307,12 @@ export class CMainWindow extends CWidget {
 		this.update();
 	}
 
-	/** Provides dock tool bar behavior. */
+	/**
+	 * Returns a registered floating toolbar to a docked area and moves it to the requested position.
+	 * @param toolBar Registered toolbar to dock.
+	 * @param area Destination dock area.
+	 * @param index Optional insertion index in the destination area.
+	 */
 	dockToolBar(
 		toolBar: CToolBar,
 		area: CToolBarArea,
@@ -291,7 +332,12 @@ export class CMainWindow extends CWidget {
 		this.moveToolBar(toolBar, area, index);
 	}
 
-	/** Provides tool bar area at behavior. */
+	/**
+	 * Hit-tests the toolbar dock zones near the edges of the window.
+	 * @param canvasX Horizontal logical canvas coordinate.
+	 * @param canvasY Vertical logical canvas coordinate.
+	 * @returns Toolbar area, or `null` outside the window or away from its dock zones.
+	 */
 	toolBarAreaAt(
 		canvasX: number,
 		canvasY: number
@@ -330,7 +376,12 @@ export class CMainWindow extends CWidget {
 	}
 
 
-	/** Provides update tool bar preview behavior. */
+	/**
+	 * Updates the tool bar preview. May request a repaint.
+	 * @param toolBar Tool bar.
+	 * @param canvasX Canvas x.
+	 * @param canvasY Canvas y.
+	 */
 	updateToolBarPreview(
 		toolBar: CToolBar,
 		canvasX: number,
@@ -371,12 +422,18 @@ export class CMainWindow extends CWidget {
 
 
 
-	/** Provides status bar behavior. */
+	/**
+	 * Reads the status bar.
+	 * @returns The status bar.
+	 */
 	statusBar(): CStatusBar | null {
 		return this.#m_statusBar;
 	}
 
-	/** Sets the status bar. */
+	/**
+	 * Sets the status bar.
+	 * @param statusBar Status bar.
+	 */
 	setStatusBar(statusBar: CStatusBar | null): void {
 		/** Provides if behavior. */
 		if (this.#m_statusBar === statusBar)
@@ -397,17 +454,27 @@ export class CMainWindow extends CWidget {
 		this.restoreWorkspace();
 	}
 
-	/** Provides central widget behavior. */
+	/**
+	 * Looks up the central content in the internal dock area.
+	 * @returns Central widget, or `null` if none is installed.
+	 */
 	centralWidget(): CWidget | null {
 		return this.#m_dockArea.centralWidget();
 	}
 
-	/** Sets the central widget. */
+	/**
+	 * Installs or clears the central content in the internal dock area.
+	 * @param widget Widget to display in the center, or `null` to clear it.
+	 */
 	setCentralWidget(widget: CWidget | null): void {
 		this.#m_dockArea.setCentralWidget(widget);
 	}
 
-	/** Adds dock widget. */
+	/**
+	 * Adds dock widget.
+	 * @param area Area.
+	 * @param dockWidget Dock widget.
+	 */
 	addDockWidget(area: CDockWidgetArea, dockWidget: CDockWidget): void {
 		/** Provides if behavior. */
 		if (!this.#m_dockWidgets.includes(dockWidget)) {
@@ -428,7 +495,10 @@ export class CMainWindow extends CWidget {
 		this.restoreWorkspace();
 	}
 
-	/** Removes dock widget. */
+	/**
+	 * Removes dock widget.
+	 * @param dockWidget Dock widget.
+	 */
 	removeDockWidget(dockWidget: CDockWidget): void {
 		const index = this.#m_dockWidgets.indexOf(dockWidget);
 
@@ -452,12 +522,20 @@ export class CMainWindow extends CWidget {
 		this.#m_dockArea.removeDockWidget(dockWidget);
 	}
 
-	/** Provides dock widget area behavior. */
+	/**
+	 * Looks up the dock area's assignment for a dock widget.
+	 * @param dockWidget Dock widget to query.
+	 * @returns Assigned area, or `null` if no assignment is recorded.
+	 */
 	dockWidgetArea(dockWidget: CDockWidget): CDockWidgetArea | null {
 		return this.#m_dockArea.dockWidgetArea(dockWidget);
 	}
 
-	/** Sets the dock widget floating. */
+	/**
+	 * Sets the dock widget floating.
+	 * @param dockWidget Dock widget.
+	 * @param floating Floating flag.
+	 */
 	setDockWidgetFloating(dockWidget: CDockWidget,
 		floating: boolean): void {
 		/** Provides if behavior. */
@@ -495,7 +573,11 @@ export class CMainWindow extends CWidget {
 		this.update();
 	}
 
-	/** Provides dock widget behavior. */
+	/**
+	 * Registers a dock widget if needed, assigns a workspace ID when absent and places it in the requested dock area.
+	 * @param dockWidget Dock widget to register or move.
+	 * @param area Destination docking area.
+	 */
 	dockWidget(dockWidget: CDockWidget, area: CDockWidgetArea): void {
 		/** Provides if behavior. */
 		if (!this.#m_dockWidgets.includes(dockWidget)) {
@@ -526,7 +608,13 @@ export class CMainWindow extends CWidget {
 		this.update();
 	}
 
-	/** Provides dock area at behavior. */
+	/**
+	 * Asks the internal dock area where the dock widget can be positioned at the pointer.
+	 * @param dockWidget Widget being docked.
+	 * @param canvasX Horizontal logical canvas coordinate.
+	 * @param canvasY Vertical logical canvas coordinate.
+	 * @returns Dock area at the point, or `null` when it does not target a valid zone.
+	 */
 	dockAreaAt(
 		dockWidget: CDockWidget,
 		canvasX: number,
@@ -539,7 +627,12 @@ export class CMainWindow extends CWidget {
 		);
 	}
 
-	/** Provides update dock preview behavior. */
+	/**
+	 * Updates the dock preview.
+	 * @param dockWidget Dock widget.
+	 * @param canvasX Canvas x.
+	 * @param canvasY Canvas y.
+	 */
 	updateDockPreview(
 		dockWidget: CDockWidget,
 		canvasX: number,
@@ -556,7 +649,10 @@ export class CMainWindow extends CWidget {
 		this.#m_dockArea.clearDockPreview();
 	}
 
-	/** Provides save state behavior. */
+	/**
+	 * Saves the state.
+	 * @returns The save state.
+	 */
 	saveState(): string {
 		const state: CMainWindowState = {
 			version: 2,
@@ -589,7 +685,11 @@ export class CMainWindow extends CWidget {
 		return JSON.stringify(state);
 	}
 
-	/** Provides restore state behavior. */
+	/**
+	 * Restores saved dock and toolbar placement by matching workspace IDs. Unregistered IDs are skipped.
+	 * @param serializedState JSON workspace state saved by `saveState()`, using version 2.
+	 * @returns `true` after applying a supported state, or `false` for invalid JSON or an unsupported state shape.
+	 */
 	restoreState(serializedState: string): boolean {
 		let state: CMainWindowState;
 
@@ -724,7 +824,9 @@ export class CMainWindow extends CWidget {
 		return true;
 	}
 
-	/** Provides reset workspace behavior. */
+	/**
+	 * Resets the workspace.
+	 */
 	resetWorkspace(): void {
 		const storage = this.#workspaceStorage();
 		/** Provides if behavior. */
@@ -733,7 +835,10 @@ export class CMainWindow extends CWidget {
 	}
 
 
-	/** Renders the widget. */
+	/**
+	 * Renders the widget.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	override render(painter: CPainter): void {
 		super.render(painter);
 
@@ -777,20 +882,33 @@ export class CMainWindow extends CWidget {
 	}
 
 
-	/** Sets the geometry. */
+	/**
+	 * Sets the geometry.
+	 * @param x Horizontal position in parent coordinates.
+	 * @param y Vertical position in parent coordinates.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override setGeometry(x: number, y: number, width: number, height: number
 	): void {
 		super.setGeometry(x, y, width, height);
 		this.#updateGeometry();
 	}
 
-	/** Provides resize behavior. */
+	/**
+	 * Resizes the width.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 		this.#updateGeometry();
 	}
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns A new `CSize`.
+	 */
 	override sizeHint(): CSize {
 		const center = this.#m_dockArea.sizeHint();
 
@@ -848,7 +966,10 @@ export class CMainWindow extends CWidget {
 	}
 
 
-	/** Handles child visibility changed behavior. */
+	/**
+	 * Refreshes the main window in response to a change in child visibility. May request a repaint.
+	 * @param _child Child. This implementation ignores the argument.
+	 */
 	protected override childVisibilityChanged(
 		_child: CWidget
 	): void {
@@ -1076,7 +1197,9 @@ export class CMainWindow extends CWidget {
 	}
 
 
-	/** Provides save workspace behavior. */
+	/**
+	 * Saves the workspace.
+	 */
 	saveWorkspace(): void {
 		const storage = this.#workspaceStorage();
 
@@ -1090,7 +1213,10 @@ export class CMainWindow extends CWidget {
 		);
 	}
 
-	/** Provides restore workspace behavior. */
+	/**
+	 * Reads the saved workspace string and applies it through `restoreState()`.
+	 * @returns `true` if a workspace was found and restored, or `false` when storage is unavailable, the entry is missing or the state is rejected.
+	 */
 	restoreWorkspace(): boolean {
 		const storage = this.#workspaceStorage();
 

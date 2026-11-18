@@ -7,17 +7,38 @@ export abstract class CAnimationGroup extends CAbstractAnimation {
     #disconnect = new Map<CAbstractAnimation, () => void>();
     #destroying = false;
 
+    /**
+     * Counts the animations owned by the group.
+     * @returns Current number of members.
+     */
     animationCount(): number { return this.#members.length; }
+    /**
+     * Looks up an animation without changing membership.
+     * @param index Zero-based position in insertion order.
+     * @returns The member at that position, or `null` if absent.
+     */
     animationAt(index: number): CAbstractAnimation | null { return this.#members[index] ?? null; }
+    /**
+     * Provides a snapshot of the current membership to derived groups.
+     * @returns A shallow read-only array in insertion order.
+     */
     protected animations(): readonly CAbstractAnimation[] { return [...this.#members]; }
-    /** @internal Propagates a containing group's clock policy to nested members. */
+    /**
+     * Changes the group's clock source and propagates external driving to members while the group is active or externally driven.
+     * @param external `true` to let a containing group supply time.
+     * @internal
+     */
     override setExternalClock(external: boolean): void {
         super.setExternalClock(external);
         for (const animation of this.animations()) animation.setExternalClock(external || this.state() !== CAnimationState.Stopped);
     }
-    /** Allows derived groups to discard references after membership changes. */
+    /** Provides a hook for derived groups to refresh state after the member list changes. */
     protected updateAnimations(): void {}
-    /** Groups have finite members; repeat the containing group for an endless show. */
+    /**
+     * Reads and validates the total duration of a member. For an unbounded member it stops an active group and throws `RangeError`.
+     * @param animation Member to measure, including its configured loops.
+     * @returns Finite total member duration in milliseconds.
+     */
     protected memberDuration(animation: CAbstractAnimation): number {
         const duration = animation.totalDuration();
         if (duration < 0) {
@@ -26,10 +47,21 @@ export abstract class CAnimationGroup extends CAbstractAnimation {
         }
         return duration;
     }
+    /**
+     * Computes the length of one group pass from the member timelines.
+     * @returns Single-pass group duration in milliseconds.
+     */
     abstract override duration(): number;
-    /** A group's duration is derived from its members. */
+    /**
+     * Rejects explicit group duration changes. Configure the member durations instead.
+     * @param _duration Requested duration. The group always throws and leaves its duration derived from the members.
+     */
     override setDuration(_duration: number): void { throw new Error("Set durations on the group's animations."); }
 
+    /**
+     * Appends an animation and transfers its ownership to this group. Adding an existing member has no effect. Membership changes require a stopped group.
+     * @param animation Stopped, live animation with finite total duration. It cannot belong to another group or create an ownership cycle.
+     */
     addAnimation(animation: CAbstractAnimation): void {
         this.#checkEditable();
         this.memberDuration(animation);
@@ -53,18 +85,28 @@ export abstract class CAnimationGroup extends CAbstractAnimation {
         this.updateAnimations();
     }
 
+    /**
+     * Detaches a member and releases its external clock without destroying it. Membership changes require a stopped group.
+     * @param index Zero-based member index.
+     * @returns The detached animation, or `null` for an absent index.
+     */
     takeAnimation(index: number): CAbstractAnimation | null {
         this.#checkEditable();
         const animation = this.animationAt(index);
         if (animation !== null) this.#detach(animation);
         return animation;
     }
+    /**
+     * Detaches a member and releases its external clock without destroying it. Throws if the group cannot be edited in its current state.
+     * @param animation Animation to detach.
+     * @returns `true` if the animation was a member and was removed.
+     */
     removeAnimation(animation: CAbstractAnimation): boolean {
         this.#checkEditable();
         if (!this.#members.includes(animation)) return false;
         this.#detach(animation); return true;
     }
-    /** Destroys all members. Use takeAnimation to retain a member instead. */
+    /** Detaches and destroys all members. The group must be stopped. */
     clear(): void {
         this.#checkEditable();
         for (const animation of [...this.#members]) { this.#detach(animation); animation.destroy(); }
@@ -80,6 +122,7 @@ export abstract class CAnimationGroup extends CAbstractAnimation {
         if (this.#destroying || this.isDestroyed()) throw new Error("Animation group has been destroyed.");
         if (this.state() !== CAnimationState.Stopped) throw new Error("Stop the group before changing its members.");
     }
+    /** Disconnects member callbacks, stops playback and destroys the owned animations. */
     override destroy(): void {
         if (this.#destroying || this.isDestroyed()) return;
         this.#destroying = true;

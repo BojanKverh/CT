@@ -36,12 +36,18 @@ export abstract class CLayout {
 		bottom: 6
 	};
 
-	/** Returns the widget managed by this layout, or `null` if none is set. */
+	/**
+	 * Looks up the widget whose contents this layout manages.
+	 * @returns The assigned widget, or `null` if the layout is unattached.
+	 */
 	parentWidget(): CWidget | null {
 		return this.#m_parentWidget;
 	}
 
-	/** Sets the widget managed by this layout and reparents contained widgets. */
+	/**
+	 * Assigns the managed widget and reparents all represented widgets to it when it is present.
+	 * @param widget New parent widget, or `null` to clear the layout's parent reference.
+	 */
 	setParentWidget(widget: CWidget | null): void {
 		this.#m_parentWidget = widget;
 
@@ -51,12 +57,20 @@ export abstract class CLayout {
 		}
 	}
 
-	/** Adds a widget to the layout. */
+	/**
+	 * Appends a widget item unless the widget is already managed by this layout.
+	 * @param widget Widget to add.
+	 */
 	addWidget(widget: CWidget): void {
 		this.addItem(new CWidgetItem(widget));
 	}
 
-    /** Sets alignment for a directly managed widget; returns false when not found. */
+    /**
+     * Changes the alignment of a directly managed widget and updates the layout if the flags change.
+     * @param widget Widget to align.
+     * @param alignment Axis alignment flags, or `0` to use size-policy-driven filling.
+     * @returns `true` if the widget is directly managed.
+     */
     setAlignment(widget: CWidget, alignment: CAlignment | 0): boolean {
         const item = this.#m_items.find(item => item.widget() === widget);
         if (!item) return false;
@@ -67,22 +81,35 @@ export abstract class CLayout {
         return true;
     }
 
-	/** Adds an empty stretch item with the specified stretch factor. */
+	/**
+	 * Appends an empty layout item with a stretch weight.
+	 * @param stretch Stretch weight. Negative values are clamped to zero.
+	 */
 	addStretch(stretch: number): void {
 		this.addItem(new CBoxLayoutItem(null, stretch));
 	}
 
-	/** Returns the number of items in the layout. */
+	/**
+	 * Counts the items managed by the layout.
+	 * @returns Number of items, including spacers.
+	 */
 	count(): number {
 		return this.#m_items.length;
 	}
 
-	/** Returns the widget at the specified item index, or `null`. */
+	/**
+	 * Looks up the widget represented by an item.
+	 * @param index Zero-based item index.
+	 * @returns The represented widget, or `null` if the index is absent or the item has no widget.
+	 */
 	widgetAt(index: number): CWidget | null {
 		return this.#m_items[index]?.widget() ?? null;
 	}
 
-	/** Removes the specified widget from the layout. */
+	/**
+	 * Removes the specified widget's layout item and updates geometry. The widget retains its parent.
+	 * @param widget Widget to stop managing.
+	 */
 	removeWidget(widget: CWidget): void {
 		const index = this.#indexOf(widget);
 
@@ -93,12 +120,18 @@ export abstract class CLayout {
 		this.update();
 	}
 
-	/** Returns the spacing between layout items in pixels. */
+	/**
+	 * Reads the layout's base spacing.
+	 * @returns Spacing between items in logical pixels.
+	 */
 	spacing(): number {
 		return this.#m_spacing;
 	}
 
-	/** Sets the spacing between layout items in pixels. */
+	/**
+	 * Changes the layout's base spacing and updates geometry if it changed.
+	 * @param spacing New spacing in logical pixels.
+	 */
 	setSpacing(spacing: number): void {
 		if (this.#m_spacing === spacing)
 			return;
@@ -107,12 +140,21 @@ export abstract class CLayout {
 		this.update();
 	}
 
-	/** Returns a copy of the layout's content margins. */
+	/**
+	 * Reads the insets around the layout contents.
+	 * @returns An independent copy of the four margins in logical pixels.
+	 */
 	contentsMargins(): CMargins {
 		return { ...this.#m_margins };
 	}
 
-	/** Sets the content margins in pixels. */
+	/**
+	 * Changes the layout insets and updates geometry if they changed.
+	 * @param left Left inset in logical pixels.
+	 * @param top Top inset in logical pixels.
+	 * @param right Right inset in logical pixels.
+	 * @param bottom Bottom inset in logical pixels.
+	 */
 	setContentsMargins(left: number, top: number,
 		right: number, bottom: number): void {
 		if (
@@ -133,18 +175,27 @@ export abstract class CLayout {
 		this.update();
 	}
 
-	/** Removes all items from the layout. */
+	/** Removes every layout item and recalculates geometry. Represented widgets retain their parents. */
 	clear(): void {
 		this.#m_items.length = 0;
 		this.update();
 	}
 
-	/** Adds a layout item and returns whether it was accepted. */
+	/**
+	 * Appends an item through the usual insertion path.
+	 * @param item Layout item to append.
+	 * @returns `true` if inserted or `false` for a duplicate item or widget.
+	 */
 	protected addItem(item: CLayoutItem): boolean {
 		return this.insertItem(this.#m_items.length, item);
 	}
 
-	/** Inserts a layout item and returns whether it was accepted. */
+	/**
+	 * Inserts an item, reparents its widget when a parent is assigned and updates the layout.
+	 * @param index Zero-based insertion position, clamped to the current item range. The count appends.
+	 * @param item Item to insert.
+	 * @returns `true` if inserted or `false` for a duplicate item or widget.
+	 */
 	protected insertItem(index: number, item: CLayoutItem): boolean {
 		const widget = item.widget();
 
@@ -162,12 +213,19 @@ export abstract class CLayout {
 		return true;
 	}
 
-	/** Returns the layout item at the specified index, or `null`. */
+	/**
+	 * Looks up a layout item by position.
+	 * @param index Zero-based item index.
+	 * @returns The item at that index, or `null` if absent.
+	 */
 	protected itemAt(index: number): CLayoutItem | null {
 		return this.#m_items[index] ?? null;
 	}
 
-	/** Returns the layout items as a read-only array. */
+	/**
+	 * Exposes the current items in layout order.
+	 * @returns A read-only view of the internal item array.
+	 */
 	protected items(): readonly CLayoutItem[] {
 		return this.#m_items;
 	}
@@ -178,19 +236,37 @@ export abstract class CLayout {
 		);
 	}
 
-    /** Whether any managed widget has a width-dependent preferred height. */
+    /**
+     * Checks whether any managed widget reports a width-dependent preferred height.
+     * @returns `true` if at least one managed widget has height-for-width.
+     */
     hasHeightForWidth(): boolean {
         return this.items().some(item => item.widget()?.hasHeightForWidth() === true);
     }
 
-    /** Layouts with width-dependent geometry override this calculation. */
+    /**
+     * Provides the subclass hook for computing preferred height at an allocated width.
+     * @param _width Available layout width in logical pixels. The base implementation ignores it.
+     * @returns The preferred height in a supporting subclass. The base implementation returns `-1`.
+     */
     heightForWidth(_width: number): number { return -1; }
 
-	/** Returns the preferred size required by the layout. */
+	/**
+	 * Computes the preferred size of the arranged contents.
+	 * @returns The preferred layout size in logical pixels.
+	 */
 	abstract sizeHint(): CSize;
-	/** Recalculates and applies the geometry of managed widgets. */
+	/** Recalculates and applies the geometry of managed items. */
 	abstract update(): void;
 
+	/**
+	 * Computes usable sizing bounds from a widget's policy, constraints and preferred size. The policy may pin either bound to the preferred size.
+	 * @param widget Widget to measure.
+	 * @param horizontal `true` for width or `false` for height.
+	 * @param geometryFallback Whether to use current geometry when the applicable size hint is nonpositive. Defaults to `false`.
+	 * @param width Optional allocated width for a vertical height-for-width measurement.
+	 * @returns Minimum, preferred and maximum size along the selected axis.
+	 */
 	protected static layoutAxisBounds(widget: CWidget, horizontal: boolean, geometryFallback = false, width?: number): CLayoutAxisBounds {
 	    const policy = widget.sizePolicy();
 	    const axis = horizontal ? policy.horizontalPolicy() : policy.verticalPolicy();
@@ -209,7 +285,13 @@ export abstract class CLayout {
 	        maximum: CSizePolicy.canGrow(axis) ? maximum : preferred };
 	}
 
-    /** Axis constraints for widget items and non-widget spacer items. */
+    /**
+     * Computes the axis bounds for a widget or an empty item using its size policy.
+     * @param item Item to measure.
+     * @param horizontal `true` for width or `false` for height.
+     * @param width Optional allocated width for measuring a widget's preferred height.
+     * @returns Minimum, preferred and maximum size along the selected axis.
+     */
     protected static layoutItemAxisBounds(item: CLayoutItem, horizontal: boolean, width?: number): CLayoutAxisBounds {
         const widget = item.widget();
         if (widget !== null) return CLayout.layoutAxisBounds(widget, horizontal, false, width);
@@ -224,20 +306,38 @@ export abstract class CLayout {
             maximum: CSizePolicy.canGrow(axis) ? maximum : preferred };
     }
 
+    /**
+     * Selects only the alignment flags applicable to the requested axis.
+     * @param item Item whose alignment is inspected.
+     * @param horizontal `true` for horizontal flags or `false` for vertical flags.
+     * @returns The masked alignment flags, or zero.
+     */
     protected static itemAxisAlignment(item: CLayoutItem, horizontal: boolean): number {
         return item.alignment() & (horizontal
             ? CAlignment.Left | CAlignment.Right | CAlignment.HCenter
             : CAlignment.Top | CAlignment.Bottom | CAlignment.VCenter);
     }
 
-    /** Actual width within an allocated cell, respecting alignment and policy bounds. */
+    /**
+     * Computes the width an item will receive in a cell, using its alignment and policy bounds.
+     * @param item Item to measure.
+     * @param available Cell width in logical pixels.
+     * @returns Item width in logical pixels, which may exceed the cell when its minimum requires it.
+     */
     protected static itemWidth(item: CLayoutItem, available: number): number {
         const bounds = CLayout.layoutItemAxisBounds(item, true);
         return Math.min(bounds.maximum, Math.max(bounds.minimum,
             CLayout.itemAxisAlignment(item, true) ? Math.min(available, bounds.preferred) : available));
     }
 
-    /** Places the item inside a cell; flags only constrain their respective axis. */
+    /**
+     * Fits an item within the allocated cell using axis constraints and aligns it within any remaining space.
+     * @param item Item to position.
+     * @param x Cell's left edge in parent coordinates.
+     * @param y Cell's top edge in parent coordinates.
+     * @param width Cell width in logical pixels.
+     * @param height Cell height in logical pixels.
+     */
     protected static setAlignedItemGeometry(item: CLayoutItem, x: number, y: number, width: number, height: number): void {
         const actualWidth = CLayout.itemWidth(item, width);
         const vertical = CLayout.layoutItemAxisBounds(item, false, actualWidth);
@@ -250,7 +350,16 @@ export abstract class CLayout {
         item.setGeometry(x, y, actualWidth, actualHeight);
     }
 
-	/** Internal bounded allocation; larger priorities receive extra space first. */
+	/**
+	 * Allocates space along one axis. Below the preferred total, shrinks proportionally toward each minimum. Above it, distributes surplus by priority and weight up to each maximum.
+	 * @param available Total space in logical pixels.
+	 * @param minimums Minimum size for each item, returned as a copy if space runs out.
+	 * @param preferred Preferred size for each item.
+	 * @param maximums Maximum size for each item.
+	 * @param weights Growth weights in item order. Zero excludes an item from growth.
+	 * @param priorities Growth priorities in item order. Processes 3, then 2, then 1.
+	 * @returns The allocated sizes in the original item order.
+	 */
 	protected static layoutAxisSizes(available: number, minimums: number[], preferred: number[], maximums: number[],
 	    weights: number[], priorities: number[]): number[] {
 	    const totalMinimum = minimums.reduce((a, b) => a + b, 0);

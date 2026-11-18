@@ -16,12 +16,18 @@ export class CPopupWidget extends CFrame {
 		this.hide();
 	}
 
-	/** Returns whether the open condition is active. */
+	/**
+	 * Checks whether the popup widget is open.
+	 * @returns `true` if the popup widget is open, otherwise `false`.
+	 */
 	isOpen(): boolean {
 		return this.#m_open;
 	}
 
-	/** Provides open behavior. */
+	/**
+	 * Opens the take focus. May request focus.
+	 * @param takeFocus Take focus flag. Defaults to `true`.
+	 */
 	open(takeFocus = true): void {
 		/** Provides if behavior. */
 		if (this.#m_open)
@@ -35,7 +41,7 @@ export class CPopupWidget extends CFrame {
 			this.setFocus();
 	}
 
-	/** Provides close behavior. */
+	/** Unregisters and hides an open popup. A closed popup is left as-is. */
 	close(): void {
 		/** Provides if behavior. */
 		if (!this.#m_open)

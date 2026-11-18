@@ -69,21 +69,19 @@ constructor(pixmap: CPixmap | null = null) {
 	}
 
 		/**
-	 * Returns whether the icon contains no pixmaps.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Checks whether the icon has any raster variants.
+ * @returns `true` if no pixmaps are registered.
+ */
 isNull(): boolean {
 		return this.#m_pixmaps.length === 0;
 	}
 
 		/**
-	 * Adds a pixmap for the specified icon mode and state.
-	 *
-	 * @param pixmap Pixmap.
-	 * @param mode Mode.
-	 * @param state State.
-	 */
+ * Registers a pixmap as a candidate for the specified mode and state.
+ * @param pixmap Image to register.
+ * @param mode Visual mode. Defaults to Normal.
+ * @param state On or Off state. Defaults to Off.
+ */
 addPixmap(pixmap: CPixmap, mode = CIconMode.Normal,
 		state = CIconState.Off): void {
 		this.#m_pixmaps.push({
@@ -94,14 +92,12 @@ addPixmap(pixmap: CPixmap, mode = CIconMode.Normal,
 	}
 
 		/**
-	 * Returns the best matching pixmap for the requested size, mode, and state.
-	 *
-	 * @param size Size.
-	 * @param mode Mode.
-	 * @param state State.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Selects the nearest-sized pixmap from the first matching mode/state group, penalizing upscaling more than downscaling.
+ * @param size Requested image width and height.
+ * @param mode Preferred visual mode. Defaults to Normal, which is also tried as a fallback.
+ * @param state Preferred icon state. Defaults to Off, which is also tried as a fallback.
+ * @returns The selected original pixmap, or `null` when no variant matches the fallback chain.
+ */
 pixmap(size: CSize, mode = CIconMode.Normal,
 		state = CIconState.Off): CPixmap | null {
 		const candidates = this.#candidates(mode, state);
@@ -126,13 +122,11 @@ pixmap(size: CSize, mode = CIconMode.Normal,
 	}
 
 		/**
-	 * Returns the sizes available for the specified icon mode and state.
-	 *
-	 * @param mode Mode.
-	 * @param state State.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Lists the sizes in the first available group in the mode/state fallback chain.
+ * @param mode Preferred visual mode, defaulting to Normal.
+ * @param state Preferred icon state, defaulting to Off.
+ * @returns A new array of candidate dimensions in registration order, or an empty array if no group matches.
+ */
 availableSizes(mode = CIconMode.Normal,
 		state = CIconState.Off): CSize[] {
 		return this.#candidates(mode, state).map(entry =>

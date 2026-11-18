@@ -9,6 +9,10 @@ export enum CValidatorState {
 
 /** Base class for reusable text validators. */
 export abstract class CValidator extends CObject {
-	/** Returns the validation state of the supplied text. */
+	/**
+	 * Classifies input text according to the concrete validator's rules.
+	 * @param input Raw text to validate.
+	 * @returns `Acceptable` for complete valid input, `Intermediate` for input that may be allowed while editing, or `Invalid` for rejected input.
+	 */
 	abstract validate(input: string): CValidatorState;
 }

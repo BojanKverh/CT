@@ -27,34 +27,53 @@ export class CModelIndex {
 		this.#m_model = model;
 	}
 
-	/** Returns the zero-based row of the index. */
+	/**
+	 * Reads the stored row coordinate.
+	 * @returns Zero-based row, or a negative value for an invalid coordinate.
+	 */
 	row(): number {
 		return this.#m_row;
 	}
 
-	/** Returns the zero-based column of the index. */
+	/**
+	 * Reads the stored column coordinate.
+	 * @returns Zero-based column, or a negative value for an invalid coordinate.
+	 */
 	column(): number {
 		return this.#m_column;
 	}
 
-	/** Returns the internal data associated with the index. */
+	/**
+	 * Reads the model's internal index payload.
+	 * @returns The payload supplied when creating the index. For display data, query the model.
+	 */
 	data(): unknown {
 		return this.#m_data;
 	}
 
-	/** Returns the model that owns this index, or `null`. */
+	/**
+	 * Identifies the model associated with this index.
+	 * @returns The associated model, or `null`.
+	 */
 	model(): CAbstractItemModel | null {
 		return this.#m_model;
 	}
 
-	/** Returns whether the index refers to a valid model item. */
+	/**
+	 * Checks the coordinates and model association without querying current model bounds.
+	 * @returns `true` when both coordinates are nonnegative and a model is associated.
+	 */
 	isValid(): boolean {
 		return this.#m_row >= 0
 			&& this.#m_column >= 0
 			&& this.#m_model !== null;
 	}
 
-	/** Returns whether this index identifies the same item as another index. */
+	/**
+	 * Compares coordinates, model identity and internal payload using strict equality.
+	 * @param other Index to compare with this one.
+	 * @returns `true` when all four fields match.
+	 */
 	equals(other: CModelIndex): boolean {
 		return this.#m_row === other.#m_row
 			&& this.#m_column === other.#m_column

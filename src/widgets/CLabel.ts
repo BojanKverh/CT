@@ -43,12 +43,18 @@ export class CLabel extends CFrame {
 		super(parent);
 	}
 
-	/** Provides text behavior. */
+	/**
+	 * Reads the text.
+	 * @returns The text.
+	 */
 	text(): string {
 		return this.#m_text;
 	}
 
-	/** Sets the text. */
+	/**
+	 * Changes the label text, refreshes link tracking and updates preferred geometry and painting.
+	 * @param text Text to display. Supported link markup is parsed by the label.
+	 */
 	setText(text: string): void {
 		/** Provides if behavior. */
 		if (this.#m_text === text)
@@ -59,10 +65,16 @@ export class CLabel extends CFrame {
 		this.update();
 	}
 
+    /**
+     * Reads whether activating a supported external link also opens it in the browser.
+     * @returns `true` if automatic external-link opening is enabled.
+     */
     openExternalLinks(): boolean { return this.#openExternalLinks; }
-    /** Also opens http(s), mailto and tel links in the browser. Defaults to false.
+    /**
+     * Also opens http(s), mailto and tel links in the browser. Defaults to false.
      * Link markup is a limited <a href="...">caption</a> subset, not arbitrary HTML.
      * linkActivated is emitted regardless of this setting, including internal URLs.
+     * @param enabled Whether to enable the feature.
      */
     setOpenExternalLinks(enabled: boolean): void { this.#openExternalLinks = enabled; }
     #decode(text: string): string {
@@ -131,11 +143,27 @@ export class CLabel extends CFrame {
         if (x < 0 || x >= this.width() || y < 0 || y >= this.height() || this.#m_pixmap !== null) return -1;
         return this.#linkFragments().find(({ rect: r }) => x >= r.x() && x < r.x() + r.width() && y >= r.y() && y < r.y() + r.height())?.index ?? -1;
     }
-    /** Returns the link at widget-local coordinates, or null outside link glyphs. */
+    /**
+     * Hit-tests the parsed link text at a point in the label.
+     * @param x Horizontal coordinate local to the label.
+     * @param y Vertical coordinate local to the label.
+     * @returns The link URL, or `null` when the point does not hit a link.
+     */
     linkAt(x: number, y: number): string | null { return this.#parsed().links[this.#hitLink(x, y)]?.url ?? null; }
+    /**
+     * Sets the geometry. May update the pressed link, the hovered link.
+     * @param x Horizontal position in parent coordinates.
+     * @param y Vertical position in parent coordinates.
+     * @param width Width in logical pixels.
+     * @param height Height in logical pixels.
+     */
     override setGeometry(x: number, y: number, width: number, height: number): void {
         this.#pressedLink = this.#hoveredLink = -1; super.setGeometry(x, y, width, height);
     }
+    /**
+     * Reads the cursor of the label.
+     * @returns The cursor.
+     */
     override cursor(): CCursorShape {
         return this.isEnabled() && this.#hoveredLink >= 0 ? CCursorShape.PointingHand : super.cursor();
     }
@@ -154,6 +182,10 @@ export class CLabel extends CFrame {
             } catch { /* Invalid URLs still reach the application's linkActivated handler. */ }
         }
     }
+    /**
+     * Responds to a pointer button release for the label. May update the pressed link. May accept the event.
+     * @param event Event for a pointer button release.
+     */
     protected override mouseReleaseEvent(event: CMouseEvent): void {
         if (event.button() === CMouseButton.LeftButton && this.#pressedLink >= 0) {
             const index = this.#pressedLink; this.#pressedLink = -1; event.accept();
@@ -162,10 +194,22 @@ export class CLabel extends CFrame {
         }
         super.mouseReleaseEvent(event);
     }
+    /**
+     * Responds to pointer movement for the label. May update the hovered link. May request a repaint.
+     * @param event Event for pointer movement.
+     */
     protected override mouseMoveEvent(event: CMouseEvent): void {
         this.#hoveredLink = this.#hitLink(event.x(), event.y()); this.update(); super.mouseMoveEvent(event);
     }
+    /**
+     * Responds to pointer exit for the label. May update the hovered link. May request a repaint.
+     * @param event Event for pointer exit.
+     */
     protected override mouseLeaveEvent(event: CMouseEvent): void { this.#hoveredLink = -1; this.update(); super.mouseLeaveEvent(event); }
+    /**
+     * Responds to a key press for the label. May update the pressed link, the focused link. May accept the event and request a repaint.
+     * @param event Event for a key press.
+     */
     protected override keyPressEvent(event: CKeyEvent): void {
         const links = this.#parsed().links;
         if (this.#m_pixmap !== null || !links.length || event.ctrl() || event.alt() || event.meta()) { super.keyPressEvent(event); return; }
@@ -179,14 +223,31 @@ export class CLabel extends CFrame {
         if (event.key() === "Escape") this.#pressedLink = -1;
         super.keyPressEvent(event);
     }
+    /**
+     * Responds to focus exit for the label. May update the pressed link. May request a repaint.
+     * @param event Event for focus exit.
+     */
     protected override focusOutEvent(event: CFocusEvent): void { this.#pressedLink = -1; this.update(); super.focusOutEvent(event); }
+    /**
+     * Sets the enabled. May update the pressed link, the hovered link.
+     * @param enabled Whether to enable the feature.
+     */
     override setEnabled(enabled: boolean): void { if (!enabled) this.#pressedLink = this.#hoveredLink = -1; super.setEnabled(enabled); }
+    /**
+     * Responds to the visibility change event for the label. May update the pressed link, the hovered link.
+     */
     protected override visibilityChangeEvent(): void { this.#pressedLink = this.#hoveredLink = -1; }
 
-    /** Returns the widget associated with this label. */
+    /**
+     * Returns the widget associated with this label.
+     * @returns The buddy.
+     */
     buddy(): CWidget | null { return this.#m_buddy; }
 
-    /** Associates an input widget; null restores literal ampersand text. */
+    /**
+     * Associates an input widget; null restores literal ampersand text.
+     * @param buddy Buddy.
+     */
     setBuddy(buddy: CWidget | null): void {
         if (this.#m_buddy === buddy) return;
         this.#m_buddy = buddy;
@@ -194,19 +255,31 @@ export class CLabel extends CFrame {
         this.update();
     }
 
-    /** Visible text, with mnemonic markers removed when a buddy is set. */
+    /**
+     * Visible text, with mnemonic markers removed when a buddy is set.
+     * @returns The display text.
+     */
     displayText(): string { return this.#mnemonicText().text; }
 
-    /** UTF-16 index of the character to underline, or -1. */
+    /**
+     * UTF-16 index of the character to underline, or -1.
+     * @returns The mnemonic index.
+     */
     mnemonicIndex(): number { return this.#mnemonicText().index; }
 
-    /** Character activated by Alt, or an empty string when there is none. */
+    /**
+     * Character activated by Alt, or an empty string when there is none.
+     * @returns The mnemonic.
+     */
     mnemonic(): string {
         const { text, index } = this.#mnemonicText();
         return index < 0 ? "" : String.fromCodePoint(text.codePointAt(index)!);
     }
 
-    /** Focuses the buddy if both widgets are available in the active scope. */
+    /**
+     * Requests keyboard focus for the label's buddy when the label is displaying text.
+     * @returns `true` if a buddy acquired focus, or `false` if no eligible buddy can receive it.
+     */
     activateBuddy(): boolean {
         return this.#m_pixmap === null && this.#m_buddy !== null
             && CApplication.instance().focusLabelBuddy(this, this.#m_buddy);
@@ -234,6 +307,10 @@ export class CLabel extends CFrame {
         return { text, index };
     }
 
+    /**
+     * Responds to a pointer button press for the label. May update the pressed link, the focused link. May request focus and accept the event and request a repaint.
+     * @param event Event for a pointer button press.
+     */
     protected override mousePressEvent(event: CMouseEvent): void {
         if (event.button() === CMouseButton.LeftButton) {
             this.#pressedLink = this.#hitLink(event.x(), event.y());
@@ -248,17 +325,26 @@ export class CLabel extends CFrame {
         super.mousePressEvent(event);
     }
 
+    /**
+     * Releases resources held by the label.
+     */
     override destroy(): void {
         this.#m_buddy = null;
         super.destroy();
     }
 
-	/** Provides alignment behavior. */
+	/**
+	 * Reads the alignment.
+	 * @returns The alignment.
+	 */
 	alignment(): CAlignment {
 		return this.#m_alignment;
 	}
 
-	/** Sets the alignment. */
+	/**
+	 * Sets the alignment.
+	 * @param alignment Alignment flags to apply.
+	 */
 	setAlignment(alignment: CAlignment): void {
 		/** Provides if behavior. */
 		if (this.#m_alignment === alignment)
@@ -268,12 +354,18 @@ export class CLabel extends CFrame {
 		this.update();
 	}
 
-	/** Provides pixmap behavior. */
+	/**
+	 * Reads the pixmap.
+	 * @returns The pixmap.
+	 */
 	pixmap(): CPixmap | null {
 		return this.#m_pixmap;
 	}
 
-	/** Sets the pixmap. */
+	/**
+	 * Sets the pixmap.
+	 * @param pixmap Pixmap.
+	 */
 	setPixmap(pixmap: CPixmap | null): void {
 		/** Provides if behavior. */
 		if (this.#m_pixmap === pixmap)
@@ -283,8 +375,16 @@ export class CLabel extends CFrame {
 		this.update();
 	}
 
+    /**
+     * Reads whether label text can wrap onto multiple lines.
+     * @returns `true` if word wrapping is enabled.
+     */
     wordWrap(): boolean { return this.#m_wordWrap; }
 
+    /**
+     * Sets the word wrap. May update the word wrap, the pressed link, the hovered link. May refresh layout geometry and request a repaint.
+     * @param enabled Whether to enable the feature.
+     */
     setWordWrap(enabled: boolean): void {
         if (this.#m_wordWrap === enabled) return;
         this.#m_wordWrap = enabled; this.#pressedLink = this.#hoveredLink = -1;
@@ -295,8 +395,17 @@ export class CLabel extends CFrame {
         this.update();
     }
 
+    /**
+     * Checks whether the label has height for width.
+     * @returns `true` if the label has height for width, otherwise `false`.
+     */
     override hasHeightForWidth(): boolean { return this.#m_wordWrap && this.#m_pixmap === null; }
 
+    /**
+     * Measures the wrapped text block and adds vertical padding.
+     * @param width Available width in logical pixels.
+     * @returns Preferred wrapped height, or `-1` if height does not depend on width.
+     */
     override heightForWidth(width: number): number {
         if (!this.hasHeightForWidth()) return -1;
         return this.#textBlockHeight(this.#wrappedLines(width).length) + 2 * CLabel.#VPADDING;
@@ -347,7 +456,10 @@ export class CLabel extends CFrame {
         return lines;
     }
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns A new `CSize`.
+	 */
 	override sizeHint(): CSize {
         const lines = this.#textLines();
         return new CSize(
@@ -382,7 +494,10 @@ export class CLabel extends CFrame {
         } finally { painter.restore(); }
     }
 
-    /** Handles the paint event. */
+    /**
+     * Draws the label through the supplied painter.
+     * @param painter Painter for the current drawing operation.
+     */
     protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionLabel();
 		option.initFromLabel(this);

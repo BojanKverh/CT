@@ -37,27 +37,42 @@ export class CGridLayoutItem extends CLayoutItem
 		this.#m_columnSpan = columnSpan;
 	}
 
-	/** Returns the widget represented by this item. */
+	/**
+	 * Looks up the widget stored in the grid item.
+	 * @returns The represented widget.
+	 */
 	override widget(): CWidget {
 		return this.#m_widget;
 	}
 
-	/** Returns the zero-based row containing the item. */
+	/**
+	 * Reads the row at which the item starts.
+	 * @returns The stored zero-based starting row.
+	 */
 	row(): number {
 		return this.#m_row;
 	}
 
-	/** Returns the zero-based column containing the item. */
+	/**
+	 * Reads the column at which the item starts.
+	 * @returns The stored zero-based starting column.
+	 */
 	column(): number {
 		return this.#m_column;
 	}
 
-	/** Returns the number of rows occupied by the item. */
+	/**
+	 * Reads the vertical extent measured in cells.
+	 * @returns The stored number of occupied rows.
+	 */
 	rowSpan(): number {
 		return this.#m_rowSpan;
 	}
 
-	/** Returns the number of columns occupied by the item. */
+	/**
+	 * Reads the horizontal extent measured in cells.
+	 * @returns The stored number of occupied columns.
+	 */
 	columnSpan(): number {
 		return this.#m_columnSpan;
 	}

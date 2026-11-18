@@ -10,6 +10,10 @@ class CNumberItemDelegateEditor extends CNumberEdit {
     readonly accepted = new CSignal<[]>();
     readonly canceled = new CSignal<[]>();
 
+    /**
+     * Responds to a key press for the number item delegate editor. May accept the event. May emit `canceled`, `accepted`.
+     * @param event Event for a key press.
+     */
     protected override keyPressEvent(event: CKeyEvent): void {
         if (event.key() === "Escape") {
             event.accept();
@@ -33,14 +37,27 @@ class CNumberItemDelegateEditor extends CNumberEdit {
 export class CNumberItemDelegate extends CAbstractItemDelegate {
     #m_decimals = 2;
 
+    /**
+     * Reads the decimals.
+     * @returns The decimals.
+     */
     decimals(): number { return this.#m_decimals; }
 
-    /** Maximum display precision; the model value is not rounded. */
+    /**
+     * Maximum display precision; the model value is not rounded.
+     * @param decimals Decimals.
+     */
     setDecimals(decimals: number): void {
         if (Number.isFinite(decimals))
             this.#m_decimals = Math.max(0, Math.min(20, Math.trunc(decimals)));
     }
 
+    /**
+     * Creates a numeric expression editor with the configured decimal precision and connects its acceptance and cancellation to the delegate's editing signals.
+     * @param parent Widget that will own the editor.
+     * @param _index Model index of the edited cell. The initial cell value is applied separately by `setEditorData()`.
+     * @returns The new editor widget.
+     */
     override createEditor(parent: CWidget, _index: CModelIndex): CWidget {
         const editor = new CNumberItemDelegateEditor(parent);
         editor.setDecimals(this.#m_decimals);
@@ -52,6 +69,11 @@ export class CNumberItemDelegate extends CAbstractItemDelegate {
         return editor;
     }
 
+    /**
+     * Populates expression editor with the cell value converted to a finite number.
+     * @param editor Editor widget created for the cell.
+     * @param index Model index supplying the initial value.
+     */
     override setEditorData(editor: CWidget, index: CModelIndex): void {
         if (!(editor instanceof CNumberEdit)) return;
         const value = Number(index.model()?.data(index));
@@ -61,6 +83,12 @@ export class CNumberItemDelegate extends CAbstractItemDelegate {
         }
     }
 
+    /**
+     * Evaluates the pending expression and writes its numeric value only if evaluation succeeds.
+     * @param editor Expression editor containing the edited value.
+     * @param model Model to update.
+     * @param index Index receiving the evaluated value.
+     */
     override setModelData(editor: CWidget, model: CAbstractItemModel, index: CModelIndex): void {
         if (editor instanceof CNumberEdit && editor.commit())
             model.setItemData(index, editor.value());

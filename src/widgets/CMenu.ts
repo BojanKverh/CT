@@ -42,7 +42,11 @@ export class CMenu extends CPopupWidget {
 		this.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
-	/** Adds action. */
+	/**
+	 * Adds action.
+	 * @param action Action.
+	 * @returns The add action.
+	 */
 	addAction(action: CAction): CAction {
 		this.#m_items.push({ type: "action", action });
         if (!this.#m_actionConnections.has(action)) {
@@ -56,7 +60,12 @@ export class CMenu extends CPopupWidget {
 		return action;
 	}
 
-	/** Adds menu. */
+	/**
+	 * Adds an entry opening the supplied submenu and recalculates menu geometry.
+	 * @param text Caption displayed for the submenu entry.
+	 * @param menu Menu to use as the submenu.
+	 * @returns The same submenu instance.
+	 */
 	addMenu(text: string, menu: CMenu): CMenu {
         menu.#m_parentMenu = this;
 		this.#m_items.push({ type: "menu", text, menu });
@@ -79,11 +88,19 @@ export class CMenu extends CPopupWidget {
 		this.#updateGeometry();
 	}
 
+    /**
+     * Releases resources held by the menu.
+     */
     override destroy(): void {
         this.#disconnectActions();
         super.destroy();
     }
 
+    /**
+     * Sets the font.
+     * @param font Font to use.
+     * @param propagate Whether to apply the change to descendants. Defaults to `false`.
+     */
     override setFont(font: CFont, propagate = false): void {
         super.setFont(font, propagate);
         this.#updateGeometry();
@@ -94,12 +111,19 @@ export class CMenu extends CPopupWidget {
         this.#m_actionConnections.clear();
     }
 
-	/** Provides count behavior. */
+	/**
+	 * Counts the entries in the menu.
+	 * @returns The number of entries in the items.
+	 */
 	count(): number {
 		return this.#m_items.length;
 	}
 
-	/** Provides action at behavior. */
+	/**
+	 * Looks up an action entry in the menu.
+	 * @param index Zero-based menu item index.
+	 * @returns The action, or `null` if the item is absent or is not an action.
+	 */
 	actionAt(index: number): CAction | null {
 		const item = this.#m_items[index];
 
@@ -110,7 +134,11 @@ export class CMenu extends CPopupWidget {
 		return item.action;
 	}
 
-	/** Provides menu at behavior. */
+	/**
+	 * Looks up a submenu entry in the menu.
+	 * @param index Zero-based menu item index.
+	 * @returns The submenu, or `null` if the item is absent or is not a submenu.
+	 */
 	menuAt(index: number): CMenu | null {
 		const item = this.#m_items[index];
 
@@ -121,13 +149,16 @@ export class CMenu extends CPopupWidget {
 		return item.menu;
 	}
 
-	/** Sets the menu bar. */
+	/**
+	 * Sets the menu bar.
+	 * @param menuBar Menu bar.
+	 */
 	setMenuBar(menuBar: CMenuBar | null): void
 	{
 		this.#m_menuBar = menuBar;
 	}
 
-	/** Provides open behavior. */
+	/** Opens the popup, selects the first selectable item when needed and refreshes the submenu state. */
 	override open(): void
 	{
 		super.open();
@@ -138,7 +169,7 @@ export class CMenu extends CPopupWidget {
 		this.#updateSubMenu();
 	}
 
-	/** Provides close behavior. */
+	/** Closes the open submenu and popup, emits `closed` and restores focus to the parent menu if it is still open. */
 	override close(): void {
         /** Provides if behavior. */
         if (!this.isOpen())
@@ -154,12 +185,17 @@ export class CMenu extends CPopupWidget {
 			parent.setFocus();
 	}
 
-    /** Returns the current index. */
+    /**
+     * Returns the current index.
+     * @returns The hovered index.
+     */
     currentIndex(): number {
 		return this.#m_hoveredIndex;
 	}
 
-	/** Provides select first item behavior. */
+	/**
+	 * Selects the first item.
+	 */
 	selectFirstItem(): void
 	{
 		/** Provides for behavior. */
@@ -172,7 +208,10 @@ export class CMenu extends CPopupWidget {
 		}
 	}
 
-	/** Provides focus open sub menu behavior. */
+	/**
+	 * Requests focus for the submenu that is currently open.
+	 * @returns `true` if an open submenu received a focus request, or `false` if there is no open submenu.
+	 */
 	focusOpenSubMenu(): boolean
 	{
 		/** Provides if behavior. */
@@ -183,14 +222,20 @@ export class CMenu extends CPopupWidget {
 		return true;
 	}
 
-	/** Provides exec behavior. */
+	/**
+	 * Moves the menu to the supplied point, opens it and requests keyboard focus.
+	 * @param pos Position in the menu's parent coordinate system, or canvas coordinates for a top-level menu.
+	 */
 	exec(pos: CPoint): void {
 		this.move(pos.x(), pos.y());
 		this.open();
 		this.setFocus();
 	}
 
-	/** Handles the mouse move event. */
+	/**
+	 * Responds to pointer movement for the menu. May update the hovered index. May request a repaint and accept the event.
+	 * @param event Event for pointer movement.
+	 */
 	protected override mouseMoveEvent(event: CMouseEvent): void {
 		const index = this.#itemIndexAt(event.y());
 
@@ -203,7 +248,10 @@ export class CMenu extends CPopupWidget {
 		event.accept();
 	}
 
-	/** Handles the mouse leave event. */
+	/**
+	 * Responds to pointer exit for the menu. May update the hovered index. May request a repaint and accept the event.
+	 * @param event Event for pointer exit.
+	 */
 	protected override mouseLeaveEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (this.#m_hoveredIndex !== -1) {
@@ -214,7 +262,10 @@ export class CMenu extends CPopupWidget {
 		event.accept();
 	}
 
-	/** Handles the mouse press event. */
+	/**
+	 * Responds to a pointer button press for the menu. May accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button press.
+	 */
 	protected override mousePressEvent(event: CMouseEvent): void {
 		const index = this.#itemIndexAt(event.y());
 
@@ -250,7 +301,10 @@ export class CMenu extends CPopupWidget {
 		event.accept();
 	}
 
-	/** Handles the key press event. */
+	/**
+	 * Responds to a key press for the menu. May accept or ignore the event depending on the input.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
         // A popup is a shortcut boundary, so handle its displayed actions here.
         // Do not register additional CShortcut children for shared actions.
@@ -313,7 +367,10 @@ export class CMenu extends CPopupWidget {
 		}
 	}
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the menu through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void {
 		painter.setBrush(this.palette().color(CPaletteColorRole.Base).toCss());
 		painter.setPen(this.palette().color(CPaletteColorRole.Text).toCss());

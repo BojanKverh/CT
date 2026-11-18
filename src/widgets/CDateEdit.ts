@@ -112,13 +112,19 @@ export class CDateEdit extends CWidget
         this.#m_button.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
-	/** Provides date behavior. */
+	/**
+	 * Reads the date of the date edit.
+	 * @returns A new `Date`.
+	 */
 	date(): Date
 	{
 		return new Date(this.#m_date);
 	}
 
-	/** Sets the date. */
+	/**
+	 * Sets the date.
+	 * @param date Date.
+	 */
 	setDate(date: Date): void
 	{
 		/** Provides if behavior. */
@@ -148,13 +154,19 @@ export class CDateEdit extends CWidget
 		this.update();
 	}
 
-	/** Returns the minimum date. */
+	/**
+	 * Returns the minimum date.
+	 * @returns A new `Date`.
+	 */
 	minimumDate(): Date
 	{
 		return new Date(this.#m_minimumDate);
 	}
 
-	/** Sets the minimum date. */
+	/**
+	 * Sets the minimum date.
+	 * @param date Date.
+	 */
 	setMinimumDate(date: Date): void
 	{
 		/** Provides if behavior. */
@@ -179,13 +191,19 @@ export class CDateEdit extends CWidget
 			this.setDate(this.#m_minimumDate);
 	}
 
-	/** Returns the maximum date. */
+	/**
+	 * Returns the maximum date.
+	 * @returns A new `Date`.
+	 */
 	maximumDate(): Date
 	{
 		return new Date(this.#m_maximumDate);
 	}
 
-	/** Sets the maximum date. */
+	/**
+	 * Sets the maximum date.
+	 * @param date Date.
+	 */
 	setMaximumDate(date: Date): void
 	{
 		/** Provides if behavior. */
@@ -210,13 +228,19 @@ export class CDateEdit extends CWidget
 			this.setDate(this.#m_maximumDate);
 	}
 
-	/** Provides display format behavior. */
+	/**
+	 * Reads the display format.
+	 * @returns The display format.
+	 */
 	displayFormat(): string
 	{
 		return this.#m_displayFormat;
 	}
 
-	/** Sets the display format. */
+	/**
+	 * Sets the display format.
+	 * @param format Format.
+	 */
 	setDisplayFormat(format: string): void
 	{
 		/** Provides if behavior. */
@@ -227,13 +251,19 @@ export class CDateEdit extends CWidget
 		this.#updateText();
 	}
 
-	/** Provides calendar popup behavior. */
+	/**
+	 * Reads whether the date editor is configured to open a calendar picker.
+	 * @returns `true` if calendar popup mode is enabled.
+	 */
 	calendarPopup(): boolean
 	{
 		return this.#m_calendarPopup;
 	}
 
-	/** Sets the calendar popup. */
+	/**
+	 * Sets the calendar popup.
+	 * @param enabled Whether to enable the feature.
+	 */
 	setCalendarPopup(enabled: boolean): void
 	{
 		/** Provides if behavior. */
@@ -250,13 +280,19 @@ export class CDateEdit extends CWidget
 		this.#updateGeometry();
 	}
 
-	/** Provides calendar widget behavior. */
+	/**
+	 * Reads the calendar.
+	 * @returns The calendar.
+	 */
 	calendarWidget(): CCalendarWidget
 	{
 		return this.#m_calendar;
 	}
 
-	/** Provides line edit behavior. */
+	/**
+	 * Reads the line edit.
+	 * @returns The line edit.
+	 */
 	lineEdit(): CSectionLineEdit
 	{
 		return this.#m_lineEdit;
@@ -281,7 +317,7 @@ export class CDateEdit extends CWidget
 		this.#m_popup.close();
 	}
 
-	/** Performs step up. */
+	/** Increments the active date section by one step and focuses the text editor. */
 	stepUp(): void
 	{
 		this.#stepSection(
@@ -292,7 +328,7 @@ export class CDateEdit extends CWidget
 		this.#m_lineEdit.setFocus();
 	}
 
-	/** Performs step down. */
+	/** Decrements the active date section by one step and focuses the text editor. */
 	stepDown(): void
 	{
 		this.#stepSection(
@@ -303,7 +339,13 @@ export class CDateEdit extends CWidget
 		this.#m_lineEdit.setFocus();
 	}
 
-	/** Sets the geometry. */
+	/**
+	 * Sets the geometry.
+	 * @param x Horizontal position in parent coordinates.
+	 * @param y Vertical position in parent coordinates.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override setGeometry(
 		x: number, y: number, width: number, height: number
 	): void
@@ -313,7 +355,11 @@ export class CDateEdit extends CWidget
 		this.#updateGeometry();
 	}
 
-	/** Provides resize behavior. */
+	/**
+	 * Resizes the width.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override resize(width: number, height: number): void
 	{
 		super.resize(width, height);
@@ -321,7 +367,10 @@ export class CDateEdit extends CWidget
 		this.#updateGeometry();
 	}
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns A new `CSize`.
+	 */
 	override sizeHint(): CSize
 	{
 		return new CSize(120, 30);

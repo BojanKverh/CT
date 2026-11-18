@@ -14,12 +14,18 @@ export class CToolTipWidget extends CWidget {
 		super(parent);
 	}
 
-	/** Provides text behavior. */
+	/**
+	 * Reads the text.
+	 * @returns The text.
+	 */
 	text(): string {
 		return this.#m_text;
 	}
 
-	/** Sets the text. */
+	/**
+	 * Changes the tooltip text, resizes to fit the new content and requests repainting.
+	 * @param text Tooltip text to display.
+	 */
 	setText(text: string): void {
 		/** Provides if behavior. */
 		if (this.#m_text === text)
@@ -33,7 +39,10 @@ export class CToolTipWidget extends CWidget {
 		this.update();
 	}
 
-    /** Returns the preferred size of the widget. */
+    /**
+     * Returns the preferred size of the widget.
+     * @returns A new `CSize`.
+     */
     override sizeHint(): CSize {
 		const metrics = new CFontMetrics(this.font());
 
@@ -41,7 +50,10 @@ export class CToolTipWidget extends CWidget {
 			metrics.height() + 2 * this.style().toolTipVerticalPadding());
 	}
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the tool tip widget through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionToolTipWidget();
 		option.initFromToolTip(this);

@@ -31,13 +31,19 @@ export class CSplitterHandle extends CWidget
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
-	/** Provides orientation behavior. */
+	/**
+	 * Reads the orientation.
+	 * @returns The orientation.
+	 */
 	orientation(): COrientation
 	{
 		return this.#m_orientation;
 	}
 
-	/** Sets the orientation. */
+	/**
+	 * Sets the orientation.
+	 * @param orientation Horizontal or vertical orientation.
+	 */
 	setOrientation(orientation: COrientation): void
 	{
 		/** Provides if behavior. */
@@ -50,19 +56,28 @@ export class CSplitterHandle extends CWidget
 		this.update();
 	}
 
-	/** Provides splitter behavior. */
+	/**
+	 * Reads the splitter.
+	 * @returns The splitter.
+	 */
 	splitter(): CSplitter
 	{
 		return this.#m_splitter;
 	}
 
-	/** Provides index behavior. */
+	/**
+	 * Reads the index.
+	 * @returns The index.
+	 */
 	index(): number
 	{
 		return this.#m_index;
 	}
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns The size hint.
+	 */
 	override sizeHint(): CSize
 	{
 		const size = this.#m_splitter.handleWidth();
@@ -74,7 +89,10 @@ export class CSplitterHandle extends CWidget
 		return new CSize(0, size);
 	}
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the splitter handle through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionSplitterHandle();
 		option.initFromSplitterHandle(this);
@@ -82,6 +100,10 @@ export class CSplitterHandle extends CWidget
 		this.style().drawSplitterHandle(painter, option);
 	}
 
+    /**
+     * Responds to a key press for the splitter handle. May accept or ignore the event depending on the input.
+     * @param event Event for a key press.
+     */
     protected override keyPressEvent(event: CKeyEvent): void {
         const horizontal = this.#m_orientation === COrientation.Horizontal;
         const backward = horizontal ? "ArrowLeft" : "ArrowUp";
@@ -97,7 +119,10 @@ export class CSplitterHandle extends CWidget
         event.accept();
     }
 
-	/** Handles the mouse press event. */
+	/**
+	 * Responds to a pointer button press for the splitter handle. May update the press offset, the pressed. May accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button press.
+	 */
 	protected override mousePressEvent(event: CMouseEvent): void
 	{
 		/** Provides if behavior. */
@@ -113,7 +138,10 @@ export class CSplitterHandle extends CWidget
 		event.accept();
 	}
 
-	/** Handles the mouse move event. */
+	/**
+	 * Responds to pointer movement for the splitter handle. May accept or ignore the event depending on the input.
+	 * @param event Event for pointer movement.
+	 */
 	protected override mouseMoveEvent(event: CMouseEvent): void
 	{
 		/** Provides if behavior. */
@@ -137,7 +165,10 @@ export class CSplitterHandle extends CWidget
 		event.accept();
 	}
 
-	/** Handles the mouse release event. */
+	/**
+	 * Responds to a pointer button release for the splitter handle. May update the pressed. May accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button release.
+	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void
 	{
 		/** Provides if behavior. */
@@ -150,12 +181,18 @@ export class CSplitterHandle extends CWidget
 		event.accept();
 	}
 
-    /** Handles the mouse enter event. */
+    /**
+     * Responds to pointer entry for the splitter handle.
+     * @param event Event for pointer entry. This implementation ignores the argument.
+     */
     protected override mouseEnterEvent(event: CMouseEvent): void {
         
     }
 
-    /** Handles the mouse leave event. */
+    /**
+     * Responds to pointer exit for the splitter handle.
+     * @param event Event for pointer exit. This implementation ignores the argument.
+     */
     protected override mouseLeaveEvent(event: CMouseEvent): void {
         
     }

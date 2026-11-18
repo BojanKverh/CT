@@ -19,11 +19,19 @@ import { CWidget } from "./CWidget.js";
 
 class TagLineEdit extends CLineEdit {
     constructor(parent: CWidget, private readonly removeLast: () => void) { super(parent); }
+    /**
+     * Reads the size hint of the tag line edit.
+     * @returns A new `CSize`.
+     */
     override sizeHint(): CSize {
         const fm = new CFontMetrics(this.font());
         return new CSize(Math.max(100, Math.min(240, fm.textWidth(this.text() || this.placeholderText()) + 24)),
             Math.max(28, Math.ceil(fm.height()) + 12));
     }
+    /**
+     * Responds to a key press for the tag line edit. May accept the event.
+     * @param event Event for a key press.
+     */
     protected override keyPressEvent(event: CKeyEvent): void {
         if (!this.isReadOnly() && this.text() === "" && event.key() === "Backspace"
             && !event.ctrl() && !event.alt() && !event.meta()) {
@@ -39,6 +47,10 @@ class TagChip extends CWidget {
     constructor(private readonly owner: CTagEdit, readonly text: string, private readonly remove: () => void) {
         super(owner); this.setSizePolicy(CSizePolicyType.Preferred, CSizePolicyType.Fixed);
     }
+    /**
+     * Reads the size hint of the tag chip.
+     * @returns A new `CSize`.
+     */
     override sizeHint(): CSize {
         const fm = new CFontMetrics(this.font());
         return new CSize(Math.ceil(fm.textWidth(this.text)) + 16 + (this.owner.isReadOnly() ? 0 : 24),
@@ -49,17 +61,37 @@ class TagChip extends CWidget {
             && new CRect(Math.max(0, this.width() - 24), 0, Math.min(24, this.width()), this.height())
                 .contains(new CPoint(event.x(), event.y()));
     }
+    /**
+     * Responds to a pointer button press for the tag chip. May update the pressed. May request a repaint and accept or ignore the event depending on the input.
+     * @param event Event for a pointer button press.
+     */
     protected override mousePressEvent(event: CMouseEvent): void {
         if (event.button() !== CMouseButton.LeftButton || !this.owner.isEnabled()) { event.ignore(); return; }
         this.#pressed = this.#hit(event); this.owner.setFocus(); event.accept(); this.update();
     }
+    /**
+     * Responds to a pointer button release for the tag chip. May update the pressed. May request a repaint and accept or ignore the event depending on the input.
+     * @param event Event for a pointer button release.
+     */
     protected override mouseReleaseEvent(event: CMouseEvent): void {
         if (event.button() !== CMouseButton.LeftButton) { event.ignore(); return; }
         const remove = this.#pressed && this.#hit(event); this.#pressed = false;
         event.accept(); this.update(); if (remove) this.remove();
     }
+    /**
+     * Responds to pointer movement for the tag chip. May update the hovered. May accept the event and request a repaint.
+     * @param event Event for pointer movement.
+     */
     protected override mouseMoveEvent(event: CMouseEvent): void { this.#hovered = this.#hit(event); event.accept(); this.update(); }
+    /**
+     * Responds to pointer exit for the tag chip. May update the hovered. May accept the event and request a repaint.
+     * @param event Event for pointer exit.
+     */
     protected override mouseLeaveEvent(event: CMouseEvent): void { this.#hovered = false; event.accept(); this.update(); }
+    /**
+     * Draws the tag chip through the supplied painter.
+     * @param painter Painter for the current drawing operation.
+     */
     protected override paintEvent(painter: CPainter): void {
         const option = new CStyleOptionTagEdit(); option.initFrom(this);
         if (!this.owner.isEnabled()) option.state &= ~CStyleState.Enabled;
@@ -98,11 +130,30 @@ export class CTagEdit extends CWidget {
         this.#flow.addWidget(this.#editor); this.setLayout(this.#flow);
         this.setFocusPolicy(CFocusPolicy.StrongFocus); this.setFocusProxy(this.#editor);
     }
+    /**
+     * Reads the current normalized unique tags.
+     * @returns A new array containing the tags in display order.
+     */
     tags(): string[] { return [...this.#tags]; }
+    /**
+     * Counts the entries in the tag edit.
+     * @returns The number of entries in the tags.
+     */
     count(): number { return this.#tags.length; }
+    /**
+     * Reads the editor.
+     * @returns The editor.
+     */
     lineEdit(): CLineEdit { return this.#editor; }
+    /**
+     * Reads the completer.
+     * @returns The completer.
+     */
     completer(): CCompleter | null { return this.#completer; }
-    /** Borrows a completer; its original source and filter are retained. */
+    /**
+     * Borrows a completer; its original source and filter are retained.
+     * @param completer Completer.
+     */
     setCompleter(completer: CCompleter | null): void {
         if (completer === this.#completer) return;
         this.#disconnectCompletion?.(); this.#disconnectCompletion = null;
@@ -122,11 +173,30 @@ export class CTagEdit extends CWidget {
             });
         }
     }
+    /**
+     * Releases resources held by the tag edit.
+     */
     override destroy(): void { this.setCompleter(null); super.destroy(); }
+    /**
+     * Checks whether the tag edit is read only.
+     * @returns `true` if the tag edit is read only, otherwise `false`.
+     */
     isReadOnly(): boolean { return this.#readOnly; }
+    /**
+     * Reads the hint shown in the tag entry field.
+     * @returns The editor's current placeholder.
+     */
     placeholderText(): string { return this.#editor.placeholderText(); }
+    /**
+     * Changes the hint shown by the tag entry field and refreshes its preferred size.
+     * @param text Placeholder text for the entry field.
+     */
     setPlaceholderText(text: string): void { this.#editor.setPlaceholderText(text); this.#editor.updateGeometry(); }
     #normalize(text: string): string { return text.replace(/[\r\n\t]+/g, " ").trim(); }
+    /**
+     * Normalizes tags, removes empty and duplicate entries, rebuilds the chips and emits `tagsChanged` when the list differs.
+     * @param tags Tag text in the desired display order.
+     */
     setTags(tags: readonly string[]): void {
         const next = [...new Set(tags.map(text => this.#normalize(text)).filter(text => text.length > 0))];
         if (next.length === this.#tags.length && next.every((text, i) => text === this.#tags[i])) return;
@@ -134,34 +204,63 @@ export class CTagEdit extends CWidget {
         if (this.#completer?.completionFilter() === this.#tagFilter)
             this.#completer.setCompletionFilter(this.#tagFilter); this.tagsChanged.emit(this.tags());
     }
+    /**
+     * Normalizes the supplied text and appends it if it is nonempty and unique.
+     * @param text Text of the tag to add.
+     * @returns `true` if the tag was appended, or `false` for empty or duplicate input after normalization.
+     */
     addTag(text: string): boolean {
         const normalized = this.#normalize(text);
         if (!normalized || this.#tags.includes(normalized)) return false;
         this.setTags([...this.#tags, normalized]); return true;
     }
+    /**
+     * Removes the tag matching the normalized input.
+     * @param text Text of the tag to remove.
+     * @returns `true` if a matching tag was removed.
+     */
     removeTag(text: string): boolean {
         const index = this.#tags.indexOf(this.#normalize(text));
         if (index < 0) return false;
         this.setTags(this.#tags.filter((_, i) => i !== index)); return true;
     }
+    /**
+     * Clears the contents of the tag edit.
+     */
     clear(): void { this.setTags([]); this.#editor.setText(""); }
-    /** Commits nonempty pending input; duplicate input is cleared but not added. */
+    /**
+     * Tries to add the pending input as a tag. Nonempty input is cleared and the completion popup is dismissed even when it duplicates an existing tag.
+     * @returns `true` if a new tag was added. Returns `false` for disabled, read-only, empty or duplicate input.
+     */
     commit(): boolean {
         if (this.#readOnly || !this.isEnabled()) return false;
         const text = this.#normalize(this.#editor.text());
         if (!text) return false;
         const added = this.addTag(text); this.#editor.setText(""); this.#completer?.hidePopup(); return added;
     }
+    /**
+     * Sets the read only.
+     * @param readOnly Read only flag.
+     */
     setReadOnly(readOnly: boolean): void {
         if (this.#readOnly === readOnly) return;
         if (readOnly) this.#completer?.hidePopup();
         this.#readOnly = readOnly; this.#editor.setReadOnly(readOnly); this.#rebuild();
     }
+    /**
+     * Sets the enabled.
+     * @param enabled Whether to enable the feature.
+     */
     override setEnabled(enabled: boolean): void {
         if (!enabled) this.#completer?.hidePopup();
         super.setEnabled(enabled); this.#editor.setEnabled(enabled);
         for (const chip of this.#chips) chip.setEnabled(enabled);
     }
+    /**
+     * Updates the tag field and each chip's font, then reflows the contents.
+     * @param font Font to apply to the tag control and its internal widgets.
+     * @param _propagate Accepted for compatibility. The method always updates the internal tag widgets.
+     */
     override setFont(font: CFont, _propagate = false): void {
         super.setFont(font, false); this.#editor.setFont(font);
         for (const chip of this.#chips) chip.setFont(font);
@@ -178,14 +277,26 @@ export class CTagEdit extends CWidget {
         });
         this.#flow.addWidget(this.#editor); this.updateGeometry(); this.update();
     }
+    /**
+     * Measures the wrapping tag layout at a preferred width between 200 and 480 logical pixels.
+     * @returns Preferred width and the layout height at that width.
+     */
     override sizeHint(): CSize {
         const width = Math.max(200, Math.min(480, this.#flow.sizeHint().width()));
         return new CSize(width, this.#flow.heightForWidth(width));
     }
+    /**
+     * Focuses the tag control on a left press and ignores other buttons.
+     * @param event Mouse event with pointer coordinates local to the control.
+     */
     protected override mousePressEvent(event: CMouseEvent): void {
         if (event.button() !== CMouseButton.LeftButton) { event.ignore(); return; }
         this.setFocus(); event.accept();
     }
+    /**
+     * Draws the tag edit through the supplied painter.
+     * @param painter Painter for the current drawing operation.
+     */
     protected override paintEvent(painter: CPainter): void {
         painter.setBrush(this.palette().color(CPaletteColorRole.Base).toCss()); painter.fillRect(this.rect());
         painter.setPen(this.palette().color(!this.isEnabled() ? CPaletteColorRole.DisabledText

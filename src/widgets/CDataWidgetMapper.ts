@@ -38,10 +38,18 @@ export class CDataWidgetMapper extends CObject {
 	#m_updatingWidgets = false;
 	#m_submitting = false;
 
+	/**
+	 * Reads the model supplying the mapped rows.
+	 * @returns The attached model, or `null` if detached.
+	 */
 	model(): CAbstractItemModel | null {
 		return this.#m_model;
 	}
 
+	/**
+	 * Replaces the mapped model, resets the current row and listens for changes in the new model. A detached mapper clears widget values.
+	 * @param model Model to attach, or `null` to detach.
+	 */
 	setModel(model: CAbstractItemModel | null): void {
 		if (model === this.#m_model)
 			return;
@@ -90,14 +98,27 @@ export class CDataWidgetMapper extends CObject {
 		});
 	}
 
+	/**
+	 * Reads when mapped widget edits are submitted.
+	 * @returns `AutoSubmit` or `ManualSubmit`.
+	 */
 	submitPolicy(): CDataWidgetMapperSubmitPolicy {
 		return this.#m_submitPolicy;
 	}
 
+	/**
+	 * Changes when edits are written to the model.
+	 * @param policy Submission policy to use for subsequent edits and navigation.
+	 */
 	setSubmitPolicy(policy: CDataWidgetMapperSubmitPolicy): void {
 		this.#m_submitPolicy = policy;
 	}
 
+	/**
+	 * Maps a supported editor to a model column and populates it from the current row. Replaces any existing mapping for that widget.
+	 * @param widget Supported editor widget, such as a line edit, check box, combo box or numeric editor.
+	 * @param section Nonnegative integer model column. Invalid sections throw `RangeError` and unsupported widgets throw `TypeError`.
+	 */
 	addMapping(widget: CWidget, section: number): void {
 		if (!Number.isInteger(section) || section < 0)
 			throw new RangeError("The mapped section must be a non-negative integer.");
@@ -111,30 +132,53 @@ export class CDataWidgetMapper extends CObject {
 		this.#populateMapping(mapping);
 	}
 
+	/**
+	 * Stops synchronizing a widget by removing its mapping.
+	 * @param widget Widget whose mapping should be removed.
+	 */
 	removeMapping(widget: CWidget): void {
 		this.#m_mappings = this.#m_mappings.filter(
 			mapping => mapping.widget !== widget
 		);
 	}
 
+	/** Removes every widget-to-column mapping. */
 	clearMapping(): void {
 		this.#m_mappings = [];
 	}
 
+	/**
+	 * Looks up the model column assigned to a widget.
+	 * @param widget Mapped widget to look up.
+	 * @returns Zero-based column, or `-1` if the widget is not mapped.
+	 */
 	mappedSection(widget: CWidget): number {
 		return this.#m_mappings.find(mapping => mapping.widget === widget)
 			?.section ?? -1;
 	}
 
+	/**
+	 * Finds the first widget assigned to a model column.
+	 * @param section Zero-based model column.
+	 * @returns The first matching widget, or `null` if no widget is mapped to the column.
+	 */
 	mappedWidgetAt(section: number): CWidget | null {
 		return this.#m_mappings.find(mapping => mapping.section === section)
 			?.widget ?? null;
 	}
 
+	/**
+	 * Reads the row currently displayed by the mapped widgets.
+	 * @returns Zero-based model row, or `-1` if none is active.
+	 */
 	currentIndex(): number {
 		return this.#m_currentIndex;
 	}
 
+	/**
+	 * Selects a row and populates mapped widgets. In auto-submit mode, a failed submission of the previous row prevents navigation.
+	 * @param index Zero-based row within the attached model.
+	 */
 	setCurrentIndex(index: number): void {
 		const model = this.#m_model;
 		if (model === null || index < 0 || index >= model.rowCount())
@@ -147,7 +191,10 @@ export class CDataWidgetMapper extends CObject {
 		this.#setCurrentIndex(index);
 	}
 
-	/** Sets the current row from an index belonging to the mapped model. */
+	/**
+	 * Selects the row of a valid index owned by the attached model using the normal submission rules.
+	 * @param index Index in the attached model. Its column is ignored.
+	 */
 	setCurrentModelIndex(index: CModelIndex): void {
 		if (!index.isValid() || index.model() !== this.#m_model)
 			return;
@@ -155,14 +202,22 @@ export class CDataWidgetMapper extends CObject {
 		this.setCurrentIndex(index.row());
 	}
 
+	/** Attempts to navigate to the first row using the current submission policy. */
 	toFirst(): void { this.setCurrentIndex(0); }
+	/** Attempts to navigate to the last row of the attached model using the current submission policy. */
 	toLast(): void {
 		if (this.#m_model !== null)
 			this.setCurrentIndex(this.#m_model.rowCount() - 1);
 	}
+	/** Attempts to move one row forward. When no row is active, starts at the first row. */
 	toNext(): void { this.setCurrentIndex(this.#m_currentIndex + 1); }
+	/** Attempts to move one row backward, leaving the first row selected at the lower boundary. */
 	toPrevious(): void { this.setCurrentIndex(this.#m_currentIndex - 1); }
 
+	/**
+	 * Validates mapped widgets and writes their values to the current model row. Writes stop on the first rejected item and widgets are then repopulated from the model.
+	 * @returns `true` if every write was accepted, or `false` if no row is active, validation fails or the model refuses a write.
+	 */
 	submit(): boolean {
 		const model = this.#m_model;
 		if (model === null || this.#m_currentIndex < 0)
@@ -192,6 +247,7 @@ export class CDataWidgetMapper extends CObject {
 		return accepted;
 	}
 
+	/** Repopulates mapped widgets from the model's current row, discarding unsubmitted widget edits. */
 	revert(): void {
 		this.#populateWidgets();
 	}

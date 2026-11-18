@@ -55,10 +55,18 @@ export class CCompleter extends CObject {
 			this.setModel(source);
 	}
 
+	/**
+	 * Reads the widget.
+	 * @returns The widget.
+	 */
 	widget(): CLineEdit | null {
 		return this.#m_widget;
 	}
 
+	/**
+	 * Disconnects the previous editor, closes the popup and connects completion to text edits on the new editor.
+	 * @param widget Line editor to attach, or `null` to detach.
+	 */
 	setWidget(widget: CLineEdit | null): void {
 		if (widget === this.#m_widget)
 			return;
@@ -76,10 +84,18 @@ export class CCompleter extends CObject {
 		}
 	}
 
+	/**
+	 * Reads the model.
+	 * @returns The model.
+	 */
 	model(): CAbstractItemModel | null {
 		return this.#m_model;
 	}
 
+	/**
+	 * Sets the model. May update the strings, the model, the disconnect model signals.
+	 * @param model Model.
+	 */
 	setModel(model: CAbstractItemModel | null): void {
 		if (model === this.#m_model && this.#m_strings.length === 0)
 			return;
@@ -102,10 +118,18 @@ export class CCompleter extends CObject {
 		this.#refresh();
 	}
 
+	/**
+	 * Reads the string list of the completer.
+	 * @returns The string list.
+	 */
 	stringList(): string[] {
 		return [...this.#m_strings];
 	}
 
+	/**
+	 * Sets the string list. May update the model, the strings.
+	 * @param strings Strings.
+	 */
 	setStringList(strings: string[]): void {
 		this.#disconnectModel();
 		this.#m_model = null;
@@ -113,10 +137,18 @@ export class CCompleter extends CObject {
 		this.#refresh();
 	}
 
+	/**
+	 * Reads the completion column.
+	 * @returns The completion column.
+	 */
 	completionColumn(): number {
 		return this.#m_completionColumn;
 	}
 
+	/**
+	 * Sets the completion column. The implementation checks whether `column` is an integer.
+	 * @param column Zero-based column.
+	 */
 	setCompletionColumn(column: number): void {
 		if (!Number.isInteger(column) || column < 0
 			|| column === this.#m_completionColumn)
@@ -126,10 +158,18 @@ export class CCompleter extends CObject {
 		this.#refresh();
 	}
 
+	/**
+	 * Reads the case sensitivity.
+	 * @returns The case sensitivity.
+	 */
 	caseSensitivity(): CCompleterCaseSensitivity {
 		return this.#m_caseSensitivity;
 	}
 
+	/**
+	 * Sets the case sensitivity.
+	 * @param sensitivity Sensitivity.
+	 */
 	setCaseSensitivity(sensitivity: CCompleterCaseSensitivity): void {
 		if (sensitivity === this.#m_caseSensitivity)
 			return;
@@ -138,33 +178,64 @@ export class CCompleter extends CObject {
 		this.#refresh();
 	}
 
-	/** Additional filtering applied to both string and model sources. */
+	/**
+	 * Additional filtering applied to both string and model sources.
+	 * @returns The completion filter.
+	 */
 	completionFilter(): ((value: string) => boolean) | null { return this.#m_completionFilter; }
+	/**
+	 * Sets the completion filter.
+	 * @param filter Filter.
+	 */
 	setCompletionFilter(filter: ((value: string) => boolean) | null): void {
 		this.#m_completionFilter = filter;
 		this.#refresh();
 	}
 
+	/**
+	 * Reads the completion prefix.
+	 * @returns The completion prefix.
+	 */
 	completionPrefix(): string {
 		return this.#m_completionPrefix;
 	}
 
+	/**
+	 * Reads the number of entries in the matches.
+	 * @returns The number of entries in the matches.
+	 */
 	completionCount(): number {
 		return this.#m_matches.length;
 	}
 
+	/**
+	 * Reads the current completion of the completer.
+	 * @returns The current completion.
+	 */
 	currentCompletion(): string {
 		return this.#m_matches[this.#m_listWidget.currentRow()] ?? "";
 	}
 
+	/**
+	 * Reads the popup.
+	 * @returns The popup.
+	 */
 	popup(): CPopupWidget {
 		return this.#m_popup;
 	}
 
+	/**
+	 * Reads the list widget.
+	 * @returns The list widget.
+	 */
 	listWidget(): CListWidget {
 		return this.#m_listWidget;
 	}
 
+	/**
+	 * Filters the completion model by prefix, rebuilds the result list and opens or hides the popup based on the target editor and matches.
+	 * @param prefix Prefix to match. Defaults to the attached editor's text, or an empty string when detached.
+	 */
 	complete(prefix = this.#m_widget?.text() ?? ""): void {
 		this.#m_completionPrefix = prefix;
 		this.#m_matches = this.#filteredValues(prefix);
@@ -184,11 +255,16 @@ export class CCompleter extends CObject {
 		this.#m_popup.open(false);
 	}
 
+	/** Closes the completion popup. */
 	hidePopup(): void {
 		this.#m_popup.close();
 	}
 
-	/** Handles completion navigation keys sent by the associated editor. */
+	/**
+	 * Opens completions on Down when closed. While open, routes navigation keys to the list, activates on Enter or Return and dismisses on Escape.
+	 * @param event Keyboard event to route to the completion popup.
+	 * @returns `true` if the popup opened or handled the key. Returns `false` for other keys or when no popup opened.
+	 */
 	handleKeyEvent(event: CKeyEvent): boolean {
 		if (event.key() === "ArrowDown" && !this.#m_popup.isOpen()) {
 			this.complete();
@@ -224,6 +300,9 @@ export class CCompleter extends CObject {
 		return false;
 	}
 
+	/**
+	 * Releases resources held by the completer.
+	 */
 	override destroy(): void {
 		this.setWidget(null);
 		this.#disconnectModel();

@@ -22,19 +22,34 @@ export class CClipboard extends CObject {
     /** Reports a denied or failed system clipboard operation. */
     readonly errorOccurred = new CSignal<[string]>();
 
+    /**
+     * Reads the most recent reported system clipboard failure. A successful system clipboard operation clears it.
+     * @returns Failure message, or an empty string if no error is recorded.
+     */
     lastError(): string { return this.#m_lastError; }
 
+    /**
+     * Checks whether the browser exposes the system text read operation.
+     * @returns `true` if `navigator.clipboard.readText` is available. Permissions are checked when reading.
+     */
     canReadSystemText(): boolean {
         return typeof navigator !== "undefined" && typeof navigator.clipboard?.readText === "function";
     }
 
-    /** @internal Synchronizes a native clipboard event without writing it back. */
+    /**
+     * Runs a synchronous update while suppressing writes back to the system clipboard.
+     * @param operation Callback to execute in the native clipboard context.
+     * @internal
+     */
     withNativeClipboard(operation: () => void): void {
         ++this.#m_nativeDepth;
         try { operation(); } finally { --this.#m_nativeDepth; }
     }
 
-    /** Reads current system text. A denied read returns null, never stale cached text. */
+    /**
+     * Reads the system clipboard and updates the cached text if local contents have not changed during the read.
+     * @returns A promise resolving to the text, cached text if browser reads are unavailable, or `null` if the read fails or is superseded.
+     */
     async readSystemText(): Promise<string | null> {
         if (!this.canReadSystemText()) return this.text();
         const revision = this.#m_revision;
@@ -50,7 +65,11 @@ export class CClipboard extends CObject {
         }
     }
 
-    /** Writes text to the system clipboard; local MIME data is managed separately. */
+    /**
+     * Writes directly to the system clipboard without updating the toolkit's MIME cache.
+     * @param text Plain text to write.
+     * @returns A promise resolving to `true` on success or `false` when the API is unavailable or the write fails.
+     */
     async writeSystemText(text: string): Promise<boolean> {
         if (typeof navigator === "undefined" || typeof navigator.clipboard?.writeText !== "function") return false;
         try {
@@ -108,9 +127,9 @@ export class CClipboard extends CObject {
 	}
 
 /**
- * Replaces the clipboard contents with MIME data.
- * @param mimeData MIME data to store, or `null` to clear the clipboard.
- */
+	 * Replaces the owned MIME payload and emits the clipboard change signals. A new plain-text payload also starts a system write outside native clipboard handling.
+	 * @param mimeData Payload to adopt, or `null` to clear the local clipboard.
+	 */
 	setMimeData(mimeData: CMimeData | null): void {
 		if (mimeData === this.#m_mimeData)
 			return;
@@ -139,9 +158,9 @@ export class CClipboard extends CObject {
 	}
 
 /**
- * Replaces the clipboard contents with plain text.
- * @param text Text to store.
- */
+	 * Replaces the local MIME payload with plain text and starts a system write outside native clipboard handling.
+	 * @param text Plain text to store.
+	 */
 	setText(text: string): void {
 		const mimeData = new CMimeData();
 		mimeData.setText(text);

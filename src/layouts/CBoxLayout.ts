@@ -29,22 +29,36 @@ export class CBoxLayout extends CLayout {
 		this.#m_direction = direction;
 	}
 
-	/** Returns the layout direction. */
+	/**
+	 * Reads how this box arranges items.
+	 * @returns Left-to-right or top-to-bottom direction.
+	 */
 	direction(): CBoxLayoutDirection {
 		return this.#m_direction;
 	}
 
-	/** Adds a widget with an optional stretch factor. */
+	/**
+	 * Appends a widget with optional sizing controls for its allocated cell.
+	 * @param widget Widget to add.
+	 * @param stretch Main-axis stretch weight. Defaults to zero and is clamped to zero if negative.
+	 * @param alignment Axis alignment flags. Defaults to zero for size-policy-driven filling.
+	 */
 	override addWidget(widget: CWidget, stretch = 0, alignment: CAlignment | 0 = 0): void {
         const item = new CBoxLayoutItem(widget, stretch);
         item.setAlignment(alignment);
         this.addItem(item);
 	}
 
-    /** Adds empty space with its own preferred size and axis policies. */
+    /**
+     * Appends an empty item with its own preferred size and sizing policies.
+     * @param spacer Spacer item to add.
+     */
     addSpacerItem(spacer: CSpacerItem): void { this.addItem(spacer); }
 
-    /** Adds a fixed gap along this box's direction. */
+    /**
+     * Appends a spacer with a fixed main-axis size and zero preferred cross-axis size.
+     * @param size Gap in logical pixels. Negative or nonfinite values become zero.
+     */
     addSpacing(size: number): void {
         const horizontal = this.#m_direction === CBoxLayoutDirection.LeftToRight;
         this.addSpacerItem(new CSpacerItem(horizontal ? size : 0, horizontal ? 0 : size,
@@ -52,14 +66,22 @@ export class CBoxLayout extends CLayout {
             horizontal ? CSizePolicyType.Minimum : CSizePolicyType.Fixed));
     }
 
-	/** Adds all widgets from another layout with an optional stretch factor. */
+	/**
+	 * Attaches the nested layout to a new wrapper widget and inserts the wrapper into this box.
+	 * @param layout Layout to nest.
+	 * @param stretch Stretch weight of the wrapper. Defaults to zero.
+	 * @param alignment Alignment flags for the wrapper. Defaults to zero.
+	 */
 	addLayout(layout: CLayout, stretch = 0, alignment: CAlignment | 0 = 0): void {
 		const widget = new CWidget();
 		widget.setLayout(layout);
 		this.addWidget(widget, stretch, alignment);
 	}
 
-	/** Returns the preferred size required by the arranged items. */
+	/**
+	 * Combines item hints and bounds along the box axes, including margins and spacing. Pure stretch slots contribute no preferred size.
+	 * @returns A new preferred size, or a zero size when there are no items.
+	 */
 	override sizeHint(): CSize {
 		const count = this.count();
 		if (count === 0)
@@ -123,6 +145,11 @@ export class CBoxLayout extends CLayout {
 		}
 	}
 
+    /**
+     * Computes preferred height after determining the widths available to the items.
+     * @param width Available width including horizontal margins, in logical pixels.
+     * @returns Preferred height including vertical margins, or `-1` when no widget has height-for-width.
+     */
     override heightForWidth(width: number): number {
         if (!this.hasHeightForWidth()) return -1;
         const margins = this.contentsMargins();
@@ -148,7 +175,7 @@ export class CBoxLayout extends CLayout {
         return height + margins.top + margins.bottom;
     }
 
-	/** Recalculates and applies item geometries. */
+	/** Allocates space along the box direction and applies item geometry using the parent widget's contents. With no parent, geometry is left as-is. */
 	override update(): void {
 		const parent = this.parentWidget();
 

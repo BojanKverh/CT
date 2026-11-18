@@ -35,21 +35,18 @@ constructor(font: CFont) {
 	}
 
 		/**
-	 * Returns the font used by these metrics.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Reads the font used to measure text.
+ * @returns An independent copy of the configured font.
+ */
 font(): CFont {
 		return new CFont(this.#m_font);
 	}
 
 		/**
-	 * Returns the rendered width of the specified text.
-	 *
-	 * @param text Text.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Measures the text advance with the configured font and restores the Canvas drawing state.
+ * @param text Text to measure.
+ * @returns Measured width in logical pixels.
+ */
 textWidth(text: string): number {
 		this.#m_context.save();
 		this.#m_context.font = this.#m_font.toCss();
@@ -62,10 +59,9 @@ textWidth(text: string): number {
 	}
 
 		/**
-	 * Returns the line height of the configured font.
-	 *
-	 * @returns The resulting value.
-	 */
+ * Measures the actual ascent and descent of the sample text `Mg` with the configured font.
+ * @returns Sum of the sample's ascent and descent in logical pixels.
+ */
 height(): number {
 		this.#m_context.save();
 		this.#m_context.font = this.#m_font.toCss();

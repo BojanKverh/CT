@@ -33,37 +33,58 @@ export class CKeyEvent extends CEvent {
 		this.#m_altGraph = altGraph;
 	}
 
-	/** Returns the key value. */
+	/**
+	 * Reads the browser key value, which can reflect the keyboard layout and modifiers.
+	 * @returns The key value recorded for the event.
+	 */
 	key(): string {
 		return this.#m_key;
 	}
 
-	/** Returns whether Control is pressed. */
+	/**
+	 * Checks the recorded Control modifier state.
+	 * @returns `true` if Control was active for the event.
+	 */
 	ctrl(): boolean {
 		return this.#m_ctrl;
 	}
 
-	/** Returns whether Shift is pressed. */
+	/**
+	 * Checks the recorded Shift modifier state.
+	 * @returns `true` if Shift was active for the event.
+	 */
 	shift(): boolean {
 		return this.#m_shift;
 	}
 
-	/** Returns whether Alt is pressed. */
+	/**
+	 * Checks the recorded Alt modifier state.
+	 * @returns `true` if Alt was active for the event.
+	 */
 	alt(): boolean {
 		return this.#m_alt;
 	}
 
-	/** Returns whether Meta is pressed. */
+	/**
+	 * Checks the recorded Meta modifier state.
+	 * @returns `true` if Meta was active for the event.
+	 */
 	meta(): boolean {
 		return this.#m_meta;
 	}
 
-	/** Returns the physical key code. */
+	/**
+	 * Reads the physical key identifier supplied by the browser.
+	 * @returns The key code, or an empty string if none was supplied.
+	 */
 	code(): string {
 		return this.#m_code;
 	}
 
-	/** Returns whether AltGraph is active. */
+	/**
+	 * Checks the recorded AltGraph modifier state.
+	 * @returns `true` if AltGraph was active for the event.
+	 */
 	altGraph(): boolean {
 		return this.#m_altGraph;
 	}

@@ -13,10 +13,17 @@ class CDateTimeItemDelegateEditor extends CDateTimeEdit {
 	readonly accepted = new CSignal<[]>();
 	readonly canceled = new CSignal<[]>();
 
+	/**
+	 * Sets the focus.
+	 */
 	override setFocus(): void {
 		this.dateLineEdit().setFocus();
 	}
 
+	/**
+	 * Responds to a key press for the date time item delegate editor. May accept the event. May emit `accepted`, `canceled`.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
 		if (event.key() === "Enter") {
 			event.accept();
@@ -40,11 +47,32 @@ export class CDateTimeItemDelegate extends CAbstractItemDelegate {
 	#m_dateDisplayFormat = "dd.MM.yyyy";
 	#m_timeDisplayFormat = "HH:mm";
 
+	/**
+	 * Reads the date display format.
+	 * @returns The date display format.
+	 */
 	dateDisplayFormat(): string { return this.#m_dateDisplayFormat; }
+	/**
+	 * Sets the date display format.
+	 * @param format Format.
+	 */
 	setDateDisplayFormat(format: string): void { this.#m_dateDisplayFormat = format; }
+	/**
+	 * Reads the time display format.
+	 * @returns The time display format.
+	 */
 	timeDisplayFormat(): string { return this.#m_timeDisplayFormat; }
+	/**
+	 * Sets the time display format.
+	 * @param format Format.
+	 */
 	setTimeDisplayFormat(format: string): void { this.#m_timeDisplayFormat = format; }
 
+	/**
+	 * Formats local date and time components using the configured formats.
+	 * @param dateTime Date and time value to display.
+	 * @returns Formatted date and time separated by a space.
+	 */
 	displayText(dateTime: Date): string {
 		const hour24 = dateTime.getHours();
 		const hour12 = hour24 % 12 || 12;
@@ -71,6 +99,14 @@ export class CDateTimeItemDelegate extends CAbstractItemDelegate {
 		}`;
 	}
 
+	/**
+	 * Draws a formatted date and time from a valid Date value.
+	 * @param painter Painter for drawing the cell text.
+	 * @param rect Cell bounds in the view.
+	 * @param index Model index supplying the Date value.
+	 * @param _widget View widget supplied by the caller. This delegate does not use it.
+	 * @returns `true` if text was drawn, or `false` if the cell has no valid Date.
+	 */
 	override paint(
 		painter: CPainter,
 		rect: CRect,
@@ -85,6 +121,12 @@ export class CDateTimeItemDelegate extends CAbstractItemDelegate {
 		return true;
 	}
 
+	/**
+	 * Creates a date-time editor using the configured date and time formats and connects its acceptance and cancellation to the delegate's editing signals.
+	 * @param parent Widget that will own the editor.
+	 * @param _index Model index of the edited cell. The initial cell value is applied separately by `setEditorData()`.
+	 * @returns The new editor widget.
+	 */
 	override createEditor(parent: CWidget, _index: CModelIndex): CWidget {
 		const editor = new CDateTimeItemDelegateEditor(parent);
 		editor.setDateDisplayFormat(this.#m_dateDisplayFormat);
@@ -98,6 +140,11 @@ export class CDateTimeItemDelegate extends CAbstractItemDelegate {
 		return editor;
 	}
 
+	/**
+	 * Populates date-time editor with the valid Date stored in the cell.
+	 * @param editor Editor widget created for the cell.
+	 * @param index Model index supplying the initial value.
+	 */
 	override setEditorData(editor: CWidget, index: CModelIndex): void {
 		if (!(editor instanceof CDateTimeEdit))
 			return;
@@ -107,6 +154,12 @@ export class CDateTimeItemDelegate extends CAbstractItemDelegate {
 			editor.setDateTime(value);
 	}
 
+	/**
+	 * Writes the editor's date and time back to the target cell when the editor is applicable.
+	 * @param editor Editor containing the edited value.
+	 * @param model Model to update.
+	 * @param index Index receiving the edited value.
+	 */
 	override setModelData(
 		editor: CWidget,
 		model: CAbstractItemModel,

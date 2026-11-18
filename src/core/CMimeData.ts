@@ -46,10 +46,10 @@ export class CMimeData extends CObject {
 	}
 
 /**
- * Stores binary data for a MIME type.
- * @param mimeType MIME type under which the data is stored.
- * @param data Binary data to copy into the container.
- */
+	 * Stores a copy of the binary payload. An empty MIME type is ignored.
+	 * @param mimeType Nonempty MIME type under which to store the payload.
+	 * @param data Bytes to copy into the container.
+	 */
 	setData(mimeType: string, data: Uint8Array): void {
 		if (mimeType.length === 0)
 			return;

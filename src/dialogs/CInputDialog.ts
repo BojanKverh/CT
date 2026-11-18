@@ -121,20 +121,18 @@ export class CInputDialog extends CDialog
 	}
 
 /**
- * Returns the active input mode.
- *
- * @returns The current input mode.
- */
+	 * Reads which editor is active.
+	 * @returns Text or integer input mode.
+	 */
 	inputMode(): CInputDialogInputMode
 	{
 		return this.#m_inputMode;
 	}
 
 /**
- * Sets the active input mode.
- *
- * @param mode Input mode to use.
- */
+	 * Switches the visible editor and rebuilds the dialog layout without clearing the values stored in either editor.
+	 * @param mode Text or integer input mode.
+	 */
 	setInputMode(mode: CInputDialogInputMode): void
 	{
 		if (this.#m_inputMode === mode)
@@ -145,145 +143,131 @@ export class CInputDialog extends CDialog
 	}
 
 /**
- * Returns the prompt label text.
- *
- * @returns The current label text.
- */
+	 * Reads the prompt shown above the editor.
+	 * @returns Current prompt text.
+	 */
 	labelText(): string
 	{
 		return this.#m_label.text();
 	}
 
 /**
- * Sets the prompt label text.
- *
- * @param text New label text.
- */
+	 * Changes the prompt displayed above the editor.
+	 * @param text Prompt to display.
+	 */
 	setLabelText(text: string): void
 	{
 		this.#m_label.setText(text);
 	}
 
 /**
- * Returns the current text value.
- *
- * @returns The current text value.
- */
+	 * Reads the text editor even when integer mode is active.
+	 * @returns Current text editor contents.
+	 */
 	textValue(): string
 	{
 		return this.#m_lineEdit.text();
 	}
 
 /**
- * Sets the current text value.
- *
- * @param text New text value.
- */
+	 * Updates the stored text editor value independently of which editor is visible.
+	 * @param text New text editor contents.
+	 */
 	setTextValue(text: string): void
 	{
 		this.#m_lineEdit.setText(text);
 	}
 
 /**
- * Returns the current integer value.
- *
- * @returns The current integer value.
- */
+	 * Reads the spin box's current committed numeric value.
+	 * @returns Integer value in the configured range.
+	 */
 	intValue(): number
 	{
 		return this.#m_spinBox.value();
 	}
 
 /**
- * Sets the current integer value.
- *
- * @param value New integer value.
- */
+	 * Sets the spin box value using its integer normalization and range constraints.
+	 * @param value Requested numeric value to store.
+	 */
 	setIntValue(value: number): void
 	{
 		this.#m_spinBox.setValue(value);
 	}
 
 /**
- * Returns the minimum allowed integer value.
- *
- * @returns Minimum integer value.
- */
+	 * Reads the spin box's lower bound.
+	 * @returns Minimum accepted integer, inclusive.
+	 */
 	intMinimum(): number
 	{
 		return this.#m_spinBox.minimum();
 	}
 
 /**
- * Sets the minimum allowed integer value.
- *
- * @param minimum Minimum value.
- */
+	 * Changes the lower bound used for integer input.
+	 * @param minimum Requested inclusive integer minimum.
+	 */
 	setIntMinimum(minimum: number): void
 	{
 		this.#m_spinBox.setMinimum(minimum);
 	}
 
 /**
- * Returns the maximum allowed integer value.
- *
- * @returns Maximum integer value.
- */
+	 * Reads the spin box's upper bound.
+	 * @returns Maximum accepted integer, inclusive.
+	 */
 	intMaximum(): number
 	{
 		return this.#m_spinBox.maximum();
 	}
 
 /**
- * Sets the maximum allowed integer value.
- *
- * @param maximum Maximum value.
- */
+	 * Changes the upper bound used for integer input.
+	 * @param maximum Requested inclusive integer maximum.
+	 */
 	setIntMaximum(maximum: number): void
 	{
 		this.#m_spinBox.setMaximum(maximum);
 	}
 
 /**
- * Sets the allowed integer range.
- *
- * @param minimum Minimum value.
- * @param maximum Maximum value.
- */
+	 * Changes both bounds used for integer input.
+	 * @param minimum Requested inclusive integer minimum.
+	 * @param maximum Requested inclusive integer maximum.
+	 */
 	setIntRange(minimum: number, maximum: number): void
 	{
 		this.#m_spinBox.setRange(minimum, maximum);
 	}
 
 /**
- * Returns the integer step size.
- *
- * @returns Current step size.
- */
+	 * Reads the spin box increment.
+	 * @returns Integer amount used by step controls.
+	 */
 	intStep(): number
 	{
 		return this.#m_spinBox.singleStep();
 	}
 
 /**
- * Sets the integer step size.
- *
- * @param step Step size.
- */
+	 * Changes the increment used by the spin box's step controls.
+	 * @param step Requested positive integer step.
+	 */
 	setIntStep(step: number): void
 	{
 		this.#m_spinBox.setSingleStep(step);
 	}
 
 /**
- * Shows a modal dialog and requests a text value.
- *
- * @param parent Optional parent widget.
- * @param title Dialog title.
- * @param label Prompt label.
- * @param value Initial text value.
- * @returns A promise resolving to the selected text, or `null` if rejected.
- */
+	 * Opens a modal dialog that prompts for text.
+	 * @param parent Parent widget that owns the dialog, or `null` for a top-level dialog.
+	 * @param title Text shown in the title bar.
+	 * @param label Prompt shown above the editor.
+	 * @param value Initial text. Defaults to an empty string.
+	 * @returns A promise resolving to the accepted text or `null` when rejected.
+	 */
 	static getText(
 		parent: CWidget | null,
 		title: string,
@@ -314,17 +298,16 @@ export class CInputDialog extends CDialog
 	}
 
 /**
- * Shows a modal dialog and requests an integer value.
- *
- * @param parent Optional parent widget.
- * @param title Dialog title.
- * @param label Prompt label.
- * @param value Initial value.
- * @param minimum Minimum allowed value.
- * @param maximum Maximum allowed value.
- * @param step Step size.
- * @returns A promise resolving to the selected integer, or `null` if rejected.
- */
+	 * Opens a modal dialog with a spin box and applies the range and increment before setting the initial value.
+	 * @param parent Parent widget that owns the dialog, or `null` for a top-level dialog.
+	 * @param title Text shown in the title bar.
+	 * @param label Prompt shown above the editor.
+	 * @param value Requested initial integer value. Defaults to zero.
+	 * @param minimum Inclusive lower bound. Defaults to `-2147483647`.
+	 * @param maximum Inclusive upper bound. Defaults to `2147483647`.
+	 * @param step Spin box increment. Defaults to one.
+	 * @returns A promise resolving to the accepted integer or `null` when rejected.
+	 */
 	static getInt(
 		parent: CWidget | null,
 		title: string,

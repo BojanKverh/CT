@@ -16,19 +16,31 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 	#m_sortOrder = CSortOrder.AscendingOrder;
 	#m_dynamicSortFilter = true;
 
-	/** Returns the number of accepted source rows. */
+	/**
+	 * Counts the root rows that passed the current filter.
+	 * @param parent Parent index. Omit it for the root.
+	 * @returns Number of mapped rows at the root, or zero for a valid parent.
+	 */
 	override rowCount(parent = new CModelIndex()): number {
 		return parent.isValid() ? 0 : this.#m_sourceRows.length;
 	}
 
-	/** Returns the source model's column count. */
+	/**
+	 * Counts the source columns visible at the proxy root.
+	 * @param parent Parent index. Omit it for the root.
+	 * @returns Source column count, or zero when detached or given a valid parent.
+	 */
 	override columnCount(parent = new CModelIndex()): number {
 		return parent.isValid()
 			? 0
 			: this.sourceModel()?.columnCount() ?? 0;
 	}
 
-	/** Maps a proxy index to its source-model index. */
+	/**
+	 * Uses the row mapping to resolve the source cell while retaining the column.
+	 * @param proxyIndex Index owned by this proxy.
+	 * @returns Source index, or an invalid index when the cell cannot be mapped.
+	 */
 	override mapToSource(proxyIndex: CModelIndex): CModelIndex {
 		const source = this.sourceModel();
 
@@ -43,7 +55,11 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 			: source.index(sourceRow, proxyIndex.column());
 	}
 
-	/** Maps a source index to its proxy-model index. */
+	/**
+	 * Maps a source index to its proxy-model index.
+	 * @param sourceIndex Source index.
+	 * @returns The map from source.
+	 */
 	override mapFromSource(sourceIndex: CModelIndex): CModelIndex {
 		if (!sourceIndex.isValid() ||
 			sourceIndex.model() !== this.sourceModel())
@@ -56,12 +72,18 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 			: this.index(proxyRow, sourceIndex.column());
 	}
 
-	/** Returns the fixed string used for filtering. */
+	/**
+	 * Reads the literal text used for substring filtering.
+	 * @returns Current filter text. An empty string disables filtering.
+	 */
 	filterFixedString(): string {
 		return this.#m_filterFixedString;
 	}
 
-	/** Sets the fixed string used for filtering. */
+	/**
+	 * Changes the literal substring and rebuilds the mapping if it differs.
+	 * @param value Substring to match. Use an empty string to accept every source row.
+	 */
 	setFilterFixedString(value: string): void {
 		if (this.#m_filterFixedString === value)
 			return;
@@ -70,12 +92,18 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 		this.invalidate();
 	}
 
-	/** Returns the filtered column, or `-1` for all columns. */
+	/**
+	 * Reads which source column the filter examines.
+	 * @returns Zero-based source column, or `-1` to search every column.
+	 */
 	filterKeyColumn(): number {
 		return this.#m_filterKeyColumn;
 	}
 
-	/** Sets the filtered column, or `-1` for all columns. */
+	/**
+	 * Changes the search column and rebuilds the mapping if it differs. Values below `-1` are ignored.
+	 * @param column Zero-based source column, or `-1` to search all columns.
+	 */
 	setFilterKeyColumn(column: number): void {
 		if (column < -1 || this.#m_filterKeyColumn === column)
 			return;
@@ -84,12 +112,18 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 		this.invalidate();
 	}
 
-	/** Returns whether fixed-string filtering is case-sensitive. */
+	/**
+	 * Reads whether filtering preserves letter case when matching text.
+	 * @returns Whether matching is case-sensitive.
+	 */
 	isFilterCaseSensitive(): boolean {
 		return this.#m_filterCaseSensitive;
 	}
 
-	/** Sets whether fixed-string filtering is case-sensitive. */
+	/**
+	 * Changes case handling for substring filtering and rebuilds the mapping if it differs.
+	 * @param caseSensitive Whether matches must preserve letter case.
+	 */
 	setFilterCaseSensitive(caseSensitive: boolean): void {
 		if (this.#m_filterCaseSensitive === caseSensitive)
 			return;
@@ -98,12 +132,18 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 		this.invalidate();
 	}
 
-	/** Returns whether text sorting is case-sensitive. */
+	/**
+	 * Reads whether text comparisons preserve case.
+	 * @returns Whether text sorting is case-sensitive.
+	 */
 	isSortCaseSensitive(): boolean {
 		return this.#m_sortCaseSensitive;
 	}
 
-	/** Sets whether text sorting is case-sensitive. */
+	/**
+	 * Changes case handling for text sorting and rebuilds the mapping if it differs.
+	 * @param caseSensitive Whether text comparisons should preserve case.
+	 */
 	setSortCaseSensitive(caseSensitive: boolean): void {
 		if (this.#m_sortCaseSensitive === caseSensitive)
 			return;
@@ -112,17 +152,27 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 		this.invalidate();
 	}
 
-	/** Returns the active sort column, or `-1` when unsorted. */
+	/**
+	 * Reads the column used for proxy ordering.
+	 * @returns Zero-based column, or `-1` to retain source order.
+	 */
 	sortColumn(): number {
 		return this.#m_sortColumn;
 	}
 
-	/** Returns the active sort order. */
+	/**
+	 * Reads the stored ordering direction.
+	 * @returns The configured ascending or descending order.
+	 */
 	sortOrder(): CSortOrder {
 		return this.#m_sortOrder;
 	}
 
-	/** Sorts proxy rows without changing the source model. */
+	/**
+	 * Reorders proxy rows without rearranging the source. Columns outside the valid range are ignored, except `-1` restores source order.
+	 * @param column Zero-based sort column, or `-1` to clear sorting.
+	 * @param order Requested direction. Defaults to ascending.
+	 */
 	override sort(
 		column: number,
 		order: CSortOrder = CSortOrder.AscendingOrder
@@ -138,12 +188,18 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 		this.invalidate();
 	}
 
-	/** Returns whether source data changes automatically rebuild the proxy. */
+	/**
+	 * Checks whether source data edits rebuild the row mapping automatically.
+	 * @returns Whether automatic rebuilding on data changes is enabled.
+	 */
 	dynamicSortFilter(): boolean {
 		return this.#m_dynamicSortFilter;
 	}
 
-	/** Sets whether source data changes automatically rebuild the proxy. */
+	/**
+	 * Controls whether source data changes rebuild the mapping. Enabling the option also rebuilds immediately.
+	 * @param enabled Whether to enable dynamic sorting and filtering.
+	 */
 	setDynamicSortFilter(enabled: boolean): void {
 		if (this.#m_dynamicSortFilter === enabled)
 			return;
@@ -187,7 +243,11 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 		this.endLayoutChange(oldIndexes, newIndexes);
 	}
 
-	/** Returns whether a source row passes the current filter. */
+	/**
+	 * Tests eligible source cells for the configured literal substring, converting cell values to text.
+	 * @param sourceRow Zero-based source row to test.
+	 * @returns Whether the row passes the filter. An empty filter accepts all rows when a source exists.
+	 */
 	protected filterAcceptsRow(sourceRow: number): boolean {
 		const source = this.sourceModel();
 
@@ -222,7 +282,12 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 		return false;
 	}
 
-	/** Returns whether the left source index sorts before the right one. */
+	/**
+	 * Compares two source values for sorting. Numbers, dates and booleans of the same kind have specialized ordering. Other values are compared as text.
+	 * @param left Left source index.
+	 * @param right Right source index.
+	 * @returns Whether the left value sorts before the right value.
+	 */
 	protected lessThan(left: CModelIndex, right: CModelIndex): boolean {
 		const source = this.sourceModel();
 
@@ -235,7 +300,11 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 		) < 0;
 	}
 
-	/** Rebuilds the mapping after the source model changes. */
+	/**
+	 * Rebuilds the mapping for the newly attached source before the proxy reset.
+	 * @param _oldSourceModel Previously attached model, or `null`.
+	 * @param _newSourceModel Newly attached model, or `null`.
+	 */
 	protected override sourceModelChanged(
 		_oldSourceModel: CAbstractItemModel | null,
 		_newSourceModel: CAbstractItemModel | null
@@ -243,7 +312,11 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 		this.#rebuildMapping();
 	}
 
-	/** Updates filtering and sorting after source data changes. */
+	/**
+	 * Rebuilds the mapping in dynamic mode. Otherwise, forwards the change through the existing mapping.
+	 * @param topLeft Upper-left source index in the change range.
+	 * @param bottomRight Lower-right source index in the change range.
+	 */
 	protected override sourceDataChanged(
 		topLeft: CModelIndex,
 		bottomRight: CModelIndex
@@ -256,19 +329,24 @@ export class CSortFilterProxyModel extends CAbstractProxyModel {
 		super.sourceDataChanged(topLeft, bottomRight);
 	}
 
-	/** Rebuilds the mapping after a source reset. */
+	/** Rebuilds the mapping and emits a proxy reset. */
 	protected override sourceModelReset(): void {
 		this.#rebuildMapping();
 		super.sourceModelReset();
 	}
 
-	/** Rebuilds the mapping after a source layout change. */
+	/** Rebuilds the mapping and emits a proxy reset after source indexes are rearranged. */
 	protected override sourceLayoutChanged(): void {
 		this.#rebuildMapping();
 		super.sourceLayoutChanged();
 	}
 
-	/** Maps vertical headers to their source rows. */
+	/**
+	 * Reads a source header, translating vertical sections through the proxy row mapping.
+	 * @param section Zero-based proxy header section.
+	 * @param orientation Horizontal for columns or vertical for rows.
+	 * @returns The source header value, or `null` when the source or mapped row is unavailable.
+	 */
 	override headerData(
 		section: number,
 		orientation: COrientation

@@ -41,12 +41,18 @@ export class CDockArea extends CWidget {
 		super(parent);
 	}
 
-	/** Provides central widget behavior. */
+	/**
+	 * Reads the central widget.
+	 * @returns The central widget.
+	 */
 	centralWidget(): CWidget | null {
 		return this.#m_centralWidget;
 	}
 
-	/** Sets the central widget. */
+	/**
+	 * Detaches the current central widget, installs its replacement and recalculates geometry.
+	 * @param widget New central widget, or `null` to clear it.
+	 */
 	setCentralWidget(widget: CWidget | null): void {
 		/** Provides if behavior. */
 		if (this.#m_centralWidget === widget)
@@ -66,7 +72,11 @@ export class CDockArea extends CWidget {
 		this.update();
 	}
 
-	/** Adds dock widget. */
+	/**
+	 * Reparents a dock widget into this area and records its dock position. Existing entries for that same widget are replaced.
+	 * @param position Area in which to dock the widget.
+	 * @param widget Dock widget to add or reposition.
+	 */
 	addDockWidget(position: CDockWidgetArea, widget: CDockWidget): void {
 		const existing = this.#indexOf(widget);
 
@@ -85,7 +95,10 @@ export class CDockArea extends CWidget {
 		this.update();
 	}
 
-	/** Removes dock widget. */
+	/**
+	 * Detaches the registered dock widget without destroying it and recalculates the geometry.
+	 * @param widget Dock widget to remove.
+	 */
 	removeDockWidget(widget: CDockWidget): void {
 		const index = this.#indexOf(widget);
 
@@ -100,12 +113,20 @@ export class CDockArea extends CWidget {
 		this.update();
 	}
 
-	/** Provides dock widgets behavior. */
+	/**
+	 * Lists the dock widgets assigned to one docking area.
+	 * @param position Docking area to filter by.
+	 * @returns A new array of matching widgets.
+	 */
 	dockWidgets(position: CDockWidgetArea): readonly CDockWidget[] {
 		return this.#m_dockWidgets.filter(item => item.position === position).map(item => item.widget);
 	}
 
-	/** Provides dock widget area behavior. */
+	/**
+	 * Looks up the docking area recorded for a widget.
+	 * @param widget Dock widget to look up.
+	 * @returns The recorded area, or `null` if the widget is unregistered.
+	 */
 	dockWidgetArea(widget: CDockWidget): CDockWidgetArea | null {
 		const item = this.#m_dockWidgets.find(
 			item => item.widget === widget
@@ -114,7 +135,13 @@ export class CDockArea extends CWidget {
 		return item?.position ?? null;
 	}
 
-	/** Provides dock area at behavior. */
+	/**
+	 * Hit-tests the dock zones for the supplied widget, using its preferred docking thickness when calculating edge zones.
+	 * @param widget Dock widget being positioned.
+	 * @param canvasX Horizontal logical canvas coordinate.
+	 * @param canvasY Vertical logical canvas coordinate.
+	 * @returns Dock area at the point, or `null` if there is no valid dock zone.
+	 */
 	dockAreaAt(
 		widget: CDockWidget,
 		canvasX: number,
@@ -152,7 +179,11 @@ export class CDockArea extends CWidget {
 		return null;
 	}
 
-	/** Sets the dock preview. */
+	/**
+	 * Shows the preview for a widget and docking area, or clears it when no area is given.
+	 * @param widget Widget whose dimensions are previewed.
+	 * @param area Destination dock area, or `null` to clear the preview.
+	 */
 	setDockPreview(
 		widget: CDockWidget,
 		area: CDockWidgetArea | null
@@ -182,7 +213,10 @@ export class CDockArea extends CWidget {
 		this.update();
 	}
 
-	/** Renders the widget. */
+	/**
+	 * Renders the widget.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	override render(painter: CPainter): void {
 		super.render(painter);
 
@@ -214,25 +248,41 @@ export class CDockArea extends CWidget {
 		}
 	}
 
-	/** Sets the geometry. */
+	/**
+	 * Sets the geometry.
+	 * @param x Horizontal position in parent coordinates.
+	 * @param y Vertical position in parent coordinates.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override setGeometry(x: number, y: number, width: number, height: number): void {
 		super.setGeometry(x, y, width, height);
 		this.#updateGeometry();
 	}
 
-	/** Provides resize behavior. */
+	/**
+	 * Resizes the width.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 		this.#updateGeometry();
 	}
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns The size hint.
+	 */
 	override sizeHint(): CSize {
 		return this.#m_centralWidget?.sizeHint()
 			?? new CSize(0, 0);
 	}
 
-    /** Handles child visibility changed behavior. */
+    /**
+     * Refreshes the dock area in response to a change in child visibility. May request a repaint.
+     * @param _child Child. This implementation ignores the argument.
+     */
     protected override childVisibilityChanged(_child: CWidget): void {
 	    this.#updateGeometry();
 	    this.update();

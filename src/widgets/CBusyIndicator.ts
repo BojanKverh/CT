@@ -25,22 +25,49 @@ export class CBusyIndicator extends CWidget {
         this.#animation.setDuration(1000); this.#animation.setLoopCount(-1);
         this.#animation.valueChanged.connect(value => { this.#angle = value; this.update(); });
     }
-    /** Requested state; remains true while hidden and suspended. */
+    /**
+     * Reads whether spinning has been requested, even while hidden.
+     * @returns `true` from start until explicitly stopped or destroyed.
+     */
     isRunning(): boolean { return this.#running; }
-    /** Whether the animation currently receives frames. */
+    /**
+     * Checks whether the spinner's animation is running now.
+     * @returns `true` when the animation is in the `Running` state.
+     */
     isAnimating(): boolean { return this.#animation.state() === CAnimationState.Running; }
+    /**
+     * Reads the current rotation phase.
+     * @returns Angle in degrees used to draw the spinner.
+     */
     angle(): number { return this.#angle; }
+    /**
+     * Reads the length of one revolution.
+     * @returns Duration in milliseconds.
+     */
     cycleDuration(): number { return this.#animation.duration(); }
+    /**
+     * Reads the configured diameter before layout.
+     * @returns Preferred diameter in logical pixels.
+     */
     indicatorSize(): number { return this.#size; }
+    /** Requests spinning. A hidden indicator waits until it and its ancestors are visible. */
     start(): void { this.setRunning(true); }
+    /** Stops spinning and returns the angle to zero without changing geometry. */
     stop(): void { this.setRunning(false); }
+    /**
+     * Changes the requested spinning state and emits `runningChanged` when it differs. A hidden indicator suspends spinning.
+     * @param running Whether spinning is requested.
+     */
     setRunning(running: boolean): void {
         if (this.#disposed || running === this.#running) return;
         this.#running = running;
         if (!running) { this.#animation.stop(); this.#angle = 0; }
         this.#sync(); this.update(); this.runningChanged.emit(running);
     }
-    /** Duration of one revolution, in milliseconds (16..60000). */
+    /**
+     * Changes the period and seeks the animation to the equivalent phase of the new cycle.
+     * @param duration Finite duration in milliseconds, rounded down and clamped to 16 through 60000.
+     */
     setCycleDuration(duration: number): void {
         if (!Number.isFinite(duration)) throw new RangeError("Cycle duration must be finite.");
         const next = Math.max(16, Math.min(60000, Math.floor(duration)));
@@ -49,14 +76,22 @@ export class CBusyIndicator extends CWidget {
         this.#animation.setDuration(next);
         this.#animation.setCurrentTime(fraction * next);
     }
-    /** Preferred diameter, in logical pixels (8..256). */
+    /**
+     * Changes the preferred diameter and refreshes layout and painting.
+     * @param size Finite diameter in logical pixels, rounded down and clamped to 8 through 256.
+     */
     setIndicatorSize(size: number): void {
         if (!Number.isFinite(size)) throw new RangeError("Indicator size must be finite.");
         const next = Math.max(8, Math.min(256, Math.floor(size)));
         if (next === this.#size) return;
         this.#size = next; this.updateGeometry(); this.update();
     }
+    /**
+     * Supplies the configured square dimensions to the layout.
+     * @returns A new size with both dimensions equal to the preferred diameter.
+     */
     override sizeHint(): CSize { return new CSize(this.#size, this.#size); }
+    /** Synchronizes the animation with visibility across the widget hierarchy, pausing when hidden and resuming when visible. */
     protected override visibilityChangeEvent(): void { this.#sync(); }
     #sync(): void {
         if (this.#disposed || !this.#running) return;
@@ -68,10 +103,15 @@ export class CBusyIndicator extends CWidget {
         else if (this.#animation.state() === CAnimationState.Paused) this.#animation.resume();
         else if (this.#animation.state() === CAnimationState.Stopped) this.#animation.start();
     }
+    /** Stops and destroys the owned animation and releases the widget. */
     override destroy(): void {
         if (this.#disposed) return;
         this.#disposed = true; this.#running = false; this.#animation.destroy(); super.destroy();
     }
+    /**
+     * Draws the spinner through the active style with the current angle and requested running state.
+     * @param painter Painter in the spinner's local coordinates.
+     */
     protected override paintEvent(painter: CPainter): void {
         const option = new CStyleOptionBusyIndicator(); option.initFrom(this);
         option.running = this.#running; option.angle = this.#angle;

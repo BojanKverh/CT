@@ -46,32 +46,50 @@ export class CMouseEvent extends CEvent {
         if (ctrlKey) this.#m_modifiers |= CKeyboardModifier.ControlModifier;
     }
 
-    /** Returns the widget-relative X coordinate. */
+    /**
+     * Reads the horizontal pointer position.
+     * @returns X coordinate relative to the receiving widget.
+     */
     x(): number {
         return this.#m_pos.x();
     }
 
-    /** Returns the widget-relative Y coordinate. */
+    /**
+     * Reads the vertical pointer position.
+     * @returns Y coordinate relative to the receiving widget.
+     */
     y(): number {
         return this.#m_pos.y();
     }
 
-    /** Returns the widget-relative mouse position. */
+    /**
+     * Reads the pointer location.
+     * @returns The stored point in widget-local coordinates.
+     */
     pos(): CPoint {
         return this.#m_pos;
     }
 
-    /** Returns the mouse button associated with the event. */
+    /**
+     * Identifies the button associated with the event.
+     * @returns The recorded mouse button.
+     */
     button(): CMouseButton {
         return this.#m_button;
     }
 
-    /** Returns the number of consecutive clicks. */
+    /**
+     * Reads the consecutive click count. The constructor normalizes it to a positive integer.
+     * @returns The recorded count, with a minimum of one.
+     */
     clickCount(): number {
         return this.#m_clickCount;
     }
 
-    /** Returns the active CKeyboardModifier flags. */
+    /**
+     * Reads the keyboard modifiers recorded for the event. The constructor currently records Shift.
+     * @returns A bit mask of `CKeyboardModifier` values.
+     */
     modifiers() : number {
         return this.#m_modifiers;
     }

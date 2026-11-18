@@ -77,14 +77,27 @@ export class CFetchSqlTableAdapter extends CSqlTableAdapter {
 		this.#m_credentials = options.credentials;
 	}
 
+	/**
+	 * Reads the request prefix used by this adapter.
+	 * @returns Base URL without trailing slashes.
+	 */
 	baseUrl(): string {
 		return this.#m_baseUrl;
 	}
 
+	/**
+	 * Changes the prefix used for future requests and removes trailing slashes.
+	 * @param baseUrl New base URL.
+	 */
 	setBaseUrl(baseUrl: string): void {
 		this.#m_baseUrl = baseUrl.replace(/\/+$/, "");
 	}
 
+	/**
+	 * Requests a page with GET and validates the JSON response shape.
+	 * @param request Table, projection, offset, limit and optional sort and filter settings.
+	 * @returns A promise resolving to row objects and the nonnegative total count. Invalid responses reject.
+	 */
 	override async select(
 		request: CSqlSelectRequest
 	): Promise<CSqlSelectResult> {
@@ -120,6 +133,12 @@ export class CFetchSqlTableAdapter extends CSqlTableAdapter {
 		};
 	}
 
+	/**
+	 * Posts a JSON record to the table endpoint.
+	 * @param table Target table name.
+	 * @param values Column values to send as JSON.
+	 * @returns A promise resolving to the returned record object. Invalid responses reject.
+	 */
 	override async insert(
 		table: string,
 		values: Readonly<CSqlRow>
@@ -134,6 +153,14 @@ export class CFetchSqlTableAdapter extends CSqlTableAdapter {
 		return value;
 	}
 
+	/**
+	 * Sends a JSON PATCH to the record endpoint.
+	 * @param table Target table name.
+	 * @param _primaryKeyColumn Primary-key column name. This adapter addresses records by key value alone.
+	 * @param primaryKey Key value converted to a URL-encoded path segment.
+	 * @param values Column values to send as JSON.
+	 * @returns A promise that resolves on a successful response.
+	 */
 	override async update(
 		table: string,
 		_primaryKeyColumn: string,
@@ -147,6 +174,13 @@ export class CFetchSqlTableAdapter extends CSqlTableAdapter {
 		);
 	}
 
+	/**
+	 * Sends DELETE to the record endpoint.
+	 * @param table Target table name.
+	 * @param _primaryKeyColumn Primary-key column name. This adapter addresses records by key value alone.
+	 * @param primaryKey Key value converted to a URL-encoded path segment.
+	 * @returns A promise that resolves on a successful response.
+	 */
 	override async remove(
 		table: string,
 		_primaryKeyColumn: string,

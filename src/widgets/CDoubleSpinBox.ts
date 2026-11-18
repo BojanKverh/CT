@@ -54,42 +54,67 @@ export class CDoubleSpinBox extends CWidget {
 		this.#updateEditorText();
 	}
 
-	/** Returns the minimum value. */
+	/**
+	 * Returns the minimum value.
+	 * @returns The minimum.
+	 */
 	minimum(): number {
 		return this.#m_minimum;
 	}
 
-	/** Returns the maximum value. */
+	/**
+	 * Returns the maximum value.
+	 * @returns The maximum.
+	 */
 	maximum(): number {
 		return this.#m_maximum;
 	}
 
-	/** Returns the current value. */
+	/**
+	 * Returns the current value.
+	 * @returns The value.
+	 */
 	value(): number {
 		return this.#m_value;
 	}
 
-	/** Returns the step used by the buttons, arrow keys and mouse wheel. */
+	/**
+	 * Returns the step used by the buttons, arrow keys and mouse wheel.
+	 * @returns The single step.
+	 */
 	singleStep(): number {
 		return this.#m_singleStep;
 	}
 
-	/** Returns the number of digits shown after the decimal point. */
+	/**
+	 * Returns the number of digits shown after the decimal point.
+	 * @returns The decimals.
+	 */
 	decimals(): number {
 		return this.#m_decimals;
 	}
 
-	/** Sets the minimum value. */
+	/**
+	 * Sets the minimum value.
+	 * @param minimum Minimum.
+	 */
 	setMinimum(minimum: number): void {
 		this.setRange(minimum, this.#m_maximum);
 	}
 
-	/** Sets the maximum value. */
+	/**
+	 * Sets the maximum value.
+	 * @param maximum Maximum.
+	 */
 	setMaximum(maximum: number): void {
 		this.setRange(this.#m_minimum, maximum);
 	}
 
-	/** Sets the permitted value range. */
+	/**
+	 * Sets the permitted value range.
+	 * @param minimum Minimum.
+	 * @param maximum Maximum.
+	 */
 	setRange(minimum: number, maximum: number): void {
 		if (!Number.isFinite(minimum) || !Number.isFinite(maximum))
 			return;
@@ -108,7 +133,10 @@ export class CDoubleSpinBox extends CWidget {
 		this.update();
 	}
 
-	/** Sets the current value. */
+	/**
+	 * Sets the current value.
+	 * @param value New value.
+	 */
 	setValue(value: number): void {
 		if (!Number.isFinite(value))
 			return;
@@ -130,13 +158,19 @@ export class CDoubleSpinBox extends CWidget {
 		this.update();
 	}
 
-	/** Sets the step used by the buttons, arrow keys and mouse wheel. */
+	/**
+	 * Sets the step used by the buttons, arrow keys and mouse wheel.
+	 * @param step Step.
+	 */
 	setSingleStep(step: number): void {
 		if (Number.isFinite(step))
 			this.#m_singleStep = Math.max(0, step);
 	}
 
-	/** Sets the number of digits shown after the decimal point. */
+	/**
+	 * Sets the number of digits shown after the decimal point.
+	 * @param decimals Decimals.
+	 */
 	setDecimals(decimals: number): void {
 		if (!Number.isFinite(decimals))
 			return;
@@ -175,18 +209,30 @@ export class CDoubleSpinBox extends CWidget {
 		this.setValue(this.#m_value - this.#m_singleStep);
 	}
 
-	/** Returns the embedded line editor. */
+	/**
+	 * Returns the embedded line editor.
+	 * @returns The editor.
+	 */
 	lineEdit(): CLineEdit {
 		return this.#m_editor;
 	}
 
-	/** Sets the geometry. */
+	/**
+	 * Sets the geometry.
+	 * @param x Horizontal position in parent coordinates.
+	 * @param y Vertical position in parent coordinates.
+	 * @param width Width in logical pixels.
+	 * @param height Height in logical pixels.
+	 */
 	override setGeometry(x: number, y: number, width: number, height: number): void {
 		super.setGeometry(x, y, width, height);
 		this.#updateChildGeometry();
 	}
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns A new `CSize`.
+	 */
 	override sizeHint(): CSize {
 		const minimumText = this.#format(this.#m_minimum);
 		const maximumText = this.#format(this.#m_maximum);
@@ -201,7 +247,10 @@ export class CDoubleSpinBox extends CWidget {
 		);
 	}
 
-	/** Handles keyboard stepping and commits edited text. */
+	/**
+	 * Handles keyboard stepping and commits edited text.
+	 * @param event Event for a key press.
+	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
 		switch (event.key()) {
 		case "ArrowUp":
@@ -223,7 +272,10 @@ export class CDoubleSpinBox extends CWidget {
 		super.keyPressEvent(event);
 	}
 
-	/** Handles mouse-wheel stepping. */
+	/**
+	 * Handles mouse-wheel stepping.
+	 * @param event Event for wheel scrolling.
+	 */
 	protected override wheelEvent(event: CWheelEvent): void {
 		if (event.deltaY() < 0)
 			this.stepUp();

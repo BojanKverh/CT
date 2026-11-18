@@ -45,17 +45,28 @@ class CLineEditUndoCommand extends CUndoCommand {
         private readonly mergeKey: object | null
     ) { super("Edit text"); }
 
+    /** Captures the current editor state for redo and restores the state before the edit. */
     override undo(): void {
         this.#after = this.capture();
         this.restore(this.before);
     }
 
+    /** Restores the editor state captured by undo, if one exists. */
     override redo(): void {
         if (this.#after !== null) this.restore(this.#after);
     }
 
+    /**
+     * Reads the id of the line edit undo command.
+     * @returns The id.
+     */
     override id(): number { return this.mergeKey === null ? -1 : 1; }
 
+    /**
+     * Checks whether an incoming command belongs to the same line-edit undo group.
+     * @param command Incoming undo command to compare.
+     * @returns `true` if both are line-edit commands sharing the same non-null merge key.
+     */
     override mergeWith(command: CUndoCommand): boolean {
         return command instanceof CLineEditUndoCommand
             && this.mergeKey !== null && this.mergeKey === command.mergeKey;
@@ -124,15 +135,24 @@ export class CLineEdit extends CWidget {
         this.#m_scrollTimer.timeout.connect(() => this.#scrollMouseSelection());
 	}
 
-	/** Provides text behavior. */
+	/**
+	 * Reads the text.
+	 * @returns The text.
+	 */
 	text(): string {
 		return this.#m_text;
 	}
 
-    /** Returns the current text display mode. */
+    /**
+     * Returns the current text display mode.
+     * @returns The echo mode.
+     */
     echoMode(): CEchoMode { return this.#m_echoMode; }
 
-    /** Changes display only; stored text and undo history are preserved. */
+    /**
+     * Changes display only; stored text and undo history are preserved.
+     * @param mode Mode.
+     */
     setEchoMode(mode: CEchoMode): void {
         if (mode === this.#m_echoMode) return;
         this.#breakUndoGroup();
@@ -145,21 +165,32 @@ export class CLineEdit extends CWidget {
         this.update();
     }
 
-    /** Returns rendered text; text() always returns the original value. */
+    /**
+     * Computes what is shown without changing the stored text.
+     * @returns Original text in normal mode, one bullet per UTF-16 code unit in password mode, or an empty string in no-echo mode.
+     */
     displayText(): string {
         if (this.#m_echoMode === CEchoMode.NoEcho) return "";
         if (this.#m_echoMode === CEchoMode.Password) return "•".repeat(this.#m_text.length);
         return this.#m_text;
     }
 
-    /** Whether selected text may be exported to either clipboard. */
+    /**
+     * Whether selected text may be exported to either clipboard.
+     * @returns `true` if the line edit can copy, otherwise `false`.
+     */
     canCopy(): boolean { return this.#m_echoMode === CEchoMode.Normal && this.hasSelection(); }
 
-    /** Maximum UTF-16 length; Infinity means unlimited. */
+    /**
+     * Maximum UTF-16 length; Infinity means unlimited.
+     * @returns The max length.
+     */
     maxLength(): number { return this.#m_maxLength; }
 
-    /** Limits future input and truncates existing text when necessary.
+    /**
+     * Limits future input and truncates existing text when necessary.
      * Lowering the limit clears undo/redo so older states cannot exceed it.
+     * @param length Length.
      */
     setMaxLength(length: number): void {
         if (Number.isNaN(length) || length === Number.NEGATIVE_INFINITY) return;
@@ -184,27 +215,44 @@ export class CLineEdit extends CWidget {
         return text.slice(0, end);
     }
 
-    /** Horizontal displacement of the text, in pixels. */
+    /**
+     * Horizontal displacement of the text, in pixels.
+     * @returns The horizontal offset.
+     */
     horizontalOffset(): number {
         this.#ensureCursorVisible();
         return this.#m_horizontalOffset;
     }
 
+	/**
+	 * Changes the hint displayed when the editor is empty.
+	 * @param text Placeholder text, or an empty string to clear it.
+	 */
 	setPlaceholderText(text: string): void {
 		this.#m_placeholderText = text;
 		this.update();
 	}
 
+	/**
+	 * Reads the placeholder text.
+	 * @returns The placeholder text.
+	 */
 	placeholderText(): string {
 		return this.#m_placeholderText;
 	}
 
-    /** Returns whether the optional clear button is enabled. */
+    /**
+     * Returns whether the optional clear button is enabled.
+     * @returns `true` if the line edit is clear button enabled, otherwise `false`.
+     */
     isClearButtonEnabled(): boolean {
         return this.#m_clearButtonEnabled;
     }
 
-    /** Shows a clear button for nonempty, editable text. */
+    /**
+     * Shows a clear button for nonempty, editable text.
+     * @param enabled Whether to enable the feature.
+     */
     setClearButtonEnabled(enabled: boolean): void {
         if (enabled === this.#m_clearButtonEnabled) return;
         this.#m_clearButtonEnabled = enabled;
@@ -292,7 +340,10 @@ export class CLineEdit extends CWidget {
             this.#m_scrollTimer.stop();
     }
 
-	/** Sets the text. */
+	/**
+	 * Replaces the line contents, clears undo history and moves the cursor to the end if the text changed.
+	 * @param text New text, truncated to the configured maximum length.
+	 */
 	setText(text: string): void {
         text = this.#truncateToLength(text, this.#m_maxLength);
 		this.#m_history.clear();
@@ -309,7 +360,10 @@ export class CLineEdit extends CWidget {
 		this.update();
 	}
 
-	/** Sets the read only. */
+	/**
+	 * Sets the read only.
+	 * @param readOnly Read only flag. Defaults to `true`.
+	 */
 	setReadOnly(readOnly: boolean = true): void {
 		/** Provides if behavior. */
 		if (readOnly !== this.#m_readOnly) {
@@ -319,28 +373,43 @@ export class CLineEdit extends CWidget {
 		}
 	}
 
-	/** Returns whether the read only condition is active. */
+	/**
+	 * Checks whether the line edit is read only.
+	 * @returns `true` if the line edit is read only, otherwise `false`.
+	 */
 	isReadOnly(): boolean
 	{
 		return this.#m_readOnly;
 	}
 
-	/** Sets the validator. */
+	/**
+	 * Sets the validator.
+	 * @param validator Validator.
+	 */
 	setValidator(validator: CLineEditValidator | null): void {
 		this.#m_validator = validator;
 	}
 
-	/** Returns the current validator. */
+	/**
+	 * Returns the current validator.
+	 * @returns The validator.
+	 */
 	validator(): CLineEditValidator | null {
 		return this.#m_validator;
 	}
 
-	/** Returns whether the editor is marked as containing invalid data. */
+	/**
+	 * Returns whether the editor is marked as containing invalid data.
+	 * @returns `true` if the line edit has validation error, otherwise `false`.
+	 */
 	hasValidationError(): boolean {
 		return this.#m_validationError;
 	}
 
-	/** Controls the visual validation-error marker. */
+	/**
+	 * Controls the visual validation-error marker.
+	 * @param error Error flag. Defaults to `true`.
+	 */
 	setValidationError(error: boolean = true): void {
 		if (error === this.#m_validationError)
 			return;
@@ -349,12 +418,18 @@ export class CLineEdit extends CWidget {
 		this.update();
 	}
 
-	/** Returns the completer associated with this editor. */
+	/**
+	 * Returns the completer associated with this editor.
+	 * @returns The completer.
+	 */
 	completer(): CCompleter | null {
 		return this.#m_completer;
 	}
 
-	/** Associates a completer with this editor. */
+	/**
+	 * Associates a completer with this editor.
+	 * @param completer Completer.
+	 */
 	setCompleter(completer: CCompleter | null): void {
 		if (completer === this.#m_completer)
 			return;
@@ -366,7 +441,10 @@ export class CLineEdit extends CWidget {
 		completer?.setWidget(this.#m_echoMode === CEchoMode.Normal ? this : null);
 	}
 
-	/** Provides cursor behavior. */
+	/**
+	 * Reads the cursor of the line edit.
+	 * @returns The cursor.
+	 */
 	override cursor(): CCursorShape {
  	   if (!this.isEnabled())
     	    return CCursorShape.Disabled;
@@ -380,33 +458,55 @@ export class CLineEdit extends CWidget {
     	return overClearButton? CCursorShape.Arrow : CCursorShape.IBeam;
 	}
 
-	/** Provides cursor position behavior. */
+	/**
+	 * Reads the cursor position.
+	 * @returns The cursor position.
+	 */
 	cursorPosition(): number {
 		return this.#m_cursorPosition;
 	}
 
-    /** Sets the cursor position. */
+    /**
+     * Sets the cursor position.
+     * @param position Requested cursor offset in UTF-16 code units, clamped to the text bounds.
+     */
     setCursorPosition(position: number): void {
 	    this.#moveCursor(position, false);
     }
 
-	/** Provides cursor visible behavior. */
+	/**
+	 * Reads the current cursor blink state.
+	 * @returns `true` if the cursor visibility flag is on.
+	 */
 	cursorVisible(): boolean {
 		return this.#m_cursorVisible;
 	}
 
-	/** Inserts . */
+	/**
+	 * Inserts text at the cursor or replaces the selection. Read-only editors refuse the edit, and length and validation constraints still apply.
+	 * @param text Nonempty text to insert.
+	 */
 	insert(text: string): void {
 		this.#insert(text, null);
 	}
 
-    /** @internal Supplies the browser input context for the focused editor. */
+    /**
+     * Supplies text and selection information to the browser input bridge for an unmasked, editable plain line edit.
+     * @returns Text and selection bounds in UTF-16 offsets, or `null` for a derived, read-only or masked editor.
+     * @internal
+     */
     nativeTextState(): { text: string; start: number; end: number } | null {
         if (this.constructor !== CLineEdit || this.isReadOnly() || this.#m_echoMode !== CEchoMode.Normal) return null;
         return { text: this.#m_text, start: this.selectionStart(), end: this.selectionEnd() };
     }
 
-    /** @internal Applies the replacement reported by the browser input context. */
+    /**
+     * Replaces the reported range when native editing is available. Strips carriage returns and line feeds before applying the normal input constraints.
+     * @param start Start UTF-16 offset, inclusive.
+     * @param end End UTF-16 offset, exclusive.
+     * @param text Replacement text supplied by the browser.
+     * @internal
+     */
     applyNativeTextUpdate(start: number, end: number, text: string): void {
         if (this.nativeTextState() === null || start < 0 || end < start || end > this.#m_text.length)
             return;
@@ -464,22 +564,34 @@ export class CLineEdit extends CWidget {
 		return this.#m_validator.validate(text) === CValidatorState.Acceptable;
 	}
 
-    /** Provides selection start behavior. */
+    /**
+     * Reads the selection start of the line edit.
+     * @returns The selection start.
+     */
     selectionStart(): number {
 	    return Math.min(this.#m_selectionAnchor, this.#m_cursorPosition);
     }
 
-    /** Provides selection end behavior. */
+    /**
+     * Reads the selection end of the line edit.
+     * @returns The selection end.
+     */
     selectionEnd(): number {
 	    return Math.max(this.#m_selectionAnchor, this.#m_cursorPosition);
     }
 
-    /** Returns whether this object has selection. */
+    /**
+     * Returns whether this object has selection.
+     * @returns `true` if the line edit has selection, otherwise `false`.
+     */
     hasSelection(): boolean {
 	    return this.#m_selectionAnchor !== this.#m_cursorPosition;
     }
 
-    /** Returns the selected text. */
+    /**
+     * Reads the text between the selection endpoints.
+     * @returns Selected plain text, or an empty string when nothing is selected.
+     */
     selectedText(): string {
 	    /** Provides if behavior. */
 	    if (!this.hasSelection())
@@ -488,7 +600,11 @@ export class CLineEdit extends CWidget {
 	    return this.#m_text.slice(this.selectionStart(), this.selectionEnd());
     }
 
-    /** Sets the selection. */
+    /**
+     * Sets the selection.
+     * @param anchor Anchor.
+     * @param position UTF-16 offset of the moving end of the selection.
+     */
     setSelection(anchor: number, position: number): void {
 		this.#breakUndoGroup();
 	    const length = this.#m_text.length;
@@ -508,12 +624,15 @@ export class CLineEdit extends CWidget {
 	    this.#m_selectionAnchor = this.#m_cursorPosition;
     }
 
-	/** Returns the preferred size of the widget. */
+	/**
+	 * Returns the preferred size of the widget.
+	 * @returns A new `CSize`.
+	 */
 	override sizeHint(): CSize {
 		return new CSize(160, 28);
 	}
 
-	/** Provides copy behavior. */
+	/** Copies the selection into the toolkit clipboard when the echo mode and selection permit copying. */
 	copy(): void {
 		/** Provides if behavior. */
 		if (!this.canCopy())
@@ -522,7 +641,7 @@ export class CLineEdit extends CWidget {
 		CClipboard.instance().setText(this.selectedText());
 	}
 
-	/** Provides cut behavior. */
+	/** Copies the selection if copying is permitted and deletes it only when the editor is writable. */
 	cut(): void {
 		/** Provides if behavior. */
 		if (!this.canCopy())
@@ -537,7 +656,7 @@ export class CLineEdit extends CWidget {
 		this.#deleteSelection();
 	}
 
-	/** Provides paste behavior. */
+	/** Inserts stored clipboard text at the cursor or replaces the selection. A read-only editor or empty clipboard leaves the text unchanged. */
 	paste(): void {
 		/** Provides if behavior. */
 		if (this.isReadOnly())
@@ -552,7 +671,10 @@ export class CLineEdit extends CWidget {
 		this.insert(text);
 	}
 	
-    /** Reads the system clipboard for a user-invoked Paste command. */
+    /**
+     * Reads the system clipboard for a user-invoked Paste command.
+     * @returns A promise that resolves when the operation completes.
+     */
     async pasteFromSystem(): Promise<void> {
         if (this.isReadOnly() || !this.isEnabled()) return;
         const request = ++this.#m_clipboardRequest;
@@ -562,7 +684,10 @@ export class CLineEdit extends CWidget {
         this.insert(text);
     }
 
-	/** Handles the paint event. */
+	/**
+	 * Draws the line edit through the supplied painter.
+	 * @param painter Painter for the current drawing operation.
+	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionLineEdit();
 		option.initFromLineEdit(this);
@@ -587,7 +712,10 @@ export class CLineEdit extends CWidget {
 		}
 	}
 
-    /** Handles the key press event. */
+    /**
+     * Responds to a key press for the line edit. May update the text, the cursor position, the selection anchor. May request a repaint and accept or ignore the event depending on the input. May emit `returnPressed`, `editingFinished`, `textChanged`, `textEdited`.
+     * @param event Event for a key press.
+     */
     protected override keyPressEvent(event: CKeyEvent): void {
 		if (this.#m_echoMode === CEchoMode.Normal && this.#m_completer?.handleKeyEvent(event) === true)
 			return;
@@ -744,7 +872,10 @@ export class CLineEdit extends CWidget {
     	event.ignore();
     }
 
-    /** Handles the mouse press event. */
+    /**
+     * Responds to a pointer button press for the line edit. May update the selecting with mouse, the clear button pressed, the cursor position, the selection anchor. May request focus and request a repaint and accept or ignore the event depending on the input.
+     * @param event Event for a pointer button press.
+     */
     protected override mousePressEvent(event: CMouseEvent): void {
 		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
@@ -777,6 +908,10 @@ export class CLineEdit extends CWidget {
 		this.update();
 	}
 
+    /**
+     * Responds to a double-click for the line edit. May mark the event ignored.
+     * @param event Event for a double-click.
+     */
     protected override mouseDoubleClickEvent(event: CMouseEvent): void {
         if (event.button() === CMouseButton.LeftButton && this.#inClearButton(event)) {
             this.mousePressEvent(event);
@@ -800,7 +935,10 @@ export class CLineEdit extends CWidget {
         event.accept();
     }
 
-	/** Handles the mouse move event. */
+	/**
+	 * Responds to pointer movement for the line edit. May update the mouse x, the mouse y, the drag x. May accept or ignore the event depending on the input.
+	 * @param event Event for pointer movement.
+	 */
 	protected override mouseMoveEvent(event: CMouseEvent): void {
         if (this.#m_clearButtonPressed) {
             event.accept();
@@ -827,7 +965,10 @@ export class CLineEdit extends CWidget {
 		event.accept();
 	}
 
-	/** Handles the mouse release event. */
+	/**
+	 * Responds to a pointer button release for the line edit. May update the clear button pressed, the selecting with mouse. May request a repaint and accept or ignore the event depending on the input.
+	 * @param event Event for a pointer button release.
+	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
         if (event.button() === CMouseButton.LeftButton && this.#m_clearButtonPressed) {
             this.#m_clearButtonPressed = false;
@@ -856,14 +997,20 @@ export class CLineEdit extends CWidget {
 		event.accept();
 	}
 
-	/** Handles the focus in event. */
+	/**
+	 * Responds to focus entry for the line edit. May accept the event and request a repaint.
+	 * @param event Event for focus entry.
+	 */
 	protected override focusInEvent(event: CFocusEvent): void {
 		this.#startCursorBlink();
 		event.accept();
 		this.update();
 	}
 
-	/** Handles the focus out event. */
+	/**
+	 * Responds to focus exit for the line edit. May update the clear button pressed, the selecting with mouse. May emit `editingFinished`.
+	 * @param event Event for focus exit.
+	 */
 	protected override focusOutEvent(event: CFocusEvent): void {
         this.#m_clearButtonPressed = false;
 		this.#breakUndoGroup();
@@ -960,10 +1107,16 @@ export class CLineEdit extends CWidget {
     }
 
 
-    /** Returns whether an edit can be undone. */
+    /**
+     * Returns whether an edit can be undone.
+     * @returns `true` if the line edit can undo, otherwise `false`.
+     */
     canUndo(): boolean { return this.#m_history.canUndo(); }
 
-    /** Returns whether an undone edit can be restored. */
+    /**
+     * Returns whether an undone edit can be restored.
+     * @returns `true` if the line edit can redo, otherwise `false`.
+     */
     canRedo(): boolean { return this.#m_history.canRedo(); }
 
     /** Restores the previous text, cursor and selection. */
@@ -1039,6 +1192,7 @@ export class CLineEdit extends CWidget {
     /**
      * Creates a menu using the current editor state.
      * The caller owns the returned menu and must destroy it after use.
+     * @returns The new `CMenu` instance.
      */
     createStandardContextMenu(): CMenu {
         const menu = new CMenu();
@@ -1068,6 +1222,10 @@ export class CLineEdit extends CWidget {
         return menu;
     }
 
+    /**
+     * Responds to a context menu request for the line edit. May update the context menu. May accept or ignore the event depending on the input.
+     * @param event Event for a context menu request.
+     */
     protected override contextMenuEvent(event: CContextMenuEvent): void {
         if (!this.isEnabled()) {
             event.ignore();
