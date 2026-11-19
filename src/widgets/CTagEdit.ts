@@ -73,6 +73,23 @@ class TagChip extends CWidget {
 /** Multi-tag editor. Tags are trimmed, single-line and unique (case-sensitive).
  * Enter commits, the remove glyph deletes a tag, and Backspace on empty input
  * deletes the last tag. Programmatic setters remain available in read-only mode.
+ *
+ * @example
+ * With an existing application and parent widget, initialize tags before observing subsequent changes. Add the editor to the parent layout.
+ * ```ts
+ * import { CWidget, CTagEdit } from "canvas-toolkit-lib";
+ *
+ * function createTagEditor(parent: CWidget) {
+ *     const tags = new CTagEdit(parent);
+ *     tags.setPlaceholderText("Add a topic");
+ *     tags.setTags(["TypeScript", "Canvas"]);
+ *     tags.tagsChanged.connect(values => console.log(values));
+ *     // Returns false because tags are unique and this tag already exists.
+ *     const added = tags.addTag("Canvas");
+ *     console.log(added);
+ *     return tags;
+ * }
+ * ```
  */
 export class CTagEdit extends CWidget {
     #tags: string[] = [];

@@ -81,11 +81,17 @@ class CLineEditUndoCommand extends CUndoCommand {
 /** Single-line editor with selection, validation, echo modes, native text input and undo history.
  *
  * @example
+ * Create CApplication first. Pass an existing parent widget and place the returned editor in its layout.
  * ```ts
- * const name = new CLineEdit(parent);
- * name.setPlaceholderText("Full name");
- * name.setMaxLength(100);
- * name.textChanged.connect(text => console.log(text));
+ * import { CLineEdit, CWidget } from "canvas-toolkit-lib";
+ *
+ * function createNameEditor(parent: CWidget): CLineEdit {
+ *     const editor = new CLineEdit(parent);
+ *     editor.setPlaceholderText("Full name");
+ *     editor.setMaxLength(100);
+ *     editor.textChanged.connect(text => console.log(text));
+ *     return editor;
+ * }
  * ```
  */
 export class CLineEdit extends CWidget {

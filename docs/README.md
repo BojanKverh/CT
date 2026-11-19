@@ -10,6 +10,5 @@ Canvas Toolkit draws controls on an HTML canvas. Create one `CApplication`, then
 - [Styling](styling.md) covers palettes, fonts, icons and styles.
 - [Focus and dialogs](focus-and-dialogs.md) explains keyboard order and modal windows.
 - [Files](files.md) collects local files for an explicit application action.
-- [Maintaining documentation](maintaining-documentation.md) explains the build, checks and audit.
 
 The API reference groups signals separately and displays inherited members on derived classes. Members tagged `@internal` are excluded.

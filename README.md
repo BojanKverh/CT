@@ -131,6 +131,8 @@ npm run docs
 
 Open `docs-site/index.html` to browse the generated API reference and guides. The reference includes inherited members, groups signals separately and excludes internal implementation hooks. The build configuration and generator plugin live in this repository.
 
+Maintainers can find documentation build and review instructions in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Development
 
 | Command | Purpose |

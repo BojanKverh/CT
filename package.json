@@ -24,7 +24,8 @@
         "dev": "vite examples/basic",
         "docs": "typedoc --options typedoc.json",
         "docs:audit": "node tools/audit-docs.mjs",
-        "docs:check": "npm run docs:audit && npm run docs -- --treatWarningsAsErrors --json docs-site/api.json && node tools/check-doc-output.mjs"
+        "docs:check": "npm run docs:audit && npm run docs:examples && npm run docs -- --treatWarningsAsErrors --json docs-site/api.json && node tools/check-doc-output.mjs",
+        "docs:examples": "node tools/check-doc-examples.mjs"
     },
     "keywords": [
         "canvas",

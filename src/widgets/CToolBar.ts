@@ -12,13 +12,13 @@ import type { CMainWindow } from "./CMainWindow.js";
 
 /** Defines the available tool bar area values. */
 export enum CToolBarArea {
-    /** Represents left. */
+    /** Place toolbars along the left edge of the main window. */
     Left,
-    /** Represents right. */
+    /** Place toolbars along the right edge of the main window. */
     Right,
-    /** Represents top. */
+    /** Place toolbars along the top edge of the main window. */
     Top,
-    /** Represents bottom. */
+    /** Place toolbars along the bottom edge of the main window. */
     Bottom
 }
 

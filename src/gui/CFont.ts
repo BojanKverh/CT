@@ -152,9 +152,6 @@ export class CFont {
     */
     constructor(
 		familyOrFont: string | CFont = "sans-serif",
-		/**
-		 * Returns the logical font size in pixels.
-		 */
 		pixelSize = 14,
 		weight: number = CFontWeight.Normal,
 		italic = false

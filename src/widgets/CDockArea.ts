@@ -8,13 +8,13 @@ import { CPaletteColorRole } from "../gui/CPalette.js";
 
 /** Defines the available dock widget area values. */
 export enum CDockWidgetArea {
-    /** Represents left. */
+    /** Dock panels along the left edge of the main window central region. */
     Left,
-    /** Represents right. */
+    /** Dock panels along the right edge of the main window central region. */
     Right,
-    /** Represents top. */
+    /** Dock panels along the top edge of the main window central region. */
     Top,
-    /** Represents bottom. */
+    /** Dock panels along the bottom edge of the main window central region. */
     Bottom
 }
 

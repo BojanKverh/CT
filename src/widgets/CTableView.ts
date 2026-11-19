@@ -134,12 +134,18 @@ export enum CTableSelectionMode {
 /** Virtualized table for model data with headers, selection, cell editing and clipboard operations.
  *
  * @example
+ * Create CApplication first. Supply an existing model and parent widget; the model remains responsible for the data displayed by the view.
  * ```ts
- * const table = new CTableView(parent);
- * table.setModel(model);
- * table.selectionModel()?.currentChanged.connect(index => {
- *     if (index.isValid()) console.log(index.row(), index.column());
- * });
+ * import { CAbstractItemModel, CTableView, CWidget } from "canvas-toolkit-lib";
+ *
+ * function createTable(parent: CWidget, model: CAbstractItemModel): CTableView {
+ *     const table = new CTableView(parent);
+ *     table.setModel(model);
+ *     table.selectionModel()?.currentChanged.connect(index => {
+ *         if (index.isValid()) console.log(index.row(), index.column());
+ *     });
+ *     return table;
+ * }
  * ```
  */
 export class CTableView extends CAbstractItemView {

@@ -20,7 +20,25 @@ export enum CCompleterCaseSensitivity {
     CaseSensitive
 }
 
-/** Provides popup completion for a line editor. */
+/** Provides popup completion for a line editor.
+ *
+ * @example
+ * With an existing application and parent widget, attach completion through the line editor. User typing opens matching suggestions; accepting one updates the editor text.
+ * ```ts
+ * import { CWidget, CCompleter, CLineEdit } from "canvas-toolkit-lib";
+ *
+ * function createCityEditor(parent: CWidget) {
+ *     const input = new CLineEdit(parent);
+ *     const completion = new CCompleter(["London", "Ljubljana", "Lisbon"], input);
+ *     input.setCompleter(completion);
+ *     completion.activated.connect(text => console.log("Accepted:", text));
+ *     // Programmatic text changes do not simulate typing. Open suggestions explicitly.
+ *     input.setText("Li");
+ *     completion.complete(input.text());
+ *     return input;
+ * }
+ * ```
+ */
 export class CCompleter extends CObject {
     /** Maximum number of rows presented before popup scrolling is needed. */
     static readonly MaxVisibleItems = 10;

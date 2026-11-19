@@ -15,7 +15,27 @@ import type { CWidget } from "./CWidget.js";
 
 type ButtonPart = "main" | "menu" | null;
 
-/** A push button with a separate trailing menu arrow. Menus and actions are borrowed. */
+/** A push button with a separate trailing menu arrow. Menus and actions are borrowed.
+ *
+ * @example
+ * With an existing application and parent widget, assign the main action separately from the arrow menu. Keep the borrowed actions and menu available for the lifetime of the button.
+ * ```ts
+ * import { CWidget, CAction, CMenu, CSplitButton } from "canvas-toolkit-lib";
+ *
+ * function createSaveMenu(parent: CWidget) {
+ *     const save = new CAction("Save");
+ *     save.triggered.connect(() => console.log("Save current document"));
+ *     const saveCopy = new CAction("Save a copy");
+ *     saveCopy.triggered.connect(() => console.log("Save another copy"));
+ *     const menu = new CMenu();
+ *     menu.addAction(saveCopy);
+ *     const button = new CSplitButton(parent);
+ *     button.setDefaultAction(save);
+ *     button.setMenu(menu);
+ *     return button;
+ * }
+ * ```
+ */
 export class CSplitButton extends CPushButton {
     /** Logical width reserved for a split button's menu region. */
     static readonly MenuButtonWidth = 24;

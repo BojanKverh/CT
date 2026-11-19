@@ -122,13 +122,25 @@ type CToolBarPreview = {
  * the window resizes or surrounding controls change.
  *
  * @example
+ * Create CApplication first, then build the top-level window and size it to the application viewport. The central widget manages its children through a grid layout.
  * ```ts
- * const main = new CMainWindow();
- * const content = new CWidget();
- * content.setLayout(new CGridLayout());
- * main.setCentralWidget(content);
- * main.setMenuBar(new CMenuBar());
- * main.setStatusBar(new CStatusBar());
+ * import {
+ *     CGridLayout, CLabel, CMainWindow, CMenuBar, CStatusBar, CWidget
+ * } from "canvas-toolkit-lib";
+ *
+ * function createMainWindow(): CMainWindow {
+ *     const main = new CMainWindow();
+ *     const content = new CWidget();
+ *     const layout = new CGridLayout();
+ *     const label = new CLabel(content);
+ *     label.setText("Ready");
+ *     layout.addWidget(label, 0, 0);
+ *     content.setLayout(layout);
+ *     main.setCentralWidget(content);
+ *     main.setMenuBar(new CMenuBar());
+ *     main.setStatusBar(new CStatusBar());
+ *     return main;
+ * }
  * ```
  */
 export class CMainWindow extends CWidget {

@@ -31,11 +31,19 @@ import { CFont } from "../gui/CFont.js";
  * are shared by derived widgets. Create CApplication before constructing widgets.
  *
  * @example
+ * Create CApplication first. Pass an existing parent widget to build a panel whose layout owns the button geometry.
  * ```ts
- * const panel = new CWidget(parent);
- * const layout = new CVBoxLayout();
- * layout.addWidget(new CPushButton(panel));
- * panel.setLayout(layout);
+ * import { CPushButton, CVBoxLayout, CWidget } from "canvas-toolkit-lib";
+ *
+ * function createPanel(parent: CWidget): CWidget {
+ *     const panel = new CWidget(parent);
+ *     const layout = new CVBoxLayout();
+ *     const button = new CPushButton(panel);
+ *     button.setText("Continue");
+ *     layout.addWidget(button);
+ *     panel.setLayout(layout);
+ *     return panel;
+ * }
  * ```
  */
 export class CWidget extends CObject {

@@ -8,16 +8,27 @@ import { CSqlTableModel } from "./CSqlTableModel.js";
 /** SQL table model that displays foreign keys through related tables.
  *
  * @example
+ * Create CApplication first. This offline example loads a department lookup before displaying foreign keys as department names.
  * ```ts
- * const adapter = new CMemorySqlTableAdapter({
- *     employees: [{ id: 1, department_id: 10 }],
- *     departments: [{ id: 10, name: "Engineering" }]
- * });
- * const model = new CSqlRelationalTableModel(adapter);
- * model.setTable("employees");
- * model.setColumns(["id", "department_id"]);
- * model.setRelation(1, new CSqlRelation("departments", "id", "name"));
- * if (await model.select()) view.setModel(model);
+ * import {
+ *     CMemorySqlTableAdapter, CSqlRelation, CSqlRelationalTableModel,
+ *     CTableView, CWidget
+ * } from "canvas-toolkit-lib";
+ *
+ * async function createEmployeeTable(parent: CWidget): Promise<CTableView> {
+ *     const adapter = new CMemorySqlTableAdapter({
+ *         employees: [{ id: 1, department_id: 10 }],
+ *         departments: [{ id: 10, name: "Engineering" }]
+ *     });
+ *     const model = new CSqlRelationalTableModel(adapter);
+ *     model.setTable("employees");
+ *     model.setColumns(["id", "department_id"]);
+ *     model.setRelation(1, new CSqlRelation("departments", "id", "name"));
+ *     if (!await model.select()) throw new Error("Could not load employees");
+ *     const view = new CTableView(parent);
+ *     view.setModel(model);
+ *     return view;
+ * }
  * ```
  */
 export class CSqlRelationalTableModel extends CSqlTableModel {

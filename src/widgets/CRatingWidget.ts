@@ -12,7 +12,25 @@ import { CStyleOptionRatingWidget } from "../gui/CStyleOptionRatingWidget.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CWidget } from "./CWidget.js";
 
-/** An integer star rating. Hover previews a value; releasing the mouse commits it. */
+/** An integer star rating. Hover previews a value; releasing the mouse commits it.
+ *
+ * @example
+ * With an existing application and parent widget, configure the scale before assigning the initial rating.
+ * ```ts
+ * import { CWidget, CRatingWidget } from "canvas-toolkit-lib";
+ *
+ * function createRating(parent: CWidget) {
+ *     const rating = new CRatingWidget(parent);
+ *     rating.setMaximum(5);
+ *     rating.setStarSize(24);
+ *     rating.setValue(3);
+ *     rating.valueChanged.connect(value => console.log("Rating:", value));
+ *     // For a summary that displays a rating without accepting edits:
+ *     // rating.setReadOnly(true);
+ *     return rating;
+ * }
+ * ```
+ */
 export class CRatingWidget extends CWidget {
     #maximum = 5;
     #value = 0;

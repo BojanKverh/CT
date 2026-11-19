@@ -16,9 +16,9 @@ import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
 /** Defines the available selection mode values. */
 export enum CSelectionMode {
-    /** Represents single selection. */
+    /** Keep at most one item selected; selecting another item clears the previous selection. */
     SingleSelection,
-    /** Represents multi selection. */
+    /** Allow separate selected items; clicks toggle items and Shift extends selection from the anchor row. */
     MultiSelection
 }
 
@@ -527,9 +527,6 @@ export class CListWidget extends CScrollArea
     selectedItems(): CListWidgetItem[]
 	{
 		return this.selectedRows().map(
-			/**
-			 * Returns an item's zero-based row, or -1 when absent.
-			 */
 			row => this.#m_items[row]!
 		);
 	}

@@ -15,7 +15,25 @@ import type { CPixmap } from "../painting/CPixmap.js";
 import { CScrollArea } from "./CScrollArea.js";
 import { CWidget } from "./CWidget.js";
 
-/** Image viewer with anchored wheel zoom, fit mode and drag panning. */
+/** Image viewer with anchored wheel zoom, fit mode and drag panning.
+ *
+ * @example
+ * With an existing application and parent widget, place the view in a layout before loading an image. Fit mode continues to adapt when the viewport changes size.
+ * ```ts
+ * import { CWidget, CImageView, CPixmap } from "canvas-toolkit-lib";
+ *
+ * async function createImagePreview(parent: CWidget) {
+ *     const image = new CImageView(parent);
+ *     image.setCheckerboardVisible(true);
+ *     const pixmap = await CPixmap.fromUrl("/images/preview.png");
+ *     image.setPixmap(pixmap);
+ *     image.fitToWindow();
+ *     // Switch from automatic fitting to the image native size:
+ *     // image.actualSize();
+ *     return image;
+ * }
+ * ```
+ */
 export class CImageView extends CScrollArea {
     /** Lower supported image magnification. */
     static readonly MinimumZoom = 0.000001;

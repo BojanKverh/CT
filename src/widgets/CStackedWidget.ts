@@ -3,7 +3,25 @@ import { CSignal } from "../core/CSignal.js";
 import { CWidget } from "./CWidget.js";
 import { CFrame } from "./CFrame.js";
 
-/** Page container presenting one child page at a time and hiding the others. */
+/** Page container presenting one child page at a time and hiding the others.
+ *
+ * @example
+ * With an existing application and parent widget, add pages to the stack and retain the returned indexes for navigation. Each page can have its own layout.
+ * ```ts
+ * import { CPushButton, CStackedWidget, CWidget } from "canvas-toolkit-lib";
+ *
+ * function createPageControls(parent: CWidget) {
+ *     const pages = new CStackedWidget(parent);
+ *     const overviewIndex = pages.addWidget(new CWidget());
+ *     const detailsIndex = pages.addWidget(new CWidget());
+ *     pages.setCurrentIndex(overviewIndex);
+ *     const showDetails = new CPushButton(parent);
+ *     showDetails.setText("Show details");
+ *     showDetails.clicked.connect(() => pages.setCurrentIndex(detailsIndex));
+ *     return { pages, showDetails };
+ * }
+ * ```
+ */
 export class CStackedWidget extends CFrame {
 	#m_widgets: CWidget[] = [];
 	#m_currentIndex = -1;

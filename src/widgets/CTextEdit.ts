@@ -154,12 +154,18 @@ class CTextEditUndoCommand extends CUndoCommand {
  * Find operations select literal matches without wrapping.
  *
  * @example
+ * Create CApplication first. Initialize text before selecting a range and applying character formatting.
  * ```ts
- * const editor = new CTextEdit(parent);
- * editor.setPlainText("Hello world");
- * editor.setSelection(0, 5);
- * editor.setFontBold(true);
- * editor.textChanged.connect(() => console.log(editor.toPlainText()));
+ * import { CTextEdit, CWidget } from "canvas-toolkit-lib";
+ *
+ * function createRichEditor(parent: CWidget): CTextEdit {
+ *     const editor = new CTextEdit(parent);
+ *     editor.setPlainText("Hello world");
+ *     editor.setSelection(0, 5);
+ *     editor.setFontBold(true);
+ *     editor.textChanged.connect(() => console.log(editor.toPlainText()));
+ *     return editor;
+ * }
  * ```
  */
 export class CTextEdit extends CScrollArea {

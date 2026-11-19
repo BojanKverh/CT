@@ -16,12 +16,18 @@ interface CSplitterItem
 /** Resizable pane container whose handles honor pane bounds and collapse policies.
  *
  * @example
+ * Create CApplication first. Add both panes before assigning their initial sizes, and place the returned splitter in the parent layout.
  * ```ts
- * const splitter = new CSplitter(COrientation.Horizontal, parent);
- * splitter.addWidget(leftPane);
- * splitter.addWidget(rightPane);
- * splitter.setCollapsible(0, false);
- * splitter.setSizes([200, 400]);
+ * import { COrientation, CSplitter, CWidget } from "canvas-toolkit-lib";
+ *
+ * function createSplitView(parent: CWidget): CSplitter {
+ *     const splitter = new CSplitter(COrientation.Horizontal, parent);
+ *     splitter.addWidget(new CWidget());
+ *     splitter.addWidget(new CWidget());
+ *     splitter.setCollapsible(0, false);
+ *     splitter.setSizes([200, 400]);
+ *     return splitter;
+ * }
  * ```
  */
 export class CSplitter extends CWidget
@@ -43,9 +49,6 @@ export class CSplitter extends CWidget
     * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
     */
     constructor(
-		/**
-		 * Returns the pane arrangement axis. Horizontal places panes side by side.
-		 */
 		orientation = COrientation.Horizontal,
 		parent: CWidget | null = null
 	) {

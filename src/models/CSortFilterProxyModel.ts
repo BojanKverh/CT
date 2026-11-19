@@ -8,13 +8,22 @@ import { CModelIndex } from "./CModelIndex.js";
 /** Provides sorting and text filtering for flat item models.
  *
  * @example
+ * Create CApplication first. Supply a flat source model with names in column 0 and cities in column 1. The view receives proxy indexes; map them before accessing source data.
  * ```ts
- * const proxy = new CSortFilterProxyModel();
- * proxy.setSourceModel(sourceModel);
- * proxy.setFilterKeyColumn(1);
- * proxy.setFilterFixedString("London");
- * proxy.sort(0, CSortOrder.AscendingOrder);
- * view.setModel(proxy);
+ * import {
+ *     CAbstractItemModel, CSortFilterProxyModel, CSortOrder, CTableView, CWidget
+ * } from "canvas-toolkit-lib";
+ *
+ * function createFilteredTable(parent: CWidget, sourceModel: CAbstractItemModel) {
+ *     const proxy = new CSortFilterProxyModel();
+ *     proxy.setSourceModel(sourceModel);
+ *     proxy.setFilterKeyColumn(1);
+ *     proxy.setFilterFixedString("London");
+ *     proxy.sort(0, CSortOrder.AscendingOrder);
+ *     const view = new CTableView(parent);
+ *     view.setModel(proxy);
+ *     return { view, proxy };
+ * }
  * ```
  */
 export class CSortFilterProxyModel extends CAbstractProxyModel {

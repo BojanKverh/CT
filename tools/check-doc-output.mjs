@@ -12,4 +12,4 @@ for(const name of ['focusTarget','setInputBlocker','touchScrollAreaFor','dropExt
 assert(!nodes.some(x=>x.kind===32768&&/^_[a-zA-Z]/.test(x.name)),'Rendered parameter names must omit unused-parameter prefixes');
 const config=JSON.parse(readFileSync('typedoc.json','utf8'));
 assert.equal(nodes.filter(x=>x.kind===8388608).length,config.projectDocuments.length,'Every configured guide must be included');
-console.log('Reference verified: inherited clicked, Signals group, internal exclusions, parameter names and nine guides.');
+console.log('Reference verified: inherited clicked, Signals group, internal exclusions, parameter names and all configured guides.');

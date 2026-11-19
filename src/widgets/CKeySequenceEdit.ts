@@ -9,7 +9,23 @@ import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CStyleOptionKeySequenceEdit } from "../gui/CStyleOptionKeySequenceEdit.js";
 
-/** Captures a keyboard shortcut and formats its key sequence for display. */
+/** Captures a keyboard shortcut and formats its key sequence for display.
+ *
+ * @example
+ * With an existing application and parent widget, use the recorded sequence to configure a shortcut owned by that parent. An empty sequence disables matching.
+ * ```ts
+ * import { CWidget, CKeySequenceEdit, CShortcut } from "canvas-toolkit-lib";
+ *
+ * function createShortcutRecorder(parent: CWidget) {
+ *     const shortcut = new CShortcut("Ctrl+K", parent);
+ *     shortcut.activated.connect(() => console.log("Open search"));
+ *     const recorder = new CKeySequenceEdit(parent);
+ *     recorder.setKeySequence(shortcut.key());
+ *     recorder.keySequenceChanged.connect(sequence => shortcut.setKey(sequence));
+ *     return recorder;
+ * }
+ * ```
+ */
 export class CKeySequenceEdit extends CWidget {
     /** Allows recording a combination without activating application shortcuts. */
     capturesShortcuts(): boolean { return true; }

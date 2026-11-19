@@ -13,7 +13,31 @@ import type { CPixmap } from "../painting/CPixmap.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CWidget } from "./CWidget.js";
 
-/** A frameless, non-modal startup window. Yield to the event loop while loading. */
+/** A frameless, non-modal startup window. Yield to the event loop while loading.
+ *
+ * @example
+ * Create CApplication before calling this startup function. Start its run loop so the splash can paint while initialize() performs asynchronous application setup.
+ * ```ts
+ * import { CMainWindow, CSplashScreen } from "canvas-toolkit-lib";
+ *
+ * async function showStartup(
+ *     mainWindow: CMainWindow,
+ *     initialize: () => Promise<void>
+ * ): Promise<void> {
+ *     mainWindow.hide();
+ *     const splash = new CSplashScreen();
+ *     splash.showMessage("Preparing application…");
+ *     splash.show();
+ *     try {
+ *         await initialize();
+ *         splash.finish(mainWindow, 200);
+ *     } catch (error) {
+ *         splash.close();
+ *         throw error;
+ *     }
+ * }
+ * ```
+ */
 export class CSplashScreen extends CWidget {
     #pixmap: CPixmap | null = null;
     #message = "";

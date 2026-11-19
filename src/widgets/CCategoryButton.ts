@@ -78,7 +78,11 @@ export class CCategoryButton extends CWidget {
     * Appends category captions in the supplied order.
     */
     addItems(texts: readonly string[]): void { for (const text of texts) this.addItem(text); }
-    /** Returns -1 for an invalid insertion index. */
+    /**
+     * Inserts an enabled category segment before index, or appends it when index equals count().
+     * Retains the previously current item by adjusting its index; if none was current, selects the inserted segment.
+     * Returns the inserted index, or -1 without changes when index is not an integer in 0..count().
+     */
     insertItem(index: number, text: string, icon: CIcon | null = null): number {
         if (!Number.isInteger(index) || index < 0 || index > this.count()) return -1;
         this.#cancel(); this.#items.splice(index, 0, { text, icon, enabled: true });

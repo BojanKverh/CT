@@ -32,7 +32,31 @@ type CMapping = {
 	section: number;
 };
 
-/** Maps columns from one model row onto editor widgets. */
+/** Maps columns from one model row onto editor widgets.
+ *
+ * @example
+ * Given an existing application, parent widget and editable model whose column 0 contains names, map an editor before selecting a row. ManualSubmit writes to the model only when submit() is called; backend persistence, if any, is a separate model operation.
+ * ```ts
+ * import {
+ *     CAbstractItemModel, CWidget, CDataWidgetMapper, CDataWidgetMapperSubmitPolicy, CLineEdit, CPushButton
+ * } from "canvas-toolkit-lib";
+ *
+ * function createMappedEditor(parent: CWidget, model: CAbstractItemModel) {
+ *     const nameEdit = new CLineEdit(parent);
+ *     const mapper = new CDataWidgetMapper(parent);
+ *     mapper.setModel(model);
+ *     mapper.setSubmitPolicy(CDataWidgetMapperSubmitPolicy.ManualSubmit);
+ *     mapper.addMapping(nameEdit, 0);
+ *     mapper.toFirst();
+ *     const apply = new CPushButton(parent);
+ *     apply.setText("Apply");
+ *     apply.clicked.connect(() => {
+ *         if (!mapper.submit()) console.warn("The row could not be updated");
+ *     });
+ *     return { mapper, nameEdit, apply };
+ * }
+ * ```
+ */
 export class CDataWidgetMapper extends CObject {
     /**
     * Emitted with the current index after navigation or programmatic selection changes it.

@@ -32,6 +32,12 @@ export class CUndoCommand {
     /** -1 disables merging. Override together with mergeWith(). */
     id(): number { return -1; }
 
-    /** The incoming command has already been redone. */
+    /**
+     * Tries to absorb command into this command so one undo/redo operation covers both changes.
+     * The incoming command has already been redone; do not apply it again here.
+     * Return true after updating the retained command to represent both operations.
+     * Return false to keep the incoming command as a separate history entry; the base implementation returns false.
+     * CUndoStack attempts merging only for matching command ids other than -1.
+     */
     mergeWith(_command: CUndoCommand): boolean { return false; }
 }

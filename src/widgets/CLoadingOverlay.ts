@@ -10,7 +10,30 @@ import type { CPainter } from "../painting/CPainter.js";
 import { CBusyIndicator } from "./CBusyIndicator.js";
 import { CWidget } from "./CWidget.js";
 
-/** A local input shield with a spinner and message. The target owns this child. */
+/** A local input shield with a spinner and message. The target owns this child.
+ *
+ * @example
+ * With an existing application and parent widget, shield only the target panel during an asynchronous operation. A finally block releases input even if the operation fails.
+ * ```ts
+ * import { CWidget, CLoadingOverlay } from "canvas-toolkit-lib";
+ *
+ * function createRecordLoader(parent: CWidget) {
+ *     const overlay = new CLoadingOverlay(parent);
+ *     async function refresh(): Promise<void> {
+ *         overlay.start("Loading records…");
+ *         try {
+ *             const response = await fetch("/api/records");
+ *             if (!response.ok) throw new Error("Loading failed: " + response.status);
+ *             console.log(await response.json());
+ *         } finally {
+ *             overlay.stop();
+ *         }
+ *     }
+ *     void refresh().catch(error => console.error(error));
+ *     return refresh;
+ * }
+ * ```
+ */
 export class CLoadingOverlay extends CWidget {
     #target: CWidget;
     #busy: CBusyIndicator;

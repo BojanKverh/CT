@@ -17,11 +17,18 @@ import { CIconPosition, CStyleOptionPushButton } from "../gui/CStyleOptionPushBu
  * beside the caption; iconPosition() chooses its side.
  *
  * @example
+ * Create CApplication first. This factory loads a same-origin icon before returning a button; replace the logging callback with the application save operation.
  * ```ts
- * const save = new CPushButton(parent);
- * save.setText("Save");
- * save.clicked.connect(() => saveDocument());
- * save.setIcon(new CIcon(await CPixmap.fromUrl("/icons/save.png")));
+ * import { CIcon, CPixmap, CPushButton, CWidget } from "canvas-toolkit-lib";
+ *
+ * async function createSaveButton(parent: CWidget): Promise<CPushButton> {
+ *     const button = new CPushButton(parent);
+ *     button.setText("Save");
+ *     button.clicked.connect(() => console.log("Save requested"));
+ *     const pixmap = await CPixmap.fromUrl("/icons/save.png");
+ *     button.setIcon(new CIcon(pixmap));
+ *     return button;
+ * }
  * ```
  */
 export class CPushButton extends CAbstractButton {

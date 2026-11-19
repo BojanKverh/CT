@@ -8,19 +8,40 @@ type CButtonConnections = {
 	toggledSlot: (checked: boolean) => void;
 };
 
-/** Coordinates button membership and exclusive check state and forwards group activation signals. */
+/** Coordinates button membership and exclusive check state and forwards group activation signals.
+ *
+ * @example
+ * With an existing application and parent widget, register the buttons before choosing the initial checked option. The group manages check state; add the buttons themselves to a layout.
+ * ```ts
+ * import { CWidget, CButtonGroup, CRadioButton } from "canvas-toolkit-lib";
+ *
+ * function createSizeChoices(parent: CWidget) {
+ *     const choices = new CButtonGroup(parent);
+ *     const small = new CRadioButton("Small", parent);
+ *     const large = new CRadioButton("Large", parent);
+ *     choices.addButton(small);
+ *     choices.addButton(large);
+ *     choices.setExclusive(true);
+ *     small.setChecked(true);
+ *     choices.buttonToggled.connect((button, checked) => {
+ *         if (checked) console.log("Selected:", button.text());
+ *     });
+ *     return choices;
+ * }
+ * ```
+ */
 export class CButtonGroup extends CObject {
 	#m_buttons = new Map<CAbstractButton, CButtonConnections>();
 	#m_exclusive = true;
 	#m_updating = false;
 
     /**
-    * Emitted with the group id of the button that was activated.
+    * Emitted with the button instance that was activated.
     * @group Signals
     */
     readonly buttonClicked = new CSignal<[CAbstractButton]>();
     /**
-    * Emitted with the button group id and its new checked state.
+    * Emitted with the button instance and its new checked state.
     * @group Signals
     */
     readonly buttonToggled = new CSignal<[CAbstractButton, boolean]>();

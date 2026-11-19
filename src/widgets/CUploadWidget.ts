@@ -144,17 +144,23 @@ class FileList extends CScrollArea {
 /** Collects local files for an application to use later.
  *
  * @example
+ * Create CApplication first. Place the returned picker and action button in the parent layout. Selection only collects files; the separate button initiates an application action.
  * ```ts
- * const picker = new CUploadWidget(parent);
- * picker.setAccept("image/*,.pdf");
- * picker.setMaxFileCount(5);
- * picker.filesChanged.connect(() => {
- *     uploadButton.setEnabled(picker.files().length > 0);
- * });
- * uploadButton.clicked.connect(() => {
- *     const files = picker.files();
- *     // Perform the application's explicit action with this snapshot.
- * });
+ * import { CPushButton, CUploadWidget, CWidget } from "canvas-toolkit-lib";
+ *
+ * function createFileControls(parent: CWidget) {
+ *     const picker = new CUploadWidget(parent);
+ *     picker.setAccept("image/*,.pdf");
+ *     picker.setMaxFileCount(5);
+ *     const uploadButton = new CPushButton(parent);
+ *     uploadButton.setText("Use all files");
+ *     uploadButton.setEnabled(false);
+ *     picker.filesChanged.connect(() => {
+ *         uploadButton.setEnabled(picker.files().length > 0);
+ *     });
+ *     uploadButton.clicked.connect(() => console.log(picker.files()));
+ *     return { picker, uploadButton };
+ * }
  * ```
  */
 export class CUploadWidget extends CWidget {

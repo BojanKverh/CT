@@ -19,6 +19,22 @@ import { CWidget } from "./CWidget.js";
 
 /** A hierarchy path with clickable ancestors and an overflow menu.
  * Activation requests navigation; it never changes the path automatically.
+ *
+ * @example
+ * With an existing application and parent widget, handle the navigation request explicitly. Updating the path is the application responsibility.
+ * ```ts
+ * import { CWidget, CNavigationPath } from "canvas-toolkit-lib";
+ *
+ * function createNavigation(parent: CWidget) {
+ *     const navigation = new CNavigationPath(parent);
+ *     navigation.setPath(["Home", "Projects", "Canvas Toolkit"]);
+ *     navigation.activated.connect((index, caption) => {
+ *         console.log("Navigate to", caption);
+ *         navigation.setPath(navigation.path().slice(0, index + 1));
+ *     });
+ *     return navigation;
+ * }
+ * ```
  */
 export class CNavigationPath extends CWidget {
     /** Logical horizontal inset around content. */

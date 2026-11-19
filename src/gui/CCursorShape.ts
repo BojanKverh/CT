@@ -40,7 +40,7 @@ export enum CCursorShape {
     */
     Grabbing,
     /**
-    * Disabled appearance.
+    * Not-allowed pointer indicating that the requested interaction is unavailable.
     */
     Disabled
 }
