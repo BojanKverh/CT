@@ -1,3 +1,4 @@
+/** @module Widgets/CToolBox */
 import type { CKeyEvent } from "../events/CKeyEvent.js";
 import { CSignal } from "../core/CSignal.js";
 import { CSize } from "../geometry/CSize.js";
@@ -12,45 +13,42 @@ interface CToolBoxItem
 	button: CToolBoxButton;
 }
 
-/** Implements the tool box widget. */
+/** Accordion-style container displaying one enabled page beneath its header. */
 export class CToolBox extends CWidget
 {
 	#m_items: CToolBoxItem[] = [];
 	#m_currentIndex = -1;
 
-	/** Signal emitted when current changes. */
-	readonly currentChanged = new CSignal<[number]>();
+    /**
+    * Emitted with the zero-based page index that becomes current.
+    * @group Signals
+    */
+    readonly currentChanged = new CSignal<[number]>();
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null)
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null)
 	{
-		/** Provides super behavior. */
 		super(parent);
 	}
 
-	/**
-	 * Appends a page with a header, or returns the existing position if the widget is registered.
-	 * @param widget Widget to show as a page.
-	 * @param text Caption shown on the page header.
-	 * @returns Zero-based page index.
-	 */
-	addItem(widget: CWidget, text: string): number
+    /**
+    * Appends a page and its header and returns the page index.
+    */
+    addItem(widget: CWidget, text: string): number
 	{
 		return this.insertItem(this.#m_items.length, widget, text);
 	}
 
-	/**
-	 * Inserts a page and creates its header button. An already registered page keeps its existing position.
-	 * @param index Zero-based insertion index, clamped to the page range.
-	 * @param widget Widget to show as a page.
-	 * @param text Caption shown on the page header.
-	 * @returns Inserted index, or existing index when already registered.
-	 */
-	insertItem(index: number, widget: CWidget, text: string): number
+    /**
+    * Inserts a page/header pair at a requested position.
+    */
+    insertItem(index: number, widget: CWidget, text: string): number
 	{
 		const existingIndex = this.indexOf(widget);
 
-		/** Provides if behavior. */
 		if (existingIndex !== -1)
 			return existingIndex;
 
@@ -72,13 +70,11 @@ export class CToolBox extends CWidget
 		button.clicked.connect(() => {
 			const buttonIndex = this.#indexOfButton(button);
 
-			/** Provides if behavior. */
 			if (buttonIndex !== -1) {
 				this.setCurrentIndex(buttonIndex);
 			}
 		});
 
-		/** Provides if behavior. */
 		if (this.#m_currentIndex === -1) {
 			this.#m_currentIndex = index;
 			widget.show();
@@ -94,13 +90,11 @@ export class CToolBox extends CWidget
 		return index;
 	}
 
-	/**
-	 * Removes item.
-	 * @param index Zero-based item index.
-	 */
-	removeItem(index: number): void
+    /**
+    * Removes a page and its header from the toolbox.
+    */
+    removeItem(index: number): void
 	{
-		/** Provides if behavior. */
 		if (index < 0 || index >= this.#m_items.length)
 			return;
 
@@ -113,11 +107,9 @@ export class CToolBox extends CWidget
 		item.widget.hide();
 		item.widget.setParent(null);
 
-		/** Provides if behavior. */
 		if (this.#m_items.length === 0) {
 			this.#m_currentIndex = -1;
 
-			/** Provides if behavior. */
 			if (wasCurrent)
 				this.currentChanged.emit(-1);
 
@@ -125,7 +117,6 @@ export class CToolBox extends CWidget
 			return;
 		}
 
-		/** Provides if behavior. */
 		if (wasCurrent) {
 			this.#m_currentIndex = Math.min(
 				index,
@@ -142,43 +133,37 @@ export class CToolBox extends CWidget
 		this.update();
 	}
 
-	/**
-	 * Counts the entries in the tool box.
-	 * @returns The number of entries in the items.
-	 */
-	count(): number
+    /**
+    * Returns the number of page/header pairs.
+    */
+    count(): number
 	{
 		return this.#m_items.length;
 	}
 
-	/**
-	 * Returns the current index.
-	 * @returns The current index.
-	 */
-	currentIndex(): number
+    /**
+    * Zero-based current item index.
+    * The initial value is `-1`.
+    */
+    currentIndex(): number
 	{
 		return this.#m_currentIndex;
 	}
 
-	/**
-	 * Sets the current index.
-	 * @param index Zero-based item index.
-	 */
-	setCurrentIndex(index: number): void
+    /**
+    * Opens an enabled page and hides the previous page. Invalid and unchanged requests are ignored. Emits currentChanged after layout updates.
+    */
+    setCurrentIndex(index: number): void
 	{
-		/** Provides if behavior. */
 		if (index < 0 || index >= this.#m_items.length)
 			return;
 
-		/** Provides if behavior. */
 		if (!this.isItemEnabled(index))
 			return;
 
-		/** Provides if behavior. */
 		if (index === this.#m_currentIndex)
 			return;
 
-		/** Provides if behavior. */
 		if (this.#m_currentIndex !== -1) {
 			const oldItem = this.#m_items[this.#m_currentIndex];
 
@@ -195,72 +180,59 @@ export class CToolBox extends CWidget
 		this.update();
 	}
 
-	/**
-	 * Selects the page corresponding to a registered widget. An unknown widget is ignored.
-	 * @param widget Page widget to select.
-	 */
-	setCurrentWidget(widget: CWidget): void
+    /**
+    * Opens the page represented by a registered child widget.
+    */
+    setCurrentWidget(widget: CWidget): void
 	{
 		const index = this.indexOf(widget);
 
-		/** Provides if behavior. */
 		if (index !== -1)
 			this.setCurrentIndex(index);
 	}
 
-	/**
-	 * Looks up the page currently presented by the toolbox.
-	 * @returns Active page widget, or `null` if there is no current page.
-	 */
-	currentWidget(): CWidget | null
+    /**
+    * Returns the open page widget, or null.
+    */
+    currentWidget(): CWidget | null
 	{
-		/** Provides if behavior. */
 		if (this.#m_currentIndex === -1)
 			return null;
 
 		return this.#m_items[this.#m_currentIndex]?.widget ?? null;
 	}
 
-	/**
-	 * Looks up the page at a given position.
-	 * @param index Zero-based page index.
-	 * @returns Page widget, or `null` if absent.
-	 */
-	widget(index: number): CWidget | null
+    /**
+    * Returns the page at an index, or null.
+    */
+    widget(index: number): CWidget | null
 	{
 		return this.#m_items[index]?.widget ?? null;
 	}
 
-	/**
-	 * Finds a widget among the toolbox pages.
-	 * @param widget Page widget to look up by identity.
-	 * @returns Zero-based page index, or `-1` if absent.
-	 */
-	indexOf(widget: CWidget): number
+    /**
+    * Returns the page index of a widget, or -1.
+    */
+    indexOf(widget: CWidget): number
 	{
 		return this.#m_items.findIndex(item => item.widget === widget);
 	}
 
-	/**
-	 * Reads a page's header caption.
-	 * @param index Zero-based page index.
-	 * @returns Header text, or an empty string if the page is absent.
-	 */
-	itemText(index: number): string
+    /**
+    * Returns a page header caption, or an empty string for an invalid index.
+    */
+    itemText(index: number): string
 	{
 		return this.#m_items[index]?.button.text() ?? "";
 	}
 
-	/**
-	 * Updates the page header caption and recalculates geometry.
-	 * @param index Zero-based page index.
-	 * @param text New header caption.
-	 */
-	setItemText(index: number, text: string): void
+    /**
+    * Changes the caption of an existing page header.
+    */
+    setItemText(index: number, text: string): void
 	{
 		const item = this.#m_items[index];
 
-		/** Provides if behavior. */
 		if (item === undefined)
 			return;
 
@@ -270,52 +242,40 @@ export class CToolBox extends CWidget
 		this.update();
 	}
 
-	/**
-	 * Checks whether the tool box is item enabled.
-	 * @param index Zero-based item index.
-	 * @returns `true` if the tool box is item enabled, otherwise `false`.
-	 */
-	isItemEnabled(index: number): boolean
+    /**
+    * Reports whether the page header is enabled. Invalid indexes return false.
+    */
+    isItemEnabled(index: number): boolean
 	{
 		return this.#m_items[index]?.button.isEnabled() ?? false;
 	}
 
-	/**
-	 * Sets the item enabled.
-	 * @param index Zero-based item index.
-	 * @param enabled Whether to enable the feature.
-	 */
-	setItemEnabled(index: number, enabled: boolean): void
+    /**
+    * Changes page activation eligibility. Disabling the open page selects another enabled page when available.
+    */
+    setItemEnabled(index: number, enabled: boolean): void
 	{
 		const item = this.#m_items[index];
 
-		/** Provides if behavior. */
 		if (item === undefined)
 			return;
 
-		/** Provides if behavior. */
 		if (item.button.isEnabled() === enabled)
 			return;
 
 		item.button.setEnabled(enabled);
 
-		/** Provides if behavior. */
 		if (!enabled && index === this.#m_currentIndex)
 			this.#selectNextEnabledItem(index);
 
 		this.update();
 	}
 
-	/**
-	 * Returns the preferred size of the widget.
-	 * @returns A new `CSize`.
-	 */
 	override sizeHint(): CSize
 	{
 		let width = 0;
 		let height = 0;
 
-		/** Provides for behavior. */
 		for (const item of this.#m_items) {
 			const hint = item.button.sizeHint();
 
@@ -325,7 +285,6 @@ export class CToolBox extends CWidget
 
 		const current = this.currentWidget();
 
-		/** Provides if behavior. */
 		if (current !== null) {
 			const hint = current.sizeHint();
 
@@ -336,32 +295,17 @@ export class CToolBox extends CWidget
 		return new CSize(width, height);
 	}
 
-	/**
-	 * Sets the geometry.
-	 * @param x Horizontal position in parent coordinates.
-	 * @param y Vertical position in parent coordinates.
-	 * @param width Width in logical pixels.
-	 * @param height Height in logical pixels.
-	 */
 	override setGeometry(x: number, y: number, width: number, height: number): void
 	{
 		super.setGeometry(x, y, width, height);
 		this.#updateGeometry();
 	}
 
-    /**
-     * Draws the tool box through the supplied painter.
-     * @param _painter Painter for the current drawing operation.
-     */
     protected override paintEvent(_painter: CPainter): void {
         _painter.setBrush(this.palette().color(CPaletteColorRole.Base).toCss());
         _painter.fillRect(this.rect());
     }
 
-    /**
-     * Responds to a key press for the tool box. May accept the event.
-     * @param event Event for a key press.
-     */
     protected override keyPressEvent(event: CKeyEvent): void {
         const key = event.key();
         if ((key === "ArrowUp" || key === "ArrowDown")
@@ -389,17 +333,14 @@ export class CToolBox extends CWidget
 
 	#selectCurrentItem(): void
 	{
-		/** Provides if behavior. */
 		if (this.#m_currentIndex === -1)
 			return;
 
-		/** Provides for behavior. */
 		for (let i = 0; i < this.#m_items.length; ++i) {
 			const item = this.#m_items[i]!;
 
 			item.button.setCurrent(i === this.#m_currentIndex);
 
-			/** Provides if behavior. */
 			if (i === this.#m_currentIndex)
 				item.widget.show();
 			else
@@ -409,18 +350,14 @@ export class CToolBox extends CWidget
 
 	#selectNextEnabledItem(index: number): void
 	{
-		/** Provides for behavior. */
 		for (let i = index + 1; i < this.#m_items.length; ++i) {
-			/** Provides if behavior. */
 			if (this.isItemEnabled(i)) {
 				this.setCurrentIndex(i);
 				return;
 			}
 		}
 
-		/** Provides for behavior. */
 		for (let i = index - 1; i >= 0; --i) {
-			/** Provides if behavior. */
 			if (this.isItemEnabled(i)) {
 				this.setCurrentIndex(i);
 				return;
@@ -430,13 +367,11 @@ export class CToolBox extends CWidget
 
 	#updateGeometry(): void
 	{
-		/** Provides if behavior. */
 		if (this.#m_items.length === 0)
 			return;
 
 		let totalButtonHeight = 0;
 
-		/** Provides for behavior. */
 		for (const item of this.#m_items)
 			totalButtonHeight += item.button.sizeHint().height();
 
@@ -447,7 +382,6 @@ export class CToolBox extends CWidget
 
 		let y = 0;
 
-		/** Provides for behavior. */
 		for (let i = 0; i < this.#m_items.length; ++i) {
 			const item = this.#m_items[i]!;
 			const buttonHeight = item.button.sizeHint().height();
@@ -455,7 +389,6 @@ export class CToolBox extends CWidget
 			item.button.setGeometry(0, y, this.width(), buttonHeight);
             y += buttonHeight;
 
-			/** Provides if behavior. */
 			if (i === this.#m_currentIndex) {
 				item.widget.setGeometry(0, y, this.width(), pageHeight);
 				y += pageHeight;

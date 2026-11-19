@@ -1,3 +1,4 @@
+/** @module Dialogs/CWizardDialog */
 import { CVariantAnimation } from "../animation/CVariantAnimation.js";
 import { CEasingCurveType } from "../animation/CEasingCurve.js";
 import { CRect } from "../geometry/CRect.js";
@@ -14,7 +15,31 @@ import { CWidget } from "../widgets/CWidget.js";
 import { CWizardPage } from "../widgets/CWizardPage.js";
 import { CDialog } from "./CDialog.js";
 
-export enum CWizardButton { BackButton, NextButton, FinishButton, CancelButton, SkipButton }
+/**
+ * Navigation actions available from a wizard dialog button bar.
+ */
+export enum CWizardButton {
+    /**
+    * Return to the previous visited wizard page.
+    */
+    BackButton,
+    /**
+    * Advance after the current page passes validation.
+    */
+    NextButton,
+    /**
+    * Accept the wizard after final-page validation.
+    */
+    FinishButton,
+    /**
+    * Reject the wizard and dismiss the dialog.
+    */
+    CancelButton,
+    /**
+    * Defer the current page according to the wizard skip policy.
+    */
+    SkipButton
+}
 type Visit = { id: number; deferred: number[]; completed: number[] };
 
 /** A branching wizard with history and a FIFO queue of deferred steps. */
@@ -39,9 +64,21 @@ export class CWizardDialog extends CDialog {
     #transitionDuration = 280;
     #transition: { animation: CVariantAnimation; outgoing: CWizardPage; incoming: CWizardPage;
         outgoingEnabled: boolean; incomingEnabled: boolean } | null = null;
+    /**
+    * Emitted with the id of the wizard page that becomes current.
+    * @group Signals
+    */
     readonly currentIdChanged = new CSignal<[number]>();
+    /**
+    * Emitted with the id of the wizard page deferred by the skip action.
+    * @group Signals
+    */
     readonly pageDeferred = new CSignal<[number]>();
 
+    /**
+    * Initializes page navigation, standard wizard buttons and the page container.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
     constructor(parent: CWidget | null = null) {
         super(parent);
         this.#title = new CLabel(this);
@@ -66,117 +103,86 @@ export class CWizardDialog extends CDialog {
         this.resize(640, 440);
         this.#refresh();
     }
-    /**
-     * Supplies the default preferred size of the wizard body.
-     * @returns A new size of 640 by 440 logical pixels.
-     */
     override sizeHint(): CSize { return new CSize(640, 440); }
     /**
-     * Reads whether page changes can use slide animations.
-     * @returns `true` if transitions are enabled.
-     */
+    * Reports whether page changes use animated transitions.
+    */
     transitionsEnabled(): boolean { return this.#transitionsEnabled; }
     /**
-     * Changes whether future navigation can animate. Disabling transitions immediately settles any active slide.
-     * @param enabled Whether to enable page slide transitions.
-     */
+    * Enables or disables animation when changing wizard pages.
+    */
     setTransitionsEnabled(enabled: boolean): void {
         this.#transitionsEnabled = enabled;
         if (!enabled) this.#finishTransition();
     }
     /**
-     * Reads the configured slide duration.
-     * @returns Transition time in milliseconds.
-     */
+    * Returns page-transition duration in milliseconds.
+    */
     transitionDuration(): number { return this.#transitionDuration; }
-    /**
-     * Sets the page slide duration. Zero settles the active slide and suppresses animation on future navigation.
-     * @param duration Finite nonnegative duration in milliseconds. Invalid values throw `RangeError`.
-     */
+    /** Milliseconds; zero disables motion while keeping navigation synchronous. */
     setTransitionDuration(duration: number): void {
         if (!Number.isFinite(duration) || duration < 0) throw new RangeError("Transition duration must be finite and nonnegative.");
         this.#transitionDuration = duration;
         if (duration === 0) this.#finishTransition();
     }
     /**
-     * Reads whether the wizard is configured to show the informational step list.
-     * @returns `true` if the sidebar is enabled.
-     */
+    * Reports whether the wizard's navigation step list is presented.
+    */
     stepListVisible(): boolean { return this.#stepListVisible; }
-    /**
-     * Shows or hides the informational step list and recalculates the page area.
-     * @param visible Whether to show the step sidebar.
-     */
+    /** Hiding the informational step list restores the full page width. */
     setStepListVisible(visible: boolean): void {
         if (visible === this.#stepListVisible) return;
         this.#stepListVisible = visible;
         this.#layoutContents(); this.#updateStepList();
     }
     /**
-     * Looks up a navigation control by role.
-     * @param role Supported wizard button role, such as Next, Back, Finish, Skip or Cancel.
-     * @returns The button for the supplied role.
-     */
+    * Returns the standard wizard button for a semantic role.
+    */
     button(role: CWizardButton): CPushButton { return this.#buttons.get(role)!; }
     /**
-     * Lists the currently registered page identifiers.
-     * @returns A new array of page IDs sorted numerically.
-     */
+    * Returns registered numeric page identifiers in ascending order.
+    */
     pageIds(): number[] { return [...this.#pages.keys()].sort((a, b) => a - b); }
     /**
-     * Looks up a registered wizard page.
-     * @param id Page identifier to look up.
-     * @returns The registered page, or `null` if no page has that ID.
-     */
+    * Returns the page registered under an identifier, or null.
+    */
     page(id: number): CWizardPage | null { return this.#pages.get(id) ?? null; }
     /**
-     * Reads the current navigation position.
-     * @returns Current page ID, or `-1` if no page is active.
-     */
+    * Returns the identifier of the active page.
+    */
     currentId(): number { return this.#current; }
     /**
-     * Looks up the active wizard page.
-     * @returns The active page, or `null` if no page is active.
-     */
+    * Returns the currently presented page, or null.
+    */
     currentPage(): CWizardPage | null { return this.page(this.#current); }
     /**
-     * Lists the current navigation history with the active page appended. Backtracking removes entries from this history.
-     * @returns A new array of page IDs in visit order.
-     */
+    * Returns a snapshot of page identifiers retained in navigation history.
+    */
     visitedIds(): number[] { return [...this.#history.map(visit => visit.id), ...(this.#current < 0 ? [] : [this.#current])]; }
     /**
-     * Lists pages set aside through Skip for Now.
-     * @returns A new array of deferred page IDs in queue order.
-     */
+    * Returns a snapshot of pages postponed for later completion.
+    */
     deferredPageIds(): number[] { return [...this.#deferred]; }
     /**
-     * Resolves the configured start page or falls back to the lowest registered ID.
-     * @returns Effective start page ID, or `-1` when no page is registered.
-     */
+    * Returns the configured starting page, falling back to the first registered identifier.
+    */
     startId(): number { return this.#start >= 0 ? this.#start : this.pageIds()[0] ?? -1; }
     /**
-     * Changes the page selected on the next restart. An unknown explicit ID throws.
-     * @param id Registered page ID, or `-1` to use the lowest registered ID.
-     */
+    * Chooses the registered page where the wizard begins.
+    */
     setStartId(id: number): void {
         if (id !== -1 && !this.#pages.has(id)) throw new Error("Unknown wizard start page.");
         this.#start = id;
     }
     /**
-     * Registers a page under the next ID above the highest registered ID.
-     * @param page Unattached wizard page to register.
-     * @returns Assigned page ID, starting at zero for an empty wizard.
-     */
+    * Registers a page with the wizard and returns its assigned identifier.
+    */
     addPage(page: CWizardPage): number {
         const ids = this.pageIds();
         const id = (ids[ids.length - 1] ?? -1) + 1;
         this.setPage(id, page); return id;
     }
-    /**
-     * Registers and attaches a page, then updates navigation. The first page starts the initial run. Re-registering the same page at the same ID has no effect.
-     * @param id Unique nonnegative safe integer identifier.
-     * @param page Unattached page to register.
-     */
+    /** IDs must be unique nonnegative safe integers; a page belongs to only one wizard. */
     setPage(id: number, page: CWizardPage): void {
         if (!Number.isSafeInteger(id) || id < 0) throw new Error("Invalid wizard page ID.");
         if (this.page(id) === page) return;
@@ -187,11 +193,7 @@ export class CWizardDialog extends CDialog {
         this.#disconnect.set(id, [page.completeChanged.connect(() => this.#refresh()), page.changed.connect(() => this.#refresh())]);
         if (this.#current === -1) this.restart(); else this.#refresh();
     }
-    /**
-     * Detaches a page without destroying it, clears its connections and restarts navigation. If the page was explicitly configured as the start page, automatic start selection resumes.
-     * @param id ID of the page to remove.
-     * @returns Detached page, or `null` if the ID was absent.
-     */
+    /** Detaches a page without destroying it. Removing a page restarts navigation. */
     removePage(id: number): CWizardPage | null {
         const page = this.page(id); if (page === null) return null;
         this.#finishTransition();
@@ -201,19 +203,18 @@ export class CWizardDialog extends CDialog {
         if (this.#start === id) this.#start = -1;
         this.restart(); return page;
     }
-    /** Clears visit history, deferred and completed pages and initialization tracking, then shows the effective start page. Page widgets retain their data. */
+    /** Starts a new navigation run; page widgets retain their data. */
     restart(): void {
         if (this.#busy) return;
         this.#finishTransition();
         this.#history = []; this.#deferred = []; this.#completed.clear(); this.#initialized.clear();
         this.#showPage(this.startId());
     }
-    /** Starts a new navigation run, opens the dialog and focuses the current page. An already open wizard is left as-is. */
     override open(): void {
         if (this.isOpen()) return;
         this.restart(); super.open(); this.#focusPage();
     }
-    /** Validates the completed current page and advances along the normal or deferred route. Accepts when no step remains and stays in place when the route or validation fails. */
+    /** Advances after successful validation, or accepts on the final remaining step. */
     next(): void {
         this.#navigate(() => {
             const page = this.currentPage();
@@ -227,7 +228,7 @@ export class CWizardDialog extends CDialog {
             this.#showPage(target, 1);
         });
     }
-    /** Finishes only when the current page is complete, validation succeeds and neither a normal nor a deferred step remains. */
+    /** Finish cannot bypass completeness, validation, a normal next step or deferred steps. */
     override accept(): void {
         this.#navigate(() => {
             const page = this.currentPage();
@@ -236,7 +237,9 @@ export class CWizardDialog extends CDialog {
             else this.#refresh();
         });
     }
-    /** Returns to the previous visit and restores its saved deferred and completed state. Has no effect if there is no history. */
+    /**
+    * Returns to the previous retained page in wizard history.
+    */
     back(): void {
         this.#navigate(() => {
             const visit = this.#history.pop(); if (visit === undefined) return;
@@ -244,7 +247,9 @@ export class CWizardDialog extends CDialog {
             this.#showPage(visit.id, -1);
         });
     }
-    /** Defers the current page without validating it if the page permits deferral and there is another reachable step. Emits `pageDeferred` after advancing. */
+    /**
+    * Defers the current page when allowed and advances through the wizard's navigation rules.
+    */
     skipForNow(): void {
         this.#navigate(() => {
             if (!this.currentPage()?.isDeferrable()) return;
@@ -331,12 +336,7 @@ export class CWizardDialog extends CDialog {
         transition.incoming.setEnabled(transition.incomingEnabled);
         this.#focusPage();
     }
-    /** Settles an active page transition before closing the dialog. */
     override close(): void { this.#finishTransition(); super.close(); }
-    /**
-     * Changes visibility and settles an active page transition when hiding.
-     * @param visible Whether to show the wizard.
-     */
     override setVisible(visible: boolean): void {
         if (!visible && #transition in this) this.#finishTransition();
         super.setVisible(visible);
@@ -396,13 +396,6 @@ export class CWizardDialog extends CDialog {
         }
         this.#stepContent.update();
     }
-    /**
-     * Moves or resizes the dialog and recalculates the page, controls and step sidebar.
-     * @param x Horizontal position in parent or canvas coordinates.
-     * @param y Vertical position in parent or canvas coordinates.
-     * @param width Dialog width in logical pixels.
-     * @param height Dialog body height excluding the title bar.
-     */
     override setGeometry(x: number, y: number, width: number, height: number): void {
         super.setGeometry(x, y, width, height);
         this.#layoutContents();
@@ -425,7 +418,6 @@ export class CWizardDialog extends CDialog {
         this.button(CWizardButton.FinishButton).setGeometry(nextX, yButton, buttonWidth, 30);
         this.button(CWizardButton.CancelButton).setGeometry(Math.max(344, width - 20 - buttonWidth), yButton, buttonWidth, 30);
     }
-    /** Settles any transition, disconnects page listeners, detaches each page's wizard association and destroys the dialog. */
     override destroy(): void {
         this.#finishTransition();
         for (const connections of this.#disconnect.values()) for (const disconnect of connections) disconnect();
@@ -435,27 +427,15 @@ export class CWizardDialog extends CDialog {
     }
 }
 
-
 /** Keeps pointer events out of moving page contents without changing their children. */
 class CWizardPageStack extends CStackedWidget {
     #transitioning = false;
-    /**
-     * Controls whether pointer hits may reach page contents while they move.
-     * @param transitioning `true` while a transition is in progress.
-     */
     setTransitioning(transitioning: boolean): void { this.#transitioning = transitioning; }
-    /**
-     * Hit-tests the stack. During a slide, returns the stack itself for hits inside its bounds, keeping the pointer away from moving page contents.
-     * @param x Horizontal coordinate local to the stack.
-     * @param y Vertical coordinate local to the stack.
-     * @returns Hit widget, or `null` outside the hittable bounds.
-     */
     override widgetAt(x: number, y: number): CWidget | null {
         if (!this.#transitioning) return super.widgetAt(x, y);
         return this.isVisible() && x >= 0 && y >= 0 && x < this.width() && y < this.height() ? this : null;
     }
 }
-
 
 type WizardStepEntry = {
     id: number; title: string; status: "current" | "completed" | "deferred" | "pending"; deferred: boolean;
@@ -468,10 +448,6 @@ class CWizardStepListContent extends CWidget {
         super(area.viewport());
         this.setFocusPolicy(CFocusPolicy.NoFocus);
     }
-    /**
-     * Paints only the step rows intersecting the sidebar viewport, including their status symbols and clipped labels.
-     * @param painter Painter in sidebar content coordinates.
-     */
     protected override paintEvent(painter: CPainter): void {
         const entries = this.entries(), rowHeight = CWizardStepListContent.RowHeight;
         const palette = this.palette(), metrics = this.fontMetrics();

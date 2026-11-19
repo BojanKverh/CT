@@ -1,3 +1,4 @@
+/** @module GUI/CCssPalette */
 import { CColor } from "./CColor.js";
 import { CPalette, CPaletteColorRole } from "./CPalette.js";
 
@@ -32,6 +33,10 @@ const properties: ReadonlyArray<readonly [CPaletteColorRole, string]> = [
 export class CCssPalette extends CPalette {
     #m_element: Element | null;
 
+    /**
+    * Reads the supported --ct-* CSS custom properties from the supplied element.
+    * @param element Input used to configure CCssPalette. Omit to use `null`.
+    */
     constructor(element: Element | null = null) {
         super();
         this.#m_element = element;
@@ -39,8 +44,8 @@ export class CCssPalette extends CPalette {
     }
 
     /** Rereads all roles. Removed/invalid CSS values restore CPalette defaults.
-     * Manual setColor() overrides are also replaced by this theme snapshot.
-     */
+    * Manual setColor() overrides are also replaced by this theme snapshot.
+    */
     reload(): void {
         const element = this.#m_element ?? (typeof document === "undefined" ? null
             : document.querySelector("canvas") ?? document.documentElement);

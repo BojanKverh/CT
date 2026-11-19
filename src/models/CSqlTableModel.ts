@@ -1,3 +1,4 @@
+/** @module Models/CSqlTableModel */
 import { CSignal } from "../core/CSignal.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CSortOrder } from "../gui/CSortOrder.js";
@@ -14,9 +15,21 @@ import {
 
 /** A flat editable model backed by an asynchronous SQL table adapter. */
 export class CSqlTableModel extends CAbstractTableModel {
-	readonly loadingChanged = new CSignal<[boolean]>();
-	readonly errorOccurred = new CSignal<[CSqlError]>();
-	readonly dataSubmitted = new CSignal<[CModelIndex]>();
+    /**
+    * Emitted with true while an adapter request is active and false when loading settles.
+    * @group Signals
+    */
+    readonly loadingChanged = new CSignal<[boolean]>();
+    /**
+    * Emitted with a CSqlError containing the diagnostic details of a failed adapter operation.
+    * @group Signals
+    */
+    readonly errorOccurred = new CSignal<[CSqlError]>();
+    /**
+    * Emitted with the first affected model index after an edited row has been persisted successfully.
+    * @group Signals
+    */
+    readonly dataSubmitted = new CSignal<[CModelIndex]>();
 
 	#m_adapter: CSqlTableAdapter;
 	#m_table = "";
@@ -38,156 +51,142 @@ export class CSqlTableModel extends CAbstractTableModel {
 	#m_pendingOperations = new Set<Promise<void>>();
 	#m_rowQueues = new Map<number, Promise<void>>();
 
-	constructor(adapter: CSqlTableAdapter) {
+    /**
+    * Connects this model to an asynchronous table adapter. Configure table and columns before selecting data.
+    */
+    constructor(adapter: CSqlTableAdapter) {
 		super();
 		this.#m_adapter = adapter;
 	}
 
-	/**
-	 * Identifies the data-access adapter used by this model.
-	 * @returns The adapter supplied at construction.
-	 */
-	adapter(): CSqlTableAdapter {
+    /**
+    * Returns the adapter used for table queries and write operations.
+    */
+    adapter(): CSqlTableAdapter {
 		return this.#m_adapter;
 	}
 
-	/**
-	 * Changes the table name used by subsequent operations. Call `select()` to load it.
-	 * @param table Table name, with surrounding whitespace trimmed.
-	 */
-	setTable(table: string): void {
+    /**
+    * Changes the table targeted by subsequent adapter operations.
+    */
+    setTable(table: string): void {
 		this.#m_table = table.trim();
 	}
 
-	/**
-	 * Reads the configured table name.
-	 * @returns The trimmed name, or an empty string if unset.
-	 */
-	table(): string {
+    /**
+    * Table name used in adapter requests.
+    * The initial value is `""`.
+    */
+    table(): string {
 		return this.#m_table;
 	}
 
-	/**
-	 * Sets the field used to identify records for updates and deletions.
-	 * @param column Exact column name to use as the primary key.
-	 */
-	setPrimaryKey(column: string): void {
+    /**
+    * Configures the column used to identify rows during writes.
+    */
+    setPrimaryKey(column: string): void {
 		this.#m_primaryKey = column;
 	}
 
-	/**
-	 * Reads the configured identifier column.
-	 * @returns The primary-key column name, initially `id`.
-	 */
-	primaryKey(): string {
+    /**
+    * Column identifying model rows for persistence operations.
+    * The initial value is `"id"`.
+    */
+    primaryKey(): string {
 		return this.#m_primaryKey;
 	}
 
-	/**
-	 * Replaces the displayed column order and emits a model reset.
-	 * @param columns Column names in display order. An empty array allows columns to be inferred on a subsequent load.
-	 */
-	setColumns(columns: readonly string[]): void {
+    /**
+    * Configures column names and their visible order.
+    */
+    setColumns(columns: readonly string[]): void {
 		this.#m_columns = [...columns];
 		this.resetModel();
 	}
 
-	/**
-	 * Lists the currently configured display columns.
-	 * @returns A fresh array of column names in display order.
-	 */
-	columns(): readonly string[] {
+    /**
+    * Returns the configured model column names.
+    */
+    columns(): readonly string[] {
 		return [...this.#m_columns];
 	}
 
-	/**
-	 * Stores a display label for a column and emits a model reset.
-	 * @param column Column name to label.
-	 * @param label Text to display in the horizontal header.
-	 */
-	setColumnHeader(column: string, label: string): void {
+    /**
+    * Assigns a displayed heading to a model column name.
+    */
+    setColumnHeader(column: string, label: string): void {
 		this.#m_headers.set(column, label);
 		this.resetModel();
 	}
 
-	/**
-	 * Changes when future cell edits are submitted.
-	 * @param strategy Submission strategy for subsequent edits.
-	 */
-	setEditStrategy(strategy: CSqlEditStrategy): void {
+    /**
+    * Chooses when pending model edits are submitted to the adapter.
+    */
+    setEditStrategy(strategy: CSqlEditStrategy): void {
 		this.#m_editStrategy = strategy;
 	}
 
-	/**
-	 * Reads the configured submission policy.
-	 * @returns The current edit strategy.
-	 */
-	editStrategy(): CSqlEditStrategy {
+    /**
+    * Policy controlling when model edits reach the adapter.
+    * The initial value is `CSqlEditStrategy.OnFieldChange`.
+    */
+    editStrategy(): CSqlEditStrategy {
 		return this.#m_editStrategy;
 	}
 
-	/**
-	 * Checks the loading flag used by select and fetch operations.
-	 * @returns `true` while the model reports that it is loading.
-	 */
-	isLoading(): boolean {
+    /**
+    * Reports whether a select or fetch operation is currently loading records.
+    */
+    isLoading(): boolean {
 		return this.#m_loading;
 	}
 
-	/**
-	 * Reads the most recently recorded operation failure.
-	 * @returns The recorded SQL error, or `null` if no error is stored.
-	 */
-	lastError(): CSqlError | null {
+    /**
+    * Returns the most recent SQL operation error, or null.
+    */
+    lastError(): CSqlError | null {
 		return this.#m_lastError;
 	}
 
-	/**
-	 * Changes the page size for future data requests. Invalid sizes are ignored.
-	 * @param fetchSize Positive integer number of rows per request.
-	 */
-	setFetchSize(fetchSize: number): void {
+    /**
+    * Changes the batch size requested when selecting or fetching more rows.
+    */
+    setFetchSize(fetchSize: number): void {
 		if (Number.isInteger(fetchSize) && fetchSize > 0)
 			this.#m_fetchSize = fetchSize;
 	}
 
-	/**
-	 * Reads the configured page size.
-	 * @returns Maximum requested rows per page, initially 100.
-	 */
-	fetchSize(): number {
+    /**
+    * Maximum batch size requested when fetching model records.
+    * The initial value is `100`.
+    */
+    fetchSize(): number {
 		return this.#m_fetchSize;
 	}
 
-	/**
-	 * Reads the model's estimate of the total matching rows across pages.
-	 * @returns Total known row count, including rows that have yet to be loaded.
-	 */
-	totalRowCount(): number {
+    /**
+    * Returns the total row count reported by the adapter, including unloaded records.
+    */
+    totalRowCount(): number {
 		return this.#m_totalRowCount;
 	}
 
-	/**
-	 * Reads the requested SQL sort column.
-	 * @returns Zero-based display column, or `-1` when no sort column is selected.
-	 */
-	sortColumn(): number {
+    /**
+    * Model column currently used for ordering.
+    * The initial value is `-1`.
+    */
+    sortColumn(): number {
 		return this.#m_sortColumn;
 	}
 
-	/**
-	 * Reads the configured sort direction.
-	 * @returns Ascending or descending order.
-	 */
-	sortOrder(): CSortOrder {
+    /**
+    * Ascending or descending sort direction.
+    * The initial value is `CSortOrder.AscendingOrder`.
+    */
+    sortOrder(): CSortOrder {
 		return this.#m_sortOrder;
 	}
 
-	/**
-	 * Changes the adapter-side sort and starts a reload when the requested ordering differs.
-	 * @param column Zero-based display column, or `-1` to clear sorting. Out-of-range columns are ignored.
-	 * @param order Direction to request. Defaults to ascending.
-	 */
 	override sort(
 		column: number,
 		order: CSortOrder = CSortOrder.AscendingOrder
@@ -202,71 +201,50 @@ export class CSqlTableModel extends CAbstractTableModel {
 		this.#reload();
 	}
 
-	/**
-	 * Lists the filters used for selection requests.
-	 * @returns An array of shallow copies of the filter descriptors.
-	 */
-	filters(): readonly CSqlFilter[] {
+    /**
+    * Returns the structured filters used in select requests.
+    */
+    filters(): readonly CSqlFilter[] {
 		return this.#m_filters.map(filter => ({ ...filter }));
 	}
 
-	/**
-	 * Replaces all filters with a single filter and starts a reload.
-	 * @param filter Filter to apply.
-	 */
-	setFilter(filter: CSqlFilter): void {
+    /**
+    * Replaces active filters with one structured filter.
+    */
+    setFilter(filter: CSqlFilter): void {
 		this.setFilters([filter]);
 	}
 
-	/**
-	 * Replaces the active filter descriptors and starts a reload.
-	 * @param filters Filters to pass to the adapter. Each descriptor is shallow-copied.
-	 */
-	setFilters(filters: readonly CSqlFilter[]): void {
+    /**
+    * Replaces active structured filters for subsequent select requests.
+    */
+    setFilters(filters: readonly CSqlFilter[]): void {
 		this.#m_filters = filters.map(filter => ({ ...filter }));
 		this.#reload();
 	}
 
-	/** Removes all active filters and starts a reload if any filters were set. */
-	clearFilter(): void {
+    /**
+    * Removes structured query filters.
+    */
+    clearFilter(): void {
 		if (this.#m_filters.length === 0)
 			return;
 		this.#m_filters = [];
 		this.#reload();
 	}
 
-	/**
-	 * Checks whether another page can be requested.
-	 * @param _parent Parent index. This flat model ignores it.
-	 * @returns `true` if the model is idle for loading and fewer rows are loaded than the known total.
-	 */
 	override canFetchMore(_parent = new CModelIndex()): boolean {
 		return !this.#m_loading && this.#m_rows.length < this.#m_totalRowCount;
 	}
 
-	/**
-	 * Counts the rows currently held by the model.
-	 * @param _parent Parent index. This flat model ignores it.
-	 * @returns Number of loaded rows.
-	 */
 	override rowCount(_parent = new CModelIndex()): number {
 		return this.#m_rows.length;
 	}
 
-	/**
-	 * Counts the columns currently exposed by the model.
-	 * @param _parent Parent index. This flat model ignores it.
-	 * @returns Number of display columns.
-	 */
 	override columnCount(_parent = new CModelIndex()): number {
 		return this.#m_columns.length;
 	}
 
-	/**
-	 * Reads a loaded cell, including any pending local edit.
-	 * @param index Index in this model.
-	 * @returns Cell value, or `null` for an invalid or missing cell or a nullish value.
-	 */
 	override data(index: CModelIndex): unknown {
 		const column = this.#columnAt(index);
 		if (column === null)
@@ -275,12 +253,6 @@ export class CSqlTableModel extends CAbstractTableModel {
 		return this.#m_rows[index.row()]?.[column] ?? null;
 	}
 
-	/**
-	 * Reads the row number or configured column heading.
-	 * @param section Zero-based header section.
-	 * @param orientation Vertical for row numbers or horizontal for column headings.
-	 * @returns One-based row number, custom label, column name, or `null` for a missing horizontal section.
-	 */
 	override headerData(
 		section: number,
 		orientation: COrientation
@@ -295,22 +267,11 @@ export class CSqlTableModel extends CAbstractTableModel {
 		return this.#m_headers.get(column) ?? column;
 	}
 
-	/**
-	 * Checks whether a loaded cell can be edited through the model.
-	 * @param index Index in this model.
-	 * @returns `true` for a valid loaded cell outside the primary-key column.
-	 */
 	override isEditable(index: CModelIndex): boolean {
 		const column = this.#columnAt(index);
 		return column !== null && column !== this.#m_primaryKey;
 	}
 
-	/**
-	 * Updates a writable cell locally and emits a data change when its value differs. Field-change mode queues a write. Row-change mode submits the previous edited row when editing moves to a different row.
-	 * @param index Index of a writable loaded cell in this model.
-	 * @param value New value to store.
-	 * @returns `true` if accepted locally, including an unchanged value. Persistence may finish later.
-	 */
 	override setItemData(index: CModelIndex, value: unknown): boolean {
 		const column = this.#columnAt(index);
 		if (column === null || column === this.#m_primaryKey)
@@ -341,11 +302,8 @@ export class CSqlTableModel extends CAbstractTableModel {
 		return true;
 	}
 
-	/**
-	 * Loads the first page using the current sort and filters. On success, replaces loaded rows, clears pending edit bookkeeping and emits a reset.
-	 * @returns A promise resolving to `true` on load success or `false` if no table is configured or the adapter fails.
-	 */
-	async select(): Promise<boolean> {
+    /** Reloads the complete table from the adapter. */
+    async select(): Promise<boolean> {
 		if (!this.#requireTable("select"))
 			return false;
 
@@ -375,12 +333,8 @@ export class CSqlTableModel extends CAbstractTableModel {
 		}
 	}
 
-	/**
-	 * Loads the next page at the current row count and appends it with row-insertion notifications.
-	 * @param _parent Parent index. This flat model ignores it.
-	 * @returns A promise resolving to `true` if rows were appended or `false` if unavailable, empty or unsuccessful.
-	 */
-	override async fetchMore(
+    /** Appends the next block of rows when more data is available. */
+    override async fetchMore(
 		_parent = new CModelIndex()
 	): Promise<boolean> {
 		if (!this.canFetchMore() || !this.#requireTable("select"))
@@ -418,12 +372,8 @@ export class CSqlTableModel extends CAbstractTableModel {
 		}
 	}
 
-	/**
-	 * Inserts a record through the adapter immediately and appends the returned row to the loaded data.
-	 * @param values Column names and initial values for the new record.
-	 * @returns A promise resolving to `true` if the row was inserted and appended.
-	 */
-	async insertRecord(values: Readonly<CSqlRow>): Promise<boolean> {
+    /** Inserts a record and appends the adapter-returned row to the model. */
+    async insertRecord(values: Readonly<CSqlRow>): Promise<boolean> {
 		if (!this.#requireTable("insert"))
 			return false;
 
@@ -448,12 +398,8 @@ export class CSqlTableModel extends CAbstractTableModel {
 		}
 	}
 
-	/**
-	 * Deletes a loaded row by primary key and removes it locally after the adapter confirms deletion.
-	 * @param row Zero-based loaded row index.
-	 * @returns A promise resolving to `true` if removed or `false` for an absent row, a missing key or a failed deletion.
-	 */
-	async removeRow(row: number): Promise<boolean> {
+    /** Removes a row after the adapter confirms deletion. */
+    async removeRow(row: number): Promise<boolean> {
 		if (!this.#requireTable("remove"))
 			return false;
 
@@ -488,11 +434,8 @@ export class CSqlTableModel extends CAbstractTableModel {
 		}
 	}
 
-	/**
-	 * Attempts to persist all dirty rows in row order and clears the active edit row.
-	 * @returns A promise resolving to `true` if all attempted writes succeeded, including when there were no edits.
-	 */
-	async submitAll(): Promise<boolean> {
+    /** Submits all pending changes. */
+    async submitAll(): Promise<boolean> {
 		const rows = [...this.#m_dirtyColumns.keys()].sort((a, b) => a - b);
 		let succeeded = true;
 
@@ -506,12 +449,8 @@ export class CSqlTableModel extends CAbstractTableModel {
 		return succeeded;
 	}
 
-	/**
-	 * Queues the dirty columns of one row for persistence.
-	 * @param row Zero-based loaded row index.
-	 * @returns A promise resolving to the write result, or `true` when the row has no dirty columns.
-	 */
-	async submitRow(row: number): Promise<boolean> {
+    /** Submits pending changes in one row. */
+    async submitRow(row: number): Promise<boolean> {
 		const columns = [...(this.#m_dirtyColumns.get(row) ?? [])];
 		if (columns.length === 0)
 			return true;
@@ -522,19 +461,16 @@ export class CSqlTableModel extends CAbstractTableModel {
 		return result;
 	}
 
-	/** Restores the last committed local values, clears dirty tracking and emits a reset. Previously issued adapter requests are not canceled. */
-	revertAll(): void {
+    /** Discards all changes that have not been submitted successfully. */
+    revertAll(): void {
 		this.#m_rows = this.#m_committedRows.map(row => ({ ...row }));
 		this.#m_dirtyColumns.clear();
 		this.#m_activeRow = null;
 		this.resetModel();
 	}
 
-	/**
-	 * Waits until all tracked automatic submissions and reloads have settled.
-	 * @returns A promise that resolves when the tracked operation set is empty.
-	 */
-	async whenIdle(): Promise<void> {
+    /** Resolves when all automatically started writes have completed. */
+    async whenIdle(): Promise<void> {
 		while (this.#m_pendingOperations.size > 0)
 			await Promise.all([...this.#m_pendingOperations]);
 	}
@@ -571,6 +507,9 @@ export class CSqlTableModel extends CAbstractTableModel {
 	#markDirty(row: number, column: string): void {
 		let columns = this.#m_dirtyColumns.get(row);
 		if (columns === undefined) {
+			/**
+			 * Returns the configured model column names.
+			 */
 			columns = new Set<string>();
 			this.#m_dirtyColumns.set(row, columns);
 		}
@@ -679,12 +618,8 @@ export class CSqlTableModel extends CAbstractTableModel {
 		return false;
 	}
 
-	/**
-	 * Records an operation error and emits `errorOccurred`.
-	 * @param operation SQL operation associated with the error.
-	 * @param error Thrown or rejected value to convert to a `CSqlError`.
-	 */
-	protected reportError(operation: CSqlOperation, error: unknown): void {
+    /** Stores and emits an adapter error for subclasses implementing SQL operations. */
+    protected reportError(operation: CSqlOperation, error: unknown): void {
 		this.#m_lastError = CSqlError.from(operation, error);
 		this.errorOccurred.emit(this.#m_lastError);
 	}

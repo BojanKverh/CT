@@ -1,3 +1,4 @@
+/** @module Widgets/CSizeGrip */
 import { CApplication } from "../core/CApplication.js";
 import { CWidget } from "./CWidget.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
@@ -7,7 +8,7 @@ import type { CPainter } from "../painting/CPainter.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CStyleOptionSizeGrip } from "../gui/CStyleOptionSizeGrip.js";
 
-/** Implements the size grip widget. */
+/** Drag handle that resizes its target widget within configured constraints. */
 export class CSizeGrip extends CWidget
 {
 	#m_pressed = false;
@@ -16,10 +17,12 @@ export class CSizeGrip extends CWidget
 	#m_pressWidth = 0;
 	#m_pressHeight = 0;
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null)
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null)
 	{
-		/** Provides super behavior. */
 		super(parent);
 
 		this.setCursor(CCursorShape.SizeFDiag);
@@ -28,19 +31,12 @@ export class CSizeGrip extends CWidget
         this.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
-    /**
-     * Hiding or disabling a grip terminates any active pointer resize.
-     * @param visible Whether to show the target.
-     */
+    /** Hiding or disabling a grip terminates any active pointer resize. */
     override setVisible(visible: boolean): void {
         if (!visible) this.#cancelResize();
         super.setVisible(visible);
     }
 
-    /**
-     * Sets the enabled.
-     * @param enabled Whether to enable the feature.
-     */
     override setEnabled(enabled: boolean): void {
         if (!enabled) this.#cancelResize();
         super.setEnabled(enabled);
@@ -52,22 +48,13 @@ export class CSizeGrip extends CWidget
             CApplication.instance().releaseMouse();
     }
 
-	/**
-	 * Returns the preferred size of the widget.
-	 * @returns A new `CSize`.
-	 */
 	override sizeHint(): CSize
 	{
 		return new CSize(16, 16);
 	}
 
-	/**
-	 * Responds to a pointer button press for the size grip. May update the pressed, the press x, the press y, the press width. May accept or ignore the event depending on the input.
-	 * @param event Event for a pointer button press.
-	 */
 	protected override mousePressEvent(event: CMouseEvent): void
 	{
-		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -75,7 +62,6 @@ export class CSizeGrip extends CWidget
 
 		const parent = this.parent();
 
-		/** Provides if behavior. */
 		if (!parent) {
 			event.ignore();
 			return;
@@ -92,13 +78,8 @@ export class CSizeGrip extends CWidget
 		event.accept();
 	}
 
-	/**
-	 * Responds to pointer movement for the size grip. May accept or ignore the event depending on the input.
-	 * @param event Event for pointer movement.
-	 */
 	protected override mouseMoveEvent(event: CMouseEvent): void
 	{
-		/** Provides if behavior. */
 		if (!this.#m_pressed) {
 			event.ignore();
 			return;
@@ -106,7 +87,6 @@ export class CSizeGrip extends CWidget
 
 		const parent = this.parent();
 
-		/** Provides if behavior. */
 		if (!parent) {
 			event.ignore();
 			return;
@@ -133,13 +113,8 @@ export class CSizeGrip extends CWidget
 		event.accept();
 	}
 
-	/**
-	 * Responds to a pointer button release for the size grip. May update the pressed. May accept or ignore the event depending on the input.
-	 * @param event Event for a pointer button release.
-	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void
 	{
-		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -150,10 +125,6 @@ export class CSizeGrip extends CWidget
 		event.accept();
 	}
 
-	/**
-	 * Draws the size grip through the supplied painter.
-	 * @param painter Painter for the current drawing operation.
-	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionSizeGrip();
 		option.initFromSizeGrip(this);

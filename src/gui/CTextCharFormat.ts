@@ -1,3 +1,4 @@
+/** @module GUI/CTextCharFormat */
 /**
  * Defines the supported font weights.
  */
@@ -15,12 +16,10 @@ export class CTextCharFormat {
 	#m_underline = false;
 	#m_anchorHref: string | null = null;
 
-		/**
-	 * Creates a new CTextCharFormat instance.
-	 *
-	 * @param other Other.
-	 */
-constructor(other: CTextCharFormat | null = null) {
+    /**
+    * Copies character formatting from other, or starts with normal weight and no color, family, size or hyperlink override.
+    */
+    constructor(other: CTextCharFormat | null = null) {
 		if (other === null)
 			return;
 
@@ -33,159 +32,140 @@ constructor(other: CTextCharFormat | null = null) {
 		this.#m_anchorHref = other.anchorHref();
 	}
 
-		/**
- * Copies the typography, foreground and link attributes.
- * @returns Independent copy of this format.
- */
-clone(): CTextCharFormat {
+    /**
+    * Creates an independent copy of this object.
+    *
+    */
+    clone(): CTextCharFormat {
 		return new CTextCharFormat(this);
 	}
 
-		/**
- * Reads the stored font weight.
- * @returns Current font weight.
- */
-fontWeight(): CFontWeight {
+    /**
+    * Normal or bold character weight; newly constructed formats use normal.
+    */
+    fontWeight(): CFontWeight {
 		return this.#m_fontWeight;
 	}
 
-		/**
-	 * Sets the font weight.
-	 *
-	 * @param weight Weight.
-	 */
-setFontWeight(weight: CFontWeight): void {
+    /**
+    * Chooses normal or bold character weight.
+    */
+    setFontWeight(weight: CFontWeight): void {
 		this.#m_fontWeight = weight;
 	}
 
-		/**
- * Tests this format's explicit bold setting.
- * @returns `true` if the weight is the string `bold`.
- */
-fontBold(): boolean {
+    /**
+    * Whether character weight is bold; equivalent to fontWeight() === "bold".
+    */
+    fontBold(): boolean {
 		return this.#m_fontWeight === "bold";
 	}
 
-		/**
-	 * Sets the font bold.
-	 *
-	 * @param bold Bold.
-	 */
-setFontBold(bold: boolean): void {
+    /**
+    * Sets character weight to bold when true, otherwise normal.
+    */
+    setFontBold(bold: boolean): void {
 		this.#m_fontWeight = bold ? "bold" : "normal";
 	}
 
-		/**
- * Reads the italic flag.
- * @returns `true` if italic styling is enabled.
- */
-fontItalic(): boolean {
+    /**
+    * Whether characters use italic formatting.
+    * The initial value is `false`.
+    */
+    fontItalic(): boolean {
 		return this.#m_italic;
 	}
 
-		/**
-	 * Sets the font italic.
-	 *
-	 * @param italic Italic.
-	 */
-setFontItalic(italic: boolean): void {
+    /**
+    * Controls italic styling for this character format.
+    */
+    setFontItalic(italic: boolean): void {
 		this.#m_italic = italic;
 	}
 
-		/**
- * Reads the foreground override.
- * @returns Color string, or `null` to inherit the surrounding foreground.
- */
-foreground(): string | null {
+    /**
+    * Explicit CSS text color, or null when the surrounding text color should be used.
+    */
+    foreground(): string | null {
 		return this.#m_foreground;
 	}
 
-		/**
-	 * Sets the foreground.
-	 *
-	 * @param color Color.
-	 */
-setForeground(color: string | null): void {
+    /**
+    * Assigns a character foreground color. Null clears the override.
+    */
+    setForeground(color: string | null): void {
 		this.#m_foreground = color;
 	}
 
-		/**
- * Reads the font family override.
- * @returns Family name, or `null` if no override is set.
- */
-fontFamily(): string | null {
+    /**
+    * Explicit family override for character formatting.
+    * The initial value is `null`.
+    */
+    fontFamily(): string | null {
 		return this.#m_fontFamily;
 	}
 
-		/**
-	 * Sets the font family.
-	 *
-	 * @param family Family.
-	 */
-setFontFamily(family: string | null): void {
+    /**
+    * Assigns a character font-family override. Null restores the surrounding font family.
+    */
+    setFontFamily(family: string | null): void {
 		this.#m_fontFamily = family;
 	}
 
-		/**
- * Reads the font size override.
- * @returns Font size in pixels, or `null` if no override is set.
- */
-fontSize(): number | null {
+    /**
+    * Explicit pixel-size override for character formatting.
+    * The initial value is `null`.
+    */
+    fontSize(): number | null {
 		return this.#m_fontSize;
 	}
 
-		/**
-	 * Sets the font size.
-	 *
-	 * @param size Font size in pixels, or null to clear the explicit size.
-	 */
-setFontSize(size: number | null): void {
+    /**
+    * Assigns a positive pixel-size override. Null clears it; non-positive sizes throw RangeError.
+    */
+    setFontSize(size: number | null): void {
 		if (size !== null && size <= 0)
 			throw new RangeError("Font size must be greater than zero.");
 
 		this.#m_fontSize = size;
 	}
 
-		/**
- * Reads the underline flag.
- * @returns `true` if underline styling is enabled.
- */
-fontUnderline(): boolean {
+    /**
+    * Whether characters use underline formatting.
+    * The initial value is `false`.
+    */
+    fontUnderline(): boolean {
 		return this.#m_underline;
 	}
 
-		/**
-	 * Sets the font underline.
-	 *
-	 * @param underline Underline.
-	 */
-setFontUnderline(underline: boolean): void {
+    /**
+    * Controls underline decoration for characters in this format.
+    */
+    setFontUnderline(underline: boolean): void {
 		this.#m_underline = underline;
 	}
 
-		/**
- * Reads the anchor target attached to the format.
- * @returns Link target string, or `null` for a non-link format.
- */
-anchorHref(): string | null {
+    /**
+    * Hyperlink destination attached to this character run, or null when it is not a link.
+    */
+    anchorHref(): string | null {
 		return this.#m_anchorHref;
 	}
 
-		/**
-	 * Sets the anchor href.
-	 *
-	 * @param href Href.
-	 */
-setAnchorHref(href: string | null): void {
+    /**
+    * Associates characters with a hyperlink target or clears the target with null.
+    */
+    setAnchorHref(href: string | null): void {
 		this.#m_anchorHref = href;
 	}
 
-		/**
- * Compares all stored typography, foreground and anchor attributes.
- * @param other Format to compare.
- * @returns `true` if all attributes match.
- */
-equals(other: CTextCharFormat): boolean {
+    /**
+    * Returns whether this object is equal to another object.
+    *
+    * @param other Other.
+    *
+    */
+    equals(other: CTextCharFormat): boolean {
 		return this.#m_fontWeight === other.#m_fontWeight
 			&& this.#m_italic === other.#m_italic
 			&& this.#m_foreground === other.#m_foreground

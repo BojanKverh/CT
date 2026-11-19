@@ -1,3 +1,4 @@
+/** @module Animation/CPropertyAnimation */
 import type { CObject } from "../core/CObject.js";
 import { CAnimationState, CAnimationDirection } from "./CAbstractAnimation.js";
 import { CEasingCurve, CEasingCurveType } from "./CEasingCurve.js";
@@ -14,6 +15,11 @@ export class CPropertyAnimation<T extends CAnimationValue = number> extends CVar
     #configurationDepth = 0;
     #valueRevision = 0;
 
+    /**
+    * Binds an animation timeline to a property accessor on a target object.
+    * @param setter Input used to configure CPropertyAnimation.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
     constructor(setter: (value: T) => void, parent: CObject | null = null) {
         if (typeof setter !== "function") throw new TypeError("A property setter is required.");
         super(parent);
@@ -25,70 +31,29 @@ export class CPropertyAnimation<T extends CAnimationValue = number> extends CVar
         });
     }
 
-    /**
-     * Replaces the starting value. While stopped, the change does not write to the target.
-     * @param value Finite value of the same kind as the other endpoints and keys.
-     */
     override setStartValue(value: T): void {
         this.#configure(() => super.setStartValue(value));
     }
-    /**
-     * Replaces the ending value. While stopped, the change does not write to the target.
-     * @param value Finite value of the same kind as the other endpoints and keys.
-     */
     override setEndValue(value: T): void {
         this.#configure(() => super.setEndValue(value));
     }
-    /**
-     * Inserts or replaces a key at an eased progress step. While stopped, the change does not write to the target.
-     * @param step Finite step between zero and one, inclusive.
-     * @param value Finite value matching the animation's value kind.
-     */
     override setKeyValueAt(step: number, value: T): void {
         this.#configure(() => super.setKeyValueAt(step, value));
     }
-    /**
-     * Replaces intermediate keys and updates supplied endpoints. While stopped, the change does not write to the target.
-     * @param values Pairs of eased progress steps and matching finite values.
-     */
     override setKeyValues(values: readonly CAnimationKeyValue<T>[]): void {
         this.#configure(() => super.setKeyValues(values));
     }
-    /**
-     * Changes the time allocated to one pass. While stopped, the change does not write to the target.
-     * @param duration Finite nonnegative duration in milliseconds. Endless playback requires a positive duration.
-     */
     override setDuration(duration: number): void {
         this.#configure(() => super.setDuration(duration));
     }
-    /**
-     * Changes the mapping from elapsed to interpolated progress. While stopped, the change does not write to the target.
-     * @param curve Curve object to copy or a supported curve type.
-     */
     override setEasingCurve(curve: CEasingCurve | CEasingCurveType): void {
         this.#configure(() => super.setEasingCurve(curve));
     }
 
-    /**
-     * Changes the number of passes. While stopped, the change does not write to the target.
-     * @param count Nonnegative safe integer number of passes or `-1` for unbounded playback.
-     */
     override setLoopCount(count: number): void { this.#configure(() => super.setLoopCount(count)); }
-    /**
-     * Changes the configured playback direction. While stopped, the change does not write to the target.
-     * @param direction Forward or backward direction.
-     */
     override setDirection(direction: CAnimationDirection): void { this.#configure(() => super.setDirection(direction)); }
-    /**
-     * Changes whether consecutive loops alternate direction. While stopped, the change does not write to the target.
-     * @param enabled `true` to reverse every odd-numbered loop.
-     */
     override setAutoReverse(enabled: boolean): void { this.#configure(() => super.setAutoReverse(enabled)); }
 
-    /**
-     * Interpolates the value and writes it to the bound setter even when it has not changed, unless stopped configuration is suppressing writes.
-     * @param time Direction-adjusted time in milliseconds within the current pass.
-     */
     protected override updateCurrentTime(time: number): void {
         const previous = this.#valueRevision;
         super.updateCurrentTime(time);
@@ -111,7 +76,6 @@ export class CPropertyAnimation<T extends CAnimationValue = number> extends CVar
         if (!this.isDestroyed()) this.#setter?.(this.currentValue());
     }
 
-    /** Releases the bound setter and its captured references, then destroys the animation. */
     override destroy(): void {
         // Release references captured by the callback, including on reentrant destroy.
         this.#setter = null;

@@ -1,3 +1,4 @@
+/** @module Widgets/CToolBar */
 import { CAction } from "../core/CAction.js";
 import { CSize } from "../geometry/CSize.js";
 import { COrientation } from "../gui/COrientation.js";
@@ -11,14 +12,14 @@ import type { CMainWindow } from "./CMainWindow.js";
 
 /** Defines the available tool bar area values. */
 export enum CToolBarArea {
-	/** Represents left. */
-	Left,
-	/** Represents right. */
-	Right,
-	/** Represents top. */
-	Top,
-	/** Represents bottom. */
-	Bottom
+    /** Represents left. */
+    Left,
+    /** Represents right. */
+    Right,
+    /** Represents top. */
+    Top,
+    /** Represents bottom. */
+    Bottom
 }
 
 type CToolBarItem =
@@ -48,11 +49,10 @@ class CToolBarSeparator extends CWidget {
 		this.#m_orientation = orientation;
 	}
 
-	/**
-	 * Sets the orientation. May request a repaint.
-	 * @param orientation Horizontal or vertical orientation.
-	 */
-	setOrientation(orientation: COrientation): void {
+    /**
+    * Changes whether toolbar entries are arranged horizontally or vertically.
+    */
+    setOrientation(orientation: COrientation): void {
 		if (this.#m_orientation === orientation)
 			return;
 
@@ -60,10 +60,6 @@ class CToolBarSeparator extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Draws the tool bar separator through the supplied painter.
-	 * @param painter Painter for the current drawing operation.
-	 */
 	protected override paintEvent(painter: CPainter): void {
 		const palette = this.palette();
 
@@ -91,13 +87,18 @@ class CToolBarSeparator extends CWidget {
 	}
 }
 
-/** Implements the tool bar widget. */
+/** Action strip with buttons, separators, custom widgets and docking integration. */
 export class CToolBar extends CWidget {
-	static readonly DefaultExtent = 36;
-	static readonly Spacing = 2;
-	static readonly Margin = 4;
-	static readonly SeparatorExtent = 8;
-	static readonly GripExtent = 12;
+    /** Default toolbar thickness along its cross axis. */
+    static readonly DefaultExtent = 36;
+    /** Default logical gap between adjacent items. */
+    static readonly Spacing = 2;
+    /** Default logical inset around contents. */
+    static readonly Margin = 4;
+    /** Logical space allocated to a toolbar separator. */
+    static readonly SeparatorExtent = 8;
+    /** Logical space allocated to the toolbar drag grip. */
+    static readonly GripExtent = 12;
 
 	#m_items: CToolBarItem[] = [];
 	#m_workspaceId = "";
@@ -111,93 +112,86 @@ export class CToolBar extends CWidget {
 	#m_mainWindow: CMainWindow | null = null;
 	#m_extent = CToolBar.DefaultExtent;
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null) {
-		/** Provides super behavior. */
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null) {
 		super(parent);
 	}
 
-	/**
-	 * Reads the workspace id.
-	 * @returns The workspace id.
-	 */
-	workspaceId(): string {
+    /**
+    * Stable identifier used to match this component during state restoration.
+    * The initial value is `""`.
+    */
+    workspaceId(): string {
 		return this.#m_workspaceId;
 	}
 
-	/**
-	 * Sets the workspace id.
-	 * @param id Id.
-	 */
-	setWorkspaceId(id: string): void {
+    /**
+    * Sets a stable toolbar identifier for workspace restoration.
+    */
+    setWorkspaceId(id: string): void {
 		this.#m_workspaceId = id;
 	}
 
-	/**
-	 * Checks whether the tool bar is movable.
-	 * @returns `true` if the tool bar is movable, otherwise `false`.
-	 */
-	isMovable(): boolean {
+    /**
+    * Reports whether the toolbar's drag grip is available.
+    */
+    isMovable(): boolean {
 		return this.#m_movable;
 	}
 
-	/**
-	 * Sets the movable.
-	 * @param movable Movable flag.
-	 */
-	setMovable(movable: boolean): void {
+    /**
+    * Enables or disables user dragging through the toolbar grip.
+    */
+    setMovable(movable: boolean): void {
 		this.#m_movable = movable;
 		this.update();
 	}
 
-	/**
-	 * Checks whether the tool bar is floating.
-	 * @returns `true` if the tool bar is floating, otherwise `false`.
-	 */
-	isFloating(): boolean {
+    /**
+    * Whether the panel is displayed outside its dock area.
+    * The initial value is `false`.
+    */
+    isFloating(): boolean {
 		return this.#m_floating;
 	}
 
-	/**
-	 * Sets the floating state.
-	 * @param floating Floating flag.
-	 */
-	setFloatingState(floating: boolean): void {
+    /**
+    * @internal Updates floating presentation after a docking operation.
+    */
+    setFloatingState(floating: boolean): void {
 		this.#m_floating = floating;
 	}
 
-	/**
-	 * Reads the main window.
-	 * @returns The main window.
-	 */
-	mainWindow(): CMainWindow | null {
+    /**
+    * Returns the window managing this toolbar, or null.
+    */
+    mainWindow(): CMainWindow | null {
 		return this.#m_mainWindow;
 	}
 
-	/**
-	 * Sets the main window.
-	 * @param mainWindow Main window.
-	 */
-	setMainWindow(mainWindow: CMainWindow | null): void {
+    /**
+    * @internal Assigns the window responsible for toolbar docking.
+    */
+    setMainWindow(mainWindow: CMainWindow | null): void {
 		this.#m_mainWindow = mainWindow;
 	}
 
-	/**
-	 * Reads the extent.
-	 * @returns The extent.
-	 */
-	extent(): number {
+    /**
+    * Returns the logical cross-axis thickness of the toolbar.
+    */
+    extent(): number {
 		return this.#m_extent;
 	}
 
-	/**
-	 * Sets the extent.
-	 * @param extent Extent.
-	 */
-	setExtent(extent: number): void {
+    /**
+    * Changes logical toolbar thickness and updates managed item geometry.
+    */
+    setExtent(extent: number): void {
 		const value = Math.max(0, extent);
 
-		/** Provides if behavior. */
 		if (this.#m_extent === value)
 			return;
 
@@ -205,28 +199,24 @@ export class CToolBar extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Reads the orientation.
-	 * @returns The orientation.
-	 */
-	orientation(): COrientation {
+    /**
+    * Axis along which the control arranges its contents.
+    * The initial value is `COrientation.Horizontal`.
+    */
+    orientation(): COrientation {
 		return this.#m_orientation;
 	}
 
-	/**
-	 * Sets the orientation.
-	 * @param orientation Horizontal or vertical orientation.
-	 */
-	setOrientation(orientation: COrientation): void {
-		/** Provides if behavior. */
+    /**
+    * Changes whether toolbar entries are arranged horizontally or vertically.
+    */
+    setOrientation(orientation: COrientation): void {
 		if (this.#m_orientation === orientation)
 			return;
 
 		this.#m_orientation = orientation;
 
-		/** Provides for behavior. */
 		for (const item of this.#m_items) {
-			/** Provides if behavior. */
 			if (item.type === "separator")
 				item.widget.setOrientation(orientation);
 		}
@@ -235,20 +225,15 @@ export class CToolBar extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Counts the entries in the tool bar.
-	 * @returns The number of entries in the items.
-	 */
-	count(): number {
+    /**
+    * Returns the number of retained toolbar entries.
+    */
+    count(): number {
 		return this.#m_items.length;
 	}
 
-	/**
-	 * Adds action.
-	 * @param action Action.
-	 * @returns The add action.
-	 */
-	addAction(action: CAction): CToolButton {
+    /** Adds action. */
+    addAction(action: CAction): CToolButton {
 		const button = new CToolButton(this);
 
 		button.setDefaultAction(action);
@@ -262,11 +247,8 @@ export class CToolBar extends CWidget {
 		return button;
 	}
 
-	/**
-	 * Adds separator.
-	 * @returns The add separator.
-	 */
-	addSeparator(): CWidget {
+    /** Adds separator. */
+    addSeparator(): CWidget {
 		const separator = new CToolBarSeparator(
 			this.#m_orientation,
 			this
@@ -283,12 +265,8 @@ export class CToolBar extends CWidget {
 		return separator;
 	}
 
-	/**
-	 * Reparents a custom widget into the toolbar, appends it to the item list and recalculates geometry.
-	 * @param widget Widget to add.
-	 * @returns The same widget instance.
-	 */
-	addWidget(widget: CWidget): CWidget {
+    /** Adds widget. */
+    addWidget(widget: CWidget): CWidget {
 		widget.setParent(this);
 
 		this.#m_items.push({type: "widget", widget});
@@ -298,30 +276,23 @@ export class CToolBar extends CWidget {
 		return widget;
 	}
 
-	/**
-	 * Looks up an action by its position among all toolbar items.
-	 * @param index Zero-based toolbar item index.
-	 * @returns The action, or `null` if that position is absent or holds a different item type.
-	 */
-	actionAt(index: number): CAction | null {
+    /**
+    * Returns the action associated with an entry position, or null.
+    */
+    actionAt(index: number): CAction | null {
 		const item = this.#m_items[index];
 
-		/** Provides if behavior. */
 		if (item === undefined || item.type !== "action")
 			return null;
 
 		return item.action;
 	}
 
-	/**
-	 * Looks up the first button representing an action.
-	 * @param action Action to match by identity.
-	 * @returns Associated tool button, or `null` if no item represents the action.
-	 */
-	widgetForAction(action: CAction): CToolButton | null {
-		/** Provides for behavior. */
+    /**
+    * Returns the widget representing a registered action, or null.
+    */
+    widgetForAction(action: CAction): CToolButton | null {
 		for (const item of this.#m_items) {
-			/** Provides if behavior. */
 			if (
 				item.type === "action" &&
 				item.action === action
@@ -333,9 +304,8 @@ export class CToolBar extends CWidget {
 		return null;
 	}
 
-	/** Clears the current contents. */
-	clear(): void {
-		/** Provides for behavior. */
+    /** Clears the current contents. */
+    clear(): void {
 		for (const item of this.#m_items) {
 			const widget = item.type === "action"
 				? item.button
@@ -349,16 +319,10 @@ export class CToolBar extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Returns the preferred size of the widget.
-	 * @returns The size hint.
-	 */
 	override sizeHint(): CSize {
 		let extent = CToolBar.Margin * 2 + CToolBar.GripExtent;
 
-		/** Provides for behavior. */
 		for (const item of this.#m_items) {
-			/** Provides if behavior. */
 			if (item.type === "separator") {
 				extent += CToolBar.SeparatorExtent + CToolBar.Spacing;
 				continue;
@@ -376,7 +340,6 @@ export class CToolBar extends CWidget {
 			) + CToolBar.Spacing;
 		}
 
-		/** Provides if behavior. */
 		if (this.#m_items.length > 0)
 			extent -= CToolBar.Spacing;
 
@@ -385,13 +348,6 @@ export class CToolBar extends CWidget {
 			: new CSize(this.#m_extent, extent);
 	}
 
-	/**
-	 * Sets the geometry.
-	 * @param x Horizontal position in parent coordinates.
-	 * @param y Vertical position in parent coordinates.
-	 * @param width Width in logical pixels.
-	 * @param height Height in logical pixels.
-	 */
 	override setGeometry(
 		x: number,
 		y: number,
@@ -403,38 +359,23 @@ export class CToolBar extends CWidget {
 		this.#updateItemGeometry();
 	}
 
-	/**
-	 * Resizes the width.
-	 * @param width Width in logical pixels.
-	 * @param height Height in logical pixels.
-	 */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 
 		this.#updateItemGeometry();
 	}
 
-	/**
-	 * Draws the tool bar through the supplied painter.
-	 * @param painter Painter for the current drawing operation.
-	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionToolBar();
 		option.initFromToolBar(this);
 
 		this.style().drawToolBar(painter, option);
 
-		/** Provides if behavior. */
 		if (this.#m_movable)
 			this.#drawGrip(painter);
 	}
 
-	/**
-	 * Responds to a pointer button press for the tool bar. May update the drag area, the dragging, the drag offset x, the drag offset y. May accept or ignore the event depending on the input.
-	 * @param event Event for a pointer button press.
-	 */
 	protected override mousePressEvent(event: CMouseEvent): void {
-		/** Provides if behavior. */
 		if (
 			event.button() !== CMouseButton.LeftButton ||
 			!this.#m_movable ||
@@ -445,7 +386,6 @@ export class CToolBar extends CWidget {
 		}
 
 		const mainWindow = this.#m_mainWindow;
-		/** Provides if behavior. */
 		if (mainWindow === null) {
 			event.ignore();
 			return;
@@ -460,19 +400,13 @@ export class CToolBar extends CWidget {
 		event.accept();
 	}
 
-	/**
-	 * Responds to pointer movement for the tool bar. May update the dragging. May accept or ignore the event depending on the input.
-	 * @param event Event for pointer movement.
-	 */
 	protected override mouseMoveEvent(event: CMouseEvent): void {
-		/** Provides if behavior. */
 		if (!this.#m_dragging) {
 			event.ignore();
 			return;
 		}
 
 		const mainWindow = this.#m_mainWindow;
-		/** Provides if behavior. */
 		if (mainWindow === null) {
 			this.#m_dragging = false;
 			event.ignore();
@@ -481,7 +415,6 @@ export class CToolBar extends CWidget {
 
 		const canvasPos = this.mapToCanvas(event.x(), event.y());
 
-		/** Provides if behavior. */
 		if (!this.#m_floating)
 			mainWindow.beginToolBarDrag(this);
 
@@ -492,7 +425,6 @@ export class CToolBar extends CWidget {
 		);
 
 		const parent = this.parent();
-		/** Provides if behavior. */
 		if (parent !== null) {
 			const pos = parent.mapFromCanvas(
 				canvasPos.x(),
@@ -508,12 +440,7 @@ export class CToolBar extends CWidget {
 		event.accept();
 	}
 
-	/**
-	 * Responds to a pointer button release for the tool bar. May update the dragging. May accept or ignore the event depending on the input.
-	 * @param event Event for a pointer button release.
-	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
-		/** Provides if behavior. */
 		if (
 			event.button() !== CMouseButton.LeftButton ||
 			!this.#m_dragging
@@ -525,7 +452,6 @@ export class CToolBar extends CWidget {
 		this.#m_dragging = false;
 
 		const mainWindow = this.#m_mainWindow;
-		/** Provides if behavior. */
 		if (mainWindow !== null) {
 			mainWindow.clearToolBarPreview();
 
@@ -554,15 +480,12 @@ export class CToolBar extends CWidget {
 
 		let position = margin + CToolBar.GripExtent;
 
-		/** Provides for behavior. */
 		for (const item of this.#m_items) {
 			const widget = item.type === "action"
 				? item.button
 				: item.widget;
 
-			/** Provides if behavior. */
 			if (item.type === "separator") {
-				/** Provides if behavior. */
 				if (this.#m_orientation === COrientation.Horizontal) {
 					widget.setGeometry(
 						position,
@@ -588,7 +511,6 @@ export class CToolBar extends CWidget {
 
 			const hint = widget.sizeHint();
 
-			/** Provides if behavior. */
 			if (this.#m_orientation === COrientation.Horizontal) {
 				const height = Math.max(0, this.height() - 2 * margin);
 				widget.setGeometry(position, margin, hint.width(), height);
@@ -606,7 +528,6 @@ export class CToolBar extends CWidget {
 		}
 	}
 	#gripContains(x: number, y: number): boolean {
-		/** Provides if behavior. */
 		if (this.#m_orientation === COrientation.Horizontal) {
 			return x >= 0 &&
 				x < CToolBar.Margin + CToolBar.GripExtent &&
@@ -625,12 +546,10 @@ export class CToolBar extends CWidget {
 			this.palette().color(CPaletteColorRole.Mid).toCss()
 		);
 
-		/** Provides if behavior. */
 		if (this.#m_orientation === COrientation.Horizontal) {
 			const x1 = CToolBar.Margin + 3;
 			const x2 = CToolBar.Margin + 7;
 
-			/** Provides for behavior. */
 			for (let y = 8; y <= this.height() - 8; y += 5) {
 				painter.drawLine(x1, y, x1 + 1, y);
 				painter.drawLine(x2, y, x2 + 1, y);
@@ -639,7 +558,6 @@ export class CToolBar extends CWidget {
 			const y1 = CToolBar.Margin + 3;
 			const y2 = CToolBar.Margin + 7;
 
-			/** Provides for behavior. */
 			for (let x = 8; x <= this.width() - 8; x += 5) {
 				painter.drawLine(x, y1, x, y1 + 1);
 				painter.drawLine(x, y2, x, y2 + 1);

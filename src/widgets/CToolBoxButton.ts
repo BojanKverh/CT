@@ -1,3 +1,4 @@
+/** @module Widgets/CToolBoxButton */
 import type { CKeyEvent } from "../events/CKeyEvent.js";
 import { CAbstractButton } from "./CAbstractButton.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
@@ -7,7 +8,7 @@ import type { CWidget } from "./CWidget.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CStyleOptionToolBoxButton } from "../gui/CStyleOptionToolBoxButton.js";
 
-/** Implements the tool box button widget. */
+/** Focusable page header used by CToolBox; Enter activates the associated page. */
 export class CToolBoxButton extends CAbstractButton
 {
 	static readonly #HEIGHT = 28;
@@ -17,48 +18,47 @@ export class CToolBoxButton extends CAbstractButton
 	#m_down = false;
 	#m_current = false;
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null)
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null)
 	{
-		/** Provides super behavior. */
 		super(parent);
         this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
-	/**
-	 * Checks whether the tool box button is hovered.
-	 * @returns `true` if the tool box button is hovered, otherwise `false`.
-	 */
-	isHovered(): boolean
+    /**
+    * Whether hover feedback is active.
+    * The initial value is `false`.
+    */
+    isHovered(): boolean
 	{
 		return this.#m_hovered;
 	}
 
-	/**
-	 * Checks whether the tool box button is down.
-	 * @returns `true` if the tool box button is down, otherwise `false`.
-	 */
-	isDown(): boolean
+    /**
+    * Whether pressed feedback is active.
+    * The initial value is `false`.
+    */
+    isDown(): boolean
 	{
 		return this.#m_down;
 	}
 
-	/**
-	 * Checks whether the tool box button is current.
-	 * @returns `true` if the tool box button is current, otherwise `false`.
-	 */
-	isCurrent(): boolean
+    /**
+    * Whether this heading belongs to the currently expanded toolbox page.
+    */
+    isCurrent(): boolean
 	{
 		return this.#m_current;
 	}
 
-	/**
-	 * Sets the current.
-	 * @param current Current flag.
-	 */
-	setCurrent(current: boolean): void
+    /**
+    * Sets whether this header represents the toolbox's currently open page.
+    */
+    setCurrent(current: boolean): void
 	{
-		/** Provides if behavior. */
 		if (this.#m_current === current)
 			return;
 
@@ -66,10 +66,6 @@ export class CToolBoxButton extends CAbstractButton
 		this.update();
 	}
 
-	/**
-	 * Returns the preferred size of the widget.
-	 * @returns A new `CSize`.
-	 */
 	override sizeHint(): CSize
 	{
 		return new CSize(
@@ -79,10 +75,6 @@ export class CToolBoxButton extends CAbstractButton
 		);
 	}
 
-    /**
-     * Responds to a key press for the tool box button. May accept the event. May emit `clicked`.
-     * @param event Event for a key press.
-     */
     protected override keyPressEvent(event: CKeyEvent): void {
         if (event.key() !== "Enter" && event.key() !== "Return") {
             super.keyPressEvent(event);
@@ -93,13 +85,8 @@ export class CToolBoxButton extends CAbstractButton
         this.clicked.emit();
     }
 
-	/**
-	 * Responds to a pointer button press for the tool box button. May update the down. May request a repaint and accept or ignore the event depending on the input.
-	 * @param event Event for a pointer button press.
-	 */
 	protected override mousePressEvent(event: CMouseEvent): void
 	{
-		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton ||
 			!this.isEnabled()) {
 			event.ignore();
@@ -112,13 +99,8 @@ export class CToolBoxButton extends CAbstractButton
 		this.update();
 	}
 
-	/**
-	 * Responds to a pointer button release for the tool box button. May update the down. May request a repaint and accept or ignore the event depending on the input. May emit `clicked`.
-	 * @param event Event for a pointer button release.
-	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void
 	{
-		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -130,18 +112,12 @@ export class CToolBoxButton extends CAbstractButton
 		event.accept();
 		this.update();
 
-		/** Provides if behavior. */
 		if (wasDown && this.isEnabled())
 			this.clicked.emit();
 	}
 
-	/**
-	 * Responds to pointer movement for the tool box button. May update the hovered. May request a repaint and accept or ignore the event depending on the input.
-	 * @param event Event for pointer movement.
-	 */
 	protected override mouseMoveEvent(event: CMouseEvent): void
 	{
-		/** Provides if behavior. */
 		if (this.#m_hovered) {
 			event.ignore();
 			return;
@@ -153,13 +129,8 @@ export class CToolBoxButton extends CAbstractButton
 		this.update();
 	}
 
-	/**
-	 * Responds to pointer exit for the tool box button. May update the hovered, the down. May request a repaint and accept or ignore the event depending on the input.
-	 * @param event Event for pointer exit.
-	 */
 	protected override mouseLeaveEvent(event: CMouseEvent): void
     {
-	    /** Provides if behavior. */
 	    if (!this.#m_hovered && !this.#m_down) {
 		    event.ignore();
 		    return;
@@ -172,10 +143,6 @@ export class CToolBoxButton extends CAbstractButton
 	    this.update();
     }
 
-	/**
-	 * Draws the tool box button through the supplied painter.
-	 * @param painter Painter for the current drawing operation.
-	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionToolBoxButton();
 		option.initFromToolBoxButton(this);

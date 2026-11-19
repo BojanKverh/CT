@@ -1,3 +1,4 @@
+/** @module Widgets/CTextBrowser */
 import { CTextEdit } from "./CTextEdit.js";
 import { CWidget } from "./CWidget.js";
 import { CSignal } from "../core/CSignal.js";
@@ -14,10 +15,13 @@ import {
  * painting and formatted hit testing.  CTextBrowser adds only permanent
  * read-only behaviour and hyperlink interaction.
  */
-/** Implements the text browser widget. */
+/** Read-only rich-text surface supporting link activation and navigation history. */
 export class CTextBrowser extends CTextEdit {
-	/** Public anchor clicked member. */
-	readonly anchorClicked = new CSignal<[string]>();
+    /**
+    * Emitted with the destination of a hyperlink activated in the text browser.
+    * @group Signals
+    */
+    readonly anchorClicked = new CSignal<[string]>();
 
 	#m_htmlMode = false;
 	#m_htmlSource: string | null = null;
@@ -25,43 +29,31 @@ export class CTextBrowser extends CTextEdit {
 	#m_pressedAnchor: string | null = null;
 	#m_hoveredAnchor: string | null = null;
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null) {
-		/** Provides super behavior. */
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null) {
 		super(parent);
 		super.setReadOnly(true);
 
 		this.textChanged.connect(() => {
-			/** Provides if behavior. */
 			if (this.#m_htmlMode)
 				this.#m_htmlSource = null;
 		});
 	}
 
-	/**
-	 * Sets the read only.
-	 * @param _readOnly Read only flag. Defaults to `true`. This implementation ignores the argument.
-	 */
 	override setReadOnly(_readOnly: boolean = true): void {
 		super.setReadOnly(true);
 	}
 
-	/**
-	 * Reads the cursor of the text browser.
-	 * @returns The cursor.
-	 */
 	override cursor(): CCursorShape {
-		/** Provides if behavior. */
 		if (this.#m_hoveredAnchor !== null)
 			return CCursorShape.PointingHand;
 
 		return super.cursor();
 	}
 
-	/**
-	 * Discards HTML display mode and link state, replaces the contents and moves the cursor to the beginning.
-	 * @param text Plain text to display.
-	 */
 	override setPlainText(text: string): void {
 		this.#m_htmlMode = false;
 		this.#m_htmlSource = null;
@@ -71,10 +63,6 @@ export class CTextBrowser extends CTextEdit {
 		this.setCursorPosition(0);
 	}
 
-	/**
-	 * Sets the html.
-	 * @param html Html.
-	 */
 	override setHtml(html: string): void {
 		this.#m_htmlMode = false;
 		this.#m_htmlSource = null;
@@ -87,62 +75,40 @@ export class CTextBrowser extends CTextEdit {
 		this.setCursorPosition(0);
 	}
 
-	/**
-	 * Returns the original markup when available and otherwise serializes the document in HTML mode.
-	 * @returns Original or serialized HTML, or an empty string outside HTML mode.
-	 */
 	override toHtml(): string {
-		/** Provides if behavior. */
 		if (!this.#m_htmlMode)
 			return "";
 
 		return this.#m_htmlSource ?? super.toHtml();
 	}
 
-	/** Clears the current contents. */
-	override clear(): void {
+    /** Clears the current contents. */
+    override clear(): void {
 		this.#m_htmlMode = false;
 		this.#m_htmlSource = null;
 		this.#clearAnchorInteraction();
 		super.clear();
 	}
 
-	/**
-	 * Returns whether undo is currently possible.
-	 * @returns `false` in this implementation.
-	 */
-	override canUndo(): boolean {
+    /** Returns whether undo is currently possible. */
+    override canUndo(): boolean {
 		return false;
 	}
 
-	/**
-	 * Returns whether redo is currently possible.
-	 * @returns `false` in this implementation.
-	 */
-	override canRedo(): boolean {
+    /** Returns whether redo is currently possible. */
+    override canRedo(): boolean {
 		return false;
 	}
 
-	/**
-	 * Provides the subclass hook for undo. This implementation does nothing.
-	 */
 	override undo(): void {
 		// CTextBrowser is not user-editable.
 	}
 
-	/**
-	 * Provides the subclass hook for redo. This implementation does nothing.
-	 */
 	override redo(): void {
 		// CTextBrowser is not user-editable.
 	}
 
-	/**
-	 * Records the link under a left press before delegating to text selection.
-	 * @param event Mouse event with button and pointer coordinates in the content widget.
-	 */
 	override handleMousePress(event: CMouseEvent): void {
-		/** Provides if behavior. */
 		if (event.button() === CMouseButton.LeftButton) {
 			this.#m_mousePressed = true;
 			this.#m_pressedAnchor = this.#anchorAt(
@@ -154,23 +120,17 @@ export class CTextBrowser extends CTextEdit {
 		super.handleMousePress(event);
 	}
 
-	/**
-	 * Updates link hover highlighting and forwards movement to the editor while a press is active.
-	 * @param event Mouse event with button and pointer coordinates in the content widget.
-	 */
 	override handleMouseMove(event: CMouseEvent): void {
 		const hoveredAnchor = this.#anchorAt(
 			event.x(),
 			event.y()
 		);
 
-		/** Provides if behavior. */
 		if (hoveredAnchor !== this.#m_hoveredAnchor) {
 			this.#m_hoveredAnchor = hoveredAnchor;
 			this.widget()?.update();
 		}
 
-		/** Provides if behavior. */
 		if (this.#m_mousePressed) {
 			super.handleMouseMove(event);
 			return;
@@ -179,12 +139,7 @@ export class CTextBrowser extends CTextEdit {
 		event.accept();
 	}
 
-	/**
-	 * Finishes text selection and emits `anchorClicked` if a left press and release hit the same link and no text was selected.
-	 * @param event Mouse event with button and pointer coordinates in the content widget.
-	 */
 	override handleMouseRelease(event: CMouseEvent): void {
-		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			super.handleMouseRelease(event);
 			return;
@@ -198,7 +153,6 @@ export class CTextBrowser extends CTextEdit {
 		this.#m_mousePressed = false;
 		this.#m_pressedAnchor = null;
 
-		/** Provides if behavior. */
 		if (!wasPressed || pressedAnchor === null)
 			return;
 
@@ -207,7 +161,6 @@ export class CTextBrowser extends CTextEdit {
 			event.y()
 		);
 
-		/** Provides if behavior. */
 		if (releasedAnchor === pressedAnchor && !this.hasSelection())
 			this.anchorClicked.emit(pressedAnchor);
 	}

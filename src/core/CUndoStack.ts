@@ -1,3 +1,4 @@
+/** @module Core/CUndoStack */
 import { CObject } from "./CObject.js";
 import { CSignal } from "./CSignal.js";
 import { CUndoCommand } from "./CUndoCommand.js";
@@ -7,72 +8,90 @@ import { CUndoCommand } from "./CUndoCommand.js";
  * Do not call stack mutation methods from a command's undo()/redo()/mergeWith().
  */
 export class CUndoStack extends CObject {
+    /**
+    * Emitted with the history cursor after a command is pushed, undone or redone.
+    * @group Signals
+    */
     readonly indexChanged = new CSignal<[number]>();
+    /**
+    * Emitted when the availability of an undo operation changes.
+    * @group Signals
+    */
     readonly canUndoChanged = new CSignal<[boolean]>();
+    /**
+    * Emitted when the availability of a redo operation changes.
+    * @group Signals
+    */
     readonly canRedoChanged = new CSignal<[boolean]>();
+    /**
+    * Emitted with the label of the next command available for undo.
+    * @group Signals
+    */
     readonly undoTextChanged = new CSignal<[string]>();
+    /**
+    * Emitted with the label of the next command available for redo.
+    * @group Signals
+    */
     readonly redoTextChanged = new CSignal<[string]>();
+    /**
+    * Emitted when the history crosses into or out of the saved clean state.
+    * @group Signals
+    */
     readonly cleanChanged = new CSignal<[boolean]>();
 
     #m_commands: CUndoCommand[] = [];
     #m_index = 0;
     #m_cleanIndex = 0;
 
+    /**
+    * Starts with empty history at index zero and the initial state marked clean.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
     constructor(parent: CObject | null = null) { super(parent); }
 
     /**
-     * Counts the commands retained in the history, including commands available for redo.
-     * @returns Total number of retained commands.
-     */
+    * Returns the total retained command count, including undone commands available for redo.
+    */
     count(): number { return this.#m_commands.length; }
     /**
-     * Reads the boundary between applied and unapplied commands.
-     * @returns The number of applied commands and the zero-based position of the next command to redo.
-     */
+    * Returns the number of commands currently applied. Zero is the initial state.
+    */
     index(): number { return this.#m_index; }
     /**
-     * Looks up the saved-state marker.
-     * @returns The clean history index, or `-1` if the marker was cleared or discarded.
-     */
+    * Undo-history index representing the saved state.
+    * The initial value is `0`.
+    */
     cleanIndex(): number { return this.#m_cleanIndex; }
     /**
-     * Checks whether the history is at the saved-state marker.
-     * @returns `true` if the current and clean indices are equal.
-     */
+    * Reports whether the current command index equals the saved-state index.
+    */
     isClean(): boolean { return this.#m_index === this.#m_cleanIndex; }
     /**
-     * Checks whether an applied command can be reversed.
-     * @returns `true` if at least one command is applied.
-     */
+    * Reports whether at least one applied command can be undone.
+    */
     canUndo(): boolean { return this.#m_index > 0; }
     /**
-     * Checks whether another stored command can be applied.
-     * @returns `true` if a command exists at the current history index.
-     */
+    * Reports whether an unapplied retained command can be redone.
+    */
     canRedo(): boolean { return this.#m_index < this.count(); }
     /**
-     * Looks up the label of the command that would be undone next.
-     * @returns The command label, or an empty string if nothing can be undone.
-     */
+    * Returns the preceding command's user-visible label or an empty string.
+    */
     undoText(): string { return this.#m_commands[this.#m_index - 1]?.text() ?? ""; }
     /**
-     * Looks up the label of the command that would be redone next.
-     * @returns The command label, or an empty string if nothing can be redone.
-     */
+    * Returns the next redoable command's label or an empty string.
+    */
     redoText(): string { return this.#m_commands[this.#m_index]?.text() ?? ""; }
     /**
-     * Looks up a retained command by position without executing it.
-     * @param index Zero-based integer position in the full retained history.
-     * @returns The stored command, or `null` if the position is invalid.
-     */
+    * Returns the retained command at a zero-based integer index, or null for an invalid index.
+    */
     command(index: number): CUndoCommand | null {
         return Number.isInteger(index) ? this.#m_commands[index] ?? null : null;
     }
 
     /**
-     * Executes a command, discards the redo branch and appends or merges the command. Throws `Error` if the same instance is already retained.
-     * @param command New command to execute and store or merge.
-     */
+    * Executes command.redo(), discards the redo branch and appends or merges the command. A command object cannot be pushed twice. Merging never crosses the clean boundary.
+    */
     push(command: CUndoCommand): void {
         if (this.#m_commands.includes(command))
             throw new Error("A command cannot be pushed twice.");
@@ -97,7 +116,9 @@ export class CUndoStack extends CObject {
         this.#notify(before);
     }
 
-    /** Reverses the most recently applied command and moves the history index back one step if undo is available. */
+    /**
+    * Calls undo() on the preceding command and decrements the index. Does nothing when no undo is available.
+    */
     undo(): void {
         if (!this.canUndo()) return;
         const before = this.#state();
@@ -106,7 +127,9 @@ export class CUndoStack extends CObject {
         this.#notify(before);
     }
 
-    /** Applies the next stored command and advances the history index if redo is available. */
+    /**
+    * Calls redo() on the next retained command and increments the index. Does nothing when no redo is available.
+    */
     redo(): void {
         if (!this.canRedo()) return;
         const before = this.#state();
@@ -115,10 +138,7 @@ export class CUndoStack extends CObject {
         this.#notify(before);
     }
 
-    /**
-     * Moves to a history position by executing undo or redo as needed. Throws `RangeError` for non-integers.
-     * @param index Target integer index, clamped between zero and the command count.
-     */
+    /** Out-of-range indices are clamped; non-integer indices are rejected. */
     setIndex(index: number): void {
         if (!Number.isInteger(index))
             throw new RangeError("Undo index must be an integer.");
@@ -135,21 +155,25 @@ export class CUndoStack extends CObject {
         this.#notify(before);
     }
 
-    /** Marks the current history position as the saved state and emits `cleanChanged` if the clean state changes. */
+    /**
+    * Marks the current command index as the saved state and emits state changes when necessary.
+    */
     setClean(): void {
         const before = this.#state();
         this.#m_cleanIndex = this.#m_index;
         this.#notify(before);
     }
 
-    /** Removes the saved-state marker and emits `cleanChanged` if the clean state changes. */
+    /**
+    * Invalidates the saved-state marker by setting cleanIndex to -1.
+    */
     resetClean(): void {
         const before = this.#state();
         this.#m_cleanIndex = -1;
         this.#notify(before);
     }
 
-    /** Discards all commands without undoing their effects and resets both history indices to zero. */
+    /** Discards history without undoing its effects. */
     clear(): void {
         const before = this.#state();
         this.#m_commands = [];
@@ -158,7 +182,6 @@ export class CUndoStack extends CObject {
         this.#notify(before);
     }
 
-    /** Discards the history without undoing its effects, then destroys the owned objects and detaches the stack. */
     override destroy(): void {
         this.clear();
         super.destroy();

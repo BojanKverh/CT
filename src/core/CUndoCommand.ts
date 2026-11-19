@@ -1,3 +1,4 @@
+/** @module Core/CUndoCommand */
 /**
  * Reversible operation. push() executes redo() before storing the command.
  * Once pushed, a command belongs to its stack and must not be pushed again.
@@ -5,34 +6,32 @@
 export class CUndoCommand {
     #m_text: string;
 
+    /**
+    * Initializes a synchronous undo command with an optional user-visible action label.
+    */
     constructor(text = "") { this.#m_text = text; }
 
     /**
-     * Reads the label used when the command is offered for undo or redo.
-     * @returns The command label, which may be empty.
-     */
+    * Returns the user-visible action label shown by undo and redo UI.
+    */
     text(): string { return this.#m_text; }
     /**
-     * Changes the label associated with the command.
-     * @param text New label text.
-     */
+    * Changes the label shown for this command in undo and redo UI.
+    */
     setText(text: string): void { this.#m_text = text; }
 
-    /** Provides the subclass hook to reverse an applied operation synchronously. The base implementation has no effect. */
+    /**
+    * Override to synchronously revert the operation previously applied by redo().
+    */
     undo(): void {}
-    /** Provides the subclass hook to apply or reapply the operation synchronously. The base implementation has no effect. */
+    /**
+    * Override to synchronously apply the operation. CUndoStack calls this when pushing and redoing the command.
+    */
     redo(): void {}
 
-    /**
-     * Identifies the group of commands that may merge. Override together with `mergeWith()`.
-     * @returns The merge identifier, or `-1` to disable merging.
-     */
+    /** -1 disables merging. Override together with mergeWith(). */
     id(): number { return -1; }
 
-    /**
-     * Provides the subclass hook to absorb another command of the same merge group. The incoming operation has already been applied.
-     * @param _command Incoming command to absorb.
-     * @returns `true` if this command now represents both operations. The base implementation returns `false`.
-     */
+    /** The incoming command has already been redone. */
     mergeWith(_command: CUndoCommand): boolean { return false; }
 }

@@ -1,3 +1,4 @@
+/** @module Widgets/CUploadWidget */
 import { CRect } from "../geometry/CRect.js";
 import { CSignal } from "../core/CSignal.js";
 import { CFileDialog } from "../dialogs/CFileDialog.js";
@@ -15,10 +16,6 @@ class EmptyFileList extends CWidget {
     dragActive = false;
     singleFile = false;
 
-    /**
-     * Draws the empty file list through the supplied painter.
-     * @param painter Painter for the current drawing operation.
-     */
     protected override paintEvent(painter: CPainter): void {
         const x = this.width() / 2;
         const y = this.height() / 2;
@@ -46,6 +43,9 @@ class FileRow extends CWidget {
 
     readonly #sizeText: string;
 
+    /**
+    * Creates a picker button, empty drop prompt and scrollable file list. Selection triggers no network request.
+    */
     constructor(parent: CWidget, private readonly file: File, remove: () => void) {
         super(parent);
         this.#sizeText = `${file.size.toLocaleString()} bytes`;
@@ -55,23 +55,12 @@ class FileRow extends CWidget {
         this.#remove.clicked.connect(remove);
     }
 
-    /**
-     * Sets the geometry.
-     * @param x Horizontal position in parent coordinates.
-     * @param y Vertical position in parent coordinates.
-     * @param width Width in logical pixels.
-     * @param height Height in logical pixels.
-     */
     override setGeometry(x: number, y: number, width: number, height: number): void {
         super.setGeometry(x, y, width, height);
         const buttonWidth = Math.min(24, width);
         this.#remove.setGeometry(0, 2, buttonWidth, 24);
     }
 
-    /**
-     * Draws the file row through the supplied painter.
-     * @param painter Painter for the current drawing operation.
-     */
     protected override paintEvent(painter: CPainter): void {
         const nameX = 32;
         const sizeRight = this.width() - 6;
@@ -106,45 +95,35 @@ class FileList extends CScrollArea {
     readonly #content = new CWidget();
     readonly #rows: FileRow[] = [];
 
+    /**
+    * Creates a picker button, empty drop prompt and scrollable file list. Selection triggers no network request.
+    */
     constructor(parent: CWidget) {
         super(parent);
         this.setWidget(this.#content);
     }
 
-    /**
-     * Adds a file.
-     * @param file File.
-     * @param remove Remove.
-     */
     addFile(file: File, remove: () => void): void {
         this.#rows.push(new FileRow(this.#content, file, remove));
         this.#layoutRows();
     }
 
     /**
-     * Removes the file.
-     * @param index Zero-based item index.
-     */
+    * Removes a retained file by zero-based integer position and emits filesChanged. Invalid positions do nothing. The empty prompt returns after the final removal.
+    */
     removeFile(index: number): void {
         this.#rows.splice(index, 1)[0]!.destroy();
         this.#layoutRows();
     }
 
     /**
-     * Clears the contents of the file list.
-     */
+    * Removes every retained file and emits filesChanged once. An already-empty collection does not emit.
+    */
     clear(): void {
         for (const row of this.#rows.splice(0)) row.destroy();
         this.#layoutRows();
     }
 
-    /**
-     * Sets the geometry.
-     * @param x Horizontal position in parent coordinates.
-     * @param y Vertical position in parent coordinates.
-     * @param width Width in logical pixels.
-     * @param height Height in logical pixels.
-     */
     override setGeometry(x: number, y: number, width: number, height: number): void {
         super.setGeometry(x, y, width, height);
         this.#layoutRows();
@@ -162,8 +141,27 @@ class FileList extends CScrollArea {
     }
 }
 
-/** Collects local files for an application to use later. */
+/** Collects local files for an application to use later.
+ *
+ * @example
+ * ```ts
+ * const picker = new CUploadWidget(parent);
+ * picker.setAccept("image/*,.pdf");
+ * picker.setMaxFileCount(5);
+ * picker.filesChanged.connect(() => {
+ *     uploadButton.setEnabled(picker.files().length > 0);
+ * });
+ * uploadButton.clicked.connect(() => {
+ *     const files = picker.files();
+ *     // Perform the application's explicit action with this snapshot.
+ * });
+ * ```
+ */
 export class CUploadWidget extends CWidget {
+    /**
+    * Emitted once after additions, removals or clearing change the retained collection. Rejected files and duplicate-only additions do not emit.
+    * @group Signals
+    */
     readonly filesChanged = new CSignal<[]>();
     readonly #files: File[] = [];
     readonly #pages = new CStackedWidget(this);
@@ -176,6 +174,9 @@ export class CUploadWidget extends CWidget {
     #disposed = false;
     #dragActive = false;
 
+    /**
+    * Creates a picker button, empty drop prompt and scrollable file list. Selection triggers no network request.
+    */
     constructor(parent: CWidget | null = null) {
         super(parent);
 
@@ -204,25 +205,23 @@ export class CUploadWidget extends CWidget {
     }
 
     /**
-     * Sets the filters used by the file picker and when adding dropped files.
-     * @param accept Comma-separated MIME types, MIME wildcards or filename extensions. An empty string accepts any type.
-     */
+    * Sets MIME types, MIME wildcards and filename extensions accepted by both picker and native drop. Existing files remain in the collection.
+    */
     setAccept(accept: string): void {
         this.#accept = accept;
     }
 
     /**
-     * Reads the configured file type filters.
-     * @returns The filter string as supplied to `setAccept()`.
-     */
+    * Returns the comma-separated file filter. An empty filter accepts all file types.
+    */
     accept(): string {
         return this.#accept;
     }
 
     /**
-     * Limits future additions while keeping files already selected. Invalid limits throw `RangeError`.
-     * @param count Nonnegative safe integer or `Infinity` for no limit.
-     */
+    * Limits further additions. Existing files are kept if the limit is lowered.
+    * Pass Infinity to allow any number of files.
+    */
     setMaxFileCount(count: number): void {
         if (count !== Infinity && (!Number.isSafeInteger(count) || count < 0)) {
             throw new RangeError("Maximum file count must be a non-negative integer or Infinity.");
@@ -234,17 +233,15 @@ export class CUploadWidget extends CWidget {
     }
 
     /**
-     * Lists the files collected by the widget.
-     * @returns A new array containing the selected `File` objects in selection order.
-     */
+    * Returns a new array containing all retained File objects. Metadata and File objects are shared; modifying the array does not change the widget.
+    */
     files(): File[] {
         return [...this.#files];
     }
 
     /**
-     * Removes a selected file, updates the list and emits `filesChanged`. Invalid indexes are ignored.
-     * @param index Zero-based integer index in the current file list.
-     */
+    * Removes a retained file by zero-based integer position and emits filesChanged. Invalid positions do nothing. The empty prompt returns after the final removal.
+    */
     removeFile(index: number): void {
         if (!Number.isInteger(index) || index < 0 || index >= this.#files.length) return;
         this.#files.splice(index, 1);
@@ -253,7 +250,9 @@ export class CUploadWidget extends CWidget {
         this.filesChanged.emit();
     }
 
-    /** Removes all selected files and emits `filesChanged` when the list was nonempty. */
+    /**
+    * Removes every retained file and emits filesChanged once. An already-empty collection does not emit.
+    */
     clear(): void {
         if (this.#files.length === 0) return;
         this.#files.length = 0;
@@ -262,20 +261,12 @@ export class CUploadWidget extends CWidget {
         this.filesChanged.emit();
     }
 
-    /**
-     * Checks whether the widget is a live external file drop target.
-     * @returns `true` until the widget has been destroyed.
-     * @internal
-     */
+    /** @internal Reports whether native file-drop events may target this widget. */
     override acceptsExternalFiles(): boolean {
         return !this.#disposed;
     }
 
-    /**
-     * Updates the drag highlight and status message.
-     * @param active `true` while an external file drag is active over the target.
-     * @internal
-     */
+    /** @internal Updates feedback when a native file drag enters or leaves. */
     override externalFileDragChanged(active: boolean): void {
         this.#dragActive = active;
         this.#empty.dragActive = active;
@@ -283,11 +274,7 @@ export class CUploadWidget extends CWidget {
         this.#status.setText(active ? "Release to add files." : "");
     }
 
-    /**
-     * Adds files that match the filters and fit within the limit. Duplicates are identified by name, size and last modification time. Rejections are reported in the status label.
-     * @param files Browser `File` objects to consider in the supplied order.
-     * @internal
-     */
+    /** @internal Receives the files delivered by a native browser drop. */
     override dropExternalFiles(files: readonly File[]): void {
         const filters = this.#accept.toLowerCase().split(",").map(value => value.trim()).filter(Boolean);
         const fileKey = (file: File): string => JSON.stringify([file.name, file.size, file.lastModified]);
@@ -335,10 +322,6 @@ export class CUploadWidget extends CWidget {
         }
     }
 
-    /**
-     * Draws the drop-target border while an external file drag is active.
-     * @param painter Painter for the widget's local bounds.
-     */
     protected override paintEvent(painter: CPainter): void {
         if (!this.#dragActive) return;
         painter.setPen(this.palette().color(CPaletteColorRole.Highlight).toCss());
@@ -346,7 +329,6 @@ export class CUploadWidget extends CWidget {
         painter.strokeRect(this.rect());
     }
 
-    /** Marks the widget disposed so pending picker results are ignored, then destroys the widget. */
     override destroy(): void {
         this.#disposed = true;
         super.destroy();

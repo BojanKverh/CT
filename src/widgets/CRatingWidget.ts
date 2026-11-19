@@ -1,3 +1,4 @@
+/** @module Widgets/CRatingWidget */
 import { CSignal } from "../core/CSignal.js";
 import type { CFocusEvent } from "../events/CFocusEvent.js";
 import type { CKeyEvent } from "../events/CKeyEvent.js";
@@ -20,56 +21,56 @@ export class CRatingWidget extends CWidget {
     #readOnly = false;
     #starSize = 24;
     #spacing = 4;
+    /**
+    * Emitted with the bounded value after its stored value changes.
+    * @group Signals
+    */
     readonly valueChanged = new CSignal<[number]>();
 
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
     constructor(parent: CWidget | null = null) {
         super(parent);
         this.setFocusPolicy(CFocusPolicy.StrongFocus);
         this.setSizePolicy(CSizePolicyType.Preferred, CSizePolicyType.Fixed);
     }
     /**
-     * Reads the committed rating.
-     * @returns Integer rating from zero to the maximum.
-     */
+    * Current numeric value.
+    * The initial value is `0`.
+    */
     value(): number { return this.#value; }
     /**
-     * Reads the configured star count.
-     * @returns Maximum rating and number of visible star slots.
-     */
+    * Upper permitted value.
+    * The initial value is `5`.
+    */
     maximum(): number { return this.#maximum; }
     /**
-     * Reads the rating currently displayed.
-     * @returns Hovered star rating while previewing, otherwise the committed value.
-     */
+    * Returns the temporary rating shown during pointer interaction.
+    */
     previewValue(): number { return this.#preview < 0 ? this.#value : this.#preview; }
     /**
-     * Checks whether the user may change the rating by mouse or keyboard.
-     * @returns `true` if user interaction cannot change the rating.
-     */
+    * Whether user edits are blocked.
+    * The initial value is `false`.
+    */
     isReadOnly(): boolean { return this.#readOnly; }
     /**
-     * Reads the requested size before fitting stars into the widget.
-     * @returns Preferred star size in logical pixels.
-     */
+    * Returns the logical size used for individual rating stars.
+    */
     starSize(): number { return this.#starSize; }
     /**
-     * Reads the requested gap before scaling the row to fit.
-     * @returns Preferred gap between stars in logical pixels.
-     */
+    * Logical gap between neighboring items.
+    * The initial value is `4`.
+    */
     spacing(): number { return this.#spacing; }
-    /**
-     * Updates the committed rating and emits `valueChanged` when it changes.
-     * @param value Finite rating, rounded down and clamped between zero and the maximum.
-     */
+    /** Values are rounded down and clamped to 0..maximum. Non-finite inputs throw. */
     setValue(value: number): void {
         const next = Math.max(0, Math.min(this.#maximum, this.#integer(value)));
         if (next === this.#value) return;
         this.#value = next; this.update(); this.valueChanged.emit(next);
     }
-    /**
-     * Changes the star count, cancels preview and clamps the committed rating to the new range.
-     * @param maximum Finite star count, rounded down and clamped to 1 through 100.
-     */
+    /** Number of stars, normalized to an integer in 1..100. */
     setMaximum(maximum: number): void {
         const next = Math.max(1, Math.min(100, this.#integer(maximum)));
         if (next === this.#maximum) return;
@@ -77,9 +78,8 @@ export class CRatingWidget extends CWidget {
         this.setValue(this.#value); this.updateGeometry(); this.update();
     }
     /**
-     * Enables or disables user editing, cancels a preview and updates keyboard focus eligibility.
-     * @param readOnly `true` to suppress user edits while still permitting programmatic updates.
-     */
+    * Controls whether users can change the rating while retaining its display.
+    */
     setReadOnly(readOnly: boolean): void {
         if (readOnly === this.#readOnly) return;
         this.#readOnly = readOnly; this.#cancel();
@@ -87,19 +87,13 @@ export class CRatingWidget extends CWidget {
         this.setFocusPolicy(readOnly ? CFocusPolicy.NoFocus : CFocusPolicy.StrongFocus);
         this.update();
     }
-    /**
-     * Changes the preferred star size and refreshes layout geometry.
-     * @param size Finite size in logical pixels, rounded down and clamped to 8 through 128.
-     */
+    /** Preferred star size in logical pixels, normalized to 8..128. */
     setStarSize(size: number): void {
         const next = Math.max(8, Math.min(128, this.#integer(size)));
         if (next === this.#starSize) return;
         this.#starSize = next; this.#cancel(); this.updateGeometry(); this.update();
     }
-    /**
-     * Changes the preferred gap between stars and refreshes layout geometry.
-     * @param spacing Finite gap in logical pixels, rounded down and clamped to 0 through 32.
-     */
+    /** Gap in logical pixels, normalized to 0..32. */
     setSpacing(spacing: number): void {
         const next = Math.max(0, Math.min(32, this.#integer(spacing)));
         if (next === this.#spacing) return;
@@ -109,19 +103,11 @@ export class CRatingWidget extends CWidget {
         if (!Number.isFinite(value)) throw new RangeError("Rating properties must be finite numbers.");
         return Math.floor(value);
     }
-    /**
-     * Measures the row at its unscaled star size and spacing, including padding.
-     * @returns Preferred widget dimensions in logical pixels.
-     */
     override sizeHint(): CSize {
         return new CSize(this.#maximum * this.#starSize + (this.#maximum - 1) * this.#spacing + 8,
             this.#starSize + 8);
     }
-    /**
-     * Computes the position of a star after scaling the row to fit the widget.
-     * @param index Zero-based integer star index.
-     * @returns A new rectangle in widget coordinates, or `null` for an invalid index.
-     */
+    /** Returns the star's actual, possibly scaled rectangle, or null for an invalid index. */
     starRect(index: number): CRect | null {
         if (!Number.isInteger(index) || index < 0 || index >= this.#maximum) return null;
         const natural = this.#maximum * this.#starSize + (this.#maximum - 1) * this.#spacing;
@@ -129,26 +115,14 @@ export class CRatingWidget extends CWidget {
         const size = this.#starSize * scale, gap = this.#spacing * scale;
         return new CRect(4 + index * (size + gap), (this.height() - size) / 2, size, size);
     }
-    /**
-     * Moves or resizes the widget and cancels the current preview when the dimensions change.
-     * @param x Horizontal position in parent coordinates.
-     * @param y Vertical position in parent coordinates.
-     * @param width New width in logical pixels.
-     * @param height New height in logical pixels.
-     */
     override setGeometry(x: number, y: number, width: number, height: number): void {
         if (width !== this.width() || height !== this.height()) this.#cancel();
         super.setGeometry(x, y, width, height);
     }
-    /**
-     * Changes whether the widget handles input. Disabling cancels preview and pending presses.
-     * @param enabled Whether to enable input.
-     */
     override setEnabled(enabled: boolean): void {
         if (!enabled) this.#cancel();
         super.setEnabled(enabled);
     }
-    /** Cancels preview and pending presses before hiding the widget. */
     override hide(): void { this.#cancel(); super.hide(); }
     #cancel(): void { this.#preview = -1; this.#pressed = false; this.update(); }
     #hit(event: CMouseEvent): number {
@@ -159,40 +133,20 @@ export class CRatingWidget extends CWidget {
         }
         return -1;
     }
-    /**
-     * Previews the star under the pointer or clears the preview when no star is hit. Read-only widgets ignore movement.
-     * @param event Mouse movement event with local pointer coordinates.
-     */
     protected override mouseMoveEvent(event: CMouseEvent): void {
         if (this.#readOnly) { event.ignore(); return; }
         this.#preview = this.#hit(event); event.accept(); this.update();
     }
-    /**
-     * Updates the preview using the entry position, as for mouse movement.
-     * @param event Pointer entry event with local coordinates.
-     */
     protected override mouseEnterEvent(event: CMouseEvent): void { this.mouseMoveEvent(event); }
-    /**
-     * Clears the hover preview and requests repainting.
-     * @param event Pointer exit event.
-     */
     protected override mouseLeaveEvent(event: CMouseEvent): void {
         this.#preview = -1; event.accept(); this.update();
     }
-    /**
-     * Records whether a left-button press began on a star and updates the preview. Read-only or other-button presses are ignored.
-     * @param event Mouse event with the button and pointer coordinates local to the widget.
-     */
     protected override mousePressEvent(event: CMouseEvent): void {
         if (this.#readOnly || event.button() !== CMouseButton.LeftButton) { event.ignore(); return; }
         const hit = this.#hit(event);
         this.#pressed = hit >= 0; this.#preview = hit;
         event.accept(); this.update();
     }
-    /**
-     * Commits the star under the release when a left-button press began on a star. Read-only or other-button releases are ignored.
-     * @param event Mouse event with the button and pointer coordinates local to the widget.
-     */
     protected override mouseReleaseEvent(event: CMouseEvent): void {
         if (this.#readOnly || event.button() !== CMouseButton.LeftButton) { event.ignore(); return; }
         const pressed = this.#pressed; this.#pressed = false;
@@ -200,15 +154,7 @@ export class CRatingWidget extends CWidget {
         event.accept(); this.update();
         if (pressed && hit >= 0) this.setValue(hit);
     }
-    /**
-     * Cancels preview and pending presses before forwarding focus exit.
-     * @param event Focus exit event.
-     */
     protected override focusOutEvent(event: CFocusEvent): void { this.#cancel(); super.focusOutEvent(event); }
-    /**
-     * Adjusts the rating on arrow keys, clears it on Home, Delete or Backspace, and sets it to the maximum on End. Escape cancels the preview. Read-only mode and Ctrl, Meta or Alt combinations are ignored.
-     * @param event Keyboard event containing the key and modifier state.
-     */
     protected override keyPressEvent(event: CKeyEvent): void {
         if (this.#readOnly || event.ctrl() || event.meta() || event.alt()) { event.ignore(); return; }
         let next: number;
@@ -222,10 +168,6 @@ export class CRatingWidget extends CWidget {
         }
         this.#cancel(); event.accept(); this.setValue(next);
     }
-    /**
-     * Draws the star row through the active style using each scaled star rectangle and the committed and preview ratings.
-     * @param painter Painter in the rating widget's local coordinates.
-     */
     protected override paintEvent(painter: CPainter): void {
         const option = new CStyleOptionRatingWidget(); option.initFrom(this);
         option.value = this.#value; option.previewValue = this.previewValue();

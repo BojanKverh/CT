@@ -1,13 +1,14 @@
+/** @module GUI/COrientation */
 /**
  * Defines horizontal and vertical orientation.
  */
 export enum COrientation {
-		/**
-	 * Horizontal orientation.
-	 */
-Horizontal,
-		/**
-	 * Vertical orientation.
-	 */
-Vertical
+    /**
+    * Horizontal orientation.
+    */
+    Horizontal,
+    /**
+    * Vertical orientation.
+    */
+    Vertical
 }

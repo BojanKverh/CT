@@ -1,3 +1,4 @@
+/** @module Animation/CSequentialAnimationGroup */
 import { CAbstractAnimation, CAnimationState, CAnimationDirection } from "./CAbstractAnimation.js";
 import { CAnimationGroup } from "./CAnimationGroup.js";
 import { CSignal } from "../core/CSignal.js";
@@ -12,12 +13,12 @@ export class CSequentialAnimationGroup extends CAnimationGroup {
     #started = new Set<CAbstractAnimation>();
     #run = 0;
     #seeking = false;
+    /**
+    * Emitted with the child animation that becomes active in the sequential group.
+    * @group Signals
+    */
     readonly currentAnimationChanged = new CSignal<[CAbstractAnimation | null]>();
 
-    /**
-     * Adds the total durations of the member timelines. Throws if the sum is not finite.
-     * @returns Duration of one group pass in milliseconds, or zero for an empty group.
-     */
     override duration(): number {
         let total = 0;
         for (const animation of this.animations()) total += this.memberDuration(animation);
@@ -28,68 +29,45 @@ export class CSequentialAnimationGroup extends CAnimationGroup {
         }
         return total;
     }
-    /**
-     * Appends an owned member after checking that the sequence duration remains finite.
-     * @param animation Stopped animation with bounded duration that can be owned by this group.
-     */
     override addAnimation(animation: CAbstractAnimation): void {
         if (!this.animations().includes(animation) && !Number.isFinite(this.duration() + this.memberDuration(animation)))
             throw new RangeError("The total animation duration must be finite.");
         super.addAnimation(animation);
     }
     /**
-     * Looks up the member selected by the current playback position.
-     * @returns The selected animation, or `null` when none is selected or the group has been destroyed.
-     */
+    * Returns the child animation currently occupying the group's active timeline segment, or null.
+    */
     currentAnimation(): CAbstractAnimation | null {
         return !this.isDestroyed() && this.#current !== null && this.animations().includes(this.#current)
             ? this.#current : null;
     }
-    /** Reapplies the selected member's value if the member has a nonzero loop count. */
     override applyCurrentValue(): void {
         const current = this.currentAnimation();
         if (current !== null && current.loopCount() !== 0) current.applyCurrentValue();
     }
-    /** Validates member durations and starts a new group run, stopping the previous run if needed. */
     override start(): void {
         if (this.isDestroyed()) return;
         this.duration(); // Validate before starting any member.
         if (this.state() !== CAnimationState.Stopped) this.stop();
         ++this.#run; super.start();
     }
-    /** Stops the group and invalidates callbacks from the current run. */
     override stop(): void { ++this.#run; super.stop(); }
-    /**
-     * Seeks the group timeline and reapplies endpoints of passed stages when needed to restore their values.
-     * @param time Finite elapsed group time in milliseconds across loops.
-     */
     override setCurrentTime(time: number): void {
         const previous = this.#seeking;
         this.#seeking = true; ++this.#run;
         try { super.setCurrentTime(time); }
         finally { this.#seeking = previous; }
     }
-    /**
-     * Changes the sequence clock source. The sequence keeps supplying time to its members while active.
-     * @param external `true` if a containing group supplies this sequence's time.
-     */
     override setExternalClock(external: boolean): void {
         super.setExternalClock(external);
         // A sequence supplies time to its members even when its own clock is native.
         if (this.state() !== CAnimationState.Stopped)
             for (const animation of this.animations()) animation.setExternalClock(true);
     }
-    /** Clears the selected member when it is no longer part of the sequence. */
     protected override updateAnimations(): void {
         if (this.#current !== null && !this.animations().includes(this.#current)) this.#select(null);
     }
-    /** Destroys the group and its owned members and clears playback tracking. */
     override destroy(): void { super.destroy(); this.#started.clear(); this.#current = null; }
-    /**
-     * Stops members, clears playback tracking and clears the selected member before the next loop.
-     * @param _loop New zero-based group loop index.
-     * @param _previous Previous zero-based group loop index.
-     */
     protected override updateCurrentLoop(_loop: number, _previous: number): void {
         const run = ++this.#run;
         for (const animation of this.animations()) {
@@ -98,11 +76,6 @@ export class CSequentialAnimationGroup extends CAnimationGroup {
         }
         this.#started.clear(); this.#select(null);
     }
-    /**
-     * Propagates the group lifecycle to its members. Running enables group-driven time, pausing pauses members, and stopping releases their clocks.
-     * @param state New group state.
-     * @param previous Previous group state. Starting from `Stopped` resets member playback tracking.
-     */
     protected override updateState(state: CAnimationState, previous: CAnimationState): void {
         if (state === CAnimationState.Running) {
             const run = this.#run;
@@ -125,10 +98,6 @@ export class CSequentialAnimationGroup extends CAnimationGroup {
         if (animation === this.#current) return false;
         this.#current = animation; this.currentAnimationChanged.emit(animation); return true;
     }
-    /**
-     * Selects the stage at the supplied position, applies completed stages as appropriate and drives the active member at its local time.
-     * @param time Direction-adjusted position in milliseconds within one group pass.
-     */
     protected override updateCurrentTime(time: number): void {
         const run = this.#run, members = this.animations().filter(animation => animation.loopCount() !== 0);
         let offset = 0;

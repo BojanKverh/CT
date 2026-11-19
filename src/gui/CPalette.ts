@@ -1,77 +1,78 @@
+/** @module GUI/CPalette */
 import { CColor } from "./CColor.js";
 
 /**
  * Identifies semantic color roles in a widget palette.
  */
 export enum CPaletteColorRole {
-		/**
-	 * Window.
-	 */
-Window,
-		/**
-	 * Window text.
-	 */
-WindowText,
-		/**
-	 * Base.
-	 */
-Base,
-		/**
-	 * Text.
-	 */
-Text,
-		/**
-	 * Button.
-	 */
-Button,
-		/**
-	 * Button text.
-	 */
-ButtonText,
-		/**
-	 * Disabled text.
-	 */
-DisabledText,
-        /**
-     * Highlight.
-     */
-Highlight,
-		/**
-	 * Highlighted text.
-	 */
-HighlightedText,
-		/**
-	 * Hover.
-	 */
-Hover,
-		/**
-	 * Tool tip base.
-	 */
-ToolTipBase,
-		/**
-	 * Tool tip text.
-	 */
-ToolTipText,
-		/**
-	 * Link.
-	 */
-Link,
-		/**
-	 * Light.
-	 */
-Light,
-		/**
-	 * Mid.
-	 */
-Mid,
-		/**
-	 * Dark.
-	 */
-Dark,
-/**
- * Placeholder text color
- */
-PlaceholderText
+    /**
+    * Background of application containers and window surfaces.
+    */
+    Window,
+    /**
+    * Foreground of captions painted on window backgrounds.
+    */
+    WindowText,
+    /**
+    * Background of editable text and item-view content.
+    */
+    Base,
+    /**
+    * Foreground of text painted on editable or item-view backgrounds.
+    */
+    Text,
+    /**
+    * Background fill of push-button surfaces.
+    */
+    Button,
+    /**
+    * Caption foreground on button backgrounds.
+    */
+    ButtonText,
+    /**
+    * Muted foreground for controls that do not accept input.
+    */
+    DisabledText,
+    /**
+    * Fill of selected text and selected items.
+    */
+    Highlight,
+    /**
+    * Foreground painted over the selection fill.
+    */
+    HighlightedText,
+    /**
+    * Fill used to emphasize the item under the pointer.
+    */
+    Hover,
+    /**
+    * Background fill of transient help bubbles.
+    */
+    ToolTipBase,
+    /**
+    * Foreground of text in transient help bubbles.
+    */
+    ToolTipText,
+    /**
+    * Foreground of clickable hyperlink text.
+    */
+    Link,
+    /**
+    * Light edge tone used to paint relief and bevels.
+    */
+    Light,
+    /**
+    * Intermediate edge tone used to paint relief and bevels.
+    */
+    Mid,
+    /**
+    * Dark edge tone used to paint relief and bevels.
+    */
+    Dark,
+    /**
+    * Placeholder text color
+    */
+    PlaceholderText
 }
 
 /**
@@ -80,12 +81,10 @@ PlaceholderText
 export class CPalette {
 	#m_colors = new Map<CPaletteColorRole, CColor>();
 
-		/**
-	 * Creates a new CPalette instance.
-	 *
-	 * @param pal Pal.
-	 */
-constructor(pal: CPalette | null = null) {
+    /**
+    * Starts with default light colors or copies role colors from the supplied palette.
+    */
+    constructor(pal: CPalette | null = null) {
 		if (pal === null) {
 			this.#m_colors.set(CPaletteColorRole.Window, new CColor(224, 224, 224));
 			this.#m_colors.set(CPaletteColorRole.WindowText, new CColor(0, 0, 0));
@@ -125,12 +124,13 @@ constructor(pal: CPalette | null = null) {
 		}
 	}
 
-		/**
- * Reads the color assigned to a palette role. An unknown role throws.
- * @param role Palette role to look up.
- * @returns Independent copy of the assigned color.
- */
-color(role: CPaletteColorRole): CColor {
+    /**
+    * Returns the color assigned to the specified palette role.
+    *
+    * @param role Role.
+    *
+    */
+    color(role: CPaletteColorRole): CColor {
 		const color = this.#m_colors.get(role);
 
 		if (color === undefined)
@@ -139,22 +139,23 @@ color(role: CPaletteColorRole): CColor {
 		return new CColor(color.red(), color.green(), color.blue(), color.alpha());
 	}
 
-		/**
-	 * Assigns a color to the specified palette role.
-	 *
-	 * @param role Palette role whose color should be replaced.
-	 * @param color Color.
-	 */
-setColor(role: CPaletteColorRole, color: CColor): void {
+    /**
+    * Assigns a color to the specified palette role.
+    *
+    * @param role Role.
+    * @param color Color.
+    */
+    setColor(role: CPaletteColorRole, color: CColor): void {
 		this.#m_colors.set(role, color);
 	}
 
-		/**
- * Compares the assigned colors by role.
- * @param other Palette to compare.
- * @returns `true` if the corresponding role colors match.
- */
-isEqual(other: CPalette): boolean {
+    /**
+    * Returns whether this palette is equal to another palette.
+    *
+    * @param other Other.
+    *
+    */
+    isEqual(other: CPalette): boolean {
 		for (const [role, color] of this.#m_colors) {
 			if (!color.equals(other.color(role)))
 				return false;

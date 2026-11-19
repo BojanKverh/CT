@@ -1,3 +1,4 @@
+/** @module Widgets/CKeySequenceEdit */
 import { CSignal } from "../core/CSignal.js";
 import { CWidget } from "./CWidget.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
@@ -8,42 +9,44 @@ import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CStyleOptionKeySequenceEdit } from "../gui/CStyleOptionKeySequenceEdit.js";
 
-/** Implements the key sequence edit widget. */
+/** Captures a keyboard shortcut and formats its key sequence for display. */
 export class CKeySequenceEdit extends CWidget {
-	/**
-	 * Allows recording a combination without activating application shortcuts.
-	 * @returns `true` in this implementation.
-	 */
-	capturesShortcuts(): boolean { return true; }
-	/** Signal emitted when key sequence changes. */
-	readonly keySequenceChanged = new CSignal<[string]>();
-	/** Public editing finished member. */
-	readonly editingFinished = new CSignal<[]>();
+    /** Allows recording a combination without activating application shortcuts. */
+    capturesShortcuts(): boolean { return true; }
+    /**
+    * Emitted with the formatted shortcut after the recorded key combination changes.
+    * @group Signals
+    */
+    readonly keySequenceChanged = new CSignal<[string]>();
+    /**
+    * Emitted when the editor finishes an editing interaction.
+    * @group Signals
+    */
+    readonly editingFinished = new CSignal<[]>();
 
 	#m_keySequence = "";
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null) {
-		/** Provides super behavior. */
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null) {
 		super(parent);
 
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
-	/**
-	 * Reads the key sequence.
-	 * @returns The key sequence.
-	 */
-	keySequence(): string {
+    /**
+    * Returns the captured shortcut formatted as a key-sequence string.
+    */
+    keySequence(): string {
 		return this.#m_keySequence;
 	}
 
-	/**
-	 * Sets the key sequence.
-	 * @param sequence Sequence.
-	 */
-	setKeySequence(sequence: string): void {
-		/** Provides if behavior. */
+    /**
+    * Replaces the shortcut sequence displayed by the editor.
+    */
+    setKeySequence(sequence: string): void {
 		if (this.#m_keySequence === sequence)
 			return;
 
@@ -52,23 +55,15 @@ export class CKeySequenceEdit extends CWidget {
 		this.update();
 	}
 
-	/** Clears the current contents. */
-	clear(): void {
+    /** Clears the current contents. */
+    clear(): void {
 		this.setKeySequence("");
 	}
 
-	/**
-	 * Returns the preferred size of the widget.
-	 * @returns A new `CSize`.
-	 */
 	override sizeHint(): CSize {
 		return new CSize(160, 28);
 	}
 
-	/**
-	 * Draws the key sequence edit through the supplied painter.
-	 * @param painter Painter for the current drawing operation.
-	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionKeySequenceEdit();
 		option.initFromKeySequenceEdit(this);
@@ -76,21 +71,15 @@ export class CKeySequenceEdit extends CWidget {
 		this.style().drawKeySequenceEdit(painter, option);
 	}
 
-	/**
-	 * Responds to a key press for the key sequence edit. May accept the event.
-	 * @param event Event for a key press.
-	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
 		const key = event.key();
 
-		/** Provides if behavior. */
 		if (key === "Backspace" || key === "Delete") {
 			this.clear();
 			event.accept();
 			return;
 		}
 
-		/** Provides if behavior. */
 		if (this.#isModifierKey(key)) {
 			event.accept();
 			return;
@@ -100,12 +89,7 @@ export class CKeySequenceEdit extends CWidget {
 		event.accept();
 	}
 
-	/**
-	 * Responds to a pointer button press for the key sequence edit. May accept or ignore the event depending on the input.
-	 * @param event Event for a pointer button press.
-	 */
 	protected override mousePressEvent(event: CMouseEvent): void {
-		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -114,10 +98,6 @@ export class CKeySequenceEdit extends CWidget {
 		event.accept();
 	}
 
-	/**
-	 * Responds to focus exit for the key sequence edit. May emit `editingFinished`.
-	 * @param event Event for focus exit.
-	 */
 	protected override focusOutEvent(event: CFocusEvent): void {
 		this.editingFinished.emit();
 		super.focusOutEvent(event);
@@ -127,19 +107,15 @@ export class CKeySequenceEdit extends CWidget {
 		const parts: string[] = [];
         const altGraph = event.altGraph();
 
-		/** Provides if behavior. */
 		if (event.ctrl() || altGraph)
 			parts.push("Ctrl");
 
-		/** Provides if behavior. */
 		if (event.alt() || altGraph)
 			parts.push("Alt");
 
-		/** Provides if behavior. */
 		if (event.shift())
 			parts.push("Shift");
 
-		/** Provides if behavior. */
 		if (event.meta())
 			parts.push("Meta");
 
@@ -151,19 +127,15 @@ export class CKeySequenceEdit extends CWidget {
 	    const code = event.code();
 	    const key = event.key();
 
-	    /** Provides if behavior. */
 	    if (code.startsWith("Key"))
 		    return code.slice(3);
 
-	    /** Provides if behavior. */
 	    if (code.startsWith("Digit"))
 		    return code.slice(5);
 
-	    /** Provides if behavior. */
 	    if (key === " ")
 		    return "Space";
 
-	    /** Provides switch behavior. */
 	    switch (key) {
 	    case "ArrowLeft":
 		    return "Left";
@@ -175,7 +147,6 @@ export class CKeySequenceEdit extends CWidget {
 		    return "Down";
 	    }
 
-	    /** Provides if behavior. */
 	    if (key.length === 1)
 		    return key.toUpperCase();
 

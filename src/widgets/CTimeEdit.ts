@@ -1,3 +1,4 @@
+/** @module Widgets/CTimeEdit */
 import { CSignal } from "../core/CSignal.js";
 import { CSize } from "../geometry/CSize.js";
 import type { CLineEditSection } from "./CSectionLineEdit.js";
@@ -14,21 +15,25 @@ type CTimeSection =
 	"second" |
 	"ampm";
 
-
 type CTimeSectionInfo = {
 	type: CTimeSection;
 	start: number;
 	length: number;
 };
 
-
-/** Implements the time edit widget. */
+/** Section-based bounded time input with stepping and display formatting. */
 export class CTimeEdit extends CWidget
 {
-	static readonly ButtonWidth = 28;
+    /**
+    * Logical pixel width reserved for the step-arrow buttons.
+    */
+    static readonly ButtonWidth = 28;
 
-	/** Signal emitted when time changes. */
-	readonly timeChanged = new CSignal<[Date]>();
+    /**
+    * Emitted with an independent Date representing the new local time of day.
+    * @group Signals
+    */
+    readonly timeChanged = new CSignal<[Date]>();
 
 	#m_time: Date;
 	#m_minimumTime: Date;
@@ -44,10 +49,12 @@ export class CTimeEdit extends CWidget
 	#m_inputSection = -1;
 	#m_inputDigits = "";
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null)
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null)
 	{
-		/** Provides super behavior. */
 		super(parent);
 
 		const now = new Date();
@@ -100,38 +107,32 @@ export class CTimeEdit extends CWidget
         this.#m_downButton.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
-	/**
-	 * Reads the time of the time edit.
-	 * @returns A new `Date`.
-	 */
-	time(): Date
+    /**
+    * Independent Date containing the selected local time of day.
+    */
+    time(): Date
 	{
 		return new Date(this.#m_time);
 	}
 
-	/**
-	 * Sets the time.
-	 * @param time Time.
-	 */
-	setTime(time: Date): void
+    /**
+    * Updates the local time-of-day portion using validation and configured bounds.
+    */
+    setTime(time: Date): void
 	{
-		/** Provides if behavior. */
 		if (!this.#validDate(time))
 			return;
 
 		time = this.#normalizedTime(time);
 
-		/** Provides if behavior. */
 		if (this.#timeValue(time) <
 			this.#timeValue(this.#m_minimumTime))
 			time = new Date(this.#m_minimumTime);
 
-		/** Provides if behavior. */
 		if (this.#timeValue(time) >
 			this.#timeValue(this.#m_maximumTime))
 			time = new Date(this.#m_maximumTime);
 
-		/** Provides if behavior. */
 		if (this.#sameTime(time, this.#m_time))
 			return;
 
@@ -143,98 +144,84 @@ export class CTimeEdit extends CWidget
 		this.update();
 	}
 
-	/**
-	 * Returns the minimum time.
-	 * @returns A new `Date`.
-	 */
-	minimumTime(): Date
+    /**
+    * Returns the earliest permitted time-of-day.
+    */
+    minimumTime(): Date
 	{
 		return new Date(this.#m_minimumTime);
 	}
 
-	/**
-	 * Sets the minimum time.
-	 * @param time Time.
-	 */
-	setMinimumTime(time: Date): void
+    /**
+    * Changes the lower time bound and re-clamps the current time when necessary.
+    */
+    setMinimumTime(time: Date): void
 	{
-		/** Provides if behavior. */
 		if (!this.#validDate(time))
 			return;
 
 		time = this.#normalizedTime(time);
 
-		/** Provides if behavior. */
 		if (this.#timeValue(time) >
 			this.#timeValue(this.#m_maximumTime))
 			return;
 
-		/** Provides if behavior. */
 		if (this.#sameTime(time, this.#m_minimumTime))
 			return;
 
 		this.#m_minimumTime = new Date(time);
 
-		/** Provides if behavior. */
 		if (this.#timeValue(this.#m_time) <
 			this.#timeValue(this.#m_minimumTime))
 			this.setTime(this.#m_minimumTime);
 	}
 
-	/**
-	 * Returns the maximum time.
-	 * @returns A new `Date`.
-	 */
-	maximumTime(): Date
+    /**
+    * Returns the latest permitted time-of-day.
+    */
+    maximumTime(): Date
 	{
 		return new Date(this.#m_maximumTime);
 	}
 
-	/**
-	 * Sets the maximum time.
-	 * @param time Time.
-	 */
-	setMaximumTime(time: Date): void
+    /**
+    * Changes the upper time bound and re-clamps the current time when necessary.
+    */
+    setMaximumTime(time: Date): void
 	{
-		/** Provides if behavior. */
 		if (!this.#validDate(time))
 			return;
 
 		time = this.#normalizedTime(time);
 
-		/** Provides if behavior. */
 		if (this.#timeValue(time) <
 			this.#timeValue(this.#m_minimumTime))
 			return;
 
-		/** Provides if behavior. */
 		if (this.#sameTime(time, this.#m_maximumTime))
 			return;
 
 		this.#m_maximumTime = new Date(time);
 
-		/** Provides if behavior. */
 		if (this.#timeValue(this.#m_time) >
 			this.#timeValue(this.#m_maximumTime))
 			this.setTime(this.#m_maximumTime);
 	}
 
-	/**
-	 * Reads the display format.
-	 * @returns The display format.
-	 */
-	displayFormat(): string
+    /**
+    * Pattern controlling the displayed date or time sections.
+    * The initial value is `"HH:mm"`.
+    */
+    displayFormat(): string
 	{
 		return this.#m_displayFormat;
 	}
 
-	/**
-	 * Sets the display format.
-	 * @param format Format.
-	 */
-	setDisplayFormat(format: string): void
+    /**
+    * Changes the section pattern used to display and edit time.
+    */
+    setDisplayFormat(format: string): void
 	{
-		/** Provides if behavior. */
 		if (this.#m_displayFormat === format)
 			return;
 
@@ -244,17 +231,16 @@ export class CTimeEdit extends CWidget
 		this.update();
 	}
 
-	/**
-	 * Reads the line edit.
-	 * @returns The line edit.
-	 */
-	lineEdit(): CSectionLineEdit
+    /**
+    * Owned section editor displaying the formatted time.
+    */
+    lineEdit(): CSectionLineEdit
 	{
 		return this.#m_lineEdit;
 	}
 
-	/** Increments the active time section by one step and focuses the text editor. */
-	stepUp(): void
+    /** Performs step up. */
+    stepUp(): void
 	{
 		this.#stepSection(
 			this.#m_lineEdit.currentSection(),
@@ -263,8 +249,8 @@ export class CTimeEdit extends CWidget
         this.#m_lineEdit.setFocus();
 	}
 
-	/** Decrements the active time section by one step and focuses the text editor. */
-	stepDown(): void
+    /** Performs step down. */
+    stepDown(): void
 	{
 		this.#stepSection(
 			this.#m_lineEdit.currentSection(),
@@ -273,13 +259,6 @@ export class CTimeEdit extends CWidget
         this.#m_lineEdit.setFocus();
 	}
 
-	/**
-	 * Sets the geometry.
-	 * @param x Horizontal position in parent coordinates.
-	 * @param y Vertical position in parent coordinates.
-	 * @param width Width in logical pixels.
-	 * @param height Height in logical pixels.
-	 */
 	override setGeometry(
 		x: number, y: number, width: number, height: number
 	): void
@@ -289,11 +268,6 @@ export class CTimeEdit extends CWidget
 		this.#updateGeometry();
 	}
 
-	/**
-	 * Resizes the width.
-	 * @param width Width in logical pixels.
-	 * @param height Height in logical pixels.
-	 */
 	override resize(width: number, height: number): void
 	{
 		super.resize(width, height);
@@ -301,10 +275,6 @@ export class CTimeEdit extends CWidget
 		this.#updateGeometry();
 	}
 
-	/**
-	 * Returns the preferred size of the widget.
-	 * @returns A new `CSize`.
-	 */
 	override sizeHint(): CSize
 	{
 		return new CSize(100, 30);
@@ -379,12 +349,10 @@ export class CTimeEdit extends CWidget
 				/HH|H|hh|h|mm|m|ss|s|AP|ap|./g
 			) ?? [];
 
-		/** Provides for behavior. */
 		for (const token of tokens) {
 			let value = token;
 			let type: CTimeSection | null = null;
 
-			/** Provides switch behavior. */
 			switch (token) {
 				case "HH":
 					value = hour24
@@ -445,7 +413,6 @@ export class CTimeEdit extends CWidget
 					break;
 			}
 
-			/** Provides if behavior. */
 			if (type !== null) {
 				sections.push({
 					type,
@@ -466,7 +433,6 @@ export class CTimeEdit extends CWidget
 
 	#stepSection(section: number, direction: number): void
 	{
-		/** Provides if behavior. */
 		if (section < 0 || section >= this.#m_sections.length)
 			return;
 
@@ -476,7 +442,6 @@ export class CTimeEdit extends CWidget
 		let minute = this.#m_time.getMinutes();
 		let second = this.#m_time.getSeconds();
 
-		/** Provides switch behavior. */
 		switch (type) {
 			case "hour":
 				hour = (
@@ -513,7 +478,6 @@ export class CTimeEdit extends CWidget
 			second
 		);
 
-		/** Provides if behavior. */
 		if (
 			this.#timeValue(time) <
 				this.#timeValue(this.#m_minimumTime) ||

@@ -1,3 +1,4 @@
+/** @module Painting/CCanvasPaintEngine */
 import { CPaintEngine } from "./CPaintEngine.js";
 import { CPixmap } from "./CPixmap.js"
 
@@ -16,46 +17,28 @@ export class CCanvasPaintEngine extends CPaintEngine {
         this.#m_context.imageSmoothingQuality = "high";
     }
 
-    /** Pushes the current drawing state so it can be restored after temporary changes. */
+    /** Saves the canvas rendering state. */
     save(): void {
         this.#m_context.save();
     }
 
-    /** Restores the most recently saved drawing state. */
+    /** Restores the most recently saved canvas rendering state. */
     restore(): void {
         this.#m_context.restore();
     }
 
-    /**
-     * Reads the 2D context's drawing transparency setting.
-     * @returns Current global alpha between zero and one.
-     */
     override opacity(): number { return this.#m_context.globalAlpha; }
 
-    /**
-     * Changes global alpha for subsequent drawing. Nonfinite input leaves it unchanged.
-     * @param opacity Requested opacity, clamped to zero through one.
-     */
     override setOpacity(opacity: number): void {
         if (Number.isFinite(opacity)) this.#m_context.globalAlpha = Math.max(0, Math.min(1, opacity));
     }
 
-    /**
-     * Moves the origin of subsequent drawing operations relative to the current transform.
-     * @param x Horizontal translation offset.
-     * @param y Vertical translation offset.
-     */
+    /** Translates the canvas coordinate system. */
     translate(x: number, y: number): void {
         this.#m_context.translate(x, y);
     }
 
-    /**
-     * Fills a rectangle with the current fill style.
-     * @param x Left edge in the current drawing coordinate system.
-     * @param y Top edge in the current drawing coordinate system.
-     * @param width Rectangle width in drawing units.
-     * @param height Rectangle height in drawing units.
-     */
+    /** Fills a rectangle using the current fill style. */
     fillRect(
         x: number,
         y: number,
@@ -65,13 +48,7 @@ export class CCanvasPaintEngine extends CPaintEngine {
         this.#m_context.fillRect(x, y, width, height);
     }
 
-    /**
-     * Strokes a rectangle with the current stroke style and line width.
-     * @param x Left edge in the current drawing coordinate system.
-     * @param y Top edge in the current drawing coordinate system.
-     * @param width Rectangle width in drawing units.
-     * @param height Rectangle height in drawing units.
-     */
+    /** Strokes a rectangle using the current stroke style. */
     strokeRect(
         x: number,
         y: number,
@@ -81,13 +58,7 @@ export class CCanvasPaintEngine extends CPaintEngine {
         this.#m_context.strokeRect(x, y, width, height);
     }
 
-    /**
-     * Clears the pixels in the specified rectangle.
-     * @param x Left edge in the current drawing coordinate system.
-     * @param y Top edge in the current drawing coordinate system.
-     * @param width Rectangle width in drawing units.
-     * @param height Rectangle height in drawing units.
-     */
+    /** Clears a rectangular area. */
     clearRect(
         x: number,
         y: number,
@@ -98,134 +69,88 @@ export class CCanvasPaintEngine extends CPaintEngine {
     }
 
     /**
-     * Changes the color used for subsequent filled shapes.
-     * @param style Fill color string accepted by the drawing backend.
-     */
+    * Changes the brush color used for subsequent filled shapes. Widget code normally uses CPainter.setBrush().
+    */
     setFillStyle(style: string): void {
         this.#m_context.fillStyle = style;
     }
 
     /**
-     * Changes the color used for subsequent outlines and lines.
-     * @param style Stroke color string accepted by the drawing backend.
-     */
+    * Changes the pen color used for subsequent text and outlines. Widget code normally uses CPainter.setPen().
+    */
     setStrokeStyle(style: string): void {
         this.#m_context.strokeStyle = style;
     }
 
     /**
-     * Changes the stroke thickness used for subsequent outlines.
-     * @param width Positive line width in drawing units.
-     */
+    * Changes outline thickness in logical pixels for subsequent drawing.
+    */
     setLineWidth(width: number): void {
         this.#m_context.lineWidth = width;
     }
 
-    /**
-     * Measures a string with the current font without painting it.
-     * @param text Text to measure.
-     * @returns Measured advance width in drawing units.
-     */
     override textWidth(text: string): number {
 	    return this.#m_context.measureText(text).width;
     }
 
-    /**
-     * Intersects the current clipping region with a rectangle for subsequent drawing.
-     * @param x Left edge in the current drawing coordinate system.
-     * @param y Top edge in the current drawing coordinate system.
-     * @param width Rectangle width in drawing units.
-     * @param height Rectangle height in drawing units.
-     */
+    /** Intersects the clipping region with a rectangle. */
     clipRect(x: number, y: number, width: number, height: number): void {
 		this.#m_context.beginPath();
 		this.#m_context.rect(x, y, width, height);
 		this.#m_context.clip();
 	}
 
-    /**
-     * Reads the current backend font setting.
-     * @returns The font specification as a string.
-     */
+    /** Returns the current canvas font specification. */
     font() : string {
         return this.#m_context.font;
     }
 
-    /**
-     * Changes the font used for subsequent text drawing and measurement.
-     * @param font Font specification accepted by the backend, such as a CSS font shorthand for Canvas.
-     */
+    /** Sets the current canvas font specification. */
     setFont(font: string): void {
 		this.#m_context.font = font;
 	}
 
-	/**
-	 * Reads the horizontal alignment used for drawn text.
-	 * @returns The alignment of text relative to its x coordinate.
-	 */
-	textAlign() : CanvasTextAlign {
+    /** Returns the current text alignment. */
+    textAlign() : CanvasTextAlign {
         return this.#m_context.textAlign;
     }
 
-	/**
-	 * Sets the horizontal alignment for subsequent text.
-	 * @param align Alignment of text relative to its x coordinate, such as `left` or `center`.
-	 */
-	setTextAlign(align: CanvasTextAlign): void {
+    /** Sets the current text alignment. */
+    setTextAlign(align: CanvasTextAlign): void {
 		this.#m_context.textAlign = align;
 	}
 
     /**
-     * Sets the vertical reference for subsequent text.
-     * @param baseline Baseline corresponding to the supplied y coordinate, such as `alphabetic` or `middle`.
-     */
+    * Chooses the vertical reference line used by subsequent drawText() calls.
+    */
     setTextBaseline(baseline: CanvasTextBaseline): void {
 		this.#m_context.textBaseline = baseline;
 	}
 
     /**
-     * Reads the baseline used for drawn text.
-     * @returns The vertical reference used for the text y coordinate.
-     */
+    * Returns the vertical text reference currently configured for drawing.
+    */
     textBaseline() : CanvasTextBaseline {
         return this.#m_context.textBaseline;
     }
 
-    /**
-     * Strokes a line segment with the current stroke style and width.
-     * @param x1 Horizontal start coordinate.
-     * @param y1 Vertical start coordinate.
-     * @param x2 Horizontal end coordinate.
-     * @param y2 Vertical end coordinate.
-     */
+    /** Draws a line segment. */
     drawLine(x1: number, y1: number, x2: number, y2: number): void {
         this.#m_context.beginPath();
 	    this.#m_context.moveTo(x1, y1);
 	    this.#m_context.lineTo(x2, y2);
 	    this.#m_context.stroke();
     }
-    
-	/**
-	 * Draws text with the current font and text positioning settings, temporarily using the stroke color as the text fill.
-	 * @param text Text to draw.
-	 * @param x Horizontal text anchor.
-	 * @param y Vertical baseline position.
-	 */
-	drawText(text: string, x: number, y: number): void {
+
+    /** Draws text at the specified position. */
+    drawText(text: string, x: number, y: number): void {
 		const old = this.#m_context.fillStyle;
         this.#m_context.fillStyle = this.#m_context.strokeStyle;
 		this.#m_context.fillText(text, x, y);
         this.#m_context.fillStyle = old;
 	}
 
-    /**
-     * Draws a pixmap scaled to the requested destination rectangle.
-     * @param pixmap Source pixmap to draw.
-     * @param x Left edge of the destination.
-     * @param y Top edge of the destination.
-     * @param w Destination width.
-     * @param h Destination height.
-     */
+    /** Draws a pixmap into the specified destination rectangle. */
     drawPixmap(pixmap: CPixmap, x: number, y: number, w: number, h: number): void {
         if (pixmap !== null) {
             this.#m_context.drawImage(
@@ -233,13 +158,7 @@ export class CCanvasPaintEngine extends CPaintEngine {
         }
     }
 
-    /**
-     * Strokes the outline of an ellipse with the current stroke style.
-     * @param x Horizontal center coordinate.
-     * @param y Vertical center coordinate.
-     * @param w Nonnegative horizontal radius.
-     * @param h Nonnegative vertical radius.
-     */
+    /** Draws the outline of an ellipse. */
     drawEllipse(x: number, y: number, w: number, h: number): void
     {
         this.#m_context.beginPath();
@@ -247,13 +166,7 @@ export class CCanvasPaintEngine extends CPaintEngine {
         this.#m_context.stroke();
     }
 
-    /**
-     * Fills an ellipse with the current fill style.
-     * @param x Horizontal center coordinate.
-     * @param y Vertical center coordinate.
-     * @param w Nonnegative horizontal radius.
-     * @param h Nonnegative vertical radius.
-     */
+    /** Fills an ellipse. */
     fillEllipse(x: number, y: number, w: number, h: number): void
     {
         this.#m_context.beginPath();
@@ -261,27 +174,14 @@ export class CCanvasPaintEngine extends CPaintEngine {
         this.#m_context.fill();
     }
 
-    /**
-     * Draws a rectangle using the current fill and stroke styles.
-     * @param x Left edge in the current drawing coordinate system.
-     * @param y Top edge in the current drawing coordinate system.
-     * @param w Rectangle width in drawing units.
-     * @param h Rectangle height in drawing units.
-     */
+    /** Draws a filled and stroked rectangle. */
     drawRect(x: number, y: number, w: number, h: number): void 
     {
         this.#m_context.fillRect(x, y, w, h);
         this.#m_context.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
     }
 
-    /**
-     * Strokes and fills a rounded rectangle inset one drawing unit from its supplied bounds.
-     * @param x Left edge in the current drawing coordinate system.
-     * @param y Top edge in the current drawing coordinate system.
-     * @param w Rectangle width in drawing units.
-     * @param h Rectangle height in drawing units.
-     * @param r A nonnegative radius or one to four corner radii in Canvas round-rectangle order.
-     */
+    /** Draws a filled and stroked rounded rectangle. */
     drawRoundedRect(x: number, y: number, w: number, h: number, r: number | number[] ): void
     {
         this.#m_context.beginPath();

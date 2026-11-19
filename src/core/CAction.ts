@@ -1,3 +1,4 @@
+/** @module Core/CAction */
 import { CSignal } from "./CSignal.js";
 import { CIcon } from "../gui/CIcon.js";
 import { CShortcut } from "./CShortcut.js";
@@ -15,41 +16,41 @@ export class CAction {
 	#m_shortcutKey = "";
 	#m_shortcutParent: CWidget | null = null;
 	#m_shortcut: CShortcut | null = null;
-	
-/**
- * Emitted when an action property changes.
- */
-	readonly changed = new CSignal<[]>();
-/**
- * Emitted when the action is triggered.
- */
-	readonly triggered = new CSignal<[]>();
-/**
- * Emitted when the checked state changes.
- * @param checked New checked state.
- */
-	readonly toggled = new CSignal<[boolean]>();
 
-/**
- * Creates an action.
- * @param text Initial display text.
- */
-	constructor(text = "", shortcutParent: CWidget | null = null) {
+    /**
+    * Emitted when an action property changes.
+    * @group Signals
+    */
+    readonly changed = new CSignal<[]>();
+    /**
+    * Emitted when the action is triggered.
+    * @group Signals
+    */
+    readonly triggered = new CSignal<[]>();
+    /**
+    * Emitted when the checked state changes.
+    * @group Signals
+    * @param checked New checked state.
+    *
+    */
+    readonly toggled = new CSignal<[boolean]>();
+
+    /**
+    * Creates an action.
+    * @param text Initial display text.
+    */
+    constructor(text = "", shortcutParent: CWidget | null = null) {
 		this.#m_text = text;
 		this.#m_shortcutParent = shortcutParent;
 	}
 
-	/**
-	 * Reads the configured keyboard sequence for the action.
-	 * @returns The normalized sequence, or an empty string when none is configured.
-	 */
-	shortcut(): string { return this.#m_shortcutKey; }
+    /** Shortcut active in shortcutParent() and its descendants. */
+    shortcut(): string { return this.#m_shortcutKey; }
 
-	/**
-	 * Normalizes the sequence, updates the binding in the configured scope and emits `changed` when the normalized sequence changes.
-	 * @param key Keyboard sequence to bind. Use an empty string to clear it.
-	 */
-	setShortcut(key: string): void {
+    /**
+    * Assigns a keyboard sequence and installs its shortcut in the configured widget scope.
+    */
+    setShortcut(key: string): void {
 		const normalized = CShortcut.normalizeSequence(key);
 		if (normalized === this.#m_shortcutKey) return;
 		this.#m_shortcutKey = normalized;
@@ -57,17 +58,13 @@ export class CAction {
 		this.changed.emit();
 	}
 
-	/**
-	 * Looks up the widget that scopes the action's keyboard binding.
-	 * @returns The scope widget, or `null` if there is no scope.
-	 */
-	shortcutParent(): CWidget | null { return this.#m_shortcutParent; }
+    /**
+    * Returns the widget defining this action's shortcut scope, or null.
+    */
+    shortcutParent(): CWidget | null { return this.#m_shortcutParent; }
 
-	/**
-	 * Recreates the binding under the supplied widget when a sequence is configured. The action has one shared scope across its presentations.
-	 * @param parent Scope widget, or `null` to remove the active binding.
-	 */
-	setShortcutParent(parent: CWidget | null): void {
+    /** Assigns one explicit scope shared by all presentations of this action. */
+    setShortcutParent(parent: CWidget | null): void {
 		if (parent === this.#m_shortcutParent) return;
 		this.#m_shortcut?.destroy();
 		this.#m_shortcut = null;
@@ -76,8 +73,8 @@ export class CAction {
 		this.changed.emit();
 	}
 
-	/** Releases the keyboard binding. Menus and toolbars do not own actions. */
-	destroy(): void {
+    /** Releases the keyboard binding. Menus and toolbars do not own actions. */
+    destroy(): void {
 		this.#m_shortcut?.destroy();
 		this.#m_shortcut = null;
 		this.#m_shortcutParent = null;
@@ -98,19 +95,19 @@ export class CAction {
 		this.#m_shortcut.setEnabled(this.#m_enabled);
 	}
 
-/**
- * Returns the action text.
- * @returns Current display text.
- */
-	text(): string {
+    /**
+    * Returns the action text.
+    * @returns Current display text.
+    */
+    text(): string {
 		return this.#m_text;
 	}
 
-/**
-	 * Sets the text. May emit `changed`.
-	 * @param text New display text.
-	 */
-	setText(text: string): void {
+    /**
+    * Sets the action text.
+    * @param text New display text.
+    */
+    setText(text: string): void {
 		if (this.#m_text === text)
 			return;
 
@@ -118,19 +115,19 @@ export class CAction {
 		this.changed.emit();
 	}
 
-/**
- * Returns the action icon.
- * @returns Current icon, or `null` if no icon is set.
- */
-	icon(): CIcon | null {
+    /**
+    * Assigned icon used by the control's drawing style.
+    * The initial value is `null`.
+    */
+    icon(): CIcon | null {
 		return this.#m_icon;
 	}
 
-/**
-	 * Sets the icon. May emit `changed`.
-	 * @param icon New icon, or `null` to remove it.
-	 */
-	setIcon(icon: CIcon | null): void {
+    /**
+    * Sets the action icon.
+    * @param icon New icon, or `null` to remove it.
+    */
+    setIcon(icon: CIcon | null): void {
 		if (this.#m_icon === icon)
 			return;
 
@@ -138,19 +135,19 @@ export class CAction {
 		this.changed.emit();
 	}
 
-/**
- * Returns whether the action can be triggered.
- * @returns `true` if the action is enabled.
- */
-	isEnabled(): boolean {
+    /**
+    * Returns whether the action can be triggered.
+    * @returns `true` if the action is enabled.
+    */
+    isEnabled(): boolean {
 		return this.#m_enabled;
 	}
 
-/**
- * Sets whether the action can be triggered.
- * @param enabled New enabled state.
- */
-	setEnabled(enabled: boolean): void {
+    /**
+    * Sets whether the action can be triggered.
+    * @param enabled New enabled state.
+    */
+    setEnabled(enabled: boolean): void {
 		if (this.#m_enabled === enabled)
 			return;
 
@@ -159,19 +156,19 @@ export class CAction {
 		this.changed.emit();
 	}
 
-/**
- * Returns whether the action has a checked state.
- * @returns `true` if the action is checkable.
- */
-	isCheckable(): boolean {
+    /**
+    * Whether the option supports a persistent checked state.
+    * The initial value is `false`.
+    */
+    isCheckable(): boolean {
 		return this.#m_checkable;
 	}
 
-/**
- * Sets whether the action has a checked state. Disabling checkability also clears the checked state.
- * @param checkable New checkable state.
- */
-	setCheckable(checkable: boolean): void {
+    /**
+    * Sets whether the action has a checked state. Disabling checkability also clears the checked state.
+    * @param checkable New checkable state.
+    */
+    setCheckable(checkable: boolean): void {
 		if (this.#m_checkable === checkable)
 			return;
 
@@ -183,19 +180,19 @@ export class CAction {
 		this.changed.emit();
 	}
 
-/**
- * Returns the current checked state.
- * @returns `true` if the action is checked.
- */
-	isChecked(): boolean {
+    /**
+    * Whether the option is checked.
+    * The initial value is `false`.
+    */
+    isChecked(): boolean {
 		return this.#m_checked;
 	}
 
-/**
- * Sets the checked state of a checkable action.
- * @param checked New checked state.
- */
-	setChecked(checked: boolean): void {
+    /**
+    * Sets the checked state of a checkable action.
+    * @param checked New checked state.
+    */
+    setChecked(checked: boolean): void {
 		if (!this.#m_checkable)
 			checked = false;
 
@@ -207,10 +204,10 @@ export class CAction {
 		this.changed.emit();
 	}
 
-/**
- * Triggers the action if it is enabled. Checkable actions toggle their checked state first.
- */
-	trigger(): void {
+    /**
+    * Triggers the action if it is enabled. Checkable actions toggle their checked state first.
+    */
+    trigger(): void {
 		if (!this.#m_enabled)
 			return;
 

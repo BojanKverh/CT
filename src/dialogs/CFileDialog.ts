@@ -1,14 +1,16 @@
+/** @module Dialogs/CFileDialog */
 /**
  * Provides browser-native file selection helpers.
  */
 export class CFileDialog
 {
-/**
-	 * Opens the browser's native single-file picker and removes its temporary input when selection ends.
-	 * @param accept Comma-separated MIME types, wildcards or extensions for the native picker. An empty string leaves the picker unrestricted.
-	 * @returns A promise resolving to the selected `File`, or `null` on cancellation or an empty selection.
-	 */
-	static getOpenFile(
+    /**
+    * Opens a native file picker for selecting one file.
+    *
+    * @param accept Optional HTML file-type accept filter.
+    * @returns A promise resolving to the selected file, or `null` if canceled.
+    */
+    static getOpenFile(
 		accept = ""
 	): Promise<File | null>
 	{
@@ -37,12 +39,13 @@ export class CFileDialog
 		});
 	}
 
-/**
-	 * Opens the browser's native multiple-file picker and removes its temporary input when selection ends.
-	 * @param accept Comma-separated MIME types, wildcards or extensions for the native picker. An empty string leaves the picker unrestricted.
-	 * @returns A promise resolving to the selected files in picker order, or an empty array on cancellation or an empty selection.
-	 */
-	static getOpenFiles(
+    /**
+    * Opens a native file picker for selecting multiple files.
+    *
+    * @param accept Optional HTML file-type accept filter.
+    * @returns A promise resolving to the selected files, or an empty array if canceled.
+    */
+    static getOpenFiles(
 		accept = ""
 	): Promise<File[]>
 	{

@@ -1,3 +1,4 @@
+/** @module Widgets/CDoubleItemDelegate */
 import { CSignal } from "../core/CSignal.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
@@ -8,13 +9,17 @@ import { CDoubleSpinBox } from "./CDoubleSpinBox.js";
 import { CWidget } from "./CWidget.js";
 
 class CDoubleItemDelegateSpinBox extends CDoubleSpinBox {
-	readonly accepted = new CSignal<[]>();
-	readonly canceled = new CSignal<[]>();
+    /**
+    * Emitted after the dialog's accept action completes.
+    * @group Signals
+    */
+    readonly accepted = new CSignal<[]>();
+    /**
+    * Emitted when Escape cancels editor interaction; the delegate can close without committing.
+    * @group Signals
+    */
+    readonly canceled = new CSignal<[]>();
 
-	/**
-	 * Responds to a key press for the double item delegate spin box. May accept the event. May emit `accepted`, `canceled`.
-	 * @param event Event for a key press.
-	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
 		if (event.key() === "Enter") {
 			super.keyPressEvent(event);
@@ -39,60 +44,56 @@ export class CDoubleItemDelegate extends CAbstractItemDelegate {
 	#m_singleStep = 1;
 	#m_decimals = 2;
 
-	/**
-	 * Reads the minimum.
-	 * @returns The minimum.
-	 */
-	minimum(): number {
+    /**
+    * Lower permitted value.
+    * The initial value is `0`.
+    */
+    minimum(): number {
 		return this.#m_minimum;
 	}
 
-	/**
-	 * Reads the maximum.
-	 * @returns The maximum.
-	 */
-	maximum(): number {
+    /**
+    * Upper permitted value.
+    * The initial value is `99.99`.
+    */
+    maximum(): number {
 		return this.#m_maximum;
 	}
 
-	/**
-	 * Reads the single step.
-	 * @returns The single step.
-	 */
-	singleStep(): number {
+    /**
+    * Increment used for a single keyboard or step-button action.
+    * The initial value is `1`.
+    */
+    singleStep(): number {
 		return this.#m_singleStep;
 	}
 
-	/**
-	 * Reads the decimals.
-	 * @returns The decimals.
-	 */
-	decimals(): number {
+    /**
+    * Number of decimal places used to format the numeric value.
+    * The initial value is `2`.
+    */
+    decimals(): number {
 		return this.#m_decimals;
 	}
 
-	/**
-	 * Sets the minimum.
-	 * @param minimum Minimum.
-	 */
-	setMinimum(minimum: number): void {
+    /**
+    * Sets the lower bound used by editors created for model cells.
+    */
+    setMinimum(minimum: number): void {
 		this.setRange(minimum, this.#m_maximum);
 	}
 
-	/**
-	 * Sets the maximum.
-	 * @param maximum Maximum.
-	 */
-	setMaximum(maximum: number): void {
+    /**
+    * Sets the upper bound used by editors created for model cells.
+    */
+    setMaximum(maximum: number): void {
 		this.setRange(this.#m_minimum, maximum);
 	}
 
-	/**
-	 * Sets the range. The implementation checks whether `minimum` is finite and checks whether `maximum` is finite. May update the minimum, the maximum.
-	 * @param minimum Minimum.
-	 * @param maximum Maximum.
-	 */
-	setRange(minimum: number, maximum: number): void {
+    /**
+    * Configures inclusive numeric bounds applied to created cell editors.
+    */
+    setRange(minimum: number, maximum: number): void {
 		if (!Number.isFinite(minimum) || !Number.isFinite(maximum))
 			return;
 
@@ -103,30 +104,22 @@ export class CDoubleItemDelegate extends CAbstractItemDelegate {
 		this.#m_maximum = maximum;
 	}
 
-	/**
-	 * Sets the single step. The implementation checks whether `step` is finite.
-	 * @param step Step.
-	 */
-	setSingleStep(step: number): void {
+    /**
+    * Configures the increment used by step controls in created editors.
+    */
+    setSingleStep(step: number): void {
 		if (Number.isFinite(step))
 			this.#m_singleStep = Math.max(0, step);
 	}
 
-	/**
-	 * Sets the decimals. The implementation checks whether `decimals` is finite.
-	 * @param decimals Decimals.
-	 */
-	setDecimals(decimals: number): void {
+    /**
+    * Configures decimal precision for created editors and formatted numeric values.
+    */
+    setDecimals(decimals: number): void {
 		if (Number.isFinite(decimals))
 			this.#m_decimals = Math.max(0, Math.min(100, Math.trunc(decimals)));
 	}
 
-	/**
-	 * Creates a decimal spin box using the configured bounds, precision and step and connects its acceptance and cancellation to the delegate's editing signals.
-	 * @param parent Widget that will own the editor.
-	 * @param _index Model index of the edited cell. The initial cell value is applied separately by `setEditorData()`.
-	 * @returns The new editor widget.
-	 */
 	override createEditor(
 		parent: CWidget,
 		_index: CModelIndex
@@ -149,11 +142,6 @@ export class CDoubleItemDelegate extends CAbstractItemDelegate {
 		return editor;
 	}
 
-	/**
-	 * Populates decimal spin box with the cell value converted to a finite number.
-	 * @param editor Editor widget created for the cell.
-	 * @param index Model index supplying the initial value.
-	 */
 	override setEditorData(editor: CWidget, index: CModelIndex): void {
 		if (!(editor instanceof CDoubleSpinBox))
 			return;
@@ -163,12 +151,6 @@ export class CDoubleItemDelegate extends CAbstractItemDelegate {
 			editor.setValue(value);
 	}
 
-	/**
-	 * Writes the editor's numeric value back to the target cell when the editor is applicable.
-	 * @param editor Editor containing the edited value.
-	 * @param model Model to update.
-	 * @param index Index receiving the edited value.
-	 */
 	override setModelData(
 		editor: CWidget,
 		model: CAbstractItemModel,

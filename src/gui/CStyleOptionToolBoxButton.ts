@@ -1,3 +1,4 @@
+/** @module GUI/CStyleOptionToolBoxButton */
 import { CStyleOptionButton } from "./CStyleOptionButton.js";
 import { CStyleState } from "./CStyleOption.js";
 import type { CToolBoxButton } from "../widgets/CToolBoxButton.js";
@@ -6,21 +7,19 @@ import type { CToolBoxButton } from "../widgets/CToolBoxButton.js";
  * Contains style information used to render a tool box button.
  */
 export class CStyleOptionToolBoxButton extends CStyleOptionButton {
-		/**
-	 * Returns or updates the text value.
-	 */
-text = "";
-		/**
-	 * Returns or updates the current value.
-	 */
-current = false;
+    /**
+    * Caption painted by the style; an empty string draws no caption.
+    */
+    text = "";
+    /**
+    * Whether this heading belongs to the currently expanded toolbox page.
+    */
+    current = false;
 
-		/**
-	 * Creates a new CStyleOptionToolBoxButton instance.
-	 *
-	 * @param other Other.
-	 */
-constructor(other: CStyleOptionToolBoxButton | null = null) {
+    /**
+    * Copies the paint options from other, or initializes default appearance when other is null.
+    */
+    constructor(other: CStyleOptionToolBoxButton | null = null) {
 		super(other);
 
 		if (other) {
@@ -29,12 +28,12 @@ constructor(other: CStyleOptionToolBoxButton | null = null) {
 		}
 	}
 
-		/**
-	 * Initializes this style option from the specified tool box button.
-	 *
-	 * @param button Button.
-	 */
-initFromToolBoxButton(button: CToolBoxButton): void {
+    /**
+    * Initializes this style option from the specified tool box button.
+    *
+    * @param button Button.
+    */
+    initFromToolBoxButton(button: CToolBoxButton): void {
 		this.initFromButton(button);
 
 		this.text = button.text();

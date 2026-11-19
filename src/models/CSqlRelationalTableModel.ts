@@ -1,26 +1,42 @@
+/** @module Models/CSqlRelationalTableModel */
 import { CModelIndex } from "./CModelIndex.js";
 import { CSqlRelation } from "./CSqlRelation.js";
 import type { CSqlRow } from "./CSqlTableAdapter.js";
 import { CSqlTableAdapter } from "./CSqlTableAdapter.js";
 import { CSqlTableModel } from "./CSqlTableModel.js";
 
-/** SQL table model that displays foreign keys through related tables. */
+/** SQL table model that displays foreign keys through related tables.
+ *
+ * @example
+ * ```ts
+ * const adapter = new CMemorySqlTableAdapter({
+ *     employees: [{ id: 1, department_id: 10 }],
+ *     departments: [{ id: 10, name: "Engineering" }]
+ * });
+ * const model = new CSqlRelationalTableModel(adapter);
+ * model.setTable("employees");
+ * model.setColumns(["id", "department_id"]);
+ * model.setRelation(1, new CSqlRelation("departments", "id", "name"));
+ * if (await model.select()) view.setModel(model);
+ * ```
+ */
 export class CSqlRelationalTableModel extends CSqlTableModel {
-	static readonly RelationFetchSize = 1000;
+    /** Maximum related-record batch size used while resolving relation labels. */
+    static readonly RelationFetchSize = 1000;
 
 	#m_relations = new Map<number, CSqlRelation>();
 	#m_relationRows = new Map<number, CSqlRow[]>();
 
-	constructor(adapter: CSqlTableAdapter) {
+    /**
+    * Connects the base table model to an adapter; relations are configured before select().
+    * @param adapter Backend used for asynchronous table reads and writes.
+    */
+    constructor(adapter: CSqlTableAdapter) {
 		super(adapter);
 	}
 
-	/**
-	 * Sets or removes a relation, invalidates that column's lookup rows and emits a reset. Call `select()` to load lookup data.
-	 * @param column Nonnegative integer model-column index.
-	 * @param relation Relation to assign, or `null` or an invalid relation to remove it.
-	 */
-	setRelation(column: number, relation: CSqlRelation | null): void {
+    /** Assigns or removes the relation for a model column. */
+    setRelation(column: number, relation: CSqlRelation | null): void {
 		if (!Number.isInteger(column) || column < 0)
 			return;
 
@@ -34,31 +50,19 @@ export class CSqlRelationalTableModel extends CSqlTableModel {
 		this.resetModel();
 	}
 
-	/**
-	 * Looks up the relation configured for a column.
-	 * @param column Zero-based model column.
-	 * @returns The relation, or `null` if unset.
-	 */
-	relation(column: number): CSqlRelation | null {
+    /** Returns the relation assigned to a column. */
+    relation(column: number): CSqlRelation | null {
 		return this.#m_relations.get(column) ?? null;
 	}
 
-	/**
-	 * Reads the cached lookup records for a column.
-	 * @param column Zero-based model column.
-	 * @returns Shallow copies of the loaded lookup records, or an empty array.
-	 */
-	relationRows(column: number): readonly CSqlRow[] {
+    /** Returns independent copies of the loaded records for a relation. */
+    relationRows(column: number): readonly CSqlRow[] {
 		return (this.#m_relationRows.get(column) ?? [])
 			.map(row => ({ ...row }));
 	}
 
-	/**
-	 * Converts cached display values to strings in lookup row order.
-	 * @param column Zero-based model column.
-	 * @returns Display strings with empty strings for missing values, or an empty array when no lookup is loaded.
-	 */
-	relationDisplayValues(column: number): string[] {
+    /** Returns display values in the same order as relationRows(). */
+    relationDisplayValues(column: number): string[] {
 		const relation = this.relation(column);
 		if (relation === null)
 			return [];
@@ -67,13 +71,8 @@ export class CSqlRelationalTableModel extends CSqlTableModel {
 			String(row[relation.displayColumn()] ?? ""));
 	}
 
-	/**
-	 * Reads the foreign-key value at a loaded lookup position.
-	 * @param column Zero-based model column with a relation.
-	 * @param row Zero-based row in the lookup cache.
-	 * @returns The stored key, or `undefined` if unavailable.
-	 */
-	relationKeyAt(column: number, row: number): unknown {
+    /** Returns a relation key by its loaded row position. */
+    relationKeyAt(column: number, row: number): unknown {
 		const relation = this.relation(column);
 		if (relation === null)
 			return undefined;
@@ -83,20 +82,11 @@ export class CSqlRelationalTableModel extends CSqlTableModel {
 		];
 	}
 
-	/**
-	 * Reads the underlying cell without applying a relation lookup.
-	 * @param index Index in this model.
-	 * @returns Raw cell value, or `null` for a missing value.
-	 */
-	rawData(index: CModelIndex): unknown {
+    /** Returns the unformatted value stored by CSqlTableModel. */
+    rawData(index: CModelIndex): unknown {
 		return super.data(index);
 	}
 
-	/**
-	 * Replaces a stored foreign key with its display value when a matching lookup row supplies one.
-	 * @param index Index in this model.
-	 * @returns The display value, or the raw cell value when no display value is available.
-	 */
 	override data(index: CModelIndex): unknown {
 		const value = super.data(index);
 		const relation = this.relation(index.column());
@@ -108,12 +98,6 @@ export class CSqlRelationalTableModel extends CSqlTableModel {
 		return related?.[relation.displayColumn()] ?? value;
 	}
 
-	/**
-	 * Resolves a relation edit to a stored key. It prefers an exact key match before looking for a matching display value.
-	 * @param index Target index in this model.
-	 * @param value Raw key or display value. Nullish values are forwarded directly.
-	 * @returns `true` if the base model accepts the edit, or `false` if the value cannot be resolved or the cell rejects it.
-	 */
 	override setItemData(index: CModelIndex, value: unknown): boolean {
 		const relation = this.relation(index.column());
 		if (relation === null || value === null || value === undefined)
@@ -137,11 +121,8 @@ export class CSqlRelationalTableModel extends CSqlTableModel {
 		);
 	}
 
-	/**
-	 * Loads the first page of the main table, then loads each configured relation in pages and emits another reset on success.
-	 * @returns A promise resolving to `true` only if the main load and all relation loads succeed.
-	 */
-	override async select(): Promise<boolean> {
+    /** Loads the main table and all configured relation tables. */
+    override async select(): Promise<boolean> {
 		if (!await super.select())
 			return false;
 

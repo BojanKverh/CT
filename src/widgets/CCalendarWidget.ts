@@ -1,3 +1,4 @@
+/** @module Widgets/CCalendarWidget */
 import { CSignal } from "../core/CSignal.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
@@ -8,17 +9,29 @@ import { CWidget } from "./CWidget.js";
 import { CRect } from "../geometry/CRect.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
-/** Implements the calendar widget widget. */
+/** Month calendar supporting date selection and navigation within configured date limits. */
 export class CCalendarWidget extends CWidget
 {
-	/** Signal emitted when selection changes. */
-	readonly selectionChanged = new CSignal<[]>();
-	/** Public clicked member. */
-	readonly clicked = new CSignal<[Date]>();
-	/** Public activated member. */
-	readonly activated = new CSignal<[Date]>();
-	/** Signal emitted when current page changes. */
-	readonly currentPageChanged = new CSignal<[number, number]>();
+    /**
+    * Emitted after the set of selected items changes.
+    * @group Signals
+    */
+    readonly selectionChanged = new CSignal<[]>();
+    /**
+    * Emitted on activation. Connect the application's action handler to this signal.
+    * @group Signals
+    */
+    readonly clicked = new CSignal<[Date]>();
+    /**
+    * Reserved date-activation notification. Current calendar interaction emits clicked; activated is not emitted automatically.
+    * @group Signals
+    */
+    readonly activated = new CSignal<[Date]>();
+    /**
+    * Emitted with the displayed year and one-based month after calendar navigation.
+    * @group Signals
+    */
+    readonly currentPageChanged = new CSignal<[number, number]>();
 
 	#m_selectedDate = CCalendarWidget.#today();
 	#m_minimumDate = new Date(1752, 8, 14);
@@ -31,10 +44,12 @@ export class CCalendarWidget extends CWidget
 	#m_previousButton: CToolButton;
 	#m_nextButton: CToolButton;
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null)
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null)
 	{
-		/** Provides super behavior. */
 		super(parent);
 
 		this.#m_previousButton = new CToolButton(this);
@@ -55,25 +70,22 @@ export class CCalendarWidget extends CWidget
         this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
-	/**
-	 * Returns the selected date.
-	 * @returns A new `Date`.
-	 */
-	selectedDate(): Date
+    /**
+    * Returns an independent copy of the selected local-calendar date.
+    */
+    selectedDate(): Date
 	{
 		return new Date(this.#m_selectedDate);
 	}
 
-	/**
-	 * Sets the selected date.
-	 * @param date Date.
-	 */
-	setSelectedDate(date: Date): void
+    /**
+    * Selects a valid date within configured limits and refreshes calendar selection.
+    */
+    setSelectedDate(date: Date): void
 	{
 		const value = this.#normalizedDate(date);
 		const clamped = this.#clampDate(value);
 
-		/** Provides if behavior. */
 		if (this.#sameDate(clamped, this.#m_selectedDate))
 			return;
 
@@ -87,7 +99,6 @@ export class CCalendarWidget extends CWidget
 
 		this.selectionChanged.emit();
 
-		/** Provides if behavior. */
 		if (pageChanged) {
 			this.currentPageChanged.emit(this.#m_shownYear, this.#m_shownMonth + 1);
 		}
@@ -95,99 +106,89 @@ export class CCalendarWidget extends CWidget
 		this.update();
 	}
 
-	/**
-	 * Returns the minimum date.
-	 * @returns A new `Date`.
-	 */
-	minimumDate(): Date
+    /**
+    * Returns the lower selectable local-calendar date.
+    */
+    minimumDate(): Date
 	{
 		return new Date(this.#m_minimumDate);
 	}
 
-	/**
-	 * Sets the minimum date.
-	 * @param date Date.
-	 */
-	setMinimumDate(date: Date): void
+    /**
+    * Changes the earliest permitted selection and adjusts selection when required.
+    */
+    setMinimumDate(date: Date): void
 	{
 		const value = this.#normalizedDate(date);
 
-		/** Provides if behavior. */
 		if (value.getTime() > this.#m_maximumDate.getTime())
 			return;
 
-		/** Provides if behavior. */
 		if (this.#sameDate(value, this.#m_minimumDate))
 			return;
 
 		this.#m_minimumDate = value;
 
-		/** Provides if behavior. */
 		if (this.#m_selectedDate.getTime() < value.getTime())
 			this.setSelectedDate(value);
 
 		this.update();
 	}
 
-	/**
-	 * Returns the maximum date.
-	 * @returns A new `Date`.
-	 */
-	maximumDate(): Date
+    /**
+    * Returns the upper selectable local-calendar date.
+    */
+    maximumDate(): Date
 	{
 		return new Date(this.#m_maximumDate);
 	}
 
-	/**
-	 * Sets the maximum date.
-	 * @param date Date.
-	 */
-	setMaximumDate(date: Date): void
+    /**
+    * Changes the latest permitted selection and adjusts selection when required.
+    */
+    setMaximumDate(date: Date): void
 	{
 		const value = this.#normalizedDate(date);
 
-		/** Provides if behavior. */
 		if (value.getTime() < this.#m_minimumDate.getTime())
 			return;
 
-		/** Provides if behavior. */
 		if (this.#sameDate(value, this.#m_maximumDate))
 			return;
 
 		this.#m_maximumDate = value;
 
-		/** Provides if behavior. */
 		if (this.#m_selectedDate.getTime() > value.getTime())
 			this.setSelectedDate(value);
 
 		this.update();
 	}
 
-	/**
-	 * Reads the shown year.
-	 * @returns The shown year.
-	 */
-	yearShown(): number
+    /**
+    * Year currently displayed in the calendar.
+    * The initial value is `this.#m_selectedDate.getFullYear()`.
+    */
+    yearShown(): number
 	{
 		return this.#m_shownYear;
 	}
 
-	/**
-	 * Reads the month shown of the calendar widget.
-	 * @returns The month shown.
-	 */
-	monthShown(): number
+    /**
+    * One-based month number currently displayed, independent of the selected day.
+    */
+    monthShown(): number
 	{
 		return this.#m_shownMonth + 1;
 	}
 
-	/** Shows next month. */
-	showNextMonth(): void
+    /**
+    * Advances the displayed month while retaining the calendar's date bounds.
+    */
+    showNextMonth(): void
 	{
 		let year = this.#m_shownYear;
 		let month = this.#m_shownMonth + 1;
 
-		/** Provides if behavior. */
 		if (month > 11) {
 			month = 0;
 			++year;
@@ -196,13 +197,14 @@ export class CCalendarWidget extends CWidget
 		this.#setCurrentPageInternal(year, month);
 	}
 
-	/** Shows previous month. */
-	showPreviousMonth(): void
+    /**
+    * Moves the displayed month backward while retaining date bounds.
+    */
+    showPreviousMonth(): void
 	{
 		let year = this.#m_shownYear;
 		let month = this.#m_shownMonth - 1;
 
-		/** Provides if behavior. */
 		if (month < 0) {
 			month = 11;
 			--year;
@@ -211,8 +213,10 @@ export class CCalendarWidget extends CWidget
 		this.#setCurrentPageInternal(year, month);
 	}
 
-	/** Shows next year. */
-	showNextYear(): void
+    /**
+    * Advances the displayed calendar year.
+    */
+    showNextYear(): void
 	{
 		this.#setCurrentPageInternal(
 			this.#m_shownYear + 1,
@@ -220,8 +224,10 @@ export class CCalendarWidget extends CWidget
 		);
 	}
 
-	/** Shows previous year. */
-	showPreviousYear(): void
+    /**
+    * Moves the displayed calendar year backward.
+    */
+    showPreviousYear(): void
 	{
 		this.#setCurrentPageInternal(
 			this.#m_shownYear - 1,
@@ -229,67 +235,46 @@ export class CCalendarWidget extends CWidget
 		);
 	}
 
-	/**
-	 * Sets the current page.
-	 * @param year Year.
-	 * @param month Month.
-	 */
-	setCurrentPage(year: number, month: number): void
+    /**
+    * Changes the displayed year and month independently of user date activation.
+    */
+    setCurrentPage(year: number, month: number): void
 	{
-		/** Provides if behavior. */
 		if (month < 1 || month > 12)
 			return;
 
 		this.#setCurrentPageInternal(year, month - 1);
 	}
 
-	/**
-	 * Returns the preferred size of the widget.
-	 * @returns A new `CSize`.
-	 */
 	override sizeHint(): CSize
 	{
 		return new CSize(240, 200);
 	}
 
-	/**
-	 * Sets the geometry.
-	 * @param x Horizontal position in parent coordinates.
-	 * @param y Vertical position in parent coordinates.
-	 * @param width Width in logical pixels.
-	 * @param height Height in logical pixels.
-	 */
 	override setGeometry(x: number, y: number, width: number, height: number): void
 	{
 		super.setGeometry(x, y, width, height);
 		this.#updateButtonGeometry();
 	}
 
-	/**
-	 * Responds to a pointer button release for the calendar widget. May update the shown year, the shown month. May request a repaint and accept or ignore the event depending on the input. May emit `clicked`, `currentPageChanged`.
-	 * @param event Event for a pointer button release.
-	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void
 	{
-       /** Provides if behavior. */
        if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
 		}
 
         const date = this.#dateAt(event.pos().x(), event.pos().y());
-		/** Provides if behavior. */
 		if (date === null) {
 			event.ignore();
 			return;
 		}
-        
-		/** Provides if behavior. */
+
 		if (!this.#dateEnabled(date)) {
 			event.ignore();
 			return;
 		}
-        
+
 		const pageChanged =
 			date.getFullYear() !== this.#m_shownYear ||
 			date.getMonth() !== this.#m_shownMonth;
@@ -297,30 +282,23 @@ export class CCalendarWidget extends CWidget
 		const selectionChanged = !this.#sameDate(date, this.#m_selectedDate);
 
         this.clicked.emit(new Date(date));
-		/** Provides if behavior. */
 		if (selectionChanged) {
 			this.#m_shownYear = date.getFullYear();
 		    this.#m_shownMonth = date.getMonth();
             this.setSelectedDate(date);
         }
-        
-        /** Provides if behavior. */
+
         if (pageChanged) {
             this.currentPageChanged.emit(date.getFullYear(), date.getMonth() + 1);
 		}
-        
+
 		event.accept();
 		this.update();
 	}
 
-    /**
-     * Responds to pointer movement for the calendar widget. May update the hover date. May request a repaint and accept the event.
-     * @param event Event for pointer movement.
-     */
     protected override mouseMoveEvent(event: CMouseEvent): void {
         const pos = event.pos();
         const date = this.#dateAt(pos.x(), pos.y());
-        /** Provides if behavior. */
         if (date !== this.#m_hoverDate) {
             this.#m_hoverDate = date;
             this.update();
@@ -328,12 +306,7 @@ export class CCalendarWidget extends CWidget
         event.accept();
     }
 
-    /**
-     * Responds to pointer exit for the calendar widget. May update the hover date. May request a repaint and accept or ignore the event depending on the input.
-     * @param event Event for pointer exit.
-     */
     protected override mouseLeaveEvent(event: CMouseEvent): void {
-        /** Provides if behavior. */
         if (this.#m_hoverDate === null) {
             event.ignore();
         }   else {
@@ -343,10 +316,6 @@ export class CCalendarWidget extends CWidget
         }
     }
 
-	/**
-	 * Draws the calendar widget through the supplied painter.
-	 * @param painter Painter for the current drawing operation.
-	 */
 	protected override paintEvent(painter: CPainter): void
 	{
 		const palette = this.palette();
@@ -409,7 +378,6 @@ export class CCalendarWidget extends CWidget
 		painter.setTextAlign("center");
 		painter.setTextBaseline("middle");
 
-		/** Provides for behavior. */
 		for (let column = 0; column < 7; ++column) {
 			painter.drawText(
 				names[column]!,
@@ -428,7 +396,6 @@ export class CCalendarWidget extends CWidget
 		const startY =
 			this.#headerHeight() + this.#weekDayHeight();
 
-		/** Provides for behavior. */
 		for (let index = 0; index < 42; ++index) {
 			const date = this.#addDays(firstDate, index);
 			const row = Math.floor(index / 7);
@@ -447,7 +414,6 @@ export class CCalendarWidget extends CWidget
 			const enabled = this.#dateEnabled(date);
             const hovered = this.#sameDate(date, this.#m_hoverDate);
 
-			/** Provides if behavior. */
 			if (selected) {
 				painter.setBrush(palette.color(CPaletteColorRole.Highlight).toCss());
 				painter.fillRect(new CRect(x, y, cellWidth, cellHeight));
@@ -457,7 +423,6 @@ export class CCalendarWidget extends CWidget
             }
 
 			let role = CPaletteColorRole.Text;
-			/** Provides if behavior. */
 			if (!enabled)
 				role = CPaletteColorRole.DisabledText;
 			else if (selected)
@@ -471,7 +436,6 @@ export class CCalendarWidget extends CWidget
 			painter.setTextBaseline("middle");
 
 			painter.drawText(
-				/** Provides string behavior. */
 				String(date.getDate()),
 				x + cellWidth / 2,
 				y + cellHeight / 2
@@ -484,11 +448,9 @@ export class CCalendarWidget extends CWidget
 		const startY =
 			this.#headerHeight() + this.#weekDayHeight();
 
-		/** Provides if behavior. */
 		if (x < 0 || x >= this.width())
 			return null;
 
-		/** Provides if behavior. */
 		if (y < startY || y >= this.height())
 			return null;
 
@@ -498,11 +460,9 @@ export class CCalendarWidget extends CWidget
 		const column = Math.floor(x / cellWidth);
 		const row = Math.floor((y - startY) / cellHeight);
 
-		/** Provides if behavior. */
 		if (column < 0 || column > 6)
 			return null;
 
-		/** Provides if behavior. */
 		if (row < 0 || row > 5)
 			return null;
 
@@ -551,22 +511,18 @@ export class CCalendarWidget extends CWidget
 
 	#setCurrentPageInternal(year: number, month: number): void
 	{
-		/** Provides if behavior. */
 		if (year < 1 || year > 9999)
 			return;
 
 		const pageStart = new Date(year, month, 1);
 		const pageEnd = new Date(year, month + 1, 0);
 
-		/** Provides if behavior. */
 		if (pageEnd.getTime() < this.#m_minimumDate.getTime())
 			return;
 
-		/** Provides if behavior. */
 		if (pageStart.getTime() > this.#m_maximumDate.getTime())
 			return;
 
-		/** Provides if behavior. */
 		if (
 			year === this.#m_shownYear &&
 			month === this.#m_shownMonth
@@ -614,11 +570,9 @@ export class CCalendarWidget extends CWidget
 
 	#clampDate(date: Date): Date
 	{
-		/** Provides if behavior. */
 		if (date.getTime() < this.#m_minimumDate.getTime())
 			return new Date(this.#m_minimumDate);
 
-		/** Provides if behavior. */
 		if (date.getTime() > this.#m_maximumDate.getTime())
 			return new Date(this.#m_maximumDate);
 
@@ -636,7 +590,6 @@ export class CCalendarWidget extends CWidget
 
 	#sameDate(first: Date, second: Date | null): boolean
 	{
-        /** Provides if behavior. */
         if (second === null)
             return false;
 

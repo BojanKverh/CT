@@ -1,3 +1,4 @@
+/** @module Widgets/CDateEdit */
 import { CSignal } from "../core/CSignal.js";
 import { CSize } from "../geometry/CSize.js";
 import { CCalendarWidget } from "./CCalendarWidget.js";
@@ -11,7 +12,6 @@ import type { CFocusEvent } from "../events/CFocusEvent.js";
 import { CEventType } from "../events/CEvent.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
 
-
 type CDateSection = "day" | "month" | "year";
 
 interface CDateSectionInfo
@@ -21,14 +21,19 @@ interface CDateSectionInfo
 	length: number;
 }
 
-
-/** Implements the date edit widget. */
+/** Section-based date input with validation and an optional calendar popup. */
 export class CDateEdit extends CWidget
 {
-	static readonly ButtonWidth = 28;
+    /**
+    * Logical pixel width reserved for the calendar popup button.
+    */
+    static readonly ButtonWidth = 28;
 
-	/** Signal emitted when date changes. */
-	readonly dateChanged = new CSignal<[Date]>();
+    /**
+    * Emitted with an independent Date containing the updated local calendar date.
+    * @group Signals
+    */
+    readonly dateChanged = new CSignal<[Date]>();
 
 	#m_date: Date;
 	#m_minimumDate: Date;
@@ -46,10 +51,12 @@ export class CDateEdit extends CWidget
 	#m_inputSection = -1;
 	#m_inputDigits = "";
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null)
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null)
 	{
-		/** Provides super behavior. */
 		super(parent);
 
 		const today = this.#normalizedDate(new Date());
@@ -82,11 +89,9 @@ export class CDateEdit extends CWidget
 
 		this.#m_button.clicked.connect(() =>
 		{
-			/** Provides if behavior. */
 			if (!this.#m_calendarPopup)
 				return;
 
-			/** Provides if behavior. */
 			if (this.#m_popup.isOpen())
 				this.hidePopup();
 			else
@@ -112,36 +117,30 @@ export class CDateEdit extends CWidget
         this.#m_button.setFocusPolicy(CFocusPolicy.ClickFocus);
 	}
 
-	/**
-	 * Reads the date of the date edit.
-	 * @returns A new `Date`.
-	 */
-	date(): Date
+    /**
+    * Independent copy of the selected local-calendar date.
+    */
+    date(): Date
 	{
 		return new Date(this.#m_date);
 	}
 
-	/**
-	 * Sets the date.
-	 * @param date Date.
-	 */
-	setDate(date: Date): void
+    /**
+    * Updates the selected local-calendar date using validation and configured bounds.
+    */
+    setDate(date: Date): void
 	{
-		/** Provides if behavior. */
 		if (!this.#validDate(date))
 			return;
 
 		date = this.#normalizedDate(date);
 
-		/** Provides if behavior. */
 		if (date < this.#m_minimumDate)
 			date = new Date(this.#m_minimumDate);
 
-		/** Provides if behavior. */
 		if (date > this.#m_maximumDate)
 			date = new Date(this.#m_maximumDate);
 
-		/** Provides if behavior. */
 		if (this.#sameDate(date, this.#m_date))
 			return;
 
@@ -154,96 +153,82 @@ export class CDateEdit extends CWidget
 		this.update();
 	}
 
-	/**
-	 * Returns the minimum date.
-	 * @returns A new `Date`.
-	 */
-	minimumDate(): Date
+    /**
+    * Returns the lower date bound as an independent Date value.
+    */
+    minimumDate(): Date
 	{
 		return new Date(this.#m_minimumDate);
 	}
 
-	/**
-	 * Sets the minimum date.
-	 * @param date Date.
-	 */
-	setMinimumDate(date: Date): void
+    /**
+    * Changes the earliest permitted date and re-clamps the current value when needed.
+    */
+    setMinimumDate(date: Date): void
 	{
-		/** Provides if behavior. */
 		if (!this.#validDate(date))
 			return;
 
 		date = this.#normalizedDate(date);
 
-		/** Provides if behavior. */
 		if (date > this.#m_maximumDate)
 			return;
 
-		/** Provides if behavior. */
 		if (this.#sameDate(date, this.#m_minimumDate))
 			return;
 
 		this.#m_minimumDate = new Date(date);
 		this.#m_calendar.setMinimumDate(date);
 
-		/** Provides if behavior. */
 		if (this.#m_date < this.#m_minimumDate)
 			this.setDate(this.#m_minimumDate);
 	}
 
-	/**
-	 * Returns the maximum date.
-	 * @returns A new `Date`.
-	 */
-	maximumDate(): Date
+    /**
+    * Returns the upper date bound as an independent Date value.
+    */
+    maximumDate(): Date
 	{
 		return new Date(this.#m_maximumDate);
 	}
 
-	/**
-	 * Sets the maximum date.
-	 * @param date Date.
-	 */
-	setMaximumDate(date: Date): void
+    /**
+    * Changes the latest permitted date and re-clamps the current value when needed.
+    */
+    setMaximumDate(date: Date): void
 	{
-		/** Provides if behavior. */
 		if (!this.#validDate(date))
 			return;
 
 		date = this.#normalizedDate(date);
 
-		/** Provides if behavior. */
 		if (date < this.#m_minimumDate)
 			return;
 
-		/** Provides if behavior. */
 		if (this.#sameDate(date, this.#m_maximumDate))
 			return;
 
 		this.#m_maximumDate = new Date(date);
 		this.#m_calendar.setMaximumDate(date);
 
-		/** Provides if behavior. */
 		if (this.#m_date > this.#m_maximumDate)
 			this.setDate(this.#m_maximumDate);
 	}
 
-	/**
-	 * Reads the display format.
-	 * @returns The display format.
-	 */
-	displayFormat(): string
+    /**
+    * Pattern controlling the displayed date or time sections.
+    * The initial value is `"dd.MM.yyyy"`.
+    */
+    displayFormat(): string
 	{
 		return this.#m_displayFormat;
 	}
 
-	/**
-	 * Sets the display format.
-	 * @param format Format.
-	 */
-	setDisplayFormat(format: string): void
+    /**
+    * Changes the section pattern used to format and edit the date.
+    */
+    setDisplayFormat(format: string): void
 	{
-		/** Provides if behavior. */
 		if (this.#m_displayFormat === format)
 			return;
 
@@ -251,57 +236,53 @@ export class CDateEdit extends CWidget
 		this.#updateText();
 	}
 
-	/**
-	 * Reads whether the date editor is configured to open a calendar picker.
-	 * @returns `true` if calendar popup mode is enabled.
-	 */
-	calendarPopup(): boolean
+    /**
+    * Whether the date editor can open a calendar popup.
+    * The initial value is `true`.
+    */
+    calendarPopup(): boolean
 	{
 		return this.#m_calendarPopup;
 	}
 
-	/**
-	 * Sets the calendar popup.
-	 * @param enabled Whether to enable the feature.
-	 */
-	setCalendarPopup(enabled: boolean): void
+    /**
+    * Controls whether the calendar drop-down affordance is available.
+    */
+    setCalendarPopup(enabled: boolean): void
 	{
-		/** Provides if behavior. */
 		if (this.#m_calendarPopup === enabled)
 			return;
 
 		this.#m_calendarPopup = enabled;
 		this.#m_button.setVisible(enabled);
 
-		/** Provides if behavior. */
 		if (!enabled)
 			this.hidePopup();
 
 		this.#updateGeometry();
 	}
 
-	/**
-	 * Reads the calendar.
-	 * @returns The calendar.
-	 */
-	calendarWidget(): CCalendarWidget
+    /**
+    * Owned calendar used by the popup; customize its appearance or calendar behavior here.
+    */
+    calendarWidget(): CCalendarWidget
 	{
 		return this.#m_calendar;
 	}
 
-	/**
-	 * Reads the line edit.
-	 * @returns The line edit.
-	 */
-	lineEdit(): CSectionLineEdit
+    /**
+    * Owned section editor displaying the formatted date.
+    */
+    lineEdit(): CSectionLineEdit
 	{
 		return this.#m_lineEdit;
 	}
 
-	/** Shows popup. */
-	showPopup(): void
+    /**
+    * Opens the associated calendar popup.
+    */
+    showPopup(): void
 	{
-		/** Provides if behavior. */
 		if (!this.#m_calendarPopup)
 			return;
 
@@ -311,14 +292,16 @@ export class CDateEdit extends CWidget
 		this.#m_popup.open();
 	}
 
-	/** Hides popup. */
-	hidePopup(): void
+    /**
+    * Closes the associated calendar popup.
+    */
+    hidePopup(): void
 	{
 		this.#m_popup.close();
 	}
 
-	/** Increments the active date section by one step and focuses the text editor. */
-	stepUp(): void
+    /** Performs step up. */
+    stepUp(): void
 	{
 		this.#stepSection(
 			this.#m_lineEdit.currentSection(),
@@ -328,8 +311,8 @@ export class CDateEdit extends CWidget
 		this.#m_lineEdit.setFocus();
 	}
 
-	/** Decrements the active date section by one step and focuses the text editor. */
-	stepDown(): void
+    /** Performs step down. */
+    stepDown(): void
 	{
 		this.#stepSection(
 			this.#m_lineEdit.currentSection(),
@@ -339,13 +322,6 @@ export class CDateEdit extends CWidget
 		this.#m_lineEdit.setFocus();
 	}
 
-	/**
-	 * Sets the geometry.
-	 * @param x Horizontal position in parent coordinates.
-	 * @param y Vertical position in parent coordinates.
-	 * @param width Width in logical pixels.
-	 * @param height Height in logical pixels.
-	 */
 	override setGeometry(
 		x: number, y: number, width: number, height: number
 	): void
@@ -355,11 +331,6 @@ export class CDateEdit extends CWidget
 		this.#updateGeometry();
 	}
 
-	/**
-	 * Resizes the width.
-	 * @param width Width in logical pixels.
-	 * @param height Height in logical pixels.
-	 */
 	override resize(width: number, height: number): void
 	{
 		super.resize(width, height);
@@ -367,17 +338,13 @@ export class CDateEdit extends CWidget
 		this.#updateGeometry();
 	}
 
-	/**
-	 * Returns the preferred size of the widget.
-	 * @returns A new `CSize`.
-	 */
 	override sizeHint(): CSize
 	{
 		return new CSize(120, 30);
 	}
 
-	/** Releases resources owned by the widget. */
-	override destroy(): void
+    /** Releases resources owned by the widget. */
+    override destroy(): void
 	{
 		this.#m_popup.close();
 		this.#m_popup.destroy();
@@ -398,7 +365,6 @@ export class CDateEdit extends CWidget
 			this.height()
 		);
 
-		/** Provides if behavior. */
 		if (this.#m_calendarPopup) {
 			this.#m_button.setGeometry(
 				this.width() - buttonWidth,
@@ -464,13 +430,11 @@ export class CDateEdit extends CWidget
 			/yyyy|yy|MM|M|dd|d|./g
 		) ?? [];
 
-		/** Provides for behavior. */
 		for (const token of tokens) {
 			const start = text.length;
 			let value: string;
 			let type: CDateSection | null = null;
 
-			/** Provides switch behavior. */
 			switch (token) {
 				case "yyyy":
 					value = year.toString().padStart(4, "0");
@@ -511,7 +475,6 @@ export class CDateEdit extends CWidget
 
 			text += value;
 
-			/** Provides if behavior. */
 			if (type !== null) {
 				sections.push({
 					type,
@@ -529,13 +492,11 @@ export class CDateEdit extends CWidget
 
 	#stepSection(index: number, direction: number): void
 	{
-		/** Provides if behavior. */
 		if (index < 0 || index >= this.#m_sections.length)
 			return;
 
 		const section = this.#m_sections[index];
 
-		/** Provides if behavior. */
 		if (section === undefined)
 			return;
 
@@ -545,7 +506,6 @@ export class CDateEdit extends CWidget
 
 		let date: Date;
 
-		/** Provides switch behavior. */
 		switch (section.type) {
 			case "day":
 				date = this.#stepDay(
@@ -575,7 +535,6 @@ export class CDateEdit extends CWidget
 				break;
 		}
 
-		/** Provides if behavior. */
 		if (
 			date < this.#m_minimumDate ||
 			date > this.#m_maximumDate
@@ -663,7 +622,6 @@ export class CDateEdit extends CWidget
 
 		let targetDay = day + direction;
 
-		/** Provides if behavior. */
 		if (targetDay > days)
 			targetDay = 1;
 		else if (targetDay < 1)
@@ -688,7 +646,6 @@ export class CDateEdit extends CWidget
 
 		let targetMonth = month + direction;
 
-		/** Provides if behavior. */
 		if (targetMonth > 11)
 			targetMonth = 0;
 		else if (targetMonth < 0)

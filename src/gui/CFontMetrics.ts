@@ -1,3 +1,4 @@
+/** @module GUI/CFontMetrics */
 import { CApplication } from "../core/CApplication.js";
 import { CFont } from "./CFont.js";
 
@@ -10,12 +11,10 @@ export class CFontMetrics {
 	#m_font: CFont;
 	#m_context: CanvasRenderingContext2D;
 
-		/**
-	 * Creates a new CFontMetrics instance.
-	 *
-	 * @param font Font.
-	 */
-constructor(font: CFont) {
+    /**
+    * Copies the font and obtains a measurement context from the application canvas document. Requires an existing CApplication.
+    */
+    constructor(font: CFont) {
 		this.#m_font = new CFont(font);
 
 		const document = CApplication.instance().canvas().ownerDocument;
@@ -34,20 +33,21 @@ constructor(font: CFont) {
 		this.#m_context = context;
 	}
 
-		/**
- * Reads the font used to measure text.
- * @returns An independent copy of the configured font.
- */
-font(): CFont {
+    /**
+    * Returns the font used by these metrics.
+    *
+    */
+    font(): CFont {
 		return new CFont(this.#m_font);
 	}
 
-		/**
- * Measures the text advance with the configured font and restores the Canvas drawing state.
- * @param text Text to measure.
- * @returns Measured width in logical pixels.
- */
-textWidth(text: string): number {
+    /**
+    * Returns the rendered width of the specified text.
+    *
+    * @param text Text.
+    *
+    */
+    textWidth(text: string): number {
 		this.#m_context.save();
 		this.#m_context.font = this.#m_font.toCss();
 
@@ -58,11 +58,11 @@ textWidth(text: string): number {
 		return width;
 	}
 
-		/**
- * Measures the actual ascent and descent of the sample text `Mg` with the configured font.
- * @returns Sum of the sample's ascent and descent in logical pixels.
- */
-height(): number {
+    /**
+    * Returns the line height of the configured font.
+    *
+    */
+    height(): number {
 		this.#m_context.save();
 		this.#m_context.font = this.#m_font.toCss();
 

@@ -1,3 +1,4 @@
+/** @module Dialogs/CDialogButtonBox */
 import { CApplication } from "../core/CApplication.js";
 import { CIcon } from "../gui/CIcon.js";
 import { CCanvasPaintDevice } from "../painting/CCanvasPaintDevice.js";
@@ -13,34 +14,34 @@ import { CWidget } from "../widgets/CWidget.js";
  * Bit flags identifying standard dialog buttons.
  */
 export enum CStandardButton {
-/**
- * No standard button.
- */
-	NoButton = 0,
-/**
- * Accept/OK button.
- */
-	Ok = 1 << 0,
-/**
- * Cancel button.
- */
-	Cancel = 1 << 1,
-/**
- * Apply button.
- */
-	Apply = 1 << 2,
-/**
- * Close button.
- */
-	Close = 1 << 3,
-/**
- * Yes button.
- */
-	Yes = 1 << 4,
-/**
- * No button.
- */
-	No = 1 << 5
+    /**
+    * No standard button.
+    */
+    NoButton = 0,
+    /**
+    * Accept/OK button.
+    */
+    Ok = 1 << 0,
+    /**
+    * Cancel button.
+    */
+    Cancel = 1 << 1,
+    /**
+    * Apply button.
+    */
+    Apply = 1 << 2,
+    /**
+    * Close button.
+    */
+    Close = 1 << 3,
+    /**
+    * Yes button.
+    */
+    Yes = 1 << 4,
+    /**
+    * No button.
+    */
+    No = 1 << 5
 }
 
 function standardButtonIcon(accept: boolean): CIcon | null {
@@ -69,31 +70,34 @@ function standardButtonIcon(accept: boolean): CIcon | null {
  */
 export class CDialogButtonBox extends CWidget
 {
-	static readonly SPACING: number = 3;
+    /**
+    * Logical pixel gap between adjacent response buttons.
+    */
+    static readonly SPACING: number = 3;
 
 	#m_standardButtons = CStandardButton.NoButton;
 	#m_layout = new CHBoxLayout();
 
-/**
- * Emitted when an accepting button is activated.
- */
-	readonly accepted = new CSignal<[]>();
-/**
- * Emitted when a rejecting button is activated.
- */
-	readonly rejected = new CSignal<[]>();
-/**
- * Emitted when a standard button is activated.
- */
-	readonly clicked = new CSignal<[CStandardButton]>();
+    /**
+    * Emitted when an accepting button is activated.
+    * @group Signals
+    */
+    readonly accepted = new CSignal<[]>();
+    /**
+    * Emitted when a rejecting button is activated.
+    * @group Signals
+    */
+    readonly rejected = new CSignal<[]>();
+    /**
+    * Emitted when a standard button is activated.
+    * @group Signals
+    */
+    readonly clicked = new CSignal<[CStandardButton]>();
 
-/**
- * Creates a dialog button box.
- *
- * @param buttons Bitwise combination of standard buttons to display.
- * @param parent Optional parent widget.
- */
-	constructor(
+    /**
+    * Creates the requested standard response buttons as children of the supplied widget owner.
+    */
+    constructor(
 		buttons = CStandardButton.NoButton,
 		parent: CWidget | null = null
 	)
@@ -107,20 +111,20 @@ export class CDialogButtonBox extends CWidget
 		this.setStandardButtons(buttons);
 	}
 
-/**
-	 * Reads which standard buttons are configured.
-	 * @returns Bitwise mask of configured `CStandardButton` values.
-	 */
-	standardButtons(): CStandardButton
+    /**
+    * Bitmask of CStandardButton values configured for this box; it does not identify the last clicked button.
+    */
+    standardButtons(): CStandardButton
 	{
 		return this.#m_standardButtons;
 	}
 
-/**
-	 * Rebuilds the displayed buttons when the mask changes. Yes and OK emit `accepted`. No, Close and Cancel emit `rejected`. Apply emits neither signal.
-	 * @param buttons Bitwise mask of buttons to show, or `NoButton` to clear them.
-	 */
-	setStandardButtons(buttons: CStandardButton): void
+    /**
+    * Sets the standard buttons displayed by the box.
+    *
+    * @param buttons Bitwise combination of buttons to display.
+    */
+    setStandardButtons(buttons: CStandardButton): void
 	{
 		if (this.#m_standardButtons === buttons)
 			return;
@@ -179,10 +183,6 @@ export class CDialogButtonBox extends CWidget
 		this.#m_layout.clear();
 	}
 
-/**
-	 * Measures the displayed buttons and horizontal gaps.
-	 * @returns Preferred width and maximum button height in logical pixels.
-	 */
 	override sizeHint(): CSize {
 		const n = this.#m_layout.count();
 		let w = 0;

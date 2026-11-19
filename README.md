@@ -121,11 +121,23 @@ tests/        Vitest tests grouped by subsystem
 dist/         Generated JavaScript, declarations and source maps
 ```
 
+## Documentation
+
+Read the [guides](docs/README.md) for layouts, signals, model/view, painting, styling, focus and file handling.
+
+```sh
+npm run docs
+```
+
+Open `docs-site/index.html` to browse the generated API reference and guides. The reference includes inherited members, groups signals separately and excludes internal implementation hooks. The build configuration and generator plugin live in this repository.
+
 ## Development
 
 | Command | Purpose |
 | --- | --- |
 | `npm run dev` | Run the interactive demo with Vite |
+| `npm run docs` | Build the local API reference and guides |
+| `npm run docs:check` | Audit source documentation and build the reference with warnings as errors |
 | `npm run typecheck` | Check source and test types without emitting files |
 | `npm run build` | Compile `src` into `dist`, including TypeScript declarations and source maps |
 | `npm test` | Run the full Vitest suite once |
@@ -140,7 +152,6 @@ npm test -- -t "CGroupBox"
 
 The TypeScript configuration enables strict checks, including `noImplicitOverride`, `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`. The regular type check includes `src` and `tests`; the build emits library source only. The demo is outside those type-check inputs.
 
-The full suite passed **5,321 tests across 161 files** on 6 November 2026. This records that run; it is not a live CI status badge.
 
 ## License
 

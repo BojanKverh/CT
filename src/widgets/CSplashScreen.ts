@@ -1,3 +1,4 @@
+/** @module Widgets/CSplashScreen */
 import { CVariantAnimation } from "../animation/CVariantAnimation.js";
 import { CApplication } from "../core/CApplication.js";
 import { CAlignment } from "../core/CAlignment.js";
@@ -22,6 +23,10 @@ export class CSplashScreen extends CWidget {
     #opacity = 1;
     #fade: CVariantAnimation | null = null;
 
+    /**
+    * Emitted with the new splash-screen message after its text changes.
+    * @group Signals
+    */
     readonly messageChanged = new CSignal<[string]>();
 
     /** Creates a hidden splash, sized to its image or to a 400 x 240 fallback. */
@@ -34,20 +39,16 @@ export class CSplashScreen extends CWidget {
     }
 
     /**
-     * Reads the pixmap.
-     * @returns The pixmap.
-     */
+    * Assigned raster image used for display.
+    * The initial value is `null`.
+    */
     pixmap(): CPixmap | null { return this.#pixmap; }
     /**
-     * Reads the message.
-     * @returns The message.
-     */
+    * Returns the status message currently overlaid on the splash image.
+    */
     message(): string { return this.#message; }
 
-    /**
-     * Replaces the background image and adopts its natural dimensions.
-     * @param pixmap Pixmap.
-     */
+    /** Replaces the background image and adopts its natural dimensions. */
     setPixmap(pixmap: CPixmap | null): void {
         this.#pixmap = pixmap;
         const hint = this.sizeHint();
@@ -55,10 +56,6 @@ export class CSplashScreen extends CWidget {
         this.update();
     }
 
-    /**
-     * Reads the size hint of the splash screen.
-     * @returns The size hint.
-     */
     override sizeHint(): CSize {
         const pixmap = this.#pixmap;
         return pixmap !== null && !pixmap.isNull()
@@ -66,12 +63,7 @@ export class CSplashScreen extends CWidget {
             ? new CSize(pixmap.width(), pixmap.height()) : new CSize(400, 240);
     }
 
-    /**
-     * Displays startup text. Colors may be CColor values or CSS color strings.
-     * @param message Message.
-     * @param alignment Alignment flags to apply. Defaults to `CAlignment.Left | CAlignment.Bottom`.
-     * @param color Optional color to apply.
-     */
+    /** Displays startup text. Colors may be CColor values or CSS color strings. */
     showMessage(message: string, alignment: CAlignment = CAlignment.Left | CAlignment.Bottom,
         color?: CColor | string): void {
         const css = typeof color === "string" ? color : color?.toCss() ?? null;
@@ -85,8 +77,8 @@ export class CSplashScreen extends CWidget {
     }
 
     /**
-     * Clears the message. May request a repaint. May emit `messageChanged`.
-     */
+    * Removes the overlaid status text and repaints the splash.
+    */
     clearMessage(): void {
         if (this.#message === "") return;
         this.#message = "";
@@ -94,10 +86,7 @@ export class CSplashScreen extends CWidget {
         this.messageChanged.emit("");
     }
 
-    /**
-     * Uses the existing window stack; no modal scope or focus change is introduced.
-     * @param visible Whether to show the target.
-     */
+    /** Uses the existing window stack; no modal scope or focus change is introduced. */
     override setVisible(visible: boolean): void {
         if (this.#disposed && visible) return;
         this.#cancelFade();
@@ -116,13 +105,12 @@ export class CSplashScreen extends CWidget {
         super.setVisible(visible);
     }
 
-    /** Hides the splash screen. */
+    /**
+    * Hides the splash surface.
+    */
     close(): void { this.hide(); }
 
-    /**
-     * Fades out over duration milliseconds. Zero/invalid durations hide immediately.
-     * @param duration Duration. Defaults to `300`.
-     */
+    /** Fades out over duration milliseconds. Zero/invalid durations hide immediately. */
     fadeOut(duration = 300): void {
         if (this.#disposed || !this.isVisible()) return;
         this.#cancelFade();
@@ -147,10 +135,7 @@ export class CSplashScreen extends CWidget {
         fade?.destroy();
     }
 
-    /**
-     * Fades this window and all its contents without changing other windows.
-     * @param painter Painter for the current drawing operation.
-     */
+    /** Fades this window and all its contents without changing other windows. */
     override render(painter: CPainter): void {
         if (!this.isVisible()) return;
         if (this.#opacity === 1) { super.render(painter); return; }
@@ -161,20 +146,13 @@ export class CSplashScreen extends CWidget {
         } finally { painter.restore(); }
     }
 
-    /**
-     * Shows the main window, then fades out. Pass zero for immediate dismissal.
-     * @param mainWindow Main window.
-     * @param duration Duration. Defaults to `300`.
-     */
+    /** Shows the main window, then fades out. Pass zero for immediate dismissal. */
     finish(mainWindow: CWidget, duration = 300): void {
         if (mainWindow === this) return;
         mainWindow.show();
         this.fadeOut(duration);
     }
 
-    /**
-     * Releases resources held by the splash screen.
-     */
     override destroy(): void {
         if (this.#disposed) return;
         this.#disposed = true;
@@ -182,10 +160,6 @@ export class CSplashScreen extends CWidget {
         super.destroy();
     }
 
-    /**
-     * Draws the splash screen through the supplied painter.
-     * @param painter Painter for the current drawing operation.
-     */
     protected override paintEvent(painter: CPainter): void {
         painter.setBrush(this.palette().color(CPaletteColorRole.Base).toCss());
         painter.fillRect(this.rect());
@@ -199,10 +173,7 @@ export class CSplashScreen extends CWidget {
         this.drawContents(painter);
     }
 
-    /**
-     * Subclasses can customize the text layer while retaining the background.
-     * @param painter Painter for the current drawing operation.
-     */
+    /** Subclasses can customize the text layer while retaining the background. */
     protected drawContents(painter: CPainter): void {
         if (this.#message === "") return;
         const padding = 10;
@@ -227,10 +198,7 @@ export class CSplashScreen extends CWidget {
         } finally { painter.restore(); }
     }
 
-    /**
-     * Like a conventional splash screen, a left click dismisses the startup image.
-     * @param event Event for a pointer button press.
-     */
+    /** Like a conventional splash screen, a left click dismisses the startup image. */
     protected override mousePressEvent(event: CMouseEvent): void {
         if (event.button() !== CMouseButton.LeftButton) { event.ignore(); return; }
         this.close();

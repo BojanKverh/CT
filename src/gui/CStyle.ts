@@ -1,3 +1,4 @@
+/** @module GUI/CStyle */
 import type { CStyleOptionCategoryButton } from "./CStyleOptionCategoryButton.js";
 import type { CStyleOptionToggleSwitch } from "./CStyleOptionToggleSwitch.js";
 import type { CStyleOptionTagEdit } from "./CStyleOptionTagEdit.js";
@@ -36,11 +37,7 @@ import type { CStyleOptionToolTipWidget } from "../gui/CStyleOptionToolTipWidget
  * Defines the abstract interface used to render Canvas Toolkit widgets.
  */
 export abstract class CStyle {
-    /**
-     * Connected segments share a border and retain one keyboard focus indicator.
-     * @param painter Painter for the current drawing operation.
-     * @param option Style data containing segment bounds, captions, icons and interaction state.
-     */
+    /** Connected segments share a border and retain one keyboard focus indicator. */
     drawCategoryButton(painter: CPainter, option: CStyleOptionCategoryButton): void {
         if (option.rect.width() <= 0 || option.rect.height() <= 0) return;
         const groupEnabled = (option.state & CStyleState.Enabled) !== 0;
@@ -101,11 +98,7 @@ export abstract class CStyle {
         } finally { painter.restore(); }
     }
 
-    /**
-     * Palette-aware track and animated thumb; no changes required in derived styles.
-     * @param painter Painter for the current drawing operation.
-     * @param option Style data containing switch bounds, label, thumb position and state.
-     */
+    /** Palette-aware track and animated thumb; no changes required in derived styles. */
     drawToggleSwitch(painter: CPainter, option: CStyleOptionToggleSwitch): void {
         const r = option.rect;
         if (r.width() <= 0 || r.height() <= 0) return;
@@ -150,12 +143,7 @@ export abstract class CStyle {
         } finally { painter.restore(); }
     }
 
-
-    /**
-     * Draws a tag and its optional trailing remove button.
-     * @param painter Painter for the current drawing operation.
-     * @param option Style data containing chip bounds, label and removal control state.
-     */
+    /** Draws a tag and its optional trailing remove button. */
     drawTag(painter: CPainter, option: CStyleOptionTagEdit): void {
         const r = option.rect;
         if (r.width() <= 0 || r.height() <= 0) return;
@@ -193,11 +181,7 @@ export abstract class CStyle {
         } finally { painter.restore(); }
     }
 
-    /**
-     * Twelve fading spokes, centered in the available rectangle.
-     * @param painter Painter for the current drawing operation.
-     * @param option Style data containing indicator bounds, rotation angle and running state.
-     */
+    /** Twelve fading spokes, centered in the available rectangle. */
     drawBusyIndicator(painter: CPainter, option: CStyleOptionBusyIndicator): void {
         if (!option.running || option.rect.width() <= 0 || option.rect.height() <= 0) return;
         const r = option.rect, radius = Math.min(r.width(), r.height()) / 2 - 2;
@@ -218,12 +202,7 @@ export abstract class CStyle {
         } finally { painter.restore(); }
     }
 
-
-    /**
-     * Draws geometric stars using palette colors, independently of installed fonts.
-     * @param painter Painter for the current drawing operation.
-     * @param option Style data containing star rectangles, committed and preview values.
-     */
+    /** Draws geometric stars using palette colors, independently of installed fonts. */
     drawRatingWidget(painter: CPainter, option: CStyleOptionRatingWidget): void {
         if (option.rect.width() <= 0 || option.rect.height() <= 0) return;
         const enabled = (option.state & CStyleState.Enabled) !== 0;
@@ -278,12 +257,7 @@ export abstract class CStyle {
         } finally { painter.restore(); }
     }
 
-
-    /**
-     * Default palette-aware renderer; custom styles can override this method.
-     * @param painter Painter for the current drawing operation.
-     * @param option Style data containing segment geometry, captions and interaction state.
-     */
+    /** Default palette-aware renderer; custom styles can override this method. */
     drawNavigationPath(painter: CPainter, option: CStyleOptionNavigationPath): void {
         if (option.rect.width() <= 0 || option.rect.height() <= 0) return;
         const enabled = (option.state & CStyleState.Enabled) !== 0;
@@ -339,12 +313,7 @@ export abstract class CStyle {
         } finally { painter.restore(); }
     }
 
-
-    /**
-     * Draws both parts using the style's push button renderer and palette.
-     * @param painter Painter for the current drawing operation.
-     * @param option Style data containing main and dropdown bounds, action content and interaction state.
-     */
+    /** Draws both parts using the style's push button renderer and palette. */
     drawSplitButton(painter: CPainter, option: CStyleOptionSplitButton): void {
         const r = option.rect;
         if (r.width() <= 0 || r.height() <= 0) return;
@@ -419,171 +388,170 @@ export abstract class CStyle {
         } finally { painter.restore(); }
     }
 
-	
-        /**
- * Supplies the slider handle size used by this style.
- * @returns The slider handle size in logical pixels.
- */
-abstract sliderHandleSize(): number;
-        /**
- * Supplies the horizontal padding on each side of tooltip text used by this style.
- * @returns The horizontal padding on each side of tooltip text in logical pixels.
- */
-abstract toolTipHorizontalPadding(): number;
-        /**
- * Supplies the vertical padding on each side of tooltip text used by this style.
- * @returns The vertical padding on each side of tooltip text in logical pixels.
- */
-abstract toolTipVerticalPadding(): number;
-        /**
- * Supplies the width reserved for the combo box arrow used by this style.
- * @returns The width reserved for the combo box arrow in logical pixels.
- */
-abstract comboBoxArrowWidth(): number;
-        /**
- * Supplies the splitter handle thickness used by this style.
- * @returns The splitter handle thickness in logical pixels.
- */
-abstract splitterHandleWidth(): number;
+    /**
+    * Returns the slider handle size used by the style.
+    *
+    */
+    abstract sliderHandleSize(): number;
+    /**
+    * Returns the tool tip horizontal padding used by the style.
+    *
+    */
+    abstract toolTipHorizontalPadding(): number;
+    /**
+    * Returns the tool tip vertical padding used by the style.
+    *
+    */
+    abstract toolTipVerticalPadding(): number;
+    /**
+    * Returns the combo box arrow width used by the style.
+    *
+    */
+    abstract comboBoxArrowWidth(): number;
+    /**
+    * Returns the splitter handle width used by the style.
+    *
+    */
+    abstract splitterHandleWidth(): number;
 
-        /**
-     * Draws the label using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing label bounds, palette, font, alignment and content.
-     */
-abstract drawLabel(painter: CPainter, option: CStyleOptionLabel): void;
-        /**
-     * Draws the push button using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing button bounds, palette, caption, icon and interaction state.
-     */
-abstract drawPushButton(painter: CPainter, option: CStyleOptionPushButton): void;
-		/**
-	 * Draws the tool button using the supplied painter and style option.
-	 *
-	 * @param painter Painter.
-	 * @param option Style data containing button bounds, presentation mode, icon and state.
-	 */
-abstract drawToolButton(painter: CPainter, option: CStyleOptionToolButton): void;
-        /**
-     * Draws the check box using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing checkbox bounds, check state and label.
-     */
-abstract drawCheckBox(painter: CPainter, option: CStyleOptionCheckBox): void;
-        /**
-     * Draws the line edit using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing editor bounds, text, selection, cursor and focus state.
-     */
-abstract drawLineEdit(painter: CPainter, option: CStyleOptionLineEdit): void;
-        /**
-     * Draws the slider using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing range, value, orientation and slider geometry.
-     */
-abstract drawSlider(painter: CPainter, option: CStyleOptionSlider): void;
-        /**
-     * Draws the dial using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing range, value and dial bounds.
-     */
-abstract drawDial(painter: CPainter, option: CStyleOptionSlider): void;
-        /**
-     * Draws the progress bar using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing bar bounds, range, value and text settings.
-     */
-abstract drawProgressBar(painter: CPainter, option: CStyleOptionProgressBar): void;
-        /**
-     * Draws the group box using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing frame bounds, title and its layout.
-     */
-abstract drawGroupBox(painter: CPainter, option: CStyleOptionGroupBox): void;
-        /**
-     * Draws the scroll bar using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing scroll range, orientation and scrollbar part geometry.
-     */
-abstract drawScrollBar(painter: CPainter, option: CStyleOptionScrollBar): void;
-        /**
-     * Draws the radio button using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing radio indicator state, bounds and label.
-     */
-abstract drawRadioButton(painter: CPainter, option: CStyleOptionRadioButton): void
-        /**
-     * Draws the tab widget using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing tab bounds, captions and selected state.
-     */
-abstract drawTabWidget(painter: CPainter, option: CStyleOptionTabWidget): void
-        /**
-     * Draws the tool tip using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing tooltip bounds, text, palette and font.
-     */
-abstract drawToolTip(painter: CPainter, option: CStyleOptionToolTipWidget): void;
-        /**
-     * Draws the frame using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing frame bounds, shape, shadow and stroke widths.
-     */
-abstract drawFrame(painter: CPainter, option: CStyleOptionFrame): void;
-        /**
-     * Draws the combo box using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing combo-box bounds, arrow bounds and editor state.
-     */
-abstract drawComboBox(painter: CPainter, option: CStyleOptionComboBox): void;
-        /**
-     * Draws the tool bar using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing toolbar bounds, orientation and appearance state.
-     */
-abstract drawToolBar(painter: CPainter, option: CStyleOptionToolBar): void;
-        /**
-     * Draws the splitter handle using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing handle bounds, orientation and interaction state.
-     */
-abstract drawSplitterHandle(painter: CPainter, option: CStyleOptionSplitterHandle): void;
-        /**
-     * Draws the size grip using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing grip bounds and interaction state.
-     */
-abstract drawSizeGrip(painter: CPainter, option: CStyleOptionSizeGrip): void;
-        /**
-     * Draws the tool box button using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing page caption and header interaction state.
-     */
-abstract drawToolBoxButton(painter: CPainter, option: CStyleOptionToolBoxButton): void;
-        /**
-     * Draws the key sequence edit using the supplied painter and style option.
-     *
-     * @param painter Painter.
-     * @param option Style data containing editor bounds, displayed shortcut and input state.
-     */
-abstract drawKeySequenceEdit(painter: CPainter, option: CStyleOptionKeySequenceEdit): void;
+    /**
+    * Draws the label using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawLabel(painter: CPainter, option: CStyleOptionLabel): void;
+    /**
+    * Draws the push button using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawPushButton(painter: CPainter, option: CStyleOptionPushButton): void;
+    /**
+    * Draws the tool button using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawToolButton(painter: CPainter, option: CStyleOptionToolButton): void;
+    /**
+    * Draws the check box using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawCheckBox(painter: CPainter, option: CStyleOptionCheckBox): void;
+    /**
+    * Draws the line edit using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawLineEdit(painter: CPainter, option: CStyleOptionLineEdit): void;
+    /**
+    * Draws the slider using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawSlider(painter: CPainter, option: CStyleOptionSlider): void;
+    /**
+    * Draws the dial using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawDial(painter: CPainter, option: CStyleOptionSlider): void;
+    /**
+    * Draws the progress bar using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawProgressBar(painter: CPainter, option: CStyleOptionProgressBar): void;
+    /**
+    * Draws the group box using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawGroupBox(painter: CPainter, option: CStyleOptionGroupBox): void;
+    /**
+    * Draws the scroll bar using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawScrollBar(painter: CPainter, option: CStyleOptionScrollBar): void;
+    /**
+    * Draws the radio button using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawRadioButton(painter: CPainter, option: CStyleOptionRadioButton): void
+    /**
+    * Draws the tab widget using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawTabWidget(painter: CPainter, option: CStyleOptionTabWidget): void
+    /**
+    * Draws the tool tip using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawToolTip(painter: CPainter, option: CStyleOptionToolTipWidget): void;
+    /**
+    * Draws the frame using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawFrame(painter: CPainter, option: CStyleOptionFrame): void;
+    /**
+    * Draws the combo box using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawComboBox(painter: CPainter, option: CStyleOptionComboBox): void;
+    /**
+    * Draws the tool bar using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawToolBar(painter: CPainter, option: CStyleOptionToolBar): void;
+    /**
+    * Draws the splitter handle using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawSplitterHandle(painter: CPainter, option: CStyleOptionSplitterHandle): void;
+    /**
+    * Draws the size grip using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawSizeGrip(painter: CPainter, option: CStyleOptionSizeGrip): void;
+    /**
+    * Draws the tool box button using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawToolBoxButton(painter: CPainter, option: CStyleOptionToolBoxButton): void;
+    /**
+    * Draws the key sequence edit using the supplied painter and style option.
+    *
+    * @param painter Painter.
+    * @param option Option.
+    */
+    abstract drawKeySequenceEdit(painter: CPainter, option: CStyleOptionKeySequenceEdit): void;
 }

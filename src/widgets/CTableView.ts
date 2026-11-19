@@ -1,3 +1,4 @@
+/** @module Widgets/CTableView */
 import { CAction } from "../core/CAction.js";
 import { CContextMenuEvent, CContextMenuReason } from "../events/CContextMenuEvent.js";
 import { CMenu } from "./CMenu.js";
@@ -70,9 +71,6 @@ function parseTableText(text: string): string[][] | null {
 }
 
 class CTableScrollArea extends CScrollArea {
-	/**
-	 * Updates the table scroll bars.
-	 */
 	updateTableScrollBars(): void {
 		this.updateScrollBars();
 	}
@@ -87,59 +85,31 @@ class CTableViewContentWidget extends CWidget {
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
-	/**
-	 * Draws the table view content widget through the supplied painter.
-	 * @param painter Painter for the current drawing operation.
-	 */
 	protected override paintEvent(painter: CPainter): void {
 		this.#m_view.paintCells(painter);
 	}
 
-	/**
-	 * Responds to a pointer button press for the table view content widget.
-	 * @param event Event for a pointer button press.
-	 */
 	protected override mousePressEvent(event: CMouseEvent): void {
 		this.#m_view.contentMousePressEvent(event);
 	}
 
-    /**
-     * Responds to pointer movement for the table view content widget.
-     * @param event Event for pointer movement.
-     */
     protected override mouseMoveEvent(event: CMouseEvent): void {
         this.#m_view.contentMouseMoveEvent(event);
     }
 
-    /**
-     * Responds to a pointer button release for the table view content widget.
-     * @param event Event for a pointer button release.
-     */
     protected override mouseReleaseEvent(event: CMouseEvent): void {
         this.#m_view.contentMouseReleaseEvent(event);
     }
 
-    /**
-     * Responds to pointer exit for the table view content widget.
-     * @param event Event for pointer exit.
-     */
     protected override mouseLeaveEvent(event: CMouseEvent): void {
         this.#m_view.contentMouseLeaveEvent();
         super.mouseLeaveEvent(event);
     }
 
-	/**
-	 * Responds to a double-click for the table view content widget.
-	 * @param event Event for a double-click.
-	 */
 	protected override mouseDoubleClickEvent(event: CMouseEvent): void {
 		this.#m_view.contentMouseDoubleClickEvent(event);
 	}
 
-	/**
-	 * Responds to a key press for the table view content widget.
-	 * @param event Event for a key press.
-	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
 		this.#m_view.contentKeyPressEvent(event);
 	}
@@ -147,17 +117,38 @@ class CTableViewContentWidget extends CWidget {
 
 /** Controls how many cells the user can select in a table. */
 export enum CTableSelectionMode {
+    /**
+    * Keep at most one selected cell.
+    */
     SingleSelection,
+    /**
+    * Allow a single rectangular range of selected cells.
+    */
     ContiguousSelection,
+    /**
+    * Allow rectangular ranges and separate cells toggled with Ctrl or Meta.
+    */
     ExtendedSelection
 }
 
-/** Implements the table view widget. */
+/** Virtualized table for model data with headers, selection, cell editing and clipboard operations.
+ *
+ * @example
+ * ```ts
+ * const table = new CTableView(parent);
+ * table.setModel(model);
+ * table.selectionModel()?.currentChanged.connect(index => {
+ *     if (index.isValid()) console.log(index.row(), index.column());
+ * });
+ * ```
+ */
 export class CTableView extends CAbstractItemView {
-	static readonly RowHeight =
+    /** Logical height allocated to each model-view row. */
+    static readonly RowHeight =
 		CHeaderView.DefaultSectionHeight;
 
-	static readonly ColumnWidth =
+    /** Default logical width allocated to a table column. */
+    static readonly ColumnWidth =
 		CHeaderView.DefaultSectionWidth;
 
 	#m_horizontalHeader: CHeaderView;
@@ -174,17 +165,16 @@ export class CTableView extends CAbstractItemView {
     #pasteRequest = 0;
 
     /**
-     * Reads the selection mode.
-     * @returns The selection mode.
-     */
+    * Policy controlling single and multiple selection.
+    * The initial value is `CTableSelectionMode.SingleSelection`.
+    */
     selectionMode(): CTableSelectionMode {
         return this.#selectionMode;
     }
 
     /**
-     * Sets the selection mode. May update the selection mode, the selection anchor.
-     * @param mode Mode.
-     */
+    * Chooses SingleSelection, ContiguousSelection or ExtendedSelection behavior for cell input.
+    */
     setSelectionMode(mode: CTableSelectionMode): void {
         if (mode === this.#selectionMode) return;
         this.#selectionMode = mode;
@@ -217,10 +207,11 @@ export class CTableView extends CAbstractItemView {
         this.#m_contentWidget.update();
     }
 
-
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null) {
-		/** Provides super behavior. */
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null) {
 		super(parent);
 
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
@@ -276,12 +267,10 @@ export class CTableView extends CAbstractItemView {
 		});
 	}
 
-	/**
-	 * Computes the cell rectangle from the column header positions and fixed row height.
-	 * @param index Index in the current model identifying the item.
-	 * @returns Cell bounds in content coordinates, or an empty rectangle for an invalid or foreign index.
-	 */
-	visualRect(index: CModelIndex): CRect {
+    /**
+    * Returns the viewport-relative rectangle occupied by a model cell.
+    */
+    visualRect(index: CModelIndex): CRect {
 		if (!index.isValid() || index.model() !== this.model())
 			return new CRect();
 
@@ -295,35 +284,29 @@ export class CTableView extends CAbstractItemView {
 		);
 	}
 
-	/**
-	 * Reads the horizontal header.
-	 * @returns The horizontal header.
-	 */
-	horizontalHeader(): CHeaderView {
+    /**
+    * Returns the column header for captions, widths and sort indicators.
+    */
+    horizontalHeader(): CHeaderView {
 		return this.#m_horizontalHeader;
 	}
 
-	/**
-	 * Reads the vertical header.
-	 * @returns The vertical header.
-	 */
-	verticalHeader(): CHeaderView {
+    /**
+    * Returns the row header for captions and row-position feedback.
+    */
+    verticalHeader(): CHeaderView {
 		return this.#m_verticalHeader;
 	}
 
-	/**
-	 * Returns whether sorting by clicking the header is enabled.
-	 * @returns `true` if the table view is sorting enabled, otherwise `false`.
-	 */
-	isSortingEnabled(): boolean {
+    /** Returns whether sorting by clicking the header is enabled. */
+    isSortingEnabled(): boolean {
 		return this.#m_sortingEnabled;
 	}
 
-	/**
-	 * Enables or disables sorting by clicking the horizontal header.
-	 * @param enabled Whether to enable the feature.
-	 */
-	setSortingEnabled(enabled: boolean): void {
+    /**
+    * Controls whether activating a column heading requests model sorting.
+    */
+    setSortingEnabled(enabled: boolean): void {
 		if (this.#m_sortingEnabled === enabled)
 			return;
 
@@ -331,12 +314,10 @@ export class CTableView extends CAbstractItemView {
 		this.#m_horizontalHeader.setSortIndicatorShown(enabled);
 	}
 
-	/**
-	 * Sorts the model by the requested column and order.
-	 * @param column Zero-based column.
-	 * @param order Order. Defaults to `CSortOrder.AscendingOrder`.
-	 */
-	sortByColumn(
+    /**
+    * Requests model sorting by a zero-based column and updates the header's sort indicator.
+    */
+    sortByColumn(
 		column: number,
 		order: CSortOrder = CSortOrder.AscendingOrder
 	): void {
@@ -349,86 +330,66 @@ export class CTableView extends CAbstractItemView {
 		model.sort(column, order);
 	}
 
-	/**
-	 * Reads the viewport of the table view.
-	 * @returns The viewport.
-	 */
-	viewport(): CWidget {
+    /**
+    * Returns the clipped widget displaying the current table cells.
+    */
+    viewport(): CWidget {
 		return this.#m_scrollArea.viewport();
 	}
 
-	/**
-	 * Reads the horizontal scroll bar of the table view.
-	 * @returns The horizontal scroll bar.
-	 */
-	horizontalScrollBar(): CScrollBar {
+    /**
+    * Returns the embedded horizontal content range control.
+    */
+    horizontalScrollBar(): CScrollBar {
 		return this.#m_scrollArea.horizontalScrollBar();
 	}
 
-	/**
-	 * Reads the vertical scroll bar of the table view.
-	 * @returns The vertical scroll bar.
-	 */
-	verticalScrollBar(): CScrollBar {
+    /**
+    * Returns the embedded vertical content range control.
+    */
+    verticalScrollBar(): CScrollBar {
 		return this.#m_scrollArea.verticalScrollBar();
 	}
 
-	/**
-	 * Reads the horizontal scroll offset.
-	 * @returns The scroll x.
-	 */
-	scrollX(): number {
+    /**
+    * Returns the table content's horizontal offset in logical pixels.
+    */
+    scrollX(): number {
 		return this.#m_scrollArea.scrollX();
 	}
 
-	/**
-	 * Reads the vertical scroll offset.
-	 * @returns The scroll y.
-	 */
-	scrollY(): number {
+    /**
+    * Returns the table content's vertical offset in logical pixels.
+    */
+    scrollY(): number {
 		return this.#m_scrollArea.scrollY();
 	}
 
-	/**
-	 * Sets the scroll x.
-	 * @param x Horizontal coordinate.
-	 */
-	setScrollX(x: number): void {
+    /**
+    * Changes the bounded horizontal content offset and synchronizes the column header.
+    */
+    setScrollX(x: number): void {
 		this.#m_scrollArea.setScrollX(x);
 	}
 
-	/**
-	 * Sets the scroll y.
-	 * @param y Vertical coordinate.
-	 */
-	setScrollY(y: number): void {
+    /**
+    * Changes the bounded vertical content offset and synchronizes the row header.
+    */
+    setScrollY(y: number): void {
 		this.#m_scrollArea.setScrollY(y);
 	}
 
-	/**
-	 * Scrolls the to.
-	 * @param x Horizontal coordinate.
-	 * @param y Vertical coordinate.
-	 */
-	scrollTo(x: number, y: number): void {
+    /**
+    * Changes both bounded table offsets and synchronizes header positions.
+    */
+    scrollTo(x: number, y: number): void {
 		this.#m_scrollArea.scrollTo(x, y);
 	}
 
-	/**
-	 * Returns the preferred size of the widget.
-	 * @returns A new `CSize`.
-	 */
 	override sizeHint(): CSize {
 		return new CSize(400, 240);
 	}
 
-	/**
-	 * Sets the geometry.
-	 * @param x Horizontal position in parent coordinates.
-	 * @param y Vertical position in parent coordinates.
-	 * @param width Width in logical pixels.
-	 * @param height Height in logical pixels.
-	 */
 	override setGeometry(
 		x: number,
 		y: number,
@@ -439,24 +400,17 @@ export class CTableView extends CAbstractItemView {
 		this.#updateGeometry();
 	}
 
-	/**
-	 * Resizes the width.
-	 * @param width Width in logical pixels.
-	 * @param height Height in logical pixels.
-	 */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 		this.#updateGeometry();
 	}
 
-	/**
-	 * Paints the cells.
-	 * @param painter Painter for the current drawing operation.
-	 */
-	paintCells(painter: CPainter): void {
+    /**
+    * @internal Paints visible cells on the internal table content surface.
+    */
+    paintCells(painter: CPainter): void {
 		const model = this.model();
 
-		/** Provides if behavior. */
 		if (model === null)
 			return;
 
@@ -506,7 +460,6 @@ export class CTableView extends CAbstractItemView {
 				painter.setPen(selected ? highlightedText : text);
 				painter.drawRect(x, y, width, CTableView.RowHeight);
 
-
 				painter.save();
 				painter.clipRect(new CRect(x, y, width, CTableView.RowHeight));
 				const rect = new CRect(x, y, width, CTableView.RowHeight);
@@ -553,9 +506,8 @@ export class CTableView extends CAbstractItemView {
     }
 
     /**
-     * Updates the cursor over the cell and extends an active drag selection, scheduling auto-scroll when the pointer leaves the viewport.
-     * @param event Mouse movement in table content coordinates.
-     */
+    * @internal Routes drag-selection updates from the internal content surface.
+    */
     contentMouseMoveEvent(event: CMouseEvent): void {
         const index = this.#cellAtContentPoint(event.x(), event.y());
         if (CApplication.instance().mouseGrabber() !== this.#m_contentWidget)
@@ -627,9 +579,8 @@ export class CTableView extends CAbstractItemView {
     }
 
     /**
-     * Ends active drag selection on a left-button release and refreshes the cell cursor.
-     * @param event Mouse event with release button and position in table content coordinates.
-     */
+    * @internal Finishes selection dragging on the internal content surface.
+    */
     contentMouseReleaseEvent(event: CMouseEvent): void {
         if (this.#dragSelection === null || event.button() !== CMouseButton.LeftButton) {
             event.ignore();
@@ -642,22 +593,20 @@ export class CTableView extends CAbstractItemView {
     }
 
     /**
-     * Responds to the content mouse leave event for the table view.
-     */
+    * @internal Clears content hover feedback.
+    */
     contentMouseLeaveEvent(): void {
         if (this.#dragSelection === null)
             this.#m_contentWidget.setCursor(CCursorShape.Arrow);
     }
 
-	/**
-	 * Handles a left press in table content, selecting or extending the cell range and starting drag tracking where applicable.
-	 * @param event Mouse event with button, modifiers and position in table content coordinates.
-	 */
-	contentMousePressEvent(event: CMouseEvent): void {
+    /**
+    * @internal Routes cell selection and editing from the internal content surface.
+    */
+    contentMousePressEvent(event: CMouseEvent): void {
 		const model = this.model();
 		const selectionModel = this.selectionModel();
 
-		/** Provides if behavior. */
 		if (event.type() !== CEventType.MousePress
 			|| event.button() !== CMouseButton.LeftButton
 			|| model === null
@@ -678,7 +627,6 @@ export class CTableView extends CAbstractItemView {
 		const index =
 			model.index(row, column);
 
-		/** Provides if behavior. */
 		if (!index.isValid()) {
 			event.ignore();
 			return;
@@ -719,11 +667,10 @@ export class CTableView extends CAbstractItemView {
 		event.accept();
 	}
 
-	/**
-	 * Selects the cell under a left double-click and invokes the item editor when the click is handled by the view.
-	 * @param event Mouse event with button and position in table content coordinates.
-	 */
-	contentMouseDoubleClickEvent(event: CMouseEvent): void {
+    /**
+    * @internal Routes double-click editing from the internal content surface.
+    */
+    contentMouseDoubleClickEvent(event: CMouseEvent): void {
 		const model = this.model();
 		const selectionModel = this.selectionModel();
 
@@ -756,10 +703,6 @@ export class CTableView extends CAbstractItemView {
 		event.accept();
 	}
 
-    /**
-     * Responds to a context menu request for the table view. May update the context menu. May request a repaint and request focus and accept or ignore the event depending on the input.
-     * @param event Event for a context menu request.
-     */
     protected override contextMenuEvent(event: CContextMenuEvent): void {
         const selection = this.selectionModel();
         const model = this.model();
@@ -855,39 +798,32 @@ export class CTableView extends CAbstractItemView {
         menu?.destroy();
     }
 
-    /**
-     * Releases resources held by the table view.
-     */
     override destroy(): void {
         ++this.#pasteRequest;
         this.#disposeContextMenu();
         super.destroy();
     }
 
-    /**
-     * Supplies model-specific Cut and Clear actions, if available.
-     * @returns `null`.
-     */
+    /** Supplies model-specific Cut and Clear actions, if available. */
     protected contextCellActions(): { enabled: boolean; cut: () => void; clear: () => void } | null {
         return null;
     }
 
-    /** Reports the rejected destination and reason when a paste cannot be applied. */
+    /**
+    * Reports the rejected destination and reason when a paste cannot be applied.
+    * @group Signals
+    */
     readonly pasteRejected = new CSignal<[row: number, column: number, message: string]>();
 
     /**
-     * Checks whether the table view can paste.
-     * @returns `true` if the table view can paste, otherwise `false`.
-     */
+    * Reports whether the current table/model state permits clipboard text to be applied.
+    */
     canPaste(): boolean {
         const index = this.currentIndex();
         return index.isValid() && (this.model()?.isEditable(index) ?? false);
     }
 
-    /**
-     * Parses tabular text and submits it as a batch starting at the current cell. Emits `pasteRejected` if parsing or model validation fails.
-     * @param text Tabular text to paste. Defaults to the current clipboard text.
-     */
+    /** Pastes text at the current cell through the model's atomic edit API. */
     paste(text = CClipboard.instance().text()): void {
         const model = this.model();
         const anchor = this.currentIndex();
@@ -920,18 +856,12 @@ export class CTableView extends CAbstractItemView {
         }
     }
 
-    /**
-     * Returns whether the table has cells to copy.
-     * @returns `true` if the table view can copy, otherwise `false`.
-     */
+    /** Returns whether the table has cells to copy. */
     canCopy(): boolean {
         return this.selectionModel()?.hasSelection() ?? false;
     }
 
-    /**
-     * Serializes the selected cells as a rectangular, tab-separated range. Unselected positions within the range are represented by empty fields.
-     * @returns Tab-separated cell text with CRLF between rows, or an empty string if no selection is available.
-     */
+    /** Serializes the selected cells in view order as tab-separated text. */
     selectedText(): string {
         const model = this.model();
         const selection = this.selectionModel();
@@ -976,10 +906,7 @@ export class CTableView extends CAbstractItemView {
         return result.join("\r\n");
     }
 
-    /**
-     * Copies text into the toolkit clipboard when copying is available.
-     * @param text Text to copy. Defaults to the tab-separated selection.
-     */
+    /** Copies selected cells to the clipboard. */
     copy(text = this.selectedText()): void {
         if (this.canCopy()) CClipboard.instance().setText(text);
     }
@@ -994,11 +921,10 @@ export class CTableView extends CAbstractItemView {
         this.model()?.undoStack()?.redo();
     }
 
-	/**
-	 * Handles table navigation, selection extension and supported editing or clipboard shortcuts.
-	 * @param event Keyboard event from the table content.
-	 */
-	contentKeyPressEvent(event: CKeyEvent): void {
+    /**
+    * @internal Routes keyboard navigation and editing from the internal content surface.
+    */
+    contentKeyPressEvent(event: CKeyEvent): void {
         if ((event.ctrl() || event.meta()) && !event.alt() && !event.altGraph()) {
             const key = event.key().toLowerCase();
             const history = this.model()?.undoStack();
@@ -1022,7 +948,6 @@ export class CTableView extends CAbstractItemView {
 		const model = this.model();
 		const selectionModel = this.selectionModel();
 
-		/** Provides if behavior. */
 		if (model === null || selectionModel === null) {
 			event.ignore();
 			return;
@@ -1050,7 +975,6 @@ export class CTableView extends CAbstractItemView {
 		const rows = model.rowCount();
 		const columns = model.columnCount();
 
-		/** Provides if behavior. */
 		if (rows === 0 || columns === 0) {
 			event.ignore();
 			return;
@@ -1059,12 +983,10 @@ export class CTableView extends CAbstractItemView {
 		let row = this.currentIndex().row();
 		let column = this.currentIndex().column();
 
-		/** Provides if behavior. */
 		if (!this.currentIndex().isValid()) {
 			row = 0;
 			column = 0;
 		} else {
-			/** Provides switch behavior. */
 			switch (event.key()) {
 				case "ArrowLeft":
 					column = Math.max(0, column - 1);
@@ -1083,7 +1005,6 @@ export class CTableView extends CAbstractItemView {
 					break;
 
 				case "Home":
-					/** Provides if behavior. */
 					if (event.ctrl())
 						row = 0;
 
@@ -1091,7 +1012,6 @@ export class CTableView extends CAbstractItemView {
 					break;
 
 				case "End":
-					/** Provides if behavior. */
 					if (event.ctrl())
 						row = rows - 1;
 
@@ -1178,7 +1098,7 @@ export class CTableView extends CAbstractItemView {
 		);
 
 		this.#m_scrollArea.updateTableScrollBars();
-		
+
 		this.#m_horizontalHeader.setOffset(
 			this.#m_scrollArea.scrollX()
 		);
@@ -1191,20 +1111,12 @@ export class CTableView extends CAbstractItemView {
 
 	}
 
-	/**
-	 * Returns the widget used as editor parent.
-	 * @returns The content widget.
-	 */
 	protected override editorParent(): CWidget {
 		return this.#m_contentWidget;
 	}
 
-	/**
-	 * Updates table-specific state after a model change.
-	 * @param _oldModel Old model. This implementation ignores the argument.
-	 * @param newModel New model.
-	 */
-	protected override modelChanged(
+    /** Updates table-specific state after a model change. */
+    protected override modelChanged(
 		_oldModel: CAbstractItemModel | null,
 		newModel: CAbstractItemModel | null
 	): void {
@@ -1217,13 +1129,13 @@ export class CTableView extends CAbstractItemView {
 		void this.#fetchMoreIfNeeded();
 	}
 
-	/** Repaints table cells after model data changes. */
-	protected override modelDataChanged(): void {
+    /** Repaints table cells after model data changes. */
+    protected override modelDataChanged(): void {
 		this.#m_contentWidget.update();
 	}
 
-	/** Updates table geometry and headers after a model reset. */
-	protected override modelReset(): void {
+    /** Updates table geometry and headers after a model reset. */
+    protected override modelReset(): void {
         this.#selectionAnchor = null;
         this.#stopDragSelection();
 		this.#updateContentGeometry();
@@ -1233,8 +1145,8 @@ export class CTableView extends CAbstractItemView {
 		void this.#fetchMoreIfNeeded();
 	}
 
-	/** Updates table geometry after rows are rearranged or filtered. */
-	protected override modelLayoutChanged(): void {
+    /** Updates table geometry after rows are rearranged or filtered. */
+    protected override modelLayoutChanged(): void {
         this.#selectionAnchor = null;
         this.#stopDragSelection();
 		this.#updateContentGeometry();
@@ -1243,13 +1155,8 @@ export class CTableView extends CAbstractItemView {
 		this.#m_verticalHeader.update();
 	}
 
-	/**
-	 * Updates table geometry after rows are inserted.
-	 * @param _parent Owning object or parent item. This implementation ignores the argument.
-	 * @param _first First. This implementation ignores the argument.
-	 * @param _last Last. This implementation ignores the argument.
-	 */
-	protected override modelRowsInserted(
+    /** Updates table geometry after rows are inserted. */
+    protected override modelRowsInserted(
 		_parent: CModelIndex,
 		_first: number,
 		_last: number
@@ -1257,13 +1164,8 @@ export class CTableView extends CAbstractItemView {
 		this.#updateRowsGeometry();
 	}
 
-	/**
-	 * Updates table geometry after rows are removed.
-	 * @param _parent Owning object or parent item. This implementation ignores the argument.
-	 * @param _first First. This implementation ignores the argument.
-	 * @param _last Last. This implementation ignores the argument.
-	 */
-	protected override modelRowsRemoved(
+    /** Updates table geometry after rows are removed. */
+    protected override modelRowsRemoved(
 		_parent: CModelIndex,
 		_first: number,
 		_last: number
@@ -1280,11 +1182,8 @@ export class CTableView extends CAbstractItemView {
 		void this.#fetchMoreIfNeeded();
 	}
 
-	/**
-	 * Runs base edit cleanup, scrolls a valid current cell into view and repaints the content.
-	 * @param index New current cell index.
-	 */
-	protected override currentIndexChanged(index: CModelIndex): void {
+    /** Scrolls to and repaints a newly selected current index. */
+    protected override currentIndexChanged(index: CModelIndex): void {
 		super.currentIndexChanged(index);
 
 		if (index.isValid())
@@ -1293,14 +1192,13 @@ export class CTableView extends CAbstractItemView {
 		this.#m_contentWidget.update();
 	}
 
-	/** Restores focus to the table content after editing. */
-	protected override editorClosed(): void {
+    /** Restores focus to the table content after editing. */
+    protected override editorClosed(): void {
 		this.#m_contentWidget.setFocus();
 		this.#m_contentWidget.update();
 	}
 
 	#ensureIndexVisible(index: CModelIndex): void {
-		/** Provides if behavior. */
 		if (!index.isValid())
 			return;
 
@@ -1315,16 +1213,26 @@ export class CTableView extends CAbstractItemView {
 		let scrollX = this.#m_scrollArea.scrollX();
 		let scrollY = this.#m_scrollArea.scrollY();
 
-		/** Provides if behavior. */
 		if (x < scrollX)
+			/**
+			 * Returns the table content's horizontal offset in logical pixels.
+			 */
 			scrollX = x;
 		else if (right > scrollX + viewportWidth)
+			/**
+			 * Returns the table content's horizontal offset in logical pixels.
+			 */
 			scrollX = right - viewportWidth;
 
-		/** Provides if behavior. */
 		if (y < scrollY)
+			/**
+			 * Returns the table content's vertical offset in logical pixels.
+			 */
 			scrollY = y;
 		else if (bottom > scrollY + viewportHeight)
+			/**
+			 * Returns the table content's vertical offset in logical pixels.
+			 */
 			scrollY = bottom - viewportHeight;
 
 		this.#m_scrollArea.scrollTo(scrollX, scrollY);

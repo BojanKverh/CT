@@ -1,60 +1,53 @@
-/** Implements the table widget item widget. */
+/** @module Widgets/CTableWidgetItem */
+/** Cell text, editability and presentation metadata for a CTableWidget. */
 export class CTableWidgetItem {
 	#m_data: unknown;
 	#m_editable = true;
 
-	/** Creates a new instance. */
-	constructor(data: unknown = "") {
+    /**
+    * Retains a caption for later insertion into an item-model cell.
+    * @param data Input used to configure CTableWidgetItem. Omit to use `""`.
+    */
+    constructor(data: unknown = "") {
 		this.#m_data = data;
 	}
 
-	/**
-	 * Reads the text of the table widget item.
-	 * @returns The text.
-	 */
-	text(): string {
+    /**
+    * Returns the cell caption stored by this item.
+    */
+    text(): string {
 		return this.#m_data === null || this.#m_data === undefined
 			? ""
 			: String(this.#m_data);
 	}
 
-	/**
-	 * Replaces the item's stored data with a string.
-	 * @param text Text to store as the cell value.
-	 */
-	setText(text: string): void {
+    /**
+    * Changes the cell caption and notifies the owning item model.
+    */
+    setText(text: string): void {
 		this.#m_data = text;
 	}
 
-	/**
-	 * Returns the value stored by the item.
-	 * @returns The data.
-	 */
-	data(): unknown {
+    /** Returns the value stored by the item. */
+    data(): unknown {
 		return this.#m_data;
 	}
 
-	/**
-	 * Sets the value stored by the item.
-	 * @param data Data.
-	 */
-	setData(data: unknown): void {
+    /** Sets the value stored by the item. */
+    setData(data: unknown): void {
 		this.#m_data = data;
 	}
 
-	/**
-	 * Returns whether the item can be edited.
-	 * @returns `true` if the table widget item is editable, otherwise `false`.
-	 */
-	isEditable(): boolean {
+    /**
+    * Whether direct user editing is enabled.
+    * The initial value is `true`.
+    */
+    isEditable(): boolean {
 		return this.#m_editable;
 	}
 
-	/**
-	 * Sets whether the item can be edited.
-	 * @param editable Editable flag. Defaults to `true`.
-	 */
-	setEditable(editable: boolean = true): void {
+    /** Sets whether the item can be edited. */
+    setEditable(editable: boolean = true): void {
 		this.#m_editable = editable;
 	}
 }

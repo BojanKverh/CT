@@ -1,3 +1,4 @@
+/** @module Widgets/CTableWidget */
 import { CClipboard } from "../core/CClipboard.js";
 import type { CKeyEvent } from "../events/CKeyEvent.js";
 import { CSignal } from "../core/CSignal.js";
@@ -20,10 +21,6 @@ class CTableWidgetModel extends CAbstractItemModel {
 	#m_verticalHeaderLabels: string[] = [];
     #editHistory = new CUndoStack(this);
 
-    /**
-     * Reads the edit history.
-     * @returns The edit history.
-     */
     override undoStack(): CUndoStack {
         return this.#editHistory;
     }
@@ -33,29 +30,20 @@ class CTableWidgetModel extends CAbstractItemModel {
         this.modelReset.connect(() => this.#editHistory.clear());
     }
 
-	/**
-	 * Reads the number of entries in the items.
-	 * @param _parent Owning object or parent item. Defaults to `new CModelIndex()`. This implementation ignores the argument.
-	 * @returns The number of entries in the items.
-	 */
-	rowCount(_parent: CModelIndex = new CModelIndex()): number {
+    /**
+    * Returns the number of rows retained by the internal item model.
+    */
+    rowCount(_parent: CModelIndex = new CModelIndex()): number {
 		return this.#m_items.length;
 	}
 
-	/**
-	 * Reads the column count.
-	 * @param _parent Owning object or parent item. Defaults to `new CModelIndex()`. This implementation ignores the argument.
-	 * @returns The column count.
-	 */
-	columnCount(_parent: CModelIndex = new CModelIndex()): number {
+    /**
+    * Returns the number of columns retained by the internal item model.
+    */
+    columnCount(_parent: CModelIndex = new CModelIndex()): number {
 		return this.#m_columnCount;
 	}
 
-	/**
-	 * Reads the backing item's data for a cell.
-	 * @param index Index owned by this table model.
-	 * @returns Stored data, or `null` when the cell is empty or its index is invalid or foreign.
-	 */
 	data(index: CModelIndex): unknown {
 		if (!index.isValid() || index.model() !== this)
 			return null;
@@ -64,12 +52,6 @@ class CTableWidgetModel extends CAbstractItemModel {
 		return item === null ? null : item.data();
 	}
 
-	/**
-	 * Updates an editable table item and records an undoable edit if its value changes.
-	 * @param index Valid cell index owned by this model.
-	 * @param value New cell value.
-	 * @returns `true` if the cell accepts edits, including an unchanged value. Returns `false` for a foreign or invalid index, missing item or read-only item.
-	 */
 	override setItemData(index: CModelIndex, value: unknown): boolean {
 		if (!index.isValid() || index.model() !== this)
 			return false;
@@ -86,11 +68,6 @@ class CTableWidgetModel extends CAbstractItemModel {
 		return true;
 	}
 
-    /**
-     * Validates the entire batch before applying it as one undoable edit. Existing numeric and Boolean cells require corresponding textual values.
-     * @param edits Batch of editable target cells owned by this table model and their replacement text.
-     * @returns `null` if accepted, including a no-op, or an error giving the first rejected edit's zero-based position and reason.
-     */
     override applyTextEdits(edits: readonly CItemTextEdit[]): CItemTextEditError | null {
         const changes: CTableItemChange[] = [];
 
@@ -125,13 +102,6 @@ class CTableWidgetModel extends CAbstractItemModel {
         return null;
     }
 
-    /**
-     * Verifies that each target is editable, runs the optional callback and clears nonempty values as one undoable edit.
-     * @param indexes Indexes owned by this table model.
-     * @param label Label for the undo command. Defaults to `Clear cells`.
-     * @param beforeClear Optional callback after validation and before clearing.
-     * @returns The first rejected index, or `null` if all indexes passed validation.
-     */
     clearCells(indexes: Iterable<CModelIndex>, label = "Clear cells", beforeClear?: () => void): CModelIndex | null {
         const changes: CTableItemChange[] = [];
         for (const index of indexes) {
@@ -159,22 +129,11 @@ class CTableWidgetModel extends CAbstractItemModel {
             this.emitDataChanged(this.index(0, 0), this.index(this.rowCount() - 1, this.columnCount() - 1));
         };
         this.#editHistory.push(new class extends CUndoCommand {
-            /**
-             * Restores the values captured before the edit and notifies the view.
-             */
             override undo(): void { apply("before"); }
-            /**
-             * Reapplies the edited values and notifies the view.
-             */
             override redo(): void { apply("after"); }
         }(label));
     }
 
-	/**
-	 * Queries the backing table item for editability.
-	 * @param index Index in the current model identifying the item.
-	 * @returns `true` if a valid owned index resolves to an editable item.
-	 */
 	override isEditable(index: CModelIndex): boolean {
 		if (!index.isValid() || index.model() !== this)
 			return false;
@@ -182,12 +141,6 @@ class CTableWidgetModel extends CAbstractItemModel {
 		return this.item(index.row(), index.column())?.isEditable() ?? false;
 	}
 
-	/**
-	 * Reads the configured label for a row or column and falls back to default numbering.
-	 * @param section Zero-based header section.
-	 * @param orientation Horizontal for column labels or vertical for row labels.
-	 * @returns The configured label or the default one-based section number.
-	 */
 	override headerData(section: number,
 		orientation: COrientation): string | number | null {
 		if (orientation === COrientation.Horizontal)
@@ -198,11 +151,6 @@ class CTableWidgetModel extends CAbstractItemModel {
 			super.headerData(section, orientation);
 	}
 
-	/**
-	 * Reorders rows by the values in the requested column. An invalid column or a table with fewer than two rows is left unchanged.
-	 * @param column Zero-based column to sort by.
-	 * @param order Ascending or descending order. Defaults to ascending.
-	 */
 	override sort(
 		column: number,
 		order: CSortOrder = CSortOrder.AscendingOrder
@@ -288,11 +236,10 @@ class CTableWidgetModel extends CAbstractItemModel {
 		this.endLayoutChange(oldIndexes, newIndexes);
 	}
 
-	/**
-	 * Sets the row count. May emit a model reset.
-	 * @param count Number of items.
-	 */
-	setRowCount(count: number): void {
+    /**
+    * Changes the internal model's row count, adding or removing retained cell positions.
+    */
+    setRowCount(count: number): void {
 		count = Math.max(0, Math.floor(count));
 
 		if (count === this.rowCount())
@@ -305,11 +252,10 @@ class CTableWidgetModel extends CAbstractItemModel {
 		this.resetModel();
 	}
 
-	/**
-	 * Sets the column count. May emit a model reset.
-	 * @param count Number of items.
-	 */
-	setColumnCount(count: number): void {
+    /**
+    * Changes the internal model's column count, adding or removing retained cell positions.
+    */
+    setColumnCount(count: number): void {
 		count = Math.max(0, Math.floor(count));
 
 		if (count === this.#m_columnCount)
@@ -327,26 +273,20 @@ class CTableWidgetModel extends CAbstractItemModel {
 		this.resetModel();
 	}
 
-	/**
-	 * Looks up the item backing a table cell.
-	 * @param row Zero-based row.
-	 * @param column Zero-based column.
-	 * @returns The cell item, or `null` for an empty cell or an out-of-range coordinate.
-	 */
-	item(row: number, column: number): CTableWidgetItem | null {
+    /**
+    * Returns the item object at a row and column, or null for an empty or invalid cell.
+    */
+    item(row: number, column: number): CTableWidgetItem | null {
 		if (!this.#isValidCell(row, column))
 			return null;
 
 		return this.#m_items[row]?.[column] ?? null;
 	}
 
-	/**
-	 * Sets the item. May emit a model reset.
-	 * @param row Zero-based row.
-	 * @param column Zero-based column.
-	 * @param item Item to operate on.
-	 */
-	setItem(row: number, column: number,
+    /**
+    * Assigns an item to an internal-model cell.
+    */
+    setItem(row: number, column: number,
 		item: CTableWidgetItem): void {
 		if (!this.#isValidCell(row, column))
 			return;
@@ -360,12 +300,6 @@ class CTableWidgetModel extends CAbstractItemModel {
 		this.resetModel();
 	}
 
-	/**
-	 * Removes the item from a cell without destroying it and resets the model if an item was removed.
-	 * @param row Zero-based row.
-	 * @param column Zero-based column.
-	 * @returns The removed item, or `null` if the cell is empty or out of range.
-	 */
 	takeItem(row: number, column: number): CTableWidgetItem | null {
 		if (!this.#isValidCell(row, column))
 			return null;
@@ -381,42 +315,36 @@ class CTableWidgetModel extends CAbstractItemModel {
 		return item;
 	}
 
-	/**
-	 * Sets the horizontal header labels. May emit a model reset.
-	 * @param labels Labels.
-	 */
-	setHorizontalHeaderLabels(labels: string[]): void {
+    /**
+    * Sets column captions in supplied order.
+    */
+    setHorizontalHeaderLabels(labels: string[]): void {
 		this.#m_horizontalHeaderLabels = [...labels];
 		this.resetModel();
 	}
 
-	/**
-	 * Sets the vertical header labels. May emit a model reset.
-	 * @param labels Labels.
-	 */
-	setVerticalHeaderLabels(labels: string[]): void {
+    /**
+    * Sets row captions in supplied order.
+    */
+    setVerticalHeaderLabels(labels: string[]): void {
 		this.#m_verticalHeaderLabels = [...labels];
 		this.resetModel();
 	}
 
-	/**
-	 * Resolves a model index to its table item.
-	 * @param index Index owned by this table's model.
-	 * @returns The cell item, or `null` for an empty cell or an invalid or foreign index.
-	 */
-	itemFromIndex(index: CModelIndex): CTableWidgetItem | null {
+    /**
+    * Resolves an internal model index to its item object.
+    */
+    itemFromIndex(index: CModelIndex): CTableWidgetItem | null {
 		if (!index.isValid() || index.model() !== this)
 			return null;
 
 		return this.item(index.row(), index.column());
 	}
 
-	/**
-	 * Finds the cell containing the supplied item by identity.
-	 * @param item Table item to locate.
-	 * @returns Model index for the item, or an invalid index if it does not occur in this table.
-	 */
-	indexFromItem(item: CTableWidgetItem): CModelIndex {
+    /**
+    * Resolves an owned item to its internal model index.
+    */
+    indexFromItem(item: CTableWidgetItem): CModelIndex {
 		const position = this.#findItem(item);
 
 		if (position === null)
@@ -486,20 +414,28 @@ class CTableWidgetModel extends CAbstractItemModel {
 	}
 }
 
-/** Implements the table widget widget. */
+/** Item-based editable table backed by an internal model and CTableWidgetItem objects. */
 export class CTableWidget extends CTableView {
 	#m_tableModel: CTableWidgetModel;
 
-    /** Reports the first selected cell that cannot be cleared. */
+    /**
+    * Reports the first selected cell that cannot be cleared.
+    * @group Signals
+    */
     readonly clearRejected = new CSignal<[row: number, column: number]>();
 
-	/** Signal emitted when current item changes. */
-	readonly currentItemChanged =
+    /**
+    * Emitted with the new and previous current tree items when keyboard or pointer navigation changes the current item.
+    * @group Signals
+    */
+    readonly currentItemChanged =
 		new CSignal<[CTableWidgetItem | null, CTableWidgetItem | null]>();
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null) {
-		/** Provides super behavior. */
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null) {
 		super(parent);
 
 		this.#m_tableModel = new CTableWidgetModel(this);
@@ -515,10 +451,6 @@ export class CTableWidget extends CTableView {
 		);
 	}
 
-    /**
-     * Creates the cut and clear commands for the current table selection. Disables them for an empty selection or any noneditable cell.
-     * @returns Command callbacks and their enabled state, or `null` when the internal table model or its selection model is unavailable.
-     */
     protected override contextCellActions(): { enabled: boolean; cut: () => void; clear: () => void } | null {
         const selection = this.selectionModel();
         if (selection === null || this.model() !== this.#m_tableModel) return null;
@@ -544,10 +476,7 @@ export class CTableWidget extends CTableView {
         if (rejected !== null) this.clearRejected.emit(rejected.row(), rejected.column());
     }
 
-    /**
-     * Cuts the selection after validating all its cells.
-     * @param writeText Optional write text.
-     */
+    /** Cuts the selection after validating all its cells. */
     cutSelection(writeText?: (text: string) => void): void {
         const selection = this.selectionModel();
         if (selection === null || !selection.hasSelection() || this.model() !== this.#m_tableModel) return;
@@ -560,10 +489,6 @@ export class CTableWidget extends CTableView {
         else if (writeText === undefined && text !== undefined) CClipboard.instance().setText(text);
     }
 
-    /**
-     * Handles cut and clear shortcuts for the internal editable table, forwarding other keys to the table view.
-     * @param event Keyboard event from the table content.
-     */
     override contentKeyPressEvent(event: CKeyEvent): void {
         if (event.key().toLowerCase() === "x" && (event.ctrl() || event.meta()) &&
             !event.alt() && !event.altGraph() && !event.shift() &&
@@ -581,99 +506,79 @@ export class CTableWidget extends CTableView {
         super.contentKeyPressEvent(event);
     }
 
-	/**
-	 * Reads the row count of the table widget.
-	 * @returns The row count.
-	 */
-	rowCount(): number {
+    /**
+    * Returns the number of rows retained by the internal item model.
+    */
+    rowCount(): number {
 		return this.#m_tableModel.rowCount();
 	}
 
-	/**
-	 * Sets the row count.
-	 * @param count Number of items.
-	 */
-	setRowCount(count: number): void {
+    /**
+    * Changes the internal model's row count, adding or removing retained cell positions.
+    */
+    setRowCount(count: number): void {
 		this.#m_tableModel.setRowCount(count);
 	}
 
-	/**
-	 * Reads the column count of the table widget.
-	 * @returns The column count.
-	 */
-	columnCount(): number {
+    /**
+    * Returns the number of columns retained by the internal item model.
+    */
+    columnCount(): number {
 		return this.#m_tableModel.columnCount();
 	}
 
-	/**
-	 * Sets the column count.
-	 * @param count Number of items.
-	 */
-	setColumnCount(count: number): void {
+    /**
+    * Changes the internal model's column count, adding or removing retained cell positions.
+    */
+    setColumnCount(count: number): void {
 		this.#m_tableModel.setColumnCount(count);
 	}
 
-	/**
-	 * Looks up the item backing a table cell.
-	 * @param row Zero-based row.
-	 * @param column Zero-based column.
-	 * @returns The cell item, or `null` for an empty cell or an out-of-range coordinate.
-	 */
-	item(row: number, column: number): CTableWidgetItem | null {
+    /**
+    * Returns the item object at a row and column, or null for an empty or invalid cell.
+    */
+    item(row: number, column: number): CTableWidgetItem | null {
 		return this.#m_tableModel.item(row, column);
 	}
 
-	/**
-	 * Sets the item.
-	 * @param row Zero-based row.
-	 * @param column Zero-based column.
-	 * @param item Item to operate on.
-	 */
-	setItem(row: number, column: number,
+    /**
+    * Assigns an item to an internal-model cell.
+    */
+    setItem(row: number, column: number,
 		item: CTableWidgetItem): void {
 		this.#m_tableModel.setItem(row, column, item);
 	}
 
-	/**
-	 * Removes the item from a cell without destroying it and resets the model if an item was removed.
-	 * @param row Zero-based row.
-	 * @param column Zero-based column.
-	 * @returns The removed item, or `null` if the cell is empty or out of range.
-	 */
-	takeItem(row: number, column: number): CTableWidgetItem | null {
+    /** Removes and returns item. */
+    takeItem(row: number, column: number): CTableWidgetItem | null {
 		return this.#m_tableModel.takeItem(row, column);
 	}
 
-	/**
-	 * Sets the horizontal header labels.
-	 * @param labels Labels.
-	 */
-	setHorizontalHeaderLabels(labels: string[]): void {
+    /**
+    * Sets column captions in supplied order.
+    */
+    setHorizontalHeaderLabels(labels: string[]): void {
 		this.#m_tableModel.setHorizontalHeaderLabels(labels);
 	}
 
-	/**
-	 * Sets the vertical header labels.
-	 * @param labels Labels.
-	 */
-	setVerticalHeaderLabels(labels: string[]): void {
+    /**
+    * Sets row captions in supplied order.
+    */
+    setVerticalHeaderLabels(labels: string[]): void {
 		this.#m_tableModel.setVerticalHeaderLabels(labels);
 	}
 
-	/**
-	 * Looks up the item backing the current cell.
-	 * @returns The current cell item, or `null` if no item is current.
-	 */
-	currentItem(): CTableWidgetItem | null {
+    /**
+    * Returns the item at the keyboard-current model index, or null.
+    */
+    currentItem(): CTableWidgetItem | null {
 		return this.#m_tableModel.itemFromIndex(this.currentIndex());
 	}
 
-	/**
-	 * Sets the current item.
-	 * @param item Item to operate on.
-	 */
-	setCurrentItem(item: CTableWidgetItem | null): void {
-		/** Provides if behavior. */
+    /**
+    * Moves the keyboard-current model index to an owned item.
+    */
+    setCurrentItem(item: CTableWidgetItem | null): void {
 		if (item === null) {
 			this.setCurrentIndex(new CModelIndex());
 			return;
@@ -681,29 +586,24 @@ export class CTableWidget extends CTableView {
 
 		const index = this.#m_tableModel.indexFromItem(item);
 
-		/** Provides if behavior. */
 		if (index.isValid())
 			this.setCurrentIndex(index);
 	}
 
-	/**
-	 * Collects unique items associated with selected model indexes, omitting empty cells.
-	 * @returns A new array of selected items in selection order.
-	 */
-	selectedItems(): CTableWidgetItem[] {
+    /**
+    * Returns the retained item objects covered by the current model selection.
+    */
+    selectedItems(): CTableWidgetItem[] {
 		const selectionModel = this.selectionModel();
 
-		/** Provides if behavior. */
 		if (selectionModel === null)
 			return [];
 
 		const result: CTableWidgetItem[] = [];
 
-		/** Provides for behavior. */
 		for (const index of selectionModel.selectedIndexes()) {
 			const item = this.#m_tableModel.itemFromIndex(index);
 
-			/** Provides if behavior. */
 			if (item !== null && !result.includes(item))
 				result.push(item);
 		}
@@ -711,21 +611,17 @@ export class CTableWidget extends CTableView {
 		return result;
 	}
 
-	/**
-	 * Resolves a model index to its table item.
-	 * @param index Index owned by this table's model.
-	 * @returns The cell item, or `null` for an empty cell or an invalid or foreign index.
-	 */
-	itemFromIndex(index: CModelIndex): CTableWidgetItem | null {
+    /**
+    * Resolves an internal model index to its item object.
+    */
+    itemFromIndex(index: CModelIndex): CTableWidgetItem | null {
 		return this.#m_tableModel.itemFromIndex(index);
 	}
 
-	/**
-	 * Finds the cell containing the supplied item by identity.
-	 * @param item Table item to locate.
-	 * @returns Model index for the item, or an invalid index if it does not occur in this table.
-	 */
-	indexFromItem(item: CTableWidgetItem): CModelIndex {
+    /**
+    * Resolves an owned item to its internal model index.
+    */
+    indexFromItem(item: CTableWidgetItem): CModelIndex {
 		return this.#m_tableModel.indexFromItem(item);
 	}
 }

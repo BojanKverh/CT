@@ -1,3 +1,4 @@
+/** @module Models/CAbstractItemModel */
 import type { CUndoStack } from "../core/CUndoStack.js";
 import { CObject } from "../core/CObject.js";
 import { CSignal } from "../core/CSignal.js";
@@ -5,41 +6,71 @@ import { CModelIndex } from "./CModelIndex.js";
 import { COrientation } from "../gui/COrientation.js";
 import { CSortOrder } from "../gui/CSortOrder.js";
 
+/**
+ * One requested model edit, pairing a target index with its replacement text.
+ */
 export type CItemTextEdit = { index: CModelIndex; text: string };
+/**
+ * Validation failure for a batch edit, identifying the zero-based edit position and diagnostic message.
+ */
 export type CItemTextEditError = { editIndex: number; message: string };
 
 /**
  * Abstract base class for models that expose data to item views.
  */
 export abstract class CAbstractItemModel extends CObject {
-	/** Emitted when data in the inclusive index range has changed. */
-	readonly dataChanged =
+    /**
+    * Emitted when data in the inclusive index range has changed.
+    * @group Signals
+    */
+    readonly dataChanged =
 		new CSignal<[CModelIndex, CModelIndex]>();
 
-	/** Emitted when the model has been reset. */
-	readonly modelReset = new CSignal<[]>();
+    /**
+    * Emitted when the model has been reset.
+    * @group Signals
+    */
+    readonly modelReset = new CSignal<[]>();
 
-	/** Emitted immediately before indexes are rearranged. */
-	readonly layoutAboutToBeChanged = new CSignal<[]>();
+    /**
+    * Emitted immediately before indexes are rearranged.
+    * @group Signals
+    */
+    readonly layoutAboutToBeChanged = new CSignal<[]>();
 
-	/** Emitted after indexes have been rearranged. */
-	readonly layoutChanged =
+    /**
+    * Emitted after indexes have been rearranged.
+    * @group Signals
+    */
+    readonly layoutChanged =
 		new CSignal<[CModelIndex[], CModelIndex[]]>();
 
-	/** Emitted immediately before a contiguous range of rows is inserted. */
-	readonly rowsAboutToBeInserted =
+    /**
+    * Emitted immediately before a contiguous range of rows is inserted.
+    * @group Signals
+    */
+    readonly rowsAboutToBeInserted =
 		new CSignal<[CModelIndex, number, number]>();
 
-	/** Emitted after a contiguous range of rows has been inserted. */
-	readonly rowsInserted =
+    /**
+    * Emitted after a contiguous range of rows has been inserted.
+    * @group Signals
+    */
+    readonly rowsInserted =
 		new CSignal<[CModelIndex, number, number]>();
 
-	/** Emitted immediately before a contiguous range of rows is removed. */
-	readonly rowsAboutToBeRemoved =
+    /**
+    * Emitted immediately before a contiguous range of rows is removed.
+    * @group Signals
+    */
+    readonly rowsAboutToBeRemoved =
 		new CSignal<[CModelIndex, number, number]>();
 
-	/** Emitted after a contiguous range of rows has been removed. */
-	readonly rowsRemoved =
+    /**
+    * Emitted after a contiguous range of rows has been removed.
+    * @group Signals
+    */
+    readonly rowsRemoved =
 		new CSignal<[CModelIndex, number, number]>();
 
 	#m_pendingRowsChange: {
@@ -49,99 +80,79 @@ export abstract class CAbstractItemModel extends CObject {
 		last: number;
 	} | null = null;
 
-	/**
-	 * Creates an item model.
-	 *
-	 * @param parent Optional parent object.
-	 */
-	constructor(parent: CObject | null = null) {
+    /**
+    * Creates an item model.
+    *
+    * @param parent Optional parent object.
+    */
+    constructor(parent: CObject | null = null) {
 		super(parent);
 	}
 
-	/**
-	 * Counts the rows available below a model item.
-	 * @param parent Parent index, or an omitted or invalid index for the root.
-	 * @returns Number of rows available under the parent.
-	 */
-	abstract rowCount(parent?: CModelIndex): number;
+    /** Returns the number of rows below the optional parent index. */
+    abstract rowCount(parent?: CModelIndex): number;
 
-	/**
-	 * Counts the columns available below a model item.
-	 * @param parent Parent index, or an omitted or invalid index for the root.
-	 * @returns Number of columns available under the parent.
-	 */
-	abstract columnCount(parent?: CModelIndex): number;
+    /** Returns the number of columns below the optional parent index. */
+    abstract columnCount(parent?: CModelIndex): number;
 
-	/**
-	 * Reads the value exposed by a model item.
-	 * @param index Index belonging to this model.
-	 * @returns The item value, whose type and missing-value convention are defined by the model.
-	 */
-	abstract data(index: CModelIndex): unknown;
+    /** Returns the data associated with an index. */
+    abstract data(index: CModelIndex): unknown;
 
-	/**
-	 * Provides the subclass hook for writing a value to an item. The base implementation leaves the model unchanged.
-	 * @param _index Target index in this model.
-	 * @param _value Proposed item value.
-	 * @returns Whether the value was accepted. The base implementation returns `false`.
-	 */
-	setItemData(_index: CModelIndex, _value: unknown): boolean {
+    /**
+    * Sets the data associated with an index.
+    *
+    * The base implementation does not modify the model.
+    *
+    * @returns `true` when the value was accepted.
+    */
+    setItemData(_index: CModelIndex, _value: unknown): boolean {
 		return false;
 	}
 
     /**
-     * Provides an overridable hook for applying a batch of textual edits. The base model rejects the operation without changing data.
-     * @param _edits Batch of target indexes and text values. The base implementation leaves them untouched.
-     * @returns An unsupported-operation error in the base implementation. A supporting implementation returns `null` on success or an error identifying the rejected edit.
-     */
+    * Validates all pasted values before writing any of them.
+    * Return null on success or identify the rejected edit. Models opt in by overriding this method.
+    */
     applyTextEdits(_edits: readonly CItemTextEdit[]): CItemTextEditError | null {
         return { editIndex: 0, message: "This model does not support pasting cells." };
     }
 
-    /**
-     * Checks whether the model implements the batched text-edit hook.
-     * @returns `true` if `applyTextEdits` differs from the base implementation.
-     */
+    /** Returns whether this model accepts batches of pasted text. */
     supportsTextEdits(): boolean {
         return this.applyTextEdits !== CAbstractItemModel.prototype.applyTextEdits;
     }
 
-    /**
-     * Returns the history of committed edits, if the model provides one.
-     * @returns `null`.
-     */
+    /** Returns the history of committed edits, if the model provides one. */
     undoStack(): CUndoStack | null {
         return null;
     }
 
-	/**
-	 * Queries whether a view may edit an item.
-	 * @param _index Index to inspect.
-	 * @returns Whether the item is editable. The base implementation returns `false`.
-	 */
-	isEditable(_index: CModelIndex): boolean {
+    /**
+    * Returns whether the item at an index can be edited.
+    *
+    * The base implementation returns `false`.
+    */
+    isEditable(_index: CModelIndex): boolean {
 		return false;
 	}
 
-	/**
-	 * Provides the subclass hook for column sorting. The base implementation leaves the model unchanged.
-	 * @param _column Zero-based sort column.
-	 * @param _order Requested sort order. Defaults to ascending.
-	 */
-	sort(
+    /**
+    * Sorts the model by a column in the requested order.
+    *
+    * The base implementation does not modify the model.
+    */
+    sort(
 		_column: number,
 		_order: CSortOrder = CSortOrder.AscendingOrder
 	): void {
 	}
 
-	/**
-	 * Creates an index after checking row and column bounds under the given parent.
-	 * @param row Zero-based row coordinate.
-	 * @param column Zero-based column coordinate.
-	 * @param parent Parent index. Defaults to an invalid root index.
-	 * @returns A new index owned by this model, or an invalid index when the coordinates are outside the model.
-	 */
-	index(row: number, column: number,
+    /**
+    * Creates an index for an existing row and column.
+    *
+    * Returns an invalid index when the coordinates are outside the model.
+    */
+    index(row: number, column: number,
 		parent = new CModelIndex()): CModelIndex {
 		if (row < 0 || column < 0)
 			return new CModelIndex();
@@ -153,83 +164,67 @@ export abstract class CAbstractItemModel extends CObject {
 		return this.createIndex(row, column);
 	}
 
-	/**
-	 * Looks up an item's parent. The base implementation represents a flat model.
-	 * @param _index Item index whose parent is requested.
-	 * @returns A new invalid index in the base implementation.
-	 */
-	parentIndex(_index: CModelIndex): CModelIndex {
+    /**
+    * Returns the parent index of an item.
+    *
+    * The base implementation represents a flat model and returns an invalid
+    * index.
+    */
+    parentIndex(_index: CModelIndex): CModelIndex {
 		return new CModelIndex();
 	}
 
-	/**
-	 * Supplies a default one-based label for a header section.
-	 * @param section Zero-based section number.
-	 * @param _orientation Header orientation. The default implementation uses the same numbering on both axes.
-	 * @returns The section number plus one.
-	 */
-	headerData(section: number, _orientation: COrientation): string | number | null {
+    /**
+    * Returns display data for a header section.
+    *
+    * The default implementation returns a one-based section number.
+    */
+    headerData(section: number, _orientation: COrientation): string | number | null {
 		return section + 1;
 	}
 
-	/**
-	 * Constructs an index with this model as its owner without validating bounds.
-	 * @param row Zero-based row coordinate.
-	 * @param column Zero-based column coordinate.
-	 * @param data Optional internal item payload. Defaults to `null`.
-	 * @returns A new index owned by this model.
-	 */
-	protected createIndex(row: number, column: number,
+    /**
+    * Creates a model index owned by this model.
+    *
+    * @param row Zero-based row.
+    * @param column Zero-based column.
+    * @param data Optional internal data associated with the index.
+    */
+    protected createIndex(row: number, column: number,
 		data: unknown = null): CModelIndex {
 		return new CModelIndex(row, column, data, this);
 	}
 
-	/**
-	 * Queries whether the model can load another block of rows.
-	 * @param _parent Parent under which to fetch, defaulting to the root.
-	 * @returns Always `false` in the base implementation.
-	 */
-	canFetchMore(_parent = new CModelIndex()): boolean {
+    /** Returns whether another block of rows can be fetched. */
+    canFetchMore(_parent = new CModelIndex()): boolean {
 		return false;
 	}
 
-	/**
-	 * Provides an asynchronous hook for loading additional rows. The base implementation performs no load.
-	 * @param _parent Parent under which to fetch, defaulting to the root.
-	 * @returns A promise resolving to `false` in the base implementation.
-	 */
-	async fetchMore(_parent = new CModelIndex()): Promise<boolean> {
+    /** Fetches another block of rows. The base implementation does nothing. */
+    async fetchMore(_parent = new CModelIndex()): Promise<boolean> {
 		return false;
 	}
 
-	/**
-	 * Notifies observers that values changed in an inclusive index range.
-	 * @param topLeft Index at the upper-left corner of the changed range.
-	 * @param bottomRight Index at the lower-right corner of the changed range.
-	 */
-	protected emitDataChanged(
+    /** Emits the dataChanged signal for the specified inclusive range. */
+    protected emitDataChanged(
 		topLeft: CModelIndex,
 		bottomRight: CModelIndex
 	): void {
 		this.dataChanged.emit(topLeft, bottomRight);
 	}
 
-	/** Emits `modelReset` so observers can discard and rebuild their model state. */
-	protected resetModel(): void {
+    /** Resets the model and emits the modelReset signal. */
+    protected resetModel(): void {
 		this.modelReset.emit();
 	}
 
-	/** Emits `layoutAboutToBeChanged` before indexes are rearranged. */
-	protected beginLayoutChange(): void {
+    /** Announces that model indexes are about to be rearranged. */
+    protected beginLayoutChange(): void {
 		this.layoutAboutToBeChanged.emit();
 	}
 
-	/**
-	 * Emits the completed index mapping. Mappings with unequal array lengths are ignored.
-	 * @param oldIndexes Indexes before the rearrangement.
-	 * @param newIndexes Corresponding indexes afterwards, in the same order.
-	 */
-	protected endLayoutChange(
+    /** Announces a completed index rearrangement. */
+    protected endLayoutChange(
 		oldIndexes: CModelIndex[],
 		newIndexes: CModelIndex[]
 	): void {
@@ -239,13 +234,8 @@ export abstract class CAbstractItemModel extends CObject {
 		this.layoutChanged.emit(oldIndexes, newIndexes);
 	}
 
-	/**
-	 * Records an insertion and notifies observers before rows are added. Throws for an overlapping change, a foreign parent or an invalid range.
-	 * @param parent Parent index, or an invalid index for the root.
-	 * @param first First zero-based inserted row. May equal the current row count to append.
-	 * @param last Last zero-based inserted row, inclusive.
-	 */
-	protected beginInsertRows(
+    /** Announces that rows will be inserted before the model data changes. */
+    protected beginInsertRows(
 		parent: CModelIndex,
 		first: number,
 		last: number
@@ -254,19 +244,14 @@ export abstract class CAbstractItemModel extends CObject {
 		this.rowsAboutToBeInserted.emit(parent, first, last);
 	}
 
-	/** Finishes the pending insertion and emits `rowsInserted`. Throws if no insertion is pending. */
-	protected endInsertRows(): void {
+    /** Announces that the previously declared rows have been inserted. */
+    protected endInsertRows(): void {
 		const change = this.#takeRowsChange("insert");
 		this.rowsInserted.emit(change.parent, change.first, change.last);
 	}
 
-	/**
-	 * Records a removal and notifies observers before rows are removed. Throws for an overlapping change, a foreign parent or an invalid range.
-	 * @param parent Parent index, or an invalid index for the root.
-	 * @param first First zero-based existing row to remove.
-	 * @param last Last zero-based existing row to remove, inclusive.
-	 */
-	protected beginRemoveRows(
+    /** Announces that rows will be removed before the model data changes. */
+    protected beginRemoveRows(
 		parent: CModelIndex,
 		first: number,
 		last: number
@@ -275,8 +260,8 @@ export abstract class CAbstractItemModel extends CObject {
 		this.rowsAboutToBeRemoved.emit(parent, first, last);
 	}
 
-	/** Finishes the pending removal and emits `rowsRemoved`. Throws if no removal is pending. */
-	protected endRemoveRows(): void {
+    /** Announces that the previously declared rows have been removed. */
+    protected endRemoveRows(): void {
 		const change = this.#takeRowsChange("remove");
 		this.rowsRemoved.emit(change.parent, change.first, change.last);
 	}

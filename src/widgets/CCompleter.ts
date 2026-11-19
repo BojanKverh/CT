@@ -1,3 +1,4 @@
+/** @module Widgets/CCompleter */
 import { CObject } from "../core/CObject.js";
 import { CSignal } from "../core/CSignal.js";
 import type { CKeyEvent } from "../events/CKeyEvent.js";
@@ -9,16 +10,31 @@ import { CPopupWidget } from "./CPopupWidget.js";
 
 /** Defines whether completion matching distinguishes letter case. */
 export enum CCompleterCaseSensitivity {
-	CaseInsensitive,
-	CaseSensitive
+    /**
+    * Match candidate text without distinguishing upper- and lowercase letters.
+    */
+    CaseInsensitive,
+    /**
+    * Match candidate text using exact letter case.
+    */
+    CaseSensitive
 }
 
 /** Provides popup completion for a line editor. */
 export class CCompleter extends CObject {
-	static readonly MaxVisibleItems = 10;
+    /** Maximum number of rows presented before popup scrolling is needed. */
+    static readonly MaxVisibleItems = 10;
 
-	readonly activated = new CSignal<[string]>();
-	readonly highlighted = new CSignal<[string]>();
+    /**
+    * Emitted with the completion text accepted from the popup.
+    * @group Signals
+    */
+    readonly activated = new CSignal<[string]>();
+    /**
+    * Emitted with the completion text currently highlighted in the popup.
+    * @group Signals
+    */
+    readonly highlighted = new CSignal<[string]>();
 
 	#m_widget: CLineEdit | null = null;
 	#m_model: CAbstractItemModel | null = null;
@@ -34,7 +50,12 @@ export class CCompleter extends CObject {
 	#m_activating = false;
 	#m_completionFilter: ((value: string) => boolean) | null = null;
 
-	constructor(
+    /**
+    * Configures completion from an explicit string array or item model.
+    * @param source Initial completion strings or model. Omit to use `null`.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(
 		source: string[] | CAbstractItemModel | null = null,
 		parent: CObject | null = null
 	) {
@@ -55,19 +76,17 @@ export class CCompleter extends CObject {
 			this.setModel(source);
 	}
 
-	/**
-	 * Reads the widget.
-	 * @returns The widget.
-	 */
-	widget(): CLineEdit | null {
+    /**
+    * Returns the input whose text drives completion, or null.
+    */
+    widget(): CLineEdit | null {
 		return this.#m_widget;
 	}
 
-	/**
-	 * Disconnects the previous editor, closes the popup and connects completion to text edits on the new editor.
-	 * @param widget Line editor to attach, or `null` to detach.
-	 */
-	setWidget(widget: CLineEdit | null): void {
+    /**
+    * Attaches an input's textEdited signal, disconnects the previous input and closes the popup.
+    */
+    setWidget(widget: CLineEdit | null): void {
 		if (widget === this.#m_widget)
 			return;
 
@@ -84,19 +103,18 @@ export class CCompleter extends CObject {
 		}
 	}
 
-	/**
-	 * Reads the model.
-	 * @returns The model.
-	 */
-	model(): CAbstractItemModel | null {
+    /**
+    * Model providing item data for this component.
+    * The initial value is `null`.
+    */
+    model(): CAbstractItemModel | null {
 		return this.#m_model;
 	}
 
-	/**
-	 * Sets the model. May update the strings, the model, the disconnect model signals.
-	 * @param model Model.
-	 */
-	setModel(model: CAbstractItemModel | null): void {
+    /**
+    * Uses model data as the completion source and refreshes matches when the model changes. Clears the prior string source.
+    */
+    setModel(model: CAbstractItemModel | null): void {
 		if (model === this.#m_model && this.#m_strings.length === 0)
 			return;
 
@@ -118,38 +136,34 @@ export class CCompleter extends CObject {
 		this.#refresh();
 	}
 
-	/**
-	 * Reads the string list of the completer.
-	 * @returns The string list.
-	 */
-	stringList(): string[] {
+    /**
+    * Returns a copy of the explicit string completion source.
+    */
+    stringList(): string[] {
 		return [...this.#m_strings];
 	}
 
-	/**
-	 * Sets the string list. May update the model, the strings.
-	 * @param strings Strings.
-	 */
-	setStringList(strings: string[]): void {
+    /**
+    * Copies a string source, disconnects any model source and refreshes completion matches.
+    */
+    setStringList(strings: string[]): void {
 		this.#disconnectModel();
 		this.#m_model = null;
 		this.#m_strings = [...strings];
 		this.#refresh();
 	}
 
-	/**
-	 * Reads the completion column.
-	 * @returns The completion column.
-	 */
-	completionColumn(): number {
+    /**
+    * Returns the model column read for completion text.
+    */
+    completionColumn(): number {
 		return this.#m_completionColumn;
 	}
 
-	/**
-	 * Sets the completion column. The implementation checks whether `column` is an integer.
-	 * @param column Zero-based column.
-	 */
-	setCompletionColumn(column: number): void {
+    /**
+    * Changes the completion column. Non-integer and negative columns are ignored.
+    */
+    setCompletionColumn(column: number): void {
 		if (!Number.isInteger(column) || column < 0
 			|| column === this.#m_completionColumn)
 			return;
@@ -158,19 +172,17 @@ export class CCompleter extends CObject {
 		this.#refresh();
 	}
 
-	/**
-	 * Reads the case sensitivity.
-	 * @returns The case sensitivity.
-	 */
-	caseSensitivity(): CCompleterCaseSensitivity {
+    /**
+    * Returns how upper and lower case are compared when matching candidates.
+    */
+    caseSensitivity(): CCompleterCaseSensitivity {
 		return this.#m_caseSensitivity;
 	}
 
-	/**
-	 * Sets the case sensitivity.
-	 * @param sensitivity Sensitivity.
-	 */
-	setCaseSensitivity(sensitivity: CCompleterCaseSensitivity): void {
+    /**
+    * Changes text matching case sensitivity and refreshes matches.
+    */
+    setCaseSensitivity(sensitivity: CCompleterCaseSensitivity): void {
 		if (sensitivity === this.#m_caseSensitivity)
 			return;
 
@@ -178,65 +190,55 @@ export class CCompleter extends CObject {
 		this.#refresh();
 	}
 
-	/**
-	 * Additional filtering applied to both string and model sources.
-	 * @returns The completion filter.
-	 */
-	completionFilter(): ((value: string) => boolean) | null { return this.#m_completionFilter; }
-	/**
-	 * Sets the completion filter.
-	 * @param filter Filter.
-	 */
-	setCompletionFilter(filter: ((value: string) => boolean) | null): void {
+    /** Additional filtering applied to both string and model sources. */
+    completionFilter(): ((value: string) => boolean) | null { return this.#m_completionFilter; }
+    /**
+    * Assigns an additional predicate for string and model candidates. Null removes it.
+    */
+    setCompletionFilter(filter: ((value: string) => boolean) | null): void {
 		this.#m_completionFilter = filter;
 		this.#refresh();
 	}
 
-	/**
-	 * Reads the completion prefix.
-	 * @returns The completion prefix.
-	 */
-	completionPrefix(): string {
+    /**
+    * Returns the prefix used by the most recent completion request.
+    */
+    completionPrefix(): string {
 		return this.#m_completionPrefix;
 	}
 
-	/**
-	 * Reads the number of entries in the matches.
-	 * @returns The number of entries in the matches.
-	 */
-	completionCount(): number {
+    /**
+    * Returns the number of currently matching candidates.
+    */
+    completionCount(): number {
 		return this.#m_matches.length;
 	}
 
-	/**
-	 * Reads the current completion of the completer.
-	 * @returns The current completion.
-	 */
-	currentCompletion(): string {
+    /**
+    * Returns the current candidate text, or an empty string when no row is active.
+    */
+    currentCompletion(): string {
 		return this.#m_matches[this.#m_listWidget.currentRow()] ?? "";
 	}
 
-	/**
-	 * Reads the popup.
-	 * @returns The popup.
-	 */
-	popup(): CPopupWidget {
+    /**
+    * Returns the managed popup containing completion candidates.
+    */
+    popup(): CPopupWidget {
 		return this.#m_popup;
 	}
 
-	/**
-	 * Reads the list widget.
-	 * @returns The list widget.
-	 */
-	listWidget(): CListWidget {
+    /**
+    * Returns the list used to present matching candidates.
+    */
+    listWidget(): CListWidget {
 		return this.#m_listWidget;
 	}
 
-	/**
-	 * Filters the completion model by prefix, rebuilds the result list and opens or hides the popup based on the target editor and matches.
-	 * @param prefix Prefix to match. Defaults to the attached editor's text, or an empty string when detached.
-	 */
-	complete(prefix = this.#m_widget?.text() ?? ""): void {
+    /**
+    * Refreshes matches for a prefix and presents the completion popup when applicable.
+    */
+    complete(prefix = this.#m_widget?.text() ?? ""): void {
 		this.#m_completionPrefix = prefix;
 		this.#m_matches = this.#filteredValues(prefix);
 		this.#m_listWidget.clear();
@@ -255,17 +257,15 @@ export class CCompleter extends CObject {
 		this.#m_popup.open(false);
 	}
 
-	/** Closes the completion popup. */
-	hidePopup(): void {
+    /**
+    * Closes the completion popup.
+    */
+    hidePopup(): void {
 		this.#m_popup.close();
 	}
 
-	/**
-	 * Opens completions on Down when closed. While open, routes navigation keys to the list, activates on Enter or Return and dismisses on Escape.
-	 * @param event Keyboard event to route to the completion popup.
-	 * @returns `true` if the popup opened or handled the key. Returns `false` for other keys or when no popup opened.
-	 */
-	handleKeyEvent(event: CKeyEvent): boolean {
+    /** Handles completion navigation keys sent by the associated editor. */
+    handleKeyEvent(event: CKeyEvent): boolean {
 		if (event.key() === "ArrowDown" && !this.#m_popup.isOpen()) {
 			this.complete();
 			if (!this.#m_popup.isOpen())
@@ -300,9 +300,6 @@ export class CCompleter extends CObject {
 		return false;
 	}
 
-	/**
-	 * Releases resources held by the completer.
-	 */
 	override destroy(): void {
 		this.setWidget(null);
 		this.#disconnectModel();

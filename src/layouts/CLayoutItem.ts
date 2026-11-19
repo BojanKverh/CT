@@ -1,3 +1,4 @@
+/** @module Layouts/CLayoutItem */
 import { CAlignment } from "../core/CAlignment.js";
 import { CSize } from "../geometry/CSize.js";
 import { CSizePolicy } from "../geometry/CSizePolicy.js";
@@ -10,55 +11,38 @@ import type { CWidget } from "../widgets/CWidget.js";
 export abstract class CLayoutItem {
     #alignment: CAlignment | 0 = 0;
 
-    /**
-     * Reads how the item is aligned within its allocated cell.
-     * @returns The alignment flags, or zero for size-policy-driven filling on both axes.
-     */
+    /** Zero preserves normal size-policy-driven filling on both axes. */
     alignment(): CAlignment | 0 { return this.#alignment; }
-    /**
-     * Stores alignment flags. Call the owning layout's `update()` after changing an item directly.
-     * @param alignment Alignment flags, or zero for normal filling.
-     */
+    /** Call the containing layout's update() after changing an item directly. */
     setAlignment(alignment: CAlignment | 0): void { this.#alignment = alignment; }
 
-	/**
-	 * Looks up the widget represented by this item.
-	 * @returns The represented widget, or `null` for a non-widget item.
-	 */
-	abstract widget(): CWidget | null;
-
     /**
-     * Reads the preferred size of the represented widget.
-     * @returns The widget's preferred size, or a new zero size when there is no widget.
-     */
+    * Returns the widget represented by this layout item, or `null` if the
+    * item does not represent a widget.
+    */
+    abstract widget(): CWidget | null;
+
+    /** Default geometry and sizing delegate to the represented widget. */
     sizeHint(): CSize { return this.widget()?.sizeHint() ?? new CSize(); }
     /**
-     * Reads the represented widget's minimum size.
-     * @returns The widget's minimum size, or a new zero size when there is no widget.
-     */
+    * Returns the lower size bound used during allocation.
+    */
     minimumSize(): CSize { return this.widget()?.minimumSize() ?? new CSize(); }
     /**
-     * Reads the represented widget's maximum size.
-     * @returns The widget's maximum size, or a new size with both dimensions set to `Number.MAX_SAFE_INTEGER` when there is no widget.
-     */
+    * Returns the upper size bound used during allocation.
+    */
     maximumSize(): CSize { return this.widget()?.maximumSize() ?? new CSize(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER); }
     /**
-     * Reads the represented widget's sizing preferences.
-     * @returns The widget's policy, or a new default policy when there is no widget.
-     */
+    * Returns the item's growth, shrink and stretch preferences.
+    */
     sizePolicy(): CSizePolicy { return this.widget()?.sizePolicy() ?? new CSizePolicy(); }
     /**
-     * Reads the represented widget's bounds.
-     * @returns A rectangle in the widget's parent coordinate system, or a new empty rectangle when there is no widget.
-     */
+    * Returns the currently allocated rectangle.
+    */
     geometry(): CRect { return this.widget()?.geometry() ?? new CRect(); }
     /**
-     * Applies the allocated bounds to the represented widget if there is one.
-     * @param x Horizontal position in parent coordinates.
-     * @param y Vertical position in parent coordinates.
-     * @param width Allocated width in logical pixels.
-     * @param height Allocated height in logical pixels.
-     */
+    * Applies an allocated rectangle to this item and its wrapped widget where applicable.
+    */
     setGeometry(x: number, y: number, width: number, height: number): void {
         this.widget()?.setGeometry(x, y, width, height);
     }

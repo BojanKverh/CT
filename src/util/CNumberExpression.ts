@@ -1,3 +1,4 @@
+/** @module Utilities/CNumberExpression */
 /** Characters accepted while a numeric expression is being edited. */
 export function isNumberExpressionInput(text: string): boolean {
     return /^[0-9 .,()+*/-]*$/.test(text);

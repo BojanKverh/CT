@@ -1,3 +1,4 @@
+/** @module Widgets/CNavigationPath */
 import { CAction } from "../core/CAction.js";
 import { CApplication } from "../core/CApplication.js";
 import { CSignal } from "../core/CSignal.js";
@@ -20,7 +21,9 @@ import { CWidget } from "./CWidget.js";
  * Activation requests navigation; it never changes the path automatically.
  */
 export class CNavigationPath extends CWidget {
+    /** Logical horizontal inset around content. */
     static readonly HorizontalPadding = 8;
+    /** Logical width reserved for a breadcrumb separator. */
     static readonly SeparatorWidth = 14;
     #path: string[] = [];
     #hovered = -2;
@@ -30,33 +33,41 @@ export class CNavigationPath extends CWidget {
     #menu: CMenu | null = null;
     #actions: CAction[] = [];
 
+    /**
+    * Emitted with the index and path item of the breadcrumb activated by the user.
+    * @group Signals
+    */
     readonly activated = new CSignal<[number, string]>();
+    /**
+    * Emitted with the new breadcrumb path after its items change.
+    * @group Signals
+    */
     readonly pathChanged = new CSignal<[string[]]>();
 
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
     constructor(parent: CWidget | null = null) {
         super(parent);
         this.setFocusPolicy(CFocusPolicy.StrongFocus);
         this.setSizePolicy(CSizePolicyType.Expanding, CSizePolicyType.Fixed);
     }
     /**
-     * Reads the full navigation path, including segments currently hidden by overflow.
-     * @returns A new array of segment captions in path order.
-     */
+    * Returns the retained path-segment collection.
+    */
     path(): string[] { return [...this.#path]; }
     /**
-     * Counts the entries in the navigation path.
-     * @returns The number of entries in the path.
-     */
+    * Returns the number of path segments.
+    */
     count(): number { return this.#path.length; }
     /**
-     * Identifies the final path segment.
-     * @returns Zero-based index of the last segment, or `-1` for an empty path.
-     */
+    * Returns the active segment's zero-based index.
+    */
     currentIndex(): number { return this.#path.length - 1; }
     /**
-     * Replaces the path if its captions changed, dismisses overflow and clears interaction tracking.
-     * @param path Segment captions in path order, from the root to the current location.
-     */
+    * Replaces path segments and recalculates displayed breadcrumbs and overflow.
+    */
     setPath(path: readonly string[]): void {
         if (path.length === this.#path.length && path.every((text, i) => text === this.#path[i])) return;
         this.#disposeMenu();
@@ -67,77 +78,44 @@ export class CNavigationPath extends CWidget {
         this.pathChanged.emit(this.path());
     }
     /**
-     * Clears the contents of the navigation path.
-     */
+    * Removes path segments and resets navigation presentation.
+    */
     clear(): void { this.setPath([]); }
-    /**
-     * Looks up the local bounds of a visible path segment or overflow button.
-     * @param index Zero-based segment index, or `-1` for the overflow button.
-     * @returns The visible bounds, or `null` when the requested element is absent or hidden.
-     */
+    /** A copy of a visible segment's rectangle, or null when it is hidden. */
     segmentRect(index: number): CRect | null {
         return this.#layout().segments.find(segment => segment.index === index)?.rect ?? null;
     }
     /**
-     * Looks up the bounds of the overflow control for the current path layout.
-     * @returns Button bounds in widget-local coordinates, or `null` when no overflow button is displayed.
-     */
+    * Returns the local rectangle used for the hidden-segment overflow affordance.
+    */
     overflowButtonRect(): CRect | null { return this.segmentRect(-1); }
     /**
-     * Computes which segments overflow at the current width.
-     * @returns Indices of the segments represented in the overflow menu.
-     */
+    * Returns the positions of segments omitted from the current visible breadcrumb layout.
+    */
     hiddenIndices(): number[] { return this.#layout().hidden; }
-    /**
-     * The internally owned popup, created lazily when overflow is opened.
-     * @returns The menu.
-     */
+    /** The internally owned popup, created lazily when overflow is opened. */
     overflowMenu(): CMenu | null { return this.#menu; }
 
-    /**
-     * Measures the uncollapsed caption row and its separators with the current font.
-     * @returns Preferred path dimensions in logical pixels.
-     */
     override sizeHint(): CSize {
         const fm = new CFontMetrics(this.font());
         return new CSize(this.#path.reduce((sum, text) => sum + this.#width(text, fm), 0)
             + Math.max(0, this.#path.length - 1) * CNavigationPath.SeparatorWidth,
             Math.max(30, Math.ceil(fm.height()) + 12));
     }
-    /**
-     * Dismisses the overflow menu, changes the font and remeasures the path.
-     * @param font Font used to display path captions.
-     * @param propagate Whether to propagate the font to descendants.
-     */
     override setFont(font: CFont, propagate = false): void {
         this.#disposeMenu(); super.setFont(font, propagate); this.updateGeometry();
     }
-    /**
-     * Moves or resizes the path and clears popup and press state if any bound changes.
-     * @param x Horizontal position in parent coordinates.
-     * @param y Vertical position in parent coordinates.
-     * @param width Width in logical pixels.
-     * @param height Height in logical pixels.
-     */
     override setGeometry(x: number, y: number, width: number, height: number): void {
         if (x !== this.x() || y !== this.y() || width !== this.width() || height !== this.height()) {
             this.#disposeMenu(); this.#pressed = -2; this.#spaceDown = false;
         }
         super.setGeometry(x, y, width, height);
     }
-    /**
-     * Changes whether the path handles input. Disabling closes the overflow menu and cancels activation.
-     * @param enabled Whether to enable interaction.
-     */
     override setEnabled(enabled: boolean): void {
         if (!enabled) { this.#disposeMenu(); this.#pressed = -2; this.#spaceDown = false; }
         super.setEnabled(enabled);
     }
-    /** Disposes the overflow menu before hiding the navigation path. */
     override hide(): void { this.#disposeMenu(); super.hide(); }
-    /**
-     * Releases resources held by the navigation path.
-     */
     override destroy(): void { this.#disposeMenu(); super.destroy(); }
 
     #width(text: string, fm: CFontMetrics): number {
@@ -214,7 +192,9 @@ export class CNavigationPath extends CWidget {
         if (index === -1) this.showOverflow();
         else if (index >= 0 && index < this.currentIndex()) this.activated.emit(index, this.#path[index]!);
     }
-    /** Builds and opens a menu for the hidden path segments. Disabled paths and layouts with nothing hidden leave the popup closed. */
+    /**
+    * Opens the menu listing currently hidden path segments.
+    */
     showOverflow(): void {
         if (!this.isEnabled()) return;
         const layout = this.#layout();
@@ -243,53 +223,25 @@ export class CNavigationPath extends CWidget {
         for (const action of this.#actions) action.destroy();
         this.#actions = [];
     }
-    /**
-     * Records the segment or overflow control under a left press as the pointer and keyboard target.
-     * @param event Mouse event with pointer coordinates local to the control.
-     */
     protected override mousePressEvent(event: CMouseEvent): void {
         if (event.button() !== CMouseButton.LeftButton) { event.ignore(); return; }
         this.#pressed = this.#hit(event); this.#focused = this.#pressed; this.#spaceDown = false;
         event.accept(); this.update();
     }
-    /**
-     * Activates the segment or overflow control only when the left release matches the original hit.
-     * @param event Mouse event with pointer coordinates local to the control.
-     */
     protected override mouseReleaseEvent(event: CMouseEvent): void {
         if (event.button() !== CMouseButton.LeftButton) { event.ignore(); return; }
         const index = this.#pressed; this.#pressed = -2;
         event.accept(); this.update();
         if (index !== -2 && index === this.#hit(event)) this.#activate(index);
     }
-    /**
-     * Updates the hovered segment or overflow control and repaints.
-     * @param event Mouse event with pointer coordinates local to the control.
-     */
     protected override mouseMoveEvent(event: CMouseEvent): void {
         this.#hovered = this.#hit(event); event.accept(); this.update();
     }
-    /**
-     * Responds to pointer entry for the navigation path.
-     * @param event Event for pointer entry.
-     */
     protected override mouseEnterEvent(event: CMouseEvent): void { this.mouseMoveEvent(event); }
-    /**
-     * Clears hover highlighting and repaints.
-     * @param event Mouse event with pointer coordinates local to the control.
-     */
     protected override mouseLeaveEvent(event: CMouseEvent): void { this.#hovered = -2; event.accept(); this.update(); }
-    /**
-     * Cancels a pending press before forwarding focus exit.
-     * @param event Focus exit event.
-     */
     protected override focusOutEvent(event: CFocusEvent): void {
         this.#pressed = -2; this.#spaceDown = false; super.focusOutEvent(event);
     }
-    /**
-     * Handles keyboard traversal and activation of visible path controls, and opens overflow on Down when segments are hidden.
-     * @param event Keyboard event containing the key and modifiers.
-     */
     protected override keyPressEvent(event: CKeyEvent): void {
         if (event.key() === "ArrowDown" && !event.ctrl() && !event.meta() && this.hiddenIndices().length > 0) {
             this.showOverflow(); event.accept(); return;
@@ -310,20 +262,12 @@ export class CNavigationPath extends CWidget {
         }
         event.accept(); this.update();
     }
-    /**
-     * Activates the recorded path control when Space is released after beginning a keyboard press.
-     * @param event Keyboard event containing the key and modifiers.
-     */
     protected override keyReleaseEvent(event: CKeyEvent): void {
         if (event.key() !== " " || !this.#spaceDown) { event.ignore(); return; }
         const index = this.#pressed;
         this.#spaceDown = false; this.#pressed = -2;
         event.accept(); this.update(); this.#activate(index);
     }
-    /**
-     * Draws the navigation path through the supplied painter.
-     * @param painter Painter for the current drawing operation.
-     */
     protected override paintEvent(painter: CPainter): void {
         const option = new CStyleOptionNavigationPath(); option.initFrom(this);
         option.segments = this.#layout().segments; option.currentIndex = this.currentIndex();

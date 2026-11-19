@@ -1,3 +1,4 @@
+/** @module Core/CShortcut */
 import { CObject } from "./CObject.js";
 import { CSignal } from "./CSignal.js";
 import type { CKeyEvent } from "../events/CKeyEvent.js";
@@ -5,18 +6,24 @@ import type { CWidget } from "../widgets/CWidget.js";
 
 /** A single key combination active in its parent widget and descendants. */
 export class CShortcut extends CObject {
-    /**
-     * Canonicalizes modifiers and key aliases in a single key combination. Invalid or duplicate modifiers and unsupported keys throw `RangeError`.
-     * @param key Key combination such as `Ctrl+Shift+P`, or an empty string to clear a binding.
-     * @returns Canonical combination with modifiers in Ctrl, Alt, Shift, Meta order, or an empty string.
-     */
+    /** Validates and canonicalizes the single-combination shortcut syntax. */
     static normalizeSequence(key: string): string { return normalizeSequence(key); }
+    /**
+    * Emitted when this shortcut matches a keyboard event within its configured activation scope.
+    * @group Signals
+    */
     readonly activated = new CSignal<[]>();
-    /** Emitted instead of activated when the same owner has duplicate matches. */
+    /**
+    * Emitted instead of activated when the same owner has duplicate matches.
+    * @group Signals
+    */
     readonly activatedAmbiguously = new CSignal<[]>();
     #m_key = "";
     #m_enabled = true;
 
+    /**
+    * Registers a key sequence in a widget's shortcut scope.
+    */
     constructor(key: string, parent: CWidget) {
         const normalized = normalizeSequence(key);
         super(parent);
@@ -24,41 +31,28 @@ export class CShortcut extends CObject {
     }
 
     /**
-     * Reads the shortcut's configured binding.
-     * @returns Canonical key combination, or an empty string when unbound.
-     */
+    * Returns the configured key-sequence text.
+    */
     key(): string { return this.#m_key; }
     /**
-     * Replaces the binding with a validated canonical combination. Invalid input throws before the binding changes.
-     * @param key Single key combination, or an empty string to clear the binding.
-     */
+    * Changes the key sequence matched by this shortcut.
+    */
     setKey(key: string): void { this.#m_key = normalizeSequence(key); }
     /**
-     * Checks whether the shortcut participates in key matching.
-     * @returns `true` if matching is enabled.
-     */
+    * Reports whether this shortcut may activate.
+    */
     isEnabled(): boolean { return this.#m_enabled; }
     /**
-     * Enables or disables matching without changing the key binding.
-     * @param enabled Whether the shortcut should match input. Defaults to `true`.
-     */
+    * Enables or disables activation while retaining its key sequence.
+    */
     setEnabled(enabled = true): void { this.#m_enabled = enabled; }
 
-    /**
-     * Tests an event against this shortcut when it is enabled.
-     * @param event Keyboard event containing the key, physical code and modifier state.
-     * @returns `true` if the shortcut is enabled and the event matches its binding.
-     */
+    /** Used by CApplication when dispatching a key press. */
     matches(event: CKeyEvent): boolean {
         return this.#m_enabled && CShortcut.matchesSequence(this.#m_key, event);
     }
 
-    /**
-     * Tests a key combination without registering a binding. Modifier-only events and AltGraph are excluded. Letter and digit physical codes take precedence when present.
-     * @param sequence Single key combination to match.
-     * @param event Keyboard event containing the key and its modifiers.
-     * @returns `true` if the event produces the same canonical combination.
-     */
+    /** Matches a sequence without registering another keyboard binding. */
     static matchesSequence(sequence: string, event: CKeyEvent): boolean {
         if (sequence === "" || event.altGraph()) return false;
         if (["Control", "Shift", "Alt", "Meta", "AltGraph"].includes(event.key())) return false;

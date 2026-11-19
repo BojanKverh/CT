@@ -1,3 +1,4 @@
+/** @module GUI/CStyleOptionSlider */
 import { CStyleOption } from "./CStyleOption.js";
 import type { CSlider } from "../widgets/CSlider.js";
 
@@ -5,25 +6,23 @@ import type { CSlider } from "../widgets/CSlider.js";
  * Contains style information used to render a slider.
  */
 export class CStyleOptionSlider extends CStyleOption {
-		/**
-	 * Returns or updates the minimum value.
-	 */
-minimum = 0;
-		/**
-	 * Returns or updates the maximum value.
-	 */
-maximum = 100;
-		/**
-	 * Returns or updates the value value.
-	 */
-value = 0;
+    /**
+    * Lower endpoint used to map the numeric range to a painted position.
+    */
+    minimum = 0;
+    /**
+    * Upper endpoint used to map the numeric range to a painted position.
+    */
+    maximum = 100;
+    /**
+    * Numeric position within the configured range used for painting.
+    */
+    value = 0;
 
-		/**
-	 * Creates a new CStyleOptionSlider instance.
-	 *
-	 * @param other Other.
-	 */
-constructor(other: CStyleOptionSlider | null = null) {
+    /**
+    * Copies the paint options from other, or initializes the default appearance when other is null.
+    */
+    constructor(other: CStyleOptionSlider | null = null) {
 		super(other);
 
 		if (other === null)
@@ -34,12 +33,12 @@ constructor(other: CStyleOptionSlider | null = null) {
 		this.value = other.value;
 	}
 
-		/**
-	 * Initializes this style option from the specified slider.
-	 *
-	 * @param slider Slider.
-	 */
-initFromSlider(slider: CSlider): void {
+    /**
+    * Initializes this style option from the specified slider.
+    *
+    * @param slider Slider.
+    */
+    initFromSlider(slider: CSlider): void {
 		this.initFrom(slider);
 
 		this.minimum = slider.minimum();

@@ -1,3 +1,4 @@
+/** @module Utilities/CTextSelection */
 /**
  * Internal text-selection boundaries in UTF-16 offsets, matching editor indices.
  * Paragraph selections include the terminating newline, when present.

@@ -1,3 +1,4 @@
+/** @module Widgets/CHeaderView */
 import { CSignal } from "../core/CSignal.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import { CSize } from "../geometry/CSize.js";
@@ -9,13 +10,18 @@ import { CAbstractItemModel } from "../models/CAbstractItemModel.js";
 import { CPainter } from "../painting/CPainter.js";
 import { CWidget } from "./CWidget.js";
 
-/** Implements the header view widget. */
+/** Model-view header supporting section sizes, offsets, sorting indicators and section activation. */
 export class CHeaderView extends CWidget {
-	static readonly DefaultSectionWidth = 120;
-	static readonly DefaultSectionHeight = 24;
-	static readonly DefaultVerticalWidth = 40;
-	static readonly MinimumSectionSize = 20;
-	static readonly ResizeHandleMargin = 4;
+    /** Default logical width of a horizontal header section. */
+    static readonly DefaultSectionWidth = 120;
+    /** Default logical height of a row/header section. */
+    static readonly DefaultSectionHeight = 24;
+    /** Default logical width reserved for a vertical header. */
+    static readonly DefaultVerticalWidth = 40;
+    /** Smallest logical section extent accepted during resizing. */
+    static readonly MinimumSectionSize = 20;
+    /** Logical distance from a section boundary used for resize hit-testing. */
+    static readonly ResizeHandleMargin = 4;
 
 	#m_orientation: COrientation;
 	#m_model: CAbstractItemModel | null = null;
@@ -32,47 +38,56 @@ export class CHeaderView extends CWidget {
 	#m_resizeStartSize = 0;
 	#m_resizeNextSectionSize = 0;
 
-	/** Public section resized member. */
-	readonly sectionResized =
+    /**
+    * Emitted with section index, previous logical size and new logical size.
+    * @group Signals
+    */
+    readonly sectionResized =
 		new CSignal<[number, number, number]>();
 
-	/** Emitted when a section is clicked. */
-	readonly sectionClicked = new CSignal<[number]>();
+    /**
+    * Emitted when a section is clicked.
+    * @group Signals
+    */
+    readonly sectionClicked = new CSignal<[number]>();
 
-	/** Emitted when the sort indicator changes. */
-	readonly sortIndicatorChanged =
+    /**
+    * Emitted when the sort indicator changes.
+    * @group Signals
+    */
+    readonly sortIndicatorChanged =
 		new CSignal<[number, CSortOrder]>();
 
-	/** Creates a new instance. */
-	constructor(orientation: COrientation,
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param orientation Axis used for layout and interaction.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(orientation: COrientation,
 		parent: CWidget | null = null) {
-		/** Provides super behavior. */
 		super(parent);
 		this.#m_orientation = orientation;
 	}
 
-	/**
-	 * Reads the orientation.
-	 * @returns The orientation.
-	 */
-	orientation(): COrientation {
+    /**
+    * Returns whether sections represent columns or rows.
+    */
+    orientation(): COrientation {
 		return this.#m_orientation;
 	}
 
-	/**
-	 * Reads the model.
-	 * @returns The model.
-	 */
-	model(): CAbstractItemModel | null {
+    /**
+    * Model providing item data for this component.
+    * The initial value is `null`.
+    */
+    model(): CAbstractItemModel | null {
 		return this.#m_model;
 	}
 
-	/**
-	 * Sets the model.
-	 * @param model Model.
-	 */
-	setModel(model: CAbstractItemModel | null): void {
-		/** Provides if behavior. */
+    /**
+    * Uses the model's header data and section count and recalculates header geometry.
+    */
+    setModel(model: CAbstractItemModel | null): void {
 		if (this.#m_model === model)
 			return;
 
@@ -82,22 +97,22 @@ export class CHeaderView extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Reads the offset.
-	 * @returns The offset.
-	 */
-	offset(): number {
+    /**
+    * Returns the logical scroll displacement represented by the header.
+    */
+    offset(): number {
 		return this.#m_offset;
 	}
 
-	/**
-	 * Sets the offset.
-	 * @param offset Offset.
-	 */
-	setOffset(offset: number): void {
+    /**
+    * Sets the content scroll offset represented by the header.
+    */
+    setOffset(offset: number): void {
+		/**
+		 * Returns the logical scroll displacement represented by the header.
+		 */
 		offset = Math.max(0, offset);
 
-		/** Provides if behavior. */
 		if (this.#m_offset === offset)
 			return;
 
@@ -105,28 +120,20 @@ export class CHeaderView extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Returns the section displaying the sort indicator.
-	 * @returns The sort indicator section.
-	 */
-	sortIndicatorSection(): number {
+    /** Returns the section displaying the sort indicator. */
+    sortIndicatorSection(): number {
 		return this.#m_sortIndicatorSection;
 	}
 
-	/**
-	 * Returns the order displayed by the sort indicator.
-	 * @returns The sort indicator order.
-	 */
-	sortIndicatorOrder(): CSortOrder {
+    /** Returns the order displayed by the sort indicator. */
+    sortIndicatorOrder(): CSortOrder {
 		return this.#m_sortIndicatorOrder;
 	}
 
-	/**
-	 * Sets the section and order displayed by the sort indicator.
-	 * @param section Section.
-	 * @param order Order.
-	 */
-	setSortIndicator(section: number, order: CSortOrder): void {
+    /**
+    * Sets the section and direction displayed by the sorting marker.
+    */
+    setSortIndicator(section: number, order: CSortOrder): void {
 		if (section < -1 || section >= this.#sectionCount())
 			return;
 
@@ -140,19 +147,15 @@ export class CHeaderView extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Returns whether the sort indicator is visible.
-	 * @returns `true` if the header view is sort indicator shown, otherwise `false`.
-	 */
-	isSortIndicatorShown(): boolean {
+    /** Returns whether the sort indicator is visible. */
+    isSortIndicatorShown(): boolean {
 		return this.#m_sortIndicatorShown;
 	}
 
-	/**
-	 * Sets whether the sort indicator is visible.
-	 * @param shown Shown flag.
-	 */
-	setSortIndicatorShown(shown: boolean): void {
+    /**
+    * Shows or hides the marker without sorting model data itself.
+    */
+    setSortIndicatorShown(shown: boolean): void {
 		if (this.#m_sortIndicatorShown === shown)
 			return;
 
@@ -160,32 +163,25 @@ export class CHeaderView extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Reads a section's explicit size or its default size along the header axis.
-	 * @param section Zero-based section index.
-	 * @returns Section size in logical pixels, or zero for a negative index.
-	 */
-	sectionSize(section: number): number {
-		/** Provides if behavior. */
+    /**
+    * Returns the logical extent of a section along the header axis.
+    */
+    sectionSize(section: number): number {
 		if (section < 0)
 			return 0;
 
 		const size = this.#m_sectionSizes.get(section);
 
-		/** Provides if behavior. */
 		if (size !== undefined)
 			return size;
 
 		return this.#defaultSectionSize();
 	}
 
-	/**
-	 * Updates the size of a valid header section, invalidates offsets and emits `sectionResized` when the size changes.
-	 * @param section Zero-based section index.
-	 * @param size Requested length along the header axis, clamped to the minimum section size.
-	 */
-	resizeSection(section: number, size: number): void {
-		/** Provides if behavior. */
+    /**
+    * Changes a section extent and emits sectionResized when the stored size changes.
+    */
+    resizeSection(section: number, size: number): void {
 		if (section < 0 || section >= this.#sectionCount())
 			return;
 
@@ -193,7 +189,6 @@ export class CHeaderView extends CWidget {
 
 		const oldSize = this.sectionSize(section);
 
-		/** Provides if behavior. */
 		if (oldSize === size)
 			return;
 
@@ -208,10 +203,8 @@ export class CHeaderView extends CWidget {
 	}
 
     /**
-     * Returns the position of a section before applying the scroll offset.
-     * @param section Section.
-     * @returns The section position.
-     */
+    * Returns a section's content position along the header axis.
+    */
     sectionPosition(section: number): number {
         if (section <= 0) return 0;
         const size = this.#defaultSectionSize();
@@ -224,18 +217,15 @@ export class CHeaderView extends CWidget {
     }
 
     /**
-     * Hit-tests the header along its orientation axis, taking the scroll offset into account.
-     * @param position Position in local header coordinates along the horizontal or vertical axis.
-     * @returns Zero-based section index, or `-1` if no section contains the position.
-     */
+    * Finds a section at a header coordinate, or -1 when outside the section range.
+    */
     sectionAt(position: number): number {
         return this.#sectionAtOffset(position + this.#m_offset, this.#sectionCount());
     }
 
     /**
-     * Returns the total length of all sections.
-     * @returns The length.
-     */
+    * Returns the total logical extent of the header's sections.
+    */
     length(): number {
         return this.sectionPosition(this.#sectionCount());
     }
@@ -269,12 +259,7 @@ export class CHeaderView extends CWidget {
         return this.#m_sectionOffsets;
     }
 
-	/**
-	 * Returns the preferred size of the widget.
-	 * @returns The size hint.
-	 */
 	override sizeHint(): CSize {
-		/** Provides if behavior. */
 		if (this.#m_orientation === COrientation.Horizontal) {
 			return new CSize(
 				this.length(),
@@ -288,16 +273,11 @@ export class CHeaderView extends CWidget {
 		);
 	}
 
-	/**
-	 * Draws the header view through the supplied painter.
-	 * @param painter Painter for the current drawing operation.
-	 */
 	protected override paintEvent(painter: CPainter): void {
 		const palette = this.palette();
 		const base = palette.color(CPaletteColorRole.Base).toCss();
 		const text = palette.color(CPaletteColorRole.Text).toCss();
 
-		/** Provides if behavior. */
 		if (this.#m_model === null)
 			return;
 
@@ -314,14 +294,12 @@ export class CHeaderView extends CWidget {
         for (let section = first; section >= 0 && section < count && position < extent; ++section) {
             const sectionSize = this.sectionSize(section);
 
-			/** Provides if behavior. */
 			if (horizontal) {
 				painter.setBrush(base);
 				painter.setPen(text);
 				painter.drawRect(position, 0, sectionSize, this.height());
 
 				painter.drawText(
-					/** Provides string behavior. */
 					String(this.#m_model.headerData(
 						section, this.#m_orientation) ?? ""),
 					position + 5,
@@ -341,7 +319,6 @@ export class CHeaderView extends CWidget {
 				painter.drawRect(0, position, this.width(), sectionSize);
 
 				painter.drawText(
-					/** Provides string behavior. */
 					String(this.#m_model.headerData(
 						section, this.#m_orientation) ?? ""),
 					5,
@@ -356,12 +333,7 @@ export class CHeaderView extends CWidget {
 		painter.drawRect(0, 0, this.width(), this.height());
 	}
 
-	/**
-	 * Responds to a pointer button press for the header view. May update the pressed section, the resize section, the resize start position, the resize start size. May accept or ignore the event depending on the input.
-	 * @param event Event for a pointer button press.
-	 */
 	protected override mousePressEvent(event: CMouseEvent): void {
-		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -370,7 +342,6 @@ export class CHeaderView extends CWidget {
 		const position = this.#eventPosition(event);
 		const section = this.#sectionHandleAt(position);
 
-		/** Provides if behavior. */
 		if (section < 0) {
 			const pressedSection = this.sectionAt(position);
 
@@ -392,14 +363,9 @@ export class CHeaderView extends CWidget {
 		event.accept();
 	}
 
-	/**
-	 * Responds to pointer movement for the header view. May accept the event.
-	 * @param event Event for pointer movement.
-	 */
 	protected override mouseMoveEvent(event: CMouseEvent): void {
 		const position = this.#eventPosition(event);
 
-		/** Provides if behavior. */
 		if (this.#m_resizeSection >= 0) {
 			let delta = position - this.#m_resizeStartPosition;
 
@@ -440,18 +406,12 @@ export class CHeaderView extends CWidget {
 		event.accept();
 	}
 
-	/**
-	 * Responds to a pointer button release for the header view. May update the pressed section, the resize section. May accept or ignore the event depending on the input. May emit `sectionClicked`.
-	 * @param event Event for a pointer button release.
-	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
-		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
 		}
 
-		/** Provides if behavior. */
 		if (this.#m_resizeSection < 0) {
 			if (this.#m_pressedSection < 0) {
 				event.ignore();
@@ -474,7 +434,6 @@ export class CHeaderView extends CWidget {
 		const position = this.#eventPosition(event);
 		const section = this.#sectionHandleAt(position);
 
-		/** Provides if behavior. */
 		if (section >= 0) {
 			this.setCursor(
 				this.#m_orientation === COrientation.Horizontal
@@ -488,12 +447,7 @@ export class CHeaderView extends CWidget {
 		event.accept();
 	}
 
-	/**
-	 * Responds to pointer exit for the header view.
-	 * @param event Event for pointer exit.
-	 */
 	protected override mouseLeaveEvent(event: CMouseEvent): void {
-		/** Provides if behavior. */
 		if (this.#m_resizeSection < 0)
 			this.setCursor(CCursorShape.Arrow);
 
@@ -501,7 +455,6 @@ export class CHeaderView extends CWidget {
 	}
 
 	#sectionCount(): number {
-		/** Provides if behavior. */
 		if (this.#m_model === null)
 			return 0;
 
@@ -528,11 +481,9 @@ export class CHeaderView extends CWidget {
 		let end = 0;
 		const count = this.#sectionCount();
 
-		/** Provides for behavior. */
 		for (let section = 0; section < count - 1; section++) {
 			end += this.sectionSize(section);
 
-			/** Provides if behavior. */
 			if (Math.abs(position - end) <=
 				CHeaderView.ResizeHandleMargin)
 				return section;

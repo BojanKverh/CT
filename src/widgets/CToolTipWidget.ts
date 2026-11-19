@@ -1,33 +1,34 @@
+/** @module Widgets/CToolTipWidget */
 import { CFontMetrics } from "../gui/CFontMetrics.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CSize } from "../geometry/CSize.js";
 import { CWidget } from "./CWidget.js";
 import { CStyleOptionToolTipWidget } from "../gui/CStyleOptionToolTipWidget.js";
 
-/** Implements the tool tip widget widget. */
+/** Transient text popup managed by the application's hover tooltip timer. */
 export class CToolTipWidget extends CWidget {
 	#m_text = "";
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null) {
-		/** Provides super behavior. */
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null) {
 		super(parent);
 	}
 
-	/**
-	 * Reads the text.
-	 * @returns The text.
-	 */
-	text(): string {
+    /**
+    * Stored caption or text value.
+    * The initial value is `""`.
+    */
+    text(): string {
 		return this.#m_text;
 	}
 
-	/**
-	 * Changes the tooltip text, resizes to fit the new content and requests repainting.
-	 * @param text Tooltip text to display.
-	 */
-	setText(text: string): void {
-		/** Provides if behavior. */
+    /**
+    * Changes hover-help content and updates the popup's preferred size.
+    */
+    setText(text: string): void {
 		if (this.#m_text === text)
 			return;
 
@@ -39,10 +40,6 @@ export class CToolTipWidget extends CWidget {
 		this.update();
 	}
 
-    /**
-     * Returns the preferred size of the widget.
-     * @returns A new `CSize`.
-     */
     override sizeHint(): CSize {
 		const metrics = new CFontMetrics(this.font());
 
@@ -50,10 +47,6 @@ export class CToolTipWidget extends CWidget {
 			metrics.height() + 2 * this.style().toolTipVerticalPadding());
 	}
 
-	/**
-	 * Draws the tool tip widget through the supplied painter.
-	 * @param painter Painter for the current drawing operation.
-	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionToolTipWidget();
 		option.initFromToolTip(this);

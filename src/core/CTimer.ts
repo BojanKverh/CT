@@ -1,16 +1,17 @@
+/** @module Core/CTimer */
 import { CObject } from "./CObject.js";
 import { CSignal } from "./CSignal.js";
-
 
 /**
  * Provides single-shot and repeating timer functionality.
  */
 export class CTimer extends CObject
 {
-/**
- * Emitted when the timer interval expires.
- */
-	readonly timeout = new CSignal<[]>();
+    /**
+    * Emitted when the timer interval expires.
+    * @group Signals
+    */
+    readonly timeout = new CSignal<[]>();
 
 	#m_interval = 0;
 	#m_singleShot = false;
@@ -18,29 +19,29 @@ export class CTimer extends CObject
 	#m_startedAt = 0;
 	#m_generation = 0;
 
-/**
- * Creates a timer.
- * @param parent Parent object, or `null` for no parent.
- */
-	constructor(parent: CObject | null = null)
+    /**
+    * Creates a timer.
+    * @param parent Parent object, or `null` for no parent.
+    */
+    constructor(parent: CObject | null = null)
 	{
 		super(parent);
 	}
 
-/**
- * Returns the timer interval in milliseconds.
- * @returns Timer interval in milliseconds.
- */
-	interval(): number
+    /**
+    * Timer interval in milliseconds.
+    * The initial value is `0`.
+    */
+    interval(): number
 	{
 		return this.#m_interval;
 	}
 
-/**
- * Sets the timer interval. An active timer is restarted with the new interval.
- * @param interval Interval in milliseconds. Negative values are clamped to zero.
- */
-	setInterval(interval: number): void
+    /**
+    * Sets the timer interval. An active timer is restarted with the new interval.
+    * @param interval Interval in milliseconds. Negative values are clamped to zero.
+    */
+    setInterval(interval: number): void
 	{
 		interval = Math.max(0, interval);
 
@@ -53,38 +54,38 @@ export class CTimer extends CObject
 			this.start();
 	}
 
-/**
- * Returns whether the timer fires only once.
- * @returns `true` for a single-shot timer; otherwise `false`.
- */
-	isSingleShot(): boolean
+    /**
+    * Returns whether the timer fires only once.
+    * @returns `true` for a single-shot timer; otherwise `false`.
+    */
+    isSingleShot(): boolean
 	{
 		return this.#m_singleShot;
 	}
 
-/**
- * Sets whether the timer fires only once.
- * @param singleShot `true` for single-shot operation; `false` for repeating operation.
- */
-	setSingleShot(singleShot: boolean): void
+    /**
+    * Sets whether the timer fires only once.
+    * @param singleShot `true` for single-shot operation; `false` for repeating operation.
+    */
+    setSingleShot(singleShot: boolean): void
 	{
 		this.#m_singleShot = singleShot;
 	}
 
-/**
- * Returns whether the timer is currently active.
- * @returns `true` if the timer is active.
- */
-	isActive(): boolean
+    /**
+    * Returns whether the timer is currently active.
+    * @returns `true` if the timer is active.
+    */
+    isActive(): boolean
 	{
 		return this.#m_timerId !== null;
 	}
 
-/**
- * Starts or restarts the timer.
- * @param interval Optional interval in milliseconds to use before starting.
- */
-	start(interval?: number): void
+    /**
+    * Starts or restarts the timer.
+    * @param interval Optional interval in milliseconds to use before starting.
+    */
+    start(interval?: number): void
 	{
 		if (interval !== undefined)
 			this.#m_interval = Math.max(0, interval);
@@ -96,10 +97,10 @@ export class CTimer extends CObject
 		this.#schedule(generation);
 	}
 
-/**
- * Stops the timer.
- */
-	stop(): void
+    /**
+    * Stops the timer.
+    */
+    stop(): void
 	{
 		++this.#m_generation;
 
@@ -110,11 +111,11 @@ export class CTimer extends CObject
 		this.#m_startedAt = 0;
 	}
 
-/**
- * Returns the approximate time remaining until the next timeout.
- * @returns Remaining milliseconds, or `-1` if the timer is inactive.
- */
-	remainingTime(): number
+    /**
+    * Returns the approximate time remaining until the next timeout.
+    * @returns Remaining milliseconds, or `-1` if the timer is inactive.
+    */
+    remainingTime(): number
 	{
 		if (!this.isActive())
 			return -1;
@@ -128,12 +129,12 @@ export class CTimer extends CObject
 		);
 	}
 
-/**
- * Schedules a callback to run once after the specified interval.
- * @param interval Delay in milliseconds. Negative values are clamped to zero.
- * @param callback Function to invoke after the delay.
- */
-	static singleShot(
+    /**
+    * Schedules a callback to run once after the specified interval.
+    * @param interval Delay in milliseconds. Negative values are clamped to zero.
+    * @param callback Function to invoke after the delay.
+    */
+    static singleShot(
 		interval: number,
 		callback: () => void
 	): void

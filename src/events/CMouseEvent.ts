@@ -1,21 +1,39 @@
+/** @module Events/CMouseEvent */
 import { CEvent, CEventType } from "./CEvent.js";
 import { CPoint } from "../geometry/CPoint.js";
 
 /** Defines mouse buttons recognized by Canvas Toolkit. */
 export enum CMouseButton {
-    /** No mouse button. */ NoButton,
-    /** Left mouse button. */ LeftButton,
-    /** Middle mouse button. */ MiddleButton,
-    /** Right mouse button. */ RightButton
+    /** No mouse button. */
+    NoButton,
+    /** Left mouse button. */
+    LeftButton,
+    /** Middle mouse button. */
+    MiddleButton,
+    /** Right mouse button. */
+    RightButton
 }
 
 /** Bit flags describing keyboard modifiers active during a mouse event. */
 export enum CKeyboardModifier {
-	/** No keyboard modifier. */ NoModifier = 0,
-	/** Shift modifier. */ ShiftModifier = 1 << 0,
-	/** Control modifier. */ ControlModifier = 1 << 1,
-	/** Alt modifier. */ AltModifier = 1 << 2,
-	/** Meta modifier. */ MetaModifier = 1 << 3
+    /** No keyboard modifier. */
+    NoModifier = 0,
+    /**
+    * The Shift key was held when the pointer event occurred.
+    */
+    ShiftModifier = 1 << 0,
+    /**
+    * The Ctrl key was held when the pointer event occurred.
+    */
+    ControlModifier = 1 << 1,
+    /**
+    * The Alt key was held when the pointer event occurred.
+    */
+    AltModifier = 1 << 2,
+    /**
+    * The platform Meta key was held when the pointer event occurred.
+    */
+    MetaModifier = 1 << 3
 }
 
 /** Event describing mouse input at a widget-relative position. */
@@ -26,14 +44,14 @@ export class CMouseEvent extends CEvent {
     #m_clickCount: number;
 
     /** Creates a mouse event.
-     * @param type Mouse event type.
-     * @param x X coordinate relative to the receiving widget.
-     * @param y Y coordinate relative to the receiving widget.
-     * @param button Mouse button associated with the event.
-     * @param shiftKey Whether Shift is pressed.
-     * @param clickCount Number of consecutive clicks; defaults to one.
-     * @param ctrlKey Whether Control is pressed.
-     */
+    * @param type Mouse event type.
+    * @param x X coordinate relative to the receiving widget.
+    * @param y Y coordinate relative to the receiving widget.
+    * @param button Mouse button associated with the event.
+    * @param shiftKey Whether Shift is pressed.
+    * @param clickCount Number of consecutive clicks; defaults to one.
+    * @param ctrlKey Whether Control is pressed.
+    */
     constructor(type: CEventType, x: number, y: number, button: number,
         shiftKey: boolean = false, clickCount: number = 1, ctrlKey = false) {
         super(type);
@@ -46,50 +64,32 @@ export class CMouseEvent extends CEvent {
         if (ctrlKey) this.#m_modifiers |= CKeyboardModifier.ControlModifier;
     }
 
-    /**
-     * Reads the horizontal pointer position.
-     * @returns X coordinate relative to the receiving widget.
-     */
+    /** Returns the widget-relative X coordinate. */
     x(): number {
         return this.#m_pos.x();
     }
 
-    /**
-     * Reads the vertical pointer position.
-     * @returns Y coordinate relative to the receiving widget.
-     */
+    /** Returns the widget-relative Y coordinate. */
     y(): number {
         return this.#m_pos.y();
     }
 
-    /**
-     * Reads the pointer location.
-     * @returns The stored point in widget-local coordinates.
-     */
+    /** Returns the widget-relative mouse position. */
     pos(): CPoint {
         return this.#m_pos;
     }
 
-    /**
-     * Identifies the button associated with the event.
-     * @returns The recorded mouse button.
-     */
+    /** Returns the mouse button associated with the event. */
     button(): CMouseButton {
         return this.#m_button;
     }
 
-    /**
-     * Reads the consecutive click count. The constructor normalizes it to a positive integer.
-     * @returns The recorded count, with a minimum of one.
-     */
+    /** Returns the number of consecutive clicks. */
     clickCount(): number {
         return this.#m_clickCount;
     }
 
-    /**
-     * Reads the keyboard modifiers recorded for the event. The constructor currently records Shift.
-     * @returns A bit mask of `CKeyboardModifier` values.
-     */
+    /** Returns the active CKeyboardModifier flags. */
     modifiers() : number {
         return this.#m_modifiers;
     }

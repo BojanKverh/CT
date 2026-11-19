@@ -1,12 +1,21 @@
+/** @module Models/CSqlError */
 /** Database operation during which an SQL model error occurred. */
 export type CSqlOperation = "select" | "insert" | "update" | "remove";
 
 /** Describes an error reported by a CSqlTableAdapter. */
 export class CSqlError extends Error {
-	readonly operation: CSqlOperation;
-	readonly originalError: unknown;
+    /** SQL operation associated with this error. */
+    readonly operation: CSqlOperation;
+    /** Original adapter or transport failure retained for diagnosis. */
+    readonly originalError: unknown;
 
-	constructor(
+    /**
+    * Wraps an operation failure while retaining its original error.
+    * @param operation Input used to configure CSqlError.
+    * @param message Input used to configure CSqlError.
+    * @param originalError Input used to configure CSqlError. Omit to use `null`.
+    */
+    constructor(
 		operation: CSqlOperation,
 		message: string,
 		originalError: unknown = null
@@ -17,13 +26,8 @@ export class CSqlError extends Error {
 		this.originalError = originalError;
 	}
 
-	/**
-	 * Converts a thrown value into a model error. An existing `CSqlError` is kept as-is.
-	 * @param operation Operation to associate with a newly wrapped error.
-	 * @param error Thrown value to convert.
-	 * @returns The existing error or a new `CSqlError` retaining the original value.
-	 */
-	static from(
+    /** Converts an arbitrary rejected value to a CSqlError. */
+    static from(
 		operation: CSqlOperation,
 		error: unknown
 	): CSqlError {

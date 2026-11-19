@@ -1,3 +1,4 @@
+/** @module Geometry/CSize */
 /**
  * Represents a two-dimensional size defined by width and height.
  */
@@ -6,40 +7,36 @@ export class CSize {
     #m_height: number;
 
     /**
-     * Creates a size with the specified dimensions.
-     *
-     * @param width Initial width.
-     * @param height Initial height.
-     */
+    * Creates a size with the specified dimensions.
+    *
+    * @param width Initial width.
+    * @param height Initial height.
+    */
     constructor(width = 0, height = 0) {
         this.#m_width = width;
         this.#m_height = height;
     }
 
     /**
-     * Returns the width.
-     *
-     * @returns The current width.
-     */
+    * Returns the horizontal extent retained by this value object.
+    */
     width(): number {
         return this.#m_width;
     }
 
     /**
-     * Returns the height.
-     *
-     * @returns The current height.
-     */
+    * Returns the vertical extent retained by this value object.
+    */
     height(): number {
         return this.#m_height;
     }
 
     /**
-     * Changes the size to the specified dimensions.
-     *
-     * @param width New width.
-     * @param height New height.
-     */
+    * Changes the size to the specified dimensions.
+    *
+    * @param width New width.
+    * @param height New height.
+    */
     resize(width: number, height: number): void {
         this.#m_width = width;
         this.#m_height = height;

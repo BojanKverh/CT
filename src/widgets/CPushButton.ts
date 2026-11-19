@@ -1,3 +1,4 @@
+/** @module Widgets/CPushButton */
 import type { CDialog } from "../dialogs/CDialog.js";
 import { CMouseButton, CMouseEvent } from "../events/CMouseEvent.js";
 import type { CPainter } from "../painting/CPainter.js";
@@ -10,7 +11,19 @@ import { CSize } from "../geometry/CSize.js";
 import type { CIcon } from "../gui/CIcon.js";
 import { CIconPosition, CStyleOptionPushButton } from "../gui/CStyleOptionPushButton.js";
 
-/** Implements the push button widget. */
+/**
+ * Captioned action button supporting mouse, Space and Enter activation.
+ * The inherited clicked signal reports activation. An optional CIcon appears
+ * beside the caption; iconPosition() chooses its side.
+ *
+ * @example
+ * ```ts
+ * const save = new CPushButton(parent);
+ * save.setText("Save");
+ * save.clicked.connect(() => saveDocument());
+ * save.setIcon(new CIcon(await CPixmap.fromUrl("/icons/save.png")));
+ * ```
+ */
 export class CPushButton extends CAbstractButton {
 	#m_down = false;
 	#m_hovered = false;
@@ -19,23 +32,18 @@ export class CPushButton extends CAbstractButton {
     #icon: CIcon | null = null;
     #iconPosition = CIconPosition.Left;
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null) {
-		/** Provides super behavior. */
+    /**
+    * Creates a non-checkable push button with no icon, 3-pixel corner radius and default-button status disabled.
+    */
+    constructor(parent: CWidget | null = null) {
 		super(parent);
 		this.setCheckable(false);
 	}
 
-    /**
-     * Checks the button's explicitly configured default flag.
-     * @returns `true` if this button was marked as default.
-     */
+    /** Whether this is the explicitly configured default button. */
     isDefault(): boolean { return this.#m_default; }
 
-    /**
-     * Changes the default flag, registers the button with its containing dialog when enabled and requests repainting.
-     * @param value Whether to mark the button as default. Defaults to `true`.
-     */
+    /** Makes this the default button of its containing dialog. */
     setDefault(value = true): void {
         if (this.#m_default === value) return;
         this.#m_default = value;
@@ -43,10 +51,6 @@ export class CPushButton extends CAbstractButton {
         this.update();
     }
 
-    /**
-     * Reparents the button and registers it as the default in the destination dialog if its default flag is set.
-     * @param parent New parent widget, or `null` for a top-level button.
-     */
     override setParent(parent: CWidget | null): void {
         if (this.parent() === parent) return;
         super.setParent(parent);
@@ -62,48 +66,44 @@ export class CPushButton extends CAbstractButton {
         return null;
     }
 
-	/**
-	 * Reads the visual pressed state.
-	 * @returns `true` while the button is marked as pressed.
-	 */
-	isDown(): boolean {
+    /**
+    * Reports the transient pressed appearance set by mouse or Space handling.
+    */
+    isDown(): boolean {
 		return this.#m_down;
 	}
 
-	/**
-	 * Reads the pointer hover state.
-	 * @returns `true` if the pointer has entered and has not yet left.
-	 */
-	isHovered(): boolean {
+    /**
+    * Reports whether pointer hover feedback is active.
+    */
+    isHovered(): boolean {
 		return this.#m_hovered;
 	}
 
-	/**
-	 * Reads the stored corner radius.
-	 * @returns The configured radius.
-	 */
-	radius(): number {
+    /**
+    * Logical corner radius used when painting the control.
+    * The initial value is `3`.
+    */
+    radius(): number {
 		return this.#m_radius;
 	}
 
-	/**
-	 * Stores a new corner radius.
-	 * @param r Radius value to store.
-	 */
-	setRadius(r: number) {
+    /**
+    * Changes the corner radius used by the style on subsequent paints.
+    */
+    setRadius(r: number) {
 		this.#m_radius = r;
 	}
 
     /**
-     * Reads the icon.
-     * @returns The icon.
-     */
+    * Assigned icon used by the control's drawing style.
+    * The initial value is `null`.
+    */
     icon(): CIcon | null { return this.#icon; }
 
     /**
-     * Sets the icon. May refresh layout geometry and request a repaint.
-     * @param icon Icon.
-     */
+    * Assigns an icon or removes it with null. Updates preferred geometry and schedules repaint. Artwork loads before assignment through CPixmap.fromUrl().
+    */
     setIcon(icon: CIcon | null): void {
         this.#icon = icon;
         this.updateGeometry();
@@ -111,25 +111,22 @@ export class CPushButton extends CAbstractButton {
     }
 
     /**
-     * Reads the icon position.
-     * @returns The icon position.
-     */
+    * Returns the icon's side relative to the caption. Defaults to CIconPosition.Left.
+    */
     iconPosition(): CIconPosition { return this.#iconPosition; }
 
     /**
-     * Sets the icon position. May request a repaint.
-     * @param position Icon placement relative to the button caption.
-     */
+    * Places the icon to the left or right of the caption and schedules repaint.
+    */
     setIconPosition(position: CIconPosition): void {
         this.#iconPosition = position;
         this.update();
     }
 
-	/**
-	 * Returns the preferred size of the widget.
-	 * @returns A new `CSize`.
-	 */
-	override sizeHint(): CSize {
+    /**
+    * Computes preferred width from caption, icon and spacing. Height is 30 logical pixels; enclosing layouts still apply size policies and bounds.
+    */
+    override sizeHint(): CSize {
 		const fm = new CFontMetrics(this.font());
         const text = this.text();
         const iconWidth = this.#icon && !this.#icon.isNull()
@@ -139,12 +136,7 @@ export class CPushButton extends CAbstractButton {
         return new CSize(iconWidth > 0 ? width + iconWidth + 12 : Math.max(80, width + 24), 30);
 	}
 
-	/**
-	 * Accepts a left-button press, marks the button as down and starts auto-repeat if configured.
-	 * @param event Mouse event containing the pressed button.
-	 */
 	protected override mousePressEvent(event: CMouseEvent): void {
-		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -153,18 +145,12 @@ export class CPushButton extends CAbstractButton {
 		this.#m_down = true;
 		event.accept();
 		this.update();
-		
-		/** Provides if behavior. */
+
 		if (this.isAutoRepeat())
 			this.startAutoRepeat();
 	}
 
-	/**
-	 * Clears the pressed state on left-button release, stops auto-repeat and emits `clicked` when the button was down and the release is inside.
-	 * @param event Mouse event with the released button and local pointer coordinates.
-	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void {
-		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -176,20 +162,14 @@ export class CPushButton extends CAbstractButton {
 
 		event.accept();
 		this.update();
-		
-		/** Provides if behavior. */
+
 		if (wasDown && inside)
 			this.clicked.emit();
 
-		/** Provides if behavior. */
 		if (this.isAutoRepeat())
 			this.stopAutoRepeat();
 	}
 
-	/**
-	 * Builds a style option from the current button state and delegates drawing to the active style.
-	 * @param painter Painter for the button's local drawing area.
-	 */
 	protected override paintEvent(painter: CPainter): void {
 		const option = new CStyleOptionPushButton();
 		option.initFromPushButton(this);
@@ -197,32 +177,19 @@ export class CPushButton extends CAbstractButton {
 		this.style().drawPushButton(painter, option);
 	}
 
-	/**
-	 * Sets the hover state, accepts the event and requests repainting.
-	 * @param event Mouse event for pointer entry.
-	 */
 	protected override mouseEnterEvent(event: CMouseEvent): void {
 		this.#m_hovered = true;
 		event.accept();
 		this.update();
 	}
 
-	/**
-	 * Clears the hover state, accepts the event and requests repainting.
-	 * @param event Mouse event for pointer exit.
-	 */
 	protected override mouseLeaveEvent(event: CMouseEvent): void {
 		this.#m_hovered = false;
 		event.accept();
 		this.update();
 	}
 
-	/**
-	 * Marks the button as down for Space and emits `clicked` immediately for Enter or Return.
-	 * @param event Key event containing the pressed key.
-	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
-		/** Provides if behavior. */
 		if (event.key() === " ") {
 			this.#m_down = true;
 			event.accept();
@@ -230,7 +197,6 @@ export class CPushButton extends CAbstractButton {
 			return;
 		}
 
-		/** Provides if behavior. */
 		if (event.key() === "Enter" || event.key() === "Return") {
 			event.accept();
 			this.clicked.emit();
@@ -240,12 +206,7 @@ export class CPushButton extends CAbstractButton {
 		event.ignore();
 	}
 
-	/**
-	 * Accepts Space release, clears the pressed state and emits `clicked` if the button was down.
-	 * @param event Key event containing the released key.
-	 */
 	protected override keyReleaseEvent(event: CKeyEvent): void {
-		/** Provides if behavior. */
 		if (event.key() !== " ") {
 			event.ignore();
 			return;
@@ -257,7 +218,6 @@ export class CPushButton extends CAbstractButton {
 		event.accept();
 		this.update();
 
-		/** Provides if behavior. */
 		if (wasDown)
 			this.clicked.emit();
 	}

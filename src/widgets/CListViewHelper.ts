@@ -1,51 +1,66 @@
+/** @module Widgets/CListViewHelper */
 import { CRect } from "../geometry/CRect.js";
 import { CSize } from "../geometry/CSize.js";
 import { CIconMode, CIconState, type CIcon } from "../gui/CIcon.js";
 import type { CPainter } from "../painting/CPainter.js";
 import type { CWidget } from "./CWidget.js";
 
-export enum CListViewMode { ListMode, IconMode }
+/**
+ * Arrangement used for list items: vertical rows or an icon grid.
+ */
+export enum CListViewMode {
+    /**
+    * Arrange entries as vertically stacked rows.
+    */
+    ListMode,
+    /**
+    * Arrange entries as icon tiles with captions.
+    */
+    IconMode
+}
 
 /** Internal shared geometry and caption painting for the two list implementations. */
 export class CListViewHelper {
+    /**
+    * Current list or icon-grid arrangement.
+    */
     mode = CListViewMode.ListMode;
     #gridSize = new CSize(112, 112);
     #iconSize = new CSize(48, 48);
     #spacing = 8;
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param itemHeight Input used to configure CListViewHelper.
+    */
     constructor(readonly itemHeight: number) {}
     /**
-     * Reads the grid size of the list view helper.
-     * @returns A new `CSize`.
-     */
+    * Returns the icon-grid cell dimensions.
+    */
     gridSize(): CSize { return new CSize(this.#gridSize.width(), this.#gridSize.height()); }
     /**
-     * Reads the icon size of the list view helper.
-     * @returns A new `CSize`.
-     */
+    * Returns the preferred icon box dimensions.
+    */
     iconSize(): CSize { return new CSize(this.#iconSize.width(), this.#iconSize.height()); }
     /**
-     * Reads the spacing.
-     * @returns The spacing.
-     */
+    * Logical gap between neighboring items.
+    * The initial value is `8`.
+    */
     spacing(): number { return this.#spacing; }
     /**
-     * Changes the preferred size of an icon grid cell for valid dimensions.
-     * @param size Requested cell width and height in logical pixels.
-     */
+    * Changes icon-grid cell dimensions.
+    */
     setGridSize(size: CSize): void {
         if (this.#validSize(size)) this.#gridSize = new CSize(Math.floor(size.width()), Math.floor(size.height()));
     }
     /**
-     * Changes the preferred icon dimensions for valid sizes.
-     * @param size Requested icon width and height in logical pixels.
-     */
+    * Changes preferred item-icon dimensions.
+    */
     setIconSize(size: CSize): void {
         if (this.#validSize(size)) this.#iconSize = new CSize(Math.floor(size.width()), Math.floor(size.height()));
     }
     /**
-     * Sets the spacing. The implementation checks whether `spacing` is finite.
-     * @param spacing Spacing.
-     */
+    * Changes logical gaps between items.
+    */
     setSpacing(spacing: number): void {
         if (Number.isFinite(spacing) && spacing >= 0) this.#spacing = Math.floor(spacing);
     }
@@ -53,31 +68,19 @@ export class CListViewHelper {
         return Number.isFinite(size.width()) && Number.isFinite(size.height()) && size.width() >= 1 && size.height() >= 1;
     }
     /**
-     * Computes the number of icon cells that fit across the available width, including spacing.
-     * @param width Available content width in logical pixels.
-     * @returns Column count, with a minimum of one.
-     */
+    * Calculates how many grid columns fit the available width.
+    */
     columns(width: number): number { return Math.max(1, Math.floor((width + this.#spacing) / (this.#gridSize.width() + this.#spacing))); }
     /**
-     * Computes the item rectangle in the current list or icon layout.
-     * @param row Zero-based item row.
-     * @param width Available content width in logical pixels.
-     * @returns Item rectangle in content coordinates.
-     */
+    * Calculates an item's rectangle within the content surface.
+    */
     rect(row: number, width: number): CRect {
         if (this.mode === CListViewMode.ListMode) return new CRect(0, row * this.itemHeight, width, this.itemHeight);
         const columns = this.columns(width);
         return new CRect((row % columns) * (this.#gridSize.width() + this.#spacing),
             Math.floor(row / columns) * (this.#gridSize.height() + this.#spacing), this.#gridSize.width(), this.#gridSize.height());
     }
-    /**
-     * Returns the item index range intersecting the vertical viewport.
-     * @param count Number of items.
-     * @param width Width.
-     * @param top Top.
-     * @param height Height.
-     * @returns The visible range.
-     */
+    /** Returns the item index range intersecting the vertical viewport. */
     visibleRange(count: number, width: number, top: number, height: number): [number, number] {
         if (height <= 0) return [0, 0];
         const iconMode = this.mode === CListViewMode.IconMode;
@@ -92,13 +95,8 @@ export class CListViewHelper {
     }
 
     /**
-     * Hit-tests the list or icon layout, rejecting positions outside content or in grid gaps.
-     * @param x Horizontal coordinate in list content.
-     * @param y Vertical coordinate in list content.
-     * @param width Available content width in logical pixels.
-     * @param count Total number of items.
-     * @returns Zero-based hit row, or `-1` if no item is hit.
-     */
+    * Maps content coordinates to an item row.
+    */
     rowAt(x: number, y: number, width: number, count: number): number {
         if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x >= width) return -1;
         if (this.mode === CListViewMode.ListMode) {
@@ -111,24 +109,14 @@ export class CListViewHelper {
         return row < count ? row : -1;
     }
     /**
-     * Computes the height needed for all items, including gaps between icon rows.
-     * @param count Total number of items.
-     * @param width Available content width in logical pixels.
-     * @returns Total item layout height in logical pixels.
-     */
+    * Calculates content height from item count, arrangement and available width.
+    */
     height(count: number, width: number): number {
         if (this.mode === CListViewMode.ListMode) return count * this.itemHeight;
         const rows = Math.ceil(count / this.columns(width));
         return rows === 0 ? 0 : rows * (this.#gridSize.height() + this.#spacing) - this.#spacing;
     }
-    /**
-     * Start from the full viewport so obsolete scrollbars never lock in fewer columns.
-     * @param count Number of items.
-     * @param fullWidth Full width.
-     * @param fullHeight Full height.
-     * @param extent Extent.
-     * @returns A new `CSize`.
-     */
+    /** Start from the full viewport so obsolete scrollbars never lock in fewer columns. */
     contentSize(count: number, fullWidth: number, fullHeight: number, extent: number): CSize {
         let vertical = false, horizontal = false;
         for (let i = 0; i < 3; ++i) {
@@ -140,15 +128,7 @@ export class CListViewHelper {
         const width = Math.max(0, fullWidth - (vertical ? extent : 0));
         return new CSize(Math.max(width, count > 0 ? this.#gridSize.width() : 0), this.height(count, width));
     }
-    /**
-     * Resolves keyboard navigation for the current list or icon grid.
-     * @param row Current zero-based item row.
-     * @param key Keyboard key name to handle.
-     * @param count Total number of items.
-     * @param width Available content width in logical pixels.
-     * @param viewportHeight Visible content height in logical pixels, used for page navigation.
-     * @returns Destination row, the original row at a navigation boundary, or `null` for an unsupported key.
-     */
+    /** Spatial navigation: vertical movement preserves columns; horizontal movement stays in its line. */
     navigate(row: number, key: string, count: number, width: number, viewportHeight: number): number | null {
         const columns = this.columns(width);
         if (key === "Home") return 0;
@@ -163,14 +143,8 @@ export class CListViewHelper {
         return null;
     }
     /**
-     * Draws an optional icon and centered caption within the supplied item bounds. The caption uses up to two lines.
-     * @param painter Painter in owner content coordinates.
-     * @param owner Widget supplying palette and font metrics.
-     * @param rect Item rectangle available for the icon and caption.
-     * @param text Caption text to draw below the icon area.
-     * @param icon Optional icon, or `null` to omit the image.
-     * @param enabled Whether to use enabled styling. Defaults to `true`.
-     */
+    * @internal Paints the visible portion of a list or icon grid.
+    */
     paintContents(painter: CPainter, owner: CWidget, rect: CRect, text: string, icon: CIcon | null, enabled = true): void {
         const padding = 6, lineHeight = owner.fontMetrics().height();
         const captionHeight = Math.min(2 * lineHeight, Math.max(0, rect.height() - 2 * padding));

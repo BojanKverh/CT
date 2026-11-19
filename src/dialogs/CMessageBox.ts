@@ -1,3 +1,4 @@
+/** @module Dialogs/CMessageBox */
 import { CSignal } from "../core/CSignal.js";
 import { CVBoxLayout } from "../layouts/CVBoxLayout.js";
 import { CLabel } from "../widgets/CLabel.js";
@@ -9,26 +10,26 @@ import { CDialogButtonBox, CStandardButton } from "./CDialogButtonBox.js";
  * Defines the semantic icon type of a message box.
  */
 export enum CMessageBoxIcon {
-/**
- * No icon.
- */
-	NoIcon,
-/**
- * Informational message.
- */
-	Information,
-/**
- * Warning message.
- */
-	Warning,
-/**
- * Critical/error message.
- */
-	Critical,
-/**
- * Question message.
- */
-	Question
+    /**
+    * Reserve no message-category graphic in the dialog.
+    */
+    NoIcon,
+    /**
+    * Informational message.
+    */
+    Information,
+    /**
+    * Warning message.
+    */
+    Warning,
+    /**
+    * Critical/error message.
+    */
+    Critical,
+    /**
+    * Question message.
+    */
+    Question
 }
 
 /**
@@ -36,10 +37,14 @@ export enum CMessageBoxIcon {
  */
 export class CMessageBox extends CDialog
 {
-	static readonly DefaultWidth = 360;
-	static readonly DefaultHeight = 130;
-	static readonly Margin = 12;
-	static readonly Spacing = 8;
+    /** Default preferred logical width. */
+    static readonly DefaultWidth = 360;
+    /** Default preferred logical height. */
+    static readonly DefaultHeight = 130;
+    /** Default logical inset around contents. */
+    static readonly Margin = 12;
+    /** Default logical gap between adjacent items. */
+    static readonly Spacing = 8;
 
 	#m_text = "";
 	#m_informativeText = "";
@@ -50,18 +55,17 @@ export class CMessageBox extends CDialog
 	#m_informativeLabel: CLabel;
 	#m_buttonBox: CDialogButtonBox;
 
-/**
- * Emitted when a standard button is clicked.
- */
-	readonly buttonClicked =
+    /**
+    * Emitted when a standard button is clicked.
+    * @group Signals
+    */
+    readonly buttonClicked =
 		new CSignal<[CStandardButton]>();
 
-/**
- * Creates a message box.
- *
- * @param parent Optional parent widget.
- */
-	constructor(parent: CWidget | null = null)
+    /**
+    * Creates a nonblocking message dialog with an OK response button and no message-category icon.
+    */
+    constructor(parent: CWidget | null = null)
 	{
 		super(parent);
 
@@ -107,20 +111,21 @@ export class CMessageBox extends CDialog
 		);
 	}
 
-/**
-	 * Reads the primary message.
-	 * @returns The current primary message text.
-	 */
-	text(): string
+    /**
+    * Stored caption or text value.
+    * The initial value is `""`.
+    */
+    text(): string
 	{
 		return this.#m_text;
 	}
 
-/**
-	 * Changes the primary message label and requests repainting if the text differs.
-	 * @param text New primary message.
-	 */
-	setText(text: string): void
+    /**
+    * Sets the primary message text.
+    *
+    * @param text Message text.
+    */
+    setText(text: string): void
 	{
 		if (this.#m_text === text)
 			return;
@@ -130,20 +135,22 @@ export class CMessageBox extends CDialog
 		this.update();
 	}
 
-/**
-	 * Reads the secondary message.
-	 * @returns The current informative text, which may be empty.
-	 */
-	informativeText(): string
+    /**
+    * Returns the additional informative text.
+    *
+    * @returns Informative text.
+    */
+    informativeText(): string
 	{
 		return this.#m_informativeText;
 	}
 
-/**
-	 * Changes the secondary message and shows its label only when the text is nonempty.
-	 * @param text Informative text, or an empty string to hide the label.
-	 */
-	setInformativeText(text: string): void
+    /**
+    * Sets the additional informative text.
+    *
+    * @param text Informative text; an empty string hides it.
+    */
+    setInformativeText(text: string): void
 	{
 		if (this.#m_informativeText === text)
 			return;
@@ -154,20 +161,21 @@ export class CMessageBox extends CDialog
 		this.update();
 	}
 
-/**
-	 * Reads the message category shown by the icon.
-	 * @returns Current `CMessageBoxIcon` value.
-	 */
-	icon(): CMessageBoxIcon
+    /**
+    * Assigned icon used by the control's drawing style.
+    * The initial value is `CMessageBoxIcon.NoIcon`.
+    */
+    icon(): CMessageBoxIcon
 	{
 		return this.#m_icon;
 	}
 
-/**
-	 * Changes the message icon and requests repainting when its category changes.
-	 * @param icon Icon category to display.
-	 */
-	setIcon(icon: CMessageBoxIcon): void
+    /**
+    * Sets the message icon type.
+    *
+    * @param icon Icon type to display.
+    */
+    setIcon(icon: CMessageBoxIcon): void
 	{
 		if (this.#m_icon === icon)
 			return;
@@ -176,20 +184,20 @@ export class CMessageBox extends CDialog
 		this.update();
 	}
 
-/**
-	 * Reads the response buttons configured for the message box.
-	 * @returns Bitwise mask of standard response buttons.
-	 */
-	standardButtons(): CStandardButton
+    /**
+    * Bitmask of response buttons available in the message box; use clickedButton() to inspect the activated response.
+    */
+    standardButtons(): CStandardButton
 	{
 		return this.#m_buttonBox.standardButtons();
 	}
 
-/**
-	 * Rebuilds the response buttons when their mask changes and clears the recorded response.
-	 * @param buttons Bitwise mask of standard response buttons to display.
-	 */
-	setStandardButtons(buttons: CStandardButton): void
+    /**
+    * Sets the standard response buttons.
+    *
+    * @param buttons Bitwise combination of buttons.
+    */
+    setStandardButtons(buttons: CStandardButton): void
 	{
 		if (this.#m_buttonBox.standardButtons() === buttons)
 			return;
@@ -198,69 +206,74 @@ export class CMessageBox extends CDialog
 		this.#m_buttonBox.setStandardButtons(buttons);
 	}
 
-/**
-	 * Reads the most recently activated standard response.
-	 * @returns Activated button, or `NoButton` when none has been recorded.
-	 */
-	clickedButton(): CStandardButton
+    /**
+    * Returns the last activated standard button.
+    *
+    * @returns Last clicked button, or `NoButton` if none.
+    */
+    clickedButton(): CStandardButton
 	{
 		return this.#m_clickedButton;
 	}
 
-/**
-	 * Opens a modal message box with the information icon.
-	 * @param parent Parent widget that owns the dialog, or `null` for a top-level dialog.
-	 * @param title Text shown in the title bar.
-	 * @param text Primary message to display.
-	 * @param buttons Bitwise mask of responses to show. Defaults to OK.
-	 * @returns The opened message box. Observe its result signals or inspect `clickedButton()` to obtain the response.
-	 */
-	static information(parent: CWidget | null, title: string, text: string,
+    /**
+    * Shows an informational message box.
+    *
+    * @param parent Optional parent widget.
+    * @param title Dialog title.
+    * @param text Message text.
+    * @param buttons Bitwise combination of response buttons.
+    * @returns The opened message box instance.
+    */
+    static information(parent: CWidget | null, title: string, text: string,
 		buttons = CStandardButton.Ok): CMessageBox
 	{
 		return CMessageBox.#show(parent, title, text,
 			CMessageBoxIcon.Information, buttons);
 	}
 
-/**
-	 * Opens a modal message box with the warning icon.
-	 * @param parent Parent widget that owns the dialog, or `null` for a top-level dialog.
-	 * @param title Text shown in the title bar.
-	 * @param text Primary message to display.
-	 * @param buttons Bitwise mask of responses to show. Defaults to OK.
-	 * @returns The opened message box. Observe its result signals or inspect `clickedButton()` to obtain the response.
-	 */
-	static warning(parent: CWidget | null, title: string, text: string,
+    /**
+    * Shows a warning message box.
+    *
+    * @param parent Optional parent widget.
+    * @param title Dialog title.
+    * @param text Message text.
+    * @param buttons Bitwise combination of response buttons.
+    * @returns The opened message box instance.
+    */
+    static warning(parent: CWidget | null, title: string, text: string,
 		buttons = CStandardButton.Ok): CMessageBox
 	{
 		return CMessageBox.#show(parent, title, text,
 			CMessageBoxIcon.Warning, buttons);
 	}
 
-/**
-	 * Opens a modal message box with the critical error icon.
-	 * @param parent Parent widget that owns the dialog, or `null` for a top-level dialog.
-	 * @param title Text shown in the title bar.
-	 * @param text Primary message to display.
-	 * @param buttons Bitwise mask of responses to show. Defaults to OK.
-	 * @returns The opened message box. Observe its result signals or inspect `clickedButton()` to obtain the response.
-	 */
-	static critical(parent: CWidget | null, title: string, text: string,
+    /**
+    * Shows a critical-error message box.
+    *
+    * @param parent Optional parent widget.
+    * @param title Dialog title.
+    * @param text Message text.
+    * @param buttons Bitwise combination of response buttons.
+    * @returns The opened message box instance.
+    */
+    static critical(parent: CWidget | null, title: string, text: string,
 		buttons = CStandardButton.Ok): CMessageBox
 	{
 		return CMessageBox.#show(parent, title, text,
 			CMessageBoxIcon.Critical, buttons);
 	}
 
-/**
-	 * Opens a modal message box with the question icon.
-	 * @param parent Parent widget that owns the dialog, or `null` for a top-level dialog.
-	 * @param title Text shown in the title bar.
-	 * @param text Primary message to display.
-	 * @param buttons Bitwise mask of responses to show. Defaults to Yes and No.
-	 * @returns The opened message box. Observe its result signals or inspect `clickedButton()` to obtain the response.
-	 */
-	static question(parent: CWidget | null, title: string, text: string,
+    /**
+    * Shows a question message box.
+    *
+    * @param parent Optional parent widget.
+    * @param title Dialog title.
+    * @param text Message text.
+    * @param buttons Bitwise combination of response buttons.
+    * @returns The opened message box instance.
+    */
+    static question(parent: CWidget | null, title: string, text: string,
 		buttons = CStandardButton.Yes |
 			CStandardButton.No): CMessageBox
 	{
@@ -268,8 +281,10 @@ export class CMessageBox extends CDialog
 			CMessageBoxIcon.Question, buttons);
 	}
 
-/** Clears the recorded button and opens the message box through the base dialog. */
-	override open(): void
+    /**
+    * Opens the message box and resets the clicked-button state.
+    */
+    override open(): void
 	{
 		this.#m_clickedButton = CStandardButton.NoButton;
 		super.open();

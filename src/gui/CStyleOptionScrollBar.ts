@@ -1,3 +1,4 @@
+/** @module GUI/CStyleOptionScrollBar */
 import { CStyleOption } from "./CStyleOption.js";
 import { COrientation } from "./COrientation.js";
 import type { CScrollBar } from "../widgets/CScrollBar.js";
@@ -6,37 +7,35 @@ import type { CScrollBar } from "../widgets/CScrollBar.js";
  * Contains style information used to render a scroll bar.
  */
 export class CStyleOptionScrollBar extends CStyleOption {
-		/**
-	 * Returns or updates the orientation value.
-	 */
-orientation = COrientation.Horizontal;
-		/**
-	 * Returns the button size used by the style.
-	 */
-buttonSize = 0;
-		/**
-	 * Returns or updates the track start value.
-	 */
-trackStart = 0;
-		/**
-	 * Returns or updates the track length value.
-	 */
-trackLength = 0;
-		/**
-	 * Returns or updates the thumb start value.
-	 */
-thumbStart = 0;
-		/**
-	 * Returns or updates the thumb length value.
-	 */
-thumbLength = 0;
+    /**
+    * Axis along which the style lays out and paints this control.
+    */
+    orientation = COrientation.Horizontal;
+    /**
+    * Logical pixel extent reserved for each arrow button along the scrolling axis.
+    */
+    buttonSize = 0;
+    /**
+    * Start coordinate of the draggable track along the scrolling axis, in widget-local pixels.
+    */
+    trackStart = 0;
+    /**
+    * Logical pixel length of the draggable track along the scrolling axis.
+    */
+    trackLength = 0;
+    /**
+    * Start coordinate of the scroll thumb along the scrolling axis, in widget-local pixels.
+    */
+    thumbStart = 0;
+    /**
+    * Logical pixel extent of the scroll thumb along the scrolling axis.
+    */
+    thumbLength = 0;
 
-		/**
-	 * Creates a new CStyleOptionScrollBar instance.
-	 *
-	 * @param other Other.
-	 */
-constructor(other: CStyleOptionScrollBar | null = null) {
+    /**
+    * Copies the paint options from other, or initializes default appearance when other is null.
+    */
+    constructor(other: CStyleOptionScrollBar | null = null) {
 		super(other);
 
 		if (other === null)
@@ -50,12 +49,12 @@ constructor(other: CStyleOptionScrollBar | null = null) {
 		this.thumbLength = other.thumbLength;
 	}
 
-		/**
-	 * Initializes this style option from the specified scroll bar.
-	 *
-	 * @param scrollBar Scroll bar.
-	 */
-initFromScrollBar(scrollBar: CScrollBar): void {
+    /**
+    * Initializes this style option from the specified scroll bar.
+    *
+    * @param scrollBar Scroll bar.
+    */
+    initFromScrollBar(scrollBar: CScrollBar): void {
 		this.initFrom(scrollBar);
 
 		this.orientation = scrollBar.orientation();

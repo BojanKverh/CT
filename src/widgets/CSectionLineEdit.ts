@@ -1,3 +1,4 @@
+/** @module Widgets/CSectionLineEdit */
 import { CSignal } from "../core/CSignal.js";
 import type { CFocusEvent } from "../events/CFocusEvent.js";
 import type { CKeyEvent } from "../events/CKeyEvent.js";
@@ -7,45 +8,61 @@ import { CFontMetrics } from "../gui/CFontMetrics.js";
 import { CLineEdit } from "./CLineEdit.js";
 import { CWidget } from "./CWidget.js";
 
-
-/** Defines the public cline edit section API. */
+/**
+ * UTF-16 start offset and length of one independently navigable date or time section.
+ */
 export type CLineEditSection = {
 	start: number;
 	length: number;
 };
 
-
-/** Implements the section line edit widget. */
+/** Shared editing surface for structured date and time sections. */
 export class CSectionLineEdit extends CLineEdit
 {
-	/** Signal emitted when section changes. */
-	readonly sectionChanged = new CSignal<[number]>();
-	/** Public step requested member. */
-	readonly stepRequested = new CSignal<[number, number]>();
-	/** Emitted when a numeric digit is entered for the active section. */
-	readonly digitEntered = new CSignal<[number, number]>();
-    /** Public previous section requested member. */
+    /**
+    * Emitted with the zero-based active section index after structured-editor navigation.
+    * @group Signals
+    */
+    readonly sectionChanged = new CSignal<[number]>();
+    /**
+    * Emitted with the active section index and signed step direction for Up or Down.
+    * @group Signals
+    */
+    readonly stepRequested = new CSignal<[number, number]>();
+    /**
+    * Emitted when a numeric digit is entered for the active section.
+    * @group Signals
+    */
+    readonly digitEntered = new CSignal<[number, number]>();
+    /**
+    * Emitted with the previous and resulting section indexes after leftward navigation.
+    * @group Signals
+    */
     readonly previousSectionRequested = new CSignal<[number, number]>();
-    /** Public next section requested member. */
+    /**
+    * Emitted with the previous and resulting section indexes after rightward navigation.
+    * @group Signals
+    */
     readonly nextSectionRequested = new CSignal<[number, number]>();
 
 	#m_sections: CLineEditSection[] = [];
 	#m_currentSection = -1;
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null)
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null)
 	{
-		/** Provides super behavior. */
 		super(parent);
 
 		this.setReadOnly(true);
 	}
 
-	/**
-	 * Reads the sections of the section line edit.
-	 * @returns The sections.
-	 */
-	sections(): readonly CLineEditSection[]
+    /**
+    * Copies the UTF-16 offsets and lengths of all navigable sections.
+    */
+    sections(): readonly CLineEditSection[]
 	{
 		return this.#m_sections.map(section => ({
 			start: section.start,
@@ -53,18 +70,16 @@ export class CSectionLineEdit extends CLineEdit
 		}));
 	}
 
-	/**
-	 * Sets the sections.
-	 * @param sections Sections.
-	 */
-	setSections(sections: CLineEditSection[]): void
+    /**
+    * Replaces the structured editable sections displayed within the line edit.
+    */
+    setSections(sections: CLineEditSection[]): void
 	{
 		this.#m_sections = sections.map(section => ({
 			start: section.start,
 			length: section.length
 		}));
 
-		/** Provides if behavior. */
 		if (this.#m_sections.length === 0) {
 			this.#m_currentSection = -1;
 			this.clearSelection();
@@ -75,26 +90,22 @@ export class CSectionLineEdit extends CLineEdit
 		this.#updateSelection();
 	}
 
-	/**
-	 * Returns the current section.
-	 * @returns The current section.
-	 */
-	currentSection(): number
+    /**
+    * Returns the index of the section targeted by keyboard editing.
+    */
+    currentSection(): number
 	{
 		return this.#m_currentSection;
 	}
 
-	/**
-	 * Sets the current section.
-	 * @param section Section.
-	 */
-	setCurrentSection(section: number): void
+    /**
+    * Moves editing focus to a section of the structured input.
+    */
+    setCurrentSection(section: number): void
 	{
-        /** Provides if behavior. */
         if (section < 0 || section >= this.#m_sections.length)
 			return;
 
-		/** Provides if behavior. */
 		if (section === this.#m_currentSection) {
 			this.#updateSelection();
 			return;
@@ -106,22 +117,13 @@ export class CSectionLineEdit extends CLineEdit
 		this.sectionChanged.emit(section);
 	}
 
-    /**
-     * Responds to focus exit for the section line edit. May accept the event.
-     * @param event Event for focus exit.
-     */
     protected override focusOutEvent(event: CFocusEvent): void {
         this.clearSelection();
         event.accept();
     }
 
-	/**
-	 * Responds to a pointer button press for the section line edit. May request focus and accept or ignore the event depending on the input.
-	 * @param event Event for a pointer button press.
-	 */
 	protected override mousePressEvent(event: CMouseEvent): void
 	{
-		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -129,7 +131,6 @@ export class CSectionLineEdit extends CLineEdit
 
 		const section = this.#sectionAt(event.x());
 
-		/** Provides if behavior. */
 		if (section === -1) {
 			event.ignore();
 			return;
@@ -141,22 +142,13 @@ export class CSectionLineEdit extends CLineEdit
 		event.accept();
 	}
 
-	/**
-	 * Responds to pointer movement for the section line edit. May mark the event ignored.
-	 * @param event Event for pointer movement.
-	 */
 	protected override mouseMoveEvent(event: CMouseEvent): void
 	{
 		event.ignore();
 	}
 
-	/**
-	 * Responds to a pointer button release for the section line edit. May accept or ignore the event depending on the input.
-	 * @param event Event for a pointer button release.
-	 */
 	protected override mouseReleaseEvent(event: CMouseEvent): void
 	{
-		/** Provides if behavior. */
 		if (event.button() !== CMouseButton.LeftButton) {
 			event.ignore();
 			return;
@@ -165,13 +157,8 @@ export class CSectionLineEdit extends CLineEdit
 		event.accept();
 	}
 
-	/**
-	 * Responds to a key press for the section line edit. May accept or ignore the event depending on the input. May emit `digitEntered`, `stepRequested`.
-	 * @param event Event for a key press.
-	 */
 	protected override keyPressEvent(event: CKeyEvent): void
 	{
-		/** Provides if behavior. */
 		if (this.#m_sections.length === 0) {
 			event.ignore();
 			return;
@@ -186,7 +173,6 @@ export class CSectionLineEdit extends CLineEdit
 			return;
 		}
 
-		/** Provides switch behavior. */
 		switch (event.key()) {
 			case "ArrowLeft":
 				this.#previousSection();
@@ -246,7 +232,6 @@ export class CSectionLineEdit extends CLineEdit
 		const metrics = new CFontMetrics(this.font());
 		const textX = x - 5;
 
-		/** Provides for behavior. */
 		for (let i = 0; i < this.#m_sections.length; ++i) {
 			const section = this.#m_sections[i]!;
 
@@ -264,7 +249,6 @@ export class CSectionLineEdit extends CLineEdit
 			const right =
 				left + metrics.textWidth(selected);
 
-			/** Provides if behavior. */
 			if (textX >= left && textX <= right)
 				return i;
 		}
@@ -274,7 +258,6 @@ export class CSectionLineEdit extends CLineEdit
 
 	#updateSelection(): void
 	{
-		/** Provides if behavior. */
 		if (
 			this.#m_currentSection < 0 ||
 			this.#m_currentSection >= this.#m_sections.length

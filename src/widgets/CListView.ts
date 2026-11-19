@@ -1,3 +1,4 @@
+/** @module Widgets/CListView */
 import { CSignal } from "../core/CSignal.js";
 import type { CIcon } from "../gui/CIcon.js";
 import type { CPoint } from "../geometry/CPoint.js";
@@ -19,9 +20,6 @@ import { CScrollBar } from "./CScrollBar.js";
 import { CWidget } from "./CWidget.js";
 
 class CListScrollArea extends CScrollArea {
-	/**
-	 * Updates the list scroll bars.
-	 */
 	updateListScrollBars(): void {
 		this.updateScrollBars();
 	}
@@ -36,52 +34,43 @@ class CListViewContentWidget extends CWidget {
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
-	/**
-	 * Draws the list view content widget through the supplied painter.
-	 * @param painter Painter for the current drawing operation.
-	 */
 	protected override paintEvent(painter: CPainter): void {
 		this.#m_view.paintItems(painter);
 	}
 
-	/**
-	 * Responds to a pointer button press for the list view content widget.
-	 * @param event Event for a pointer button press.
-	 */
 	protected override mousePressEvent(event: CMouseEvent): void {
 		this.#m_view.contentMousePressEvent(event);
 	}
 
-	/**
-	 * Responds to a double-click for the list view content widget.
-	 * @param event Event for a double-click.
-	 */
 	protected override mouseDoubleClickEvent(event: CMouseEvent): void {
 		this.#m_view.contentMouseDoubleClickEvent(event);
 	}
 
-	/**
-	 * Responds to a key press for the list view content widget.
-	 * @param event Event for a key press.
-	 */
 	protected override keyPressEvent(event: CKeyEvent): void {
 		this.#m_view.contentKeyPressEvent(event);
 	}
 }
 
-/** Implements the list view widget. */
+/** Virtualized model-backed list supporting item selection, editing and icon layout. */
 export class CListView extends CAbstractItemView {
-	static readonly ItemHeight = 24;
+    /** Default logical height of a list or menu entry. */
+    static readonly ItemHeight = 24;
     #m_itemLayout = new CListViewHelper(CListView.ItemHeight);
     #m_iconProvider: ((index: CModelIndex) => CIcon | null) | null = null;
-    /** Emitted by Enter or double click in IconMode. F2 remains the editing trigger. */
+    /**
+    * Emitted by Enter or double click in IconMode. F2 remains the editing trigger.
+    * @group Signals
+    */
     readonly activated = new CSignal<[CModelIndex]>();
 
 	#m_scrollArea: CListScrollArea;
 	#m_contentWidget: CListViewContentWidget;
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null) {
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null) {
 		super(parent);
 
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
@@ -94,14 +83,12 @@ export class CListView extends CAbstractItemView {
 	}
 
     /**
-     * Reads the view mode of the list view.
-     * @returns The view mode.
-     */
+    * Returns list or icon-grid arrangement.
+    */
     viewMode(): CListViewMode { return this.#m_itemLayout.mode; }
     /**
-     * Sets the view mode.
-     * @param mode Mode.
-     */
+    * Changes item arrangement and recalculates content geometry.
+    */
     setViewMode(mode: CListViewMode): void {
         if (mode !== CListViewMode.ListMode && mode !== CListViewMode.IconMode) return;
         if (this.#m_itemLayout.mode === mode) return;
@@ -110,154 +97,104 @@ export class CListView extends CAbstractItemView {
         this.#updateContentGeometry();
     }
     /**
-     * Reads the grid size of the list view.
-     * @returns The grid size.
-     */
+    * Returns icon-grid cell dimensions in logical pixels.
+    */
     gridSize(): CSize { return this.#m_itemLayout.gridSize(); }
     /**
-     * Changes the preferred size of an icon grid cell for valid dimensions.
-     * @param size Requested cell width and height in logical pixels.
-     */
+    * Changes icon-grid cell dimensions and recalculates content geometry.
+    */
     setGridSize(size: CSize): void { this.#m_itemLayout.setGridSize(size); this.#updateContentGeometry(); }
     /**
-     * Reads the icon size of the list view.
-     * @returns The icon size.
-     */
+    * Returns the preferred icon dimensions.
+    */
     iconSize(): CSize { return this.#m_itemLayout.iconSize(); }
     /**
-     * Changes the preferred icon dimensions for valid sizes.
-     * @param size Requested icon width and height in logical pixels.
-     */
+    * Changes preferred icon dimensions and recalculates content geometry.
+    */
     setIconSize(size: CSize): void { this.#m_itemLayout.setIconSize(size); this.#updateContentGeometry(); }
     /**
-     * Reads the spacing of the list view.
-     * @returns The spacing.
-     */
+    * Returns the logical gap between items.
+    */
     spacing(): number { return this.#m_itemLayout.spacing(); }
     /**
-     * Sets the spacing.
-     * @param spacing Spacing.
-     */
+    * Changes item gaps and recalculates content geometry.
+    */
     setSpacing(spacing: number): void { this.#m_itemLayout.setSpacing(spacing); this.#updateContentGeometry(); }
 
-    /**
-     * Supplies icons without imposing a new data-role API on the model.
-     * @param provider Provider.
-     */
+    /** Supplies icons without imposing a new data-role API on the model. */
     setIconProvider(provider: ((index: CModelIndex) => CIcon | null) | null): void {
         this.#m_iconProvider = provider;
         this.#m_contentWidget.update();
     }
-    /**
-     * Hit-tests a point against the list item layout.
-     * @param point Point in content-widget coordinates.
-     * @returns Index of column zero in the hit row, or an invalid index if there is no model or hit.
-     */
+    /** Returns the index at a content-widget coordinate; gaps return an invalid index. */
     indexAt(point: CPoint): CModelIndex {
         const model = this.model();
         const row = this.#m_itemLayout.rowAt(point.x(), point.y(), this.#m_contentWidget.width(), model?.rowCount() ?? 0);
         return model !== null && row >= 0 ? model.index(row, 0) : new CModelIndex();
     }
 
-	/**
-	 * Computes the item rectangle using the active list or icon layout.
-	 * @param index Index in the current model identifying the item.
-	 * @returns Rectangle in content-widget coordinates, or an empty rectangle for an out-of-range non-item index.
-	 */
-	visualRect(index: CModelIndex): CRect {
+    /** Returns the item rectangle in content-widget coordinates. */
+    visualRect(index: CModelIndex): CRect {
 		if (!index.isValid() || index.model() !== this.model())
 	        if (index.row() >= (this.model()?.rowCount() ?? 0) || index.column() !== 0) return new CRect();
         return this.#m_itemLayout.rect(index.row(), this.#m_contentWidget.width());
 	}
 
-	/**
-	 * Returns the viewport widget.
-	 * @returns The viewport.
-	 */
-	viewport(): CWidget {
+    /**
+    * Returns the clipped internal item-content viewport.
+    */
+    viewport(): CWidget {
 		return this.#m_scrollArea.viewport();
 	}
 
-	/**
-	 * Returns the list content widget.
-	 * @returns The content widget.
-	 */
-	widget(): CWidget {
+    /** Returns the list content widget. */
+    widget(): CWidget {
 		return this.#m_contentWidget;
 	}
 
-	/**
-	 * Returns the horizontal scroll bar.
-	 * @returns The horizontal scroll bar.
-	 */
-	horizontalScrollBar(): CScrollBar {
+    /**
+    * Returns the horizontal content range control.
+    */
+    horizontalScrollBar(): CScrollBar {
 		return this.#m_scrollArea.horizontalScrollBar();
 	}
 
-	/**
-	 * Returns the vertical scroll bar.
-	 * @returns The vertical scroll bar.
-	 */
-	verticalScrollBar(): CScrollBar {
+    /**
+    * Returns the vertical content range control.
+    */
+    verticalScrollBar(): CScrollBar {
 		return this.#m_scrollArea.verticalScrollBar();
 	}
 
-	/**
-	 * Returns the horizontal scroll position.
-	 * @returns The scroll x.
-	 */
-	scrollX(): number {
+    /** Returns the horizontal scroll position. */
+    scrollX(): number {
 		return this.#m_scrollArea.scrollX();
 	}
 
-	/**
-	 * Returns the vertical scroll position.
-	 * @returns The scroll y.
-	 */
-	scrollY(): number {
+    /** Returns the vertical scroll position. */
+    scrollY(): number {
 		return this.#m_scrollArea.scrollY();
 	}
 
-	/**
-	 * Sets the horizontal scroll position.
-	 * @param x Horizontal coordinate.
-	 */
-	setScrollX(x: number): void {
+    /** Sets the horizontal scroll position. */
+    setScrollX(x: number): void {
 		this.#m_scrollArea.setScrollX(x);
 	}
 
-	/**
-	 * Sets the vertical scroll position.
-	 * @param y Vertical coordinate.
-	 */
-	setScrollY(y: number): void {
+    /** Sets the vertical scroll position. */
+    setScrollY(y: number): void {
 		this.#m_scrollArea.setScrollY(y);
 	}
 
-	/**
-	 * Scrolls to the supplied content position.
-	 * @param x Horizontal coordinate.
-	 * @param y Vertical coordinate.
-	 */
-	scrollTo(x: number, y: number): void {
+    /** Scrolls to the supplied content position. */
+    scrollTo(x: number, y: number): void {
 		this.#m_scrollArea.scrollTo(x, y);
 	}
 
-	/**
-	 * Returns the preferred size of the widget.
-	 * @returns A new `CSize`.
-	 */
 	override sizeHint(): CSize {
 		return new CSize(200, 160);
 	}
 
-	/**
-	 * Sets the geometry.
-	 * @param x Horizontal position in parent coordinates.
-	 * @param y Vertical position in parent coordinates.
-	 * @param width Width in logical pixels.
-	 * @param height Height in logical pixels.
-	 */
 	override setGeometry(
 		x: number,
 		y: number,
@@ -268,21 +205,14 @@ export class CListView extends CAbstractItemView {
 		this.#updateGeometry();
 	}
 
-	/**
-	 * Resizes the view.
-	 * @param width Width in logical pixels.
-	 * @param height Height in logical pixels.
-	 */
-	override resize(width: number, height: number): void {
+    /** Resizes the view. */
+    override resize(width: number, height: number): void {
 		super.resize(width, height);
 		this.#updateGeometry();
 	}
 
-	/**
-	 * Paints the list items.
-	 * @param painter Painter for the current drawing operation.
-	 */
-	paintItems(painter: CPainter): void {
+    /** Paints the list items. */
+    paintItems(painter: CPainter): void {
 		const model = this.model();
 
 		if (model === null)
@@ -330,7 +260,6 @@ export class CListView extends CAbstractItemView {
                 continue;
             }
 
-
 			painter.save();
 			painter.clipRect(new CRect(0, y, width, CListView.ItemHeight));
 			painter.drawText(
@@ -342,11 +271,8 @@ export class CListView extends CAbstractItemView {
 		}
 	}
 
-	/**
-	 * Hit-tests a left click and updates item selection and the current row.
-	 * @param event Mouse event in content-widget coordinates.
-	 */
-	contentMousePressEvent(event: CMouseEvent): void {
+    /** Handles a mouse press in the list content. */
+    contentMousePressEvent(event: CMouseEvent): void {
 		const model = this.model();
 		const selectionModel = this.selectionModel();
 
@@ -376,11 +302,8 @@ export class CListView extends CAbstractItemView {
 		event.accept();
 	}
 
-	/**
-	 * Selects the hit item on a left double-click. Activates it in icon mode or attempts to edit it in list mode.
-	 * @param event Mouse event in content-widget coordinates.
-	 */
-	contentMouseDoubleClickEvent(event: CMouseEvent): void {
+    /** Starts editing the item under a double click. */
+    contentMouseDoubleClickEvent(event: CMouseEvent): void {
 		const model = this.model();
 		const selectionModel = this.selectionModel();
 
@@ -409,11 +332,8 @@ export class CListView extends CAbstractItemView {
 		event.accept();
 	}
 
-	/**
-	 * Handles list or icon navigation keys and activates the current icon item on Enter.
-	 * @param event Keyboard event to handle for the view.
-	 */
-	contentKeyPressEvent(event: CKeyEvent): void {
+    /** Handles keyboard navigation and editing in the list content. */
+    contentKeyPressEvent(event: CKeyEvent): void {
 		const model = this.model();
 		const selectionModel = this.selectionModel();
 
@@ -447,7 +367,6 @@ export class CListView extends CAbstractItemView {
             if (next === null) { event.ignore(); return; }
             row = this.currentIndex().isValid() ? next : 0;
         } else {
-
 
 		if (!this.currentIndex().isValid()) {
 			row = 0;
@@ -495,20 +414,12 @@ export class CListView extends CAbstractItemView {
 		event.accept();
 	}
 
-	/**
-	 * Returns the widget used as editor parent.
-	 * @returns The content widget.
-	 */
 	protected override editorParent(): CWidget {
 		return this.#m_contentWidget;
 	}
 
-	/**
-	 * Updates list state after the model changes.
-	 * @param _oldModel Old model. This implementation ignores the argument.
-	 * @param _newModel New model. This implementation ignores the argument.
-	 */
-	protected override modelChanged(
+    /** Updates list state after the model changes. */
+    protected override modelChanged(
 		_oldModel: CAbstractItemModel | null,
 		_newModel: CAbstractItemModel | null
 	): void {
@@ -516,34 +427,30 @@ export class CListView extends CAbstractItemView {
 		this.#m_contentWidget.update();
 	}
 
-	/** Repaints list items after model data changes. */
-	protected override modelDataChanged(): void {
+    /** Repaints list items after model data changes. */
+    protected override modelDataChanged(): void {
 		this.#m_contentWidget.update();
 	}
 
-	/** Updates list geometry after a model reset. */
-	protected override modelReset(): void {
+    /** Updates list geometry after a model reset. */
+    protected override modelReset(): void {
 		this.#updateContentGeometry();
 		this.#m_contentWidget.update();
 	}
 
-	/** Updates list geometry after rows are inserted or removed. */
-	protected override modelRowsInserted(): void {
+    /** Updates list geometry after rows are inserted or removed. */
+    protected override modelRowsInserted(): void {
 		this.#updateContentGeometry();
 		this.#m_contentWidget.update();
 	}
 
-	/** Recalculates the content size after rows are removed and requests a repaint. */
 	protected override modelRowsRemoved(): void {
 		this.#updateContentGeometry();
 		this.#m_contentWidget.update();
 	}
 
-	/**
-	 * Runs base edit cleanup, scrolls a valid current item into view and repaints the content.
-	 * @param index New current model index.
-	 */
-	protected override currentIndexChanged(index: CModelIndex): void {
+    /** Scrolls to and repaints a newly selected current index. */
+    protected override currentIndexChanged(index: CModelIndex): void {
 		super.currentIndexChanged(index);
 		if (index.isValid())
 			this.#ensureIndexVisible(index);
@@ -551,8 +458,8 @@ export class CListView extends CAbstractItemView {
 		this.#m_contentWidget.update();
 	}
 
-	/** Restores focus to the list content after editing. */
-	protected override editorClosed(): void {
+    /** Restores focus to the list content after editing. */
+    protected override editorClosed(): void {
 		this.#m_contentWidget.setFocus();
 		this.#m_contentWidget.update();
 	}

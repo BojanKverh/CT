@@ -1,14 +1,18 @@
+/** @module Widgets/CStatusBar */
 import { CSize } from "../geometry/CSize.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 import type { CPainter } from "../painting/CPainter.js";
 import { CWidget } from "./CWidget.js";
 import { CTimer } from "../core/CTimer.js";
 
-/** Implements the status bar widget. */
+/** Bottom status area supporting temporary messages, normal widgets and permanent widgets. */
 export class CStatusBar extends CWidget {
-	static readonly DefaultHeight = 24;
-	static readonly Margin = 3;
-	static readonly Spacing = 6;
+    /** Default preferred logical height. */
+    static readonly DefaultHeight = 24;
+    /** Default logical inset around contents. */
+    static readonly Margin = 3;
+    /** Default logical gap between adjacent items. */
+    static readonly Spacing = 6;
 
 	#m_widgets: CWidget[] = [];
 	#m_permanentWidgets: CWidget[] = [];
@@ -18,9 +22,11 @@ export class CStatusBar extends CWidget {
 
 	#m_savedVisibility = new Map<CWidget, boolean>();
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null) {
-		/** Provides super behavior. */
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null) {
 		super(parent);
 
 		this.#m_messageTimer.setSingleShot(true);
@@ -30,20 +36,14 @@ export class CStatusBar extends CWidget {
 		});
 	}
 
-	/**
-	 * Returns the preferred size of the widget.
-	 * @returns A new `CSize`.
-	 */
 	override sizeHint(): CSize {
 		return new CSize(0, CStatusBar.DefaultHeight);
 	}
 
-	/**
-	 * Appends a normal widget, reparents it to the status bar and updates item geometry.
-	 * @param widget Widget to add to the normal area.
-	 * @returns The same widget instance.
-	 */
-	addWidget(widget: CWidget): CWidget {
+    /**
+    * Adds a normal status widget. Temporary messages hide normal widgets.
+    */
+    addWidget(widget: CWidget): CWidget {
 		widget.setParent(this);
 
 		this.#m_widgets.push(widget);
@@ -52,12 +52,10 @@ export class CStatusBar extends CWidget {
 		return widget;
 	}
 
-	/**
-	 * Appends a permanent widget, reparents it to the status bar and updates item geometry.
-	 * @param widget Widget to add to the permanent area.
-	 * @returns The same widget instance.
-	 */
-	addPermanentWidget(widget: CWidget): CWidget {
+    /**
+    * Adds a widget that remains available beside temporary status messages.
+    */
+    addPermanentWidget(widget: CWidget): CWidget {
 		widget.setParent(this);
 
 		this.#m_permanentWidgets.push(widget);
@@ -66,14 +64,12 @@ export class CStatusBar extends CWidget {
 		return widget;
 	}
 
-	/**
-	 * Removes a registered normal or permanent widget and detaches it without destroying it.
-	 * @param widget Widget to remove.
-	 */
-	removeWidget(widget: CWidget): void {
+    /**
+    * Removes a registered normal or permanent widget and reparents it away from the status bar.
+    */
+    removeWidget(widget: CWidget): void {
 		let index = this.#m_widgets.indexOf(widget);
 
-		/** Provides if behavior. */
 		if (index !== -1) {
 			this.#m_widgets.splice(index, 1);
 			widget.setParent(null);
@@ -86,7 +82,6 @@ export class CStatusBar extends CWidget {
 
 		index = this.#m_permanentWidgets.indexOf(widget);
 
-		/** Provides if behavior. */
 		if (index === -1)
 			return;
 
@@ -97,35 +92,29 @@ export class CStatusBar extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Returns the current message.
-	 * @returns The current message.
-	 */
-	currentMessage(): string {
+    /**
+    * Returns the temporary message text, or an empty string when none is active.
+    */
+    currentMessage(): string {
 		return this.#m_currentMessage;
 	}
 
-	/**
-	 * Shows message.
-	 * @param message Message.
-	 * @param timeout Timeout. Defaults to `0`.
-	 */
-	showMessage(message: string, timeout = 0): void {
+    /**
+    * Displays a message and hides normal status widgets. A positive timeout clears it after that many milliseconds; zero keeps it until cleared.
+    */
+    showMessage(message: string, timeout = 0): void {
 		this.#stopMessageTimer();
 
-		/** Provides if behavior. */
 		if (this.#m_currentMessage === "")
 			this.#hideNormalWidgets();
 
 		this.#m_currentMessage = message;
 
-		/** Provides if behavior. */
 		if (message === "") {
 			this.clearMessage();
 			return;
 		}
 
-		/** Provides if behavior. */
 		if (timeout > 0) {
 			this.#m_messageTimer.start(timeout);
 		}
@@ -133,11 +122,12 @@ export class CStatusBar extends CWidget {
 		this.update();
 	}
 
-	/** Clears message. */
-	clearMessage(): void {
+    /**
+    * Stops the message timer, removes the message and restores normal widget visibility.
+    */
+    clearMessage(): void {
 		this.#stopMessageTimer();
 
-		/** Provides if behavior. */
 		if (this.#m_currentMessage === "")
 			return;
 
@@ -147,13 +137,6 @@ export class CStatusBar extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Sets the geometry.
-	 * @param x Horizontal position in parent coordinates.
-	 * @param y Vertical position in parent coordinates.
-	 * @param width Width in logical pixels.
-	 * @param height Height in logical pixels.
-	 */
 	override setGeometry(
 		x: number,
 		y: number,
@@ -165,21 +148,12 @@ export class CStatusBar extends CWidget {
 		this.#updateItemGeometry();
 	}
 
-	/**
-	 * Resizes the width.
-	 * @param width Width in logical pixels.
-	 * @param height Height in logical pixels.
-	 */
 	override resize(width: number, height: number): void {
 		super.resize(width, height);
 
 		this.#updateItemGeometry();
 	}
 
-	/**
-	 * Draws the status bar through the supplied painter.
-	 * @param painter Painter for the current drawing operation.
-	 */
 	protected override paintEvent(painter: CPainter): void {
         const palette = this.palette();
 
@@ -200,7 +174,6 @@ export class CStatusBar extends CWidget {
 			this.width(), this.height()
 		);
 
-		/** Provides if behavior. */
 		if (this.#m_currentMessage === "")
 			return;
 
@@ -219,7 +192,6 @@ export class CStatusBar extends CWidget {
 	#hideNormalWidgets(): void {
 		this.#m_savedVisibility.clear();
 
-		/** Provides for behavior. */
 		for (const widget of this.#m_widgets) {
 			this.#m_savedVisibility.set(
 				widget,
@@ -231,9 +203,7 @@ export class CStatusBar extends CWidget {
 	}
 
 	#restoreNormalWidgets(): void {
-		/** Provides for behavior. */
 		for (const widget of this.#m_widgets) {
-			/** Provides if behavior. */
 			if (this.#m_savedVisibility.get(widget))
 				widget.show();
 		}
@@ -242,7 +212,6 @@ export class CStatusBar extends CWidget {
 	}
 
 	#stopMessageTimer(): void {
-		/** Provides if behavior. */
 		if (this.#m_messageTimer === null)
 			return;
 
@@ -252,12 +221,10 @@ export class CStatusBar extends CWidget {
 	#messageWidth(): number {
 		let right = this.width() - CStatusBar.Margin;
 
-		/** Provides if behavior. */
 		if (this.#m_permanentWidgets.length > 0) {
 			const first =
 				this.#m_permanentWidgets[0];
-            
-            /** Provides if behavior. */
+
             if (first !== undefined)
 			    right = first.x() - CStatusBar.Spacing;
 		}
@@ -279,7 +246,6 @@ export class CStatusBar extends CWidget {
 
 		let left = margin;
 
-		/** Provides for behavior. */
 		for (const widget of this.#m_widgets) {
 			const hint = widget.sizeHint();
 
@@ -295,7 +261,6 @@ export class CStatusBar extends CWidget {
 
 		let right = this.width() - margin;
 
-		/** Provides for behavior. */
 		for (
 			let i = this.#m_permanentWidgets.length - 1;
 			i >= 0;
@@ -303,7 +268,6 @@ export class CStatusBar extends CWidget {
 		) {
 			const widget =
 				this.#m_permanentWidgets[i];
-            /** Provides if behavior. */
             if (widget === undefined)
                 continue;
 

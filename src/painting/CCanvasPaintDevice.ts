@@ -1,3 +1,4 @@
+/** @module Painting/CCanvasPaintDevice */
 import { CPaintDevice } from "./CPaintDevice.js";
 import { CCanvasPaintEngine } from "./CCanvasPaintEngine.js";
 
@@ -23,29 +24,17 @@ export class CCanvasPaintDevice extends CPaintDevice {
         this.#m_paintEngine = new CCanvasPaintEngine(context);
     }
 
-    /**
-     * Reads the canvas width exposed to painters.
-     * @returns Logical width, before the device pixel ratio is applied.
-     */
+    /** Returns the logical canvas width in CSS pixels. */
     width(): number {
         return this.#m_width;
     }
 
-    /**
-     * Reads the canvas height exposed to painters.
-     * @returns Logical height, before the device pixel ratio is applied.
-     */
+    /** Returns the logical canvas height in CSS pixels. */
     height(): number {
         return this.#m_height;
     }
 
-    /**
-     * Updates the logical size and canvas bitmap, then sets the context scale to preserve logical drawing coordinates. Throws `RangeError` for invalid or oversized dimensions.
-     * @param width Positive finite logical width.
-     * @param height Positive finite logical height.
-     * @param pixelRatio Positive finite bitmap pixels per logical pixel. Defaults to one.
-     * @returns `true` if the logical or bitmap dimensions changed.
-     */
+    /** Synchronizes the backing bitmap without changing the CSS size. */
     resize(width: number, height: number, pixelRatio = 1): boolean {
         if (![width, height, pixelRatio].every(Number.isFinite) ||
             width <= 0 || height <= 0 || pixelRatio <= 0)
@@ -68,18 +57,12 @@ export class CCanvasPaintDevice extends CPaintDevice {
         return true;
     }
 
-    /**
-     * Exposes the DOM element that receives the drawing output.
-     * @returns The backing `HTMLCanvasElement`.
-     */
+    /** Returns the underlying HTML canvas element. */
     canvas(): HTMLCanvasElement {
         return this.#m_canvas;
     }
 
-    /**
-     * Looks up the renderer bound to the canvas context.
-     * @returns The device's canvas paint engine.
-     */
+    /** Returns the canvas paint engine used by this device. */
     paintEngine(): CCanvasPaintEngine {
         return this.#m_paintEngine;
     }

@@ -1,3 +1,4 @@
+/** @module Utilities/CTextWordBoundary */
 /** Internal word navigation in UTF-16 editor offsets. */
 function positionInText(text: string, position: number): number {
     let pos = Number.isFinite(position)

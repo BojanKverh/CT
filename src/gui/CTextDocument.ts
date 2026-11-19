@@ -1,3 +1,4 @@
+/** @module GUI/CTextDocument */
 import { CTextCharFormat } from "./CTextCharFormat.js";
 
 /**
@@ -5,7 +6,7 @@ import { CTextCharFormat } from "./CTextCharFormat.js";
  */
 export type CTextFormatRange = {
 		/**
-	 * The start value.
+	 * UTF-16 offset where this range begins.
 	 */
 start: number;
 		/**
@@ -13,22 +14,22 @@ start: number;
 	 */
 length: number;
 		/**
-	 * The format value.
+	 * Character-format snapshot applied to this text range.
 	 */
 format: CTextCharFormat;
 };
 
 type CMutableTextFormatRange = {
 		/**
-	 * The start value.
+	 * UTF-16 offset where this range begins.
 	 */
 start: number;
 		/**
-	 * The end value.
+	 * Exclusive UTF-16 offset where this range ends.
 	 */
 end: number;
 		/**
-	 * The format value.
+	 * Character-format snapshot applied to this text range.
 	 */
 format: CTextCharFormat;
 };
@@ -40,36 +41,34 @@ export class CTextDocument {
 	#m_text = "";
 	#m_ranges: CMutableTextFormatRange[] = [];
 
-		/**
-	 * Creates a new CTextDocument instance.
-	 *
-	 * @param text Text.
-	 */
-constructor(text = "") {
+    /**
+    * Creates a rich-text document from the supplied plain text, or an empty document when text is omitted.
+    */
+    constructor(text = "") {
 		this.setPlainText(text);
 	}
 
-		/**
- * Reads the stored document without formatting markup.
- * @returns Plain text, including line breaks.
- */
-toPlainText(): string {
+    /**
+    * Returns the document contents as plain text.
+    *
+    */
+    toPlainText(): string {
 		return this.#m_text;
 	}
 
-		/**
- * Measures the stored text in the units used for document offsets.
- * @returns Number of UTF-16 code units.
- */
-length(): number {
+    /**
+    * Returns the number of characters in the document.
+    *
+    */
+    length(): number {
 		return this.#m_text.length;
 	}
 
-		/**
- * Copies the text and deep-copies its character-format ranges.
- * @returns An independent document with the same text and formatting.
- */
-clone(): CTextDocument {
+    /**
+    * Creates an independent copy of this object.
+    *
+    */
+    clone(): CTextDocument {
 		const document = new CTextDocument();
 
 		document.#m_text = this.#m_text;
@@ -80,11 +79,12 @@ clone(): CTextDocument {
 		return document;
 	}
 
-		/**
- * Replaces all text and resets formatting to the default.
- * @param text New plain contents, or an empty string to clear the document.
- */
-setPlainText(text: string): void {
+    /**
+    * Replaces the document contents with plain text.
+    *
+    * @param text Text.
+    */
+    setPlainText(text: string): void {
 		this.#m_text = text;
 		this.#m_ranges = text.length === 0
 			? []
@@ -95,17 +95,19 @@ setPlainText(text: string): void {
 			}];
 	}
 
-		/** Removes all text and character-format ranges. */
-clear(): void {
+    /**
+    * Clears the current contents.
+    */
+    clear(): void {
 		this.#m_text = "";
 		this.#m_ranges = [];
 	}
 
-		/**
- * Lists the character-format runs in document order.
- * @returns A new array of UTF-16 ranges with independent format copies.
- */
-formatRanges(): readonly CTextFormatRange[] {
+    /**
+    * Returns the character-format ranges in the document.
+    *
+    */
+    formatRanges(): readonly CTextFormatRange[] {
 		return this.#m_ranges.map(range => ({
 			start: range.start,
 			length: range.end - range.start,
@@ -113,12 +115,13 @@ formatRanges(): readonly CTextFormatRange[] {
 		}));
 	}
 
-		/**
- * Reads the format at a document offset. Negative offsets and offsets beyond the end throw `RangeError`.
- * @param position UTF-16 offset. An offset equal to the length reads the last range's format.
- * @returns A copy of the matching format, or a new default format if none applies.
- */
-charFormatAt(position: number): CTextCharFormat {
+    /**
+    * Returns the character format at the specified position.
+    *
+    * @param position Position.
+    *
+    */
+    charFormatAt(position: number): CTextCharFormat {
 		if (position < 0 || position > this.#m_text.length)
 			throw new RangeError("Text position is out of range.");
 
@@ -135,13 +138,14 @@ charFormatAt(position: number): CTextCharFormat {
 		return range?.format.clone() ?? new CTextCharFormat();
 	}
 
-		/**
- * Inserts text and adjusts the stored ranges, merging consecutive runs with equal formats.
- * @param position Integer UTF-16 insertion offset from zero through the document length.
- * @param text Plain text to insert. An empty string leaves the document unchanged.
- * @param format Explicit format to copy, or `null` to inherit from the preceding character, the first character at offset zero, or the default for an empty document.
- */
-insert(
+    /**
+    * Inserts text at the specified position.
+    *
+    * @param position Position.
+    * @param text Text.
+    * @param format Format.
+    */
+    insert(
 		position: number,
 		text: string,
 		format: CTextCharFormat | null = null
@@ -197,12 +201,13 @@ insert(
 		this.#m_ranges = this.#normalize(ranges);
 	}
 
-		/**
- * Deletes text and closes the gap in its character-format ranges.
- * @param start Nonnegative integer start offset in UTF-16 code units.
- * @param length Nonnegative number of code units to remove. The range must lie within the document.
- */
-remove(start: number, length: number): void {
+    /**
+    * Removes a range of text from the document.
+    *
+    * @param start Start.
+    * @param length Length.
+    */
+    remove(start: number, length: number): void {
 		this.#checkRange(start, length);
 
 		if (length === 0)
@@ -249,13 +254,14 @@ remove(start: number, length: number): void {
 		this.#m_ranges = this.#normalize(ranges);
 	}
 
-		/**
- * Replaces the formatting across a document range without modifying its text.
- * @param start Nonnegative integer start offset in UTF-16 code units.
- * @param length Nonnegative number of code units to format. The range must lie within the document.
- * @param format Format to copy into the affected range.
- */
-setCharFormat(
+    /**
+    * Applies a character format to a range of text.
+    *
+    * @param start Start.
+    * @param length Length.
+    * @param format Format.
+    */
+    setCharFormat(
 		start: number,
 		length: number,
 		format: CTextCharFormat

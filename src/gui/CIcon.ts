@@ -1,3 +1,4 @@
+/** @module GUI/CIcon */
 import { CSize } from "../geometry/CSize.js";
 import { CPixmap } from "../painting/CPixmap.js";
 
@@ -5,36 +6,36 @@ import { CPixmap } from "../painting/CPixmap.js";
  * Defines the visual mode in which an icon is requested.
  */
 export enum CIconMode {
-		/**
-	 * Normal appearance.
-	 */
-Normal,
-		/**
-	 * Disabled appearance.
-	 */
-Disabled,
-		/**
-	 * The widget is active.
-	 */
-Active,
-		/**
-	 * Selected appearance.
-	 */
-Selected
+    /**
+    * Normal appearance.
+    */
+    Normal,
+    /**
+    * Disabled appearance.
+    */
+    Disabled,
+    /**
+    * Request the image variant for an active control interaction.
+    */
+    Active,
+    /**
+    * Selected appearance.
+    */
+    Selected
 }
 
 /**
  * Defines the on/off state of an icon.
  */
 export enum CIconState {
-		/**
-	 * Off state.
-	 */
-Off,
-		/**
-	 * The control is in the on state.
-	 */
-On
+    /**
+    * Off state.
+    */
+    Off,
+    /**
+    * The control is in the on state.
+    */
+    On
 }
 
 type CIconPixmap = {
@@ -43,11 +44,11 @@ type CIconPixmap = {
 	 */
 pixmap: CPixmap;
 		/**
-	 * The mode value.
+	 * Visual interaction mode associated with this stored pixmap.
 	 */
 mode: CIconMode;
 		/**
-	 * The state value.
+	 * Checked or unchecked variant associated with this stored pixmap.
 	 */
 state: CIconState;
 };
@@ -58,31 +59,30 @@ state: CIconState;
 export class CIcon {
 	#m_pixmaps: CIconPixmap[] = [];
 
-		/**
-	 * Creates a new CIcon instance.
-	 *
-	 * @param pixmap Pixmap.
-	 */
-constructor(pixmap: CPixmap | null = null) {
+    /**
+    * Creates an empty icon, or registers pixmap as its initial normal, unchecked image.
+    */
+    constructor(pixmap: CPixmap | null = null) {
 		if (pixmap !== null)
 			this.addPixmap(pixmap);
 	}
 
-		/**
- * Checks whether the icon has any raster variants.
- * @returns `true` if no pixmaps are registered.
- */
-isNull(): boolean {
+    /**
+    * Returns whether the icon contains no pixmaps.
+    *
+    */
+    isNull(): boolean {
 		return this.#m_pixmaps.length === 0;
 	}
 
-		/**
- * Registers a pixmap as a candidate for the specified mode and state.
- * @param pixmap Image to register.
- * @param mode Visual mode. Defaults to Normal.
- * @param state On or Off state. Defaults to Off.
- */
-addPixmap(pixmap: CPixmap, mode = CIconMode.Normal,
+    /**
+    * Adds a pixmap for the specified icon mode and state.
+    *
+    * @param pixmap Pixmap.
+    * @param mode Mode.
+    * @param state State.
+    */
+    addPixmap(pixmap: CPixmap, mode = CIconMode.Normal,
 		state = CIconState.Off): void {
 		this.#m_pixmaps.push({
 			pixmap,
@@ -91,14 +91,15 @@ addPixmap(pixmap: CPixmap, mode = CIconMode.Normal,
 		});
 	}
 
-		/**
- * Selects the nearest-sized pixmap from the first matching mode/state group, penalizing upscaling more than downscaling.
- * @param size Requested image width and height.
- * @param mode Preferred visual mode. Defaults to Normal, which is also tried as a fallback.
- * @param state Preferred icon state. Defaults to Off, which is also tried as a fallback.
- * @returns The selected original pixmap, or `null` when no variant matches the fallback chain.
- */
-pixmap(size: CSize, mode = CIconMode.Normal,
+    /**
+    * Returns the best matching pixmap for the requested size, mode, and state.
+    *
+    * @param size Size.
+    * @param mode Mode.
+    * @param state State.
+    *
+    */
+    pixmap(size: CSize, mode = CIconMode.Normal,
 		state = CIconState.Off): CPixmap | null {
 		const candidates = this.#candidates(mode, state);
 
@@ -121,13 +122,14 @@ pixmap(size: CSize, mode = CIconMode.Normal,
 		return best.pixmap;
 	}
 
-		/**
- * Lists the sizes in the first available group in the mode/state fallback chain.
- * @param mode Preferred visual mode, defaulting to Normal.
- * @param state Preferred icon state, defaulting to Off.
- * @returns A new array of candidate dimensions in registration order, or an empty array if no group matches.
- */
-availableSizes(mode = CIconMode.Normal,
+    /**
+    * Returns the sizes available for the specified icon mode and state.
+    *
+    * @param mode Mode.
+    * @param state State.
+    *
+    */
+    availableSizes(mode = CIconMode.Normal,
 		state = CIconState.Off): CSize[] {
 		return this.#candidates(mode, state).map(entry =>
 			new CSize(entry.pixmap.width(), entry.pixmap.height()));

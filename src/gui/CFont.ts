@@ -1,40 +1,110 @@
+/** @module GUI/CFont */
 /** Font style used by a canvas font. */
 export enum CFontStyle {
-	Normal = "normal",
-	Italic = "italic",
-	Oblique = "oblique"
+    /**
+    * Use upright glyphs without italic or oblique styling.
+    */
+    Normal = "normal",
+    /**
+    * Request the italic face from the selected font family.
+    */
+    Italic = "italic",
+    /**
+    * Request a slanted face from the selected font family.
+    */
+    Oblique = "oblique"
 }
 
 /** Common CSS font weights. */
 export enum CFontWeight {
-	Thin = 100,
-	ExtraLight = 200,
-	Light = 300,
-	Normal = 400,
-	Medium = 500,
-	DemiBold = 600,
-	Bold = 700,
-	ExtraBold = 800,
-	Black = 900
+    /**
+    * CSS numeric weight 100 requested from the selected font family.
+    */
+    Thin = 100,
+    /**
+    * CSS numeric weight 200 requested from the selected font family.
+    */
+    ExtraLight = 200,
+    /**
+    * CSS numeric weight 300 requested from the selected font family.
+    */
+    Light = 300,
+    /**
+    * CSS numeric weight 400 requested from the selected font family.
+    */
+    Normal = 400,
+    /**
+    * CSS numeric weight 500 requested from the selected font family.
+    */
+    Medium = 500,
+    /**
+    * CSS numeric weight 600 requested from the selected font family.
+    */
+    DemiBold = 600,
+    /**
+    * CSS numeric weight 700 requested from the selected font family.
+    */
+    Bold = 700,
+    /**
+    * CSS numeric weight 800 requested from the selected font family.
+    */
+    ExtraBold = 800,
+    /**
+    * CSS numeric weight 900 requested from the selected font family.
+    */
+    Black = 900
 }
 
 /** Font width variant used by a canvas font. */
 export enum CFontStretch {
-	UltraCondensed = "ultra-condensed",
-	ExtraCondensed = "extra-condensed",
-	Condensed = "condensed",
-	SemiCondensed = "semi-condensed",
-	Normal = "normal",
-	SemiExpanded = "semi-expanded",
-	Expanded = "expanded",
-	ExtraExpanded = "extra-expanded",
-	UltraExpanded = "ultra-expanded"
+    /**
+    * Request the CSS ultra-condensed width variant from the font family.
+    */
+    UltraCondensed = "ultra-condensed",
+    /**
+    * Request the CSS extra-condensed width variant from the font family.
+    */
+    ExtraCondensed = "extra-condensed",
+    /**
+    * Request the CSS condensed width variant from the font family.
+    */
+    Condensed = "condensed",
+    /**
+    * Request the CSS semi-condensed width variant from the font family.
+    */
+    SemiCondensed = "semi-condensed",
+    /**
+    * Request the CSS normal width variant from the font family.
+    */
+    Normal = "normal",
+    /**
+    * Request the CSS semi-expanded width variant from the font family.
+    */
+    SemiExpanded = "semi-expanded",
+    /**
+    * Request the CSS expanded width variant from the font family.
+    */
+    Expanded = "expanded",
+    /**
+    * Request the CSS extra-expanded width variant from the font family.
+    */
+    ExtraExpanded = "extra-expanded",
+    /**
+    * Request the CSS ultra-expanded width variant from the font family.
+    */
+    UltraExpanded = "ultra-expanded"
 }
 
 /** Font capitalization variant supported by the canvas font shorthand. */
 export enum CFontCapitalization {
-	MixedCase = "normal",
-	SmallCaps = "small-caps"
+    /**
+    * Preserve the normal upper- and lowercase glyph forms.
+    */
+    MixedCase = "normal",
+    /**
+    * Request small-capital glyphs for lowercase characters.
+    */
+    SmallCaps = "small-caps"
 }
 
 /**
@@ -51,16 +121,40 @@ export class CFont {
 	#m_stretch = CFontStretch.Normal;
 	#m_capitalization = CFontCapitalization.MixedCase;
 
-	constructor();
-	constructor(other: CFont);
-	constructor(
+    /**
+    * Copies another font or configures CSS font properties. The default is 14-pixel normal sans-serif.
+    */
+    constructor();
+    /**
+    * Copies another font or configures CSS font properties. The default is 14-pixel normal sans-serif.
+    * @param other Value object whose settings are copied.
+    */
+    constructor(other: CFont);
+    /**
+    * Copies another font or configures CSS font properties. The default is 14-pixel normal sans-serif.
+    * @param family CSS font family with optional fallback families.
+    * @param pixelSize Logical font size in pixels.
+    * @param weight CSS numeric font weight.
+    * @param italic Whether the configured font uses italic styling.
+    */
+    constructor(
 		family: string,
 		pixelSize?: number,
 		weight?: number,
 		italic?: boolean
 	);
-	constructor(
+    /**
+    * Copies another font or configures CSS font properties. The default is 14-pixel normal sans-serif.
+    * @param familyOrFont Input used to configure CFont. Omit to use `"sans-serif"`.
+    * @param pixelSize Logical font size in pixels. Omit to use `14`.
+    * @param weight CSS numeric font weight. Omit to use `CFontWeight.Normal`.
+    * @param italic Whether the configured font uses italic styling. Omit to use `false`.
+    */
+    constructor(
 		familyOrFont: string | CFont = "sans-serif",
+		/**
+		 * Returns the logical font size in pixels.
+		 */
 		pixelSize = 14,
 		weight: number = CFontWeight.Normal,
 		italic = false
@@ -81,144 +175,126 @@ export class CFont {
 		this.setItalic(italic);
 	}
 
-	/**
-	 * Reads the family.
-	 * @returns The family.
-	 */
-	family(): string {
+    /**
+    * Returns the CSS font-family value, including any fallback families.
+    */
+    family(): string {
 		return this.#m_family;
 	}
 
-	/**
-	 * Sets the family.
-	 * @param family Family.
-	 */
-	setFamily(family: string): void {
+    /**
+    * Changes the font-family value used when converting this font to CSS.
+    */
+    setFamily(family: string): void {
 		const trimmed = family.trim();
 		if (trimmed.length > 0)
 			this.#m_family = trimmed;
 	}
 
-	/**
-	 * Reads the pixel size.
-	 * @returns The pixel size.
-	 */
-	pixelSize(): number {
+    /**
+    * Returns the logical font size in pixels.
+    */
+    pixelSize(): number {
 		return this.#m_pixelSize;
 	}
 
-	/**
-	 * Sets the pixel size. The implementation checks whether `pixelSize` is finite.
-	 * @param pixelSize Pixel size.
-	 */
-	setPixelSize(pixelSize: number): void {
+    /**
+    * Changes the logical font size in pixels.
+    */
+    setPixelSize(pixelSize: number): void {
 		if (Number.isFinite(pixelSize) && pixelSize > 0)
 			this.#m_pixelSize = pixelSize;
 	}
 
-	/**
-	 * Reads the weight.
-	 * @returns The weight.
-	 */
-	weight(): number {
+    /**
+    * Returns the CSS font-weight value.
+    */
+    weight(): number {
 		return this.#m_weight;
 	}
 
-	/**
-	 * Sets the weight. The implementation checks whether `weight` is finite.
-	 * @param weight Weight.
-	 */
-	setWeight(weight: number): void {
+    /**
+    * Changes font weight used by CSS text drawing.
+    */
+    setWeight(weight: number): void {
 		if (Number.isFinite(weight))
 			this.#m_weight = Math.max(1, Math.min(1000, Math.round(weight)));
 	}
 
-	/**
-	 * Checks whether the font is bold.
-	 * @returns `true` if the font is bold, otherwise `false`.
-	 */
-	isBold(): boolean {
+    /**
+    * Reports whether the font weight meets the bold threshold.
+    */
+    isBold(): boolean {
 		return this.#m_weight >= CFontWeight.Bold;
 	}
 
-	/**
-	 * Sets the bold.
-	 * @param bold Bold flag.
-	 */
-	setBold(bold: boolean): void {
+    /**
+    * Chooses a normal or bold font weight.
+    */
+    setBold(bold: boolean): void {
 		this.#m_weight = bold ? CFontWeight.Bold : CFontWeight.Normal;
 	}
 
-	/**
-	 * Reads the style.
-	 * @returns The style.
-	 */
-	style(): CFontStyle {
+    /**
+    * Returns the CSS font-style value.
+    */
+    style(): CFontStyle {
 		return this.#m_style;
 	}
 
-	/**
-	 * Sets the style.
-	 * @param style Style.
-	 */
-	setStyle(style: CFontStyle): void {
+    /**
+    * Changes normal, italic or oblique styling.
+    */
+    setStyle(style: CFontStyle): void {
 		this.#m_style = style;
 	}
 
-	/**
-	 * Checks whether the font is italic.
-	 * @returns `true` if the font is italic, otherwise `false`.
-	 */
-	isItalic(): boolean {
+    /**
+    * Reports whether italic font styling is configured.
+    */
+    isItalic(): boolean {
 		return this.#m_style === CFontStyle.Italic;
 	}
 
-	/**
-	 * Sets the italic.
-	 * @param italic Italic flag.
-	 */
-	setItalic(italic: boolean): void {
+    /**
+    * Switches between normal and italic styling.
+    */
+    setItalic(italic: boolean): void {
 		this.#m_style = italic ? CFontStyle.Italic : CFontStyle.Normal;
 	}
 
-	/**
-	 * Reads the stretch.
-	 * @returns The stretch.
-	 */
-	stretch(): CFontStretch {
+    /**
+    * Returns the CSS font-stretch value.
+    */
+    stretch(): CFontStretch {
 		return this.#m_stretch;
 	}
 
-	/**
-	 * Sets the stretch.
-	 * @param stretch Stretch.
-	 */
-	setStretch(stretch: CFontStretch): void {
+    /**
+    * Changes the CSS stretch value used when painting text.
+    */
+    setStretch(stretch: CFontStretch): void {
 		this.#m_stretch = stretch;
 	}
 
-	/**
-	 * Reads the capitalization.
-	 * @returns The capitalization.
-	 */
-	capitalization(): CFontCapitalization {
+    /**
+    * Returns the configured text capitalization policy.
+    */
+    capitalization(): CFontCapitalization {
 		return this.#m_capitalization;
 	}
 
-	/**
-	 * Sets the capitalization.
-	 * @param capitalization Capitalization.
-	 */
-	setCapitalization(capitalization: CFontCapitalization): void {
+    /**
+    * Changes the capitalization policy retained by this font.
+    */
+    setCapitalization(capitalization: CFontCapitalization): void {
 		this.#m_capitalization = capitalization;
 	}
 
-	/**
-	 * Checks whether the font is equal.
-	 * @param other Other.
-	 * @returns `true` if the font is equal, otherwise `false`.
-	 */
-	isEqual(other: CFont): boolean {
+    /**
+    * Compares all retained font settings with another font.
+    */
+    isEqual(other: CFont): boolean {
 		return this.#m_family === other.#m_family &&
 			this.#m_pixelSize === other.#m_pixelSize &&
 			this.#m_weight === other.#m_weight &&
@@ -227,11 +303,8 @@ export class CFont {
 			this.#m_capitalization === other.#m_capitalization;
 	}
 
-	/**
-	 * Returns a CSS font shorthand suitable for a canvas 2D context.
-	 * @returns The CSS representation.
-	 */
-	toCss(): string {
+    /** Returns a CSS font shorthand suitable for a canvas 2D context. */
+    toCss(): string {
 		const parts: string[] = [];
 
 		if (this.#m_style !== CFontStyle.Normal)
@@ -247,12 +320,8 @@ export class CFont {
 		return parts.join(" ");
 	}
 
-	/**
-	 * Creates a font from the common CSS shorthand returned by a canvas.
-	 * @param css Css.
-	 * @returns The resulting font.
-	 */
-	static fromCss(css: string): CFont {
+    /** Creates a font from the common CSS shorthand returned by a canvas. */
+    static fromCss(css: string): CFont {
 		const tokens = css.trim().split(/\s+/);
 		const sizeIndex = tokens.findIndex(token => /^\d+(?:\.\d+)?px$/.test(token));
 

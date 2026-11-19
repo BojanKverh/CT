@@ -1,5 +1,37 @@
+/**
+ * Interpolation functions mapping normalized time to normalized progress; elastic curves may overshoot.
+ */
 // Append new types to keep the numeric values of existing curves unchanged.
-export enum CEasingCurveType { Linear, InQuad, OutQuad, InOutQuad, OutCubic, OutElastic, OutBounce }
+export enum CEasingCurveType {
+    /**
+    * Progress equals normalized elapsed time.
+    */
+    Linear,
+    /**
+    * Quadratic acceleration from a slow start.
+    */
+    InQuad,
+    /**
+    * Quadratic deceleration toward the end.
+    */
+    OutQuad,
+    /**
+    * Quadratic acceleration followed by quadratic deceleration.
+    */
+    InOutQuad,
+    /**
+    * Cubic deceleration toward the end.
+    */
+    OutCubic,
+    /**
+    * Damped elastic oscillation around the final value.
+    */
+    OutElastic,
+    /**
+    * Repeated diminishing bounces approaching the final value.
+    */
+    OutBounce
+}
 
 /** Clamps input time to [0, 1]. Elastic output may exceed that interval. */
 export class CEasingCurve {
@@ -16,14 +48,13 @@ export class CEasingCurve {
         } else this.setType(curve);
     }
     /**
-     * Reads the easing function currently configured.
-     * @returns Easing curve identifier.
-     */
+    * Configured interpolation or representation type.
+    * The initial value is `CEasingCurveType.Linear`.
+    */
     type(): CEasingCurveType { return this.#type; }
     /**
-     * Changes the easing function and rejects unknown identifiers.
-     * @param type Supported easing curve identifier.
-     */
+    * Selects a supported curve family. Throws RangeError for an unknown enum value.
+    */
     setType(type: CEasingCurveType): void {
         if (![CEasingCurveType.Linear, CEasingCurveType.InQuad, CEasingCurveType.OutQuad,
             CEasingCurveType.InOutQuad, CEasingCurveType.OutCubic,
@@ -31,40 +62,30 @@ export class CEasingCurve {
             throw new RangeError("Unknown easing curve.");
         this.#type = type;
     }
-    /**
-     * Reads the elastic curve's oscillation setting.
-     * @returns Number of oscillations over the full duration. Zero disables them.
-     */
+    /** Oscillation frequency over the full duration; zero disables oscillation. */
     oscillations(): number { return this.#oscillations; }
     /**
-     * Changes the number of oscillations used by elastic easing. Invalid values throw `RangeError`.
-     * @param oscillations Nonnegative finite count with finite angular frequency.
-     */
+    * Sets full-duration elastic oscillations. Accepts finite non-negative values with finite angular frequency; otherwise throws RangeError.
+    */
     setOscillations(oscillations: number): void {
         if (!Number.isFinite(oscillations) || oscillations < 0
             || !Number.isFinite(2 * Math.PI * oscillations))
             throw new RangeError("Oscillations must be nonnegative with a finite angular frequency.");
         this.#oscillations = Math.max(0, oscillations);
     }
-    /**
-     * Reads the elastic curve's decay setting.
-     * @returns Exponential damping factor. Higher factors settle faster.
-     */
+    /** Exponential decay over the duration. Larger values settle more quickly. */
     damping(): number { return this.#damping; }
     /**
-     * Changes the exponential decay used by elastic easing. Invalid values throw `RangeError`.
-     * @param damping Nonnegative finite damping factor.
-     */
+    * Sets finite non-negative exponential damping for the elastic curve. Invalid values throw RangeError.
+    */
     setDamping(damping: number): void {
         if (!Number.isFinite(damping) || damping < 0)
             throw new RangeError("Damping must be finite and nonnegative.");
         this.#damping = Math.max(0, damping);
     }
     /**
-     * Evaluates the configured easing function at normalized animation progress.
-     * @param progress Progress, clamped to `[0, 1]`. `NaN` is treated as zero.
-     * @returns Eased progress. The endpoints remain zero and one, and elastic easing can overshoot.
-     */
+    * Transforms normalized progress using the selected curve. Input is clamped to [0, 1], NaN becomes zero, and endpoints are exact. Elastic output may overshoot.
+    */
     valueForProgress(progress: number): number {
         const t = Number.isNaN(progress) ? 0 : Math.max(0, Math.min(1, progress));
         if (t === 0 || t === 1) return t;

@@ -1,3 +1,4 @@
+/** @module Animation/CVariantAnimation */
 import { CSignal } from "../core/CSignal.js";
 import { CPoint } from "../geometry/CPoint.js";
 import { CSize } from "../geometry/CSize.js";
@@ -5,7 +6,13 @@ import { CRect } from "../geometry/CRect.js";
 import { CAbstractAnimation, CAnimationDirection } from "./CAbstractAnimation.js";
 import { CEasingCurve, CEasingCurveType } from "./CEasingCurve.js";
 
+/**
+ * Numeric or geometric values supported by component-wise animation interpolation.
+ */
 export type CAnimationValue = number | CPoint | CSize | CRect;
+/**
+ * A normalized progress position and its value; intermediate positions interpolate between adjacent keyframes.
+ */
 export type CAnimationKeyValue<T extends CAnimationValue = number> = readonly [step: number, value: T];
 type ValueKind = "number" | "point" | "size" | "rect";
 
@@ -70,42 +77,37 @@ export class CVariantAnimation<T extends CAnimationValue = number> extends CAbst
     #kind: ValueKind | null = null;
     #curve = new CEasingCurve();
     #keys: CAnimationKeyValue<CAnimationValue>[] = [];
+    /**
+    * Emitted with the bounded value after its stored value changes.
+    * @group Signals
+    */
     readonly valueChanged = new CSignal<[T]>();
 
     /**
-     * Reads the value at the start of interpolation.
-     * @returns The starting value. Geometry values are copied.
-     */
+    * Returns the configured first interpolation value.
+    */
     startValue(): T { return copy(this.#start) as T; }
     /**
-     * Reads the value at the end of interpolation.
-     * @returns The ending value. Geometry values are copied.
-     */
+    * Returns the configured final interpolation value.
+    */
     endValue(): T { return copy(this.#end) as T; }
     /**
-     * Reads the most recently computed interpolated value.
-     * @returns The current value. Geometry values are copied.
-     */
+    * Returns the value most recently evaluated along the animation timeline.
+    */
     currentValue(): T { return copy(this.#value) as T; }
     /**
-     * Replaces the initial value and recomputes the current interpolated value.
-     * @param value Finite value of the same kind as the other keys and endpoints.
-     */
+    * Changes the value evaluated at the beginning of the timeline.
+    */
     setStartValue(value: T): void {
         this.#checkValue(value); this.#start = copy(value); this.updateCurrentTime(this.currentLoopTime());
     }
     /**
-     * Replaces the final value and recomputes the current interpolated value.
-     * @param value Finite value of the same kind as the other keys and endpoints.
-     */
+    * Changes the value evaluated at the end of the timeline.
+    */
     setEndValue(value: T): void {
         this.#checkValue(value); this.#end = copy(value); this.updateCurrentTime(this.currentLoopTime());
     }
-    /**
-     * Looks up an exact key, including the endpoints at zero and one.
-     * @param step Finite eased progress step in the range zero through one.
-     * @returns The value at that exact step, with geometry copied, or `null` if the step has no key.
-     */
+    /** Exact key lookup, including the implicit start (0) and end (1); null if absent. */
     keyValueAt(step: number): T | null {
         this.#checkStep(step);
         if (step === 0) return this.startValue();
@@ -113,21 +115,14 @@ export class CVariantAnimation<T extends CAnimationValue = number> extends CAbst
         const key = this.#keys.find(key => key[0] === step);
         return key === undefined ? null : copy(key[1]) as T;
     }
-    /**
-     * Lists all configured keys, including both endpoints.
-     * @returns A new array of `[step, value]` pairs sorted by step. Geometry values are copied.
-     */
+    /** A sorted, independent snapshot including start and end. Geometry is copied. */
     keyValues(): CAnimationKeyValue<T>[] {
         const result: CAnimationKeyValue<T>[] = [[0, this.startValue()]];
         for (const [step, value] of this.#keys) result.push([step, copy(value) as T]);
         result.push([1, this.endValue()]);
         return result;
     }
-    /**
-     * Inserts or replaces a key and recomputes the current interpolated value. At zero or one, updates the corresponding endpoint.
-     * @param step Finite eased progress step in the range zero through one.
-     * @param value Finite value matching the animation's value kind.
-     */
+    /** Keys refer to eased progress, not necessarily elapsed time. Replaces equal steps. */
     setKeyValueAt(step: number, value: T): void {
         this.#checkStep(step);
         if (step === 0) { this.setStartValue(value); return; }
@@ -139,9 +134,10 @@ export class CVariantAnimation<T extends CAnimationValue = number> extends CAbst
         this.updateCurrentTime(this.currentLoopTime());
     }
     /**
-     * Atomically replaces intermediate keys. Supplied endpoint keys replace their endpoint and omitted endpoints are retained. The last key at a duplicate step wins.
-     * @param values Pairs of finite steps from zero through one and finite values of a consistent kind. An empty array clears intermediate keys.
-     */
+    * Atomically replaces intermediate keys. Supplied 0/1 keys replace endpoints;
+    * omitted endpoints retain their values. [] clears intermediate keys.
+    * Input may be unsorted; the last occurrence of a duplicate step wins.
+    */
     setKeyValues(values: readonly CAnimationKeyValue<T>[]): void {
         const keys = new Map<number, CAnimationValue>();
         let type = this.#kind;
@@ -168,19 +164,17 @@ export class CVariantAnimation<T extends CAnimationValue = number> extends CAbst
             throw new RangeError("Animation key steps must be finite numbers from 0 to 1.");
     }
     /**
-     * Reads the curve used to map elapsed progress to interpolation progress.
-     * @returns An independent copy of the easing curve.
-     */
+    * Returns the curve used to transform normalized timeline progress.
+    */
     easingCurve(): CEasingCurve { return new CEasingCurve(this.#curve); }
     /**
-     * Copies the new curve and recomputes the current interpolated value.
-     * @param curve Easing curve object or a supported curve type.
-     */
+    * Assigns the easing curve used when evaluating interpolated values.
+    */
     setEasingCurve(curve: CEasingCurve | CEasingCurveType): void {
         this.#curve = new CEasingCurve(curve);
         this.updateCurrentTime(this.currentLoopTime());
     }
-    /** Emits a snapshot of the current value even if it has not changed. */
+    /** Re-emits a copy even when the current value has not changed. */
     override applyCurrentValue(): void {
         if (!this.isDestroyed()) this.valueChanged.emit(this.currentValue());
     }
@@ -200,10 +194,6 @@ export class CVariantAnimation<T extends CAnimationValue = number> extends CAbst
         this.#kind = type;
     }
     #checkValue(value: T): void { this.#adoptKind(this.#validateValue(value, this.#kind)); }
-    /**
-     * Eases playback progress, interpolates the enclosing key segment and emits `valueChanged` only when the result differs.
-     * @param time Direction-adjusted elapsed time in milliseconds within the current pass.
-     */
     protected override updateCurrentTime(time: number): void {
         const progress = this.duration() === 0 ? (this.currentDirection() === CAnimationDirection.Backward ? 0 : 1) : this.#curve.valueForProgress(time / this.duration());
         const keys: CAnimationKeyValue<CAnimationValue>[] = [[0, this.#start], ...this.#keys, [1, this.#end]];

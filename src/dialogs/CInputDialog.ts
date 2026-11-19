@@ -1,3 +1,4 @@
+/** @module Dialogs/CInputDialog */
 import { CSignal } from "../core/CSignal.js";
 import { CVBoxLayout } from "../layouts/CVBoxLayout.js";
 import { CLabel } from "../widgets/CLabel.js";
@@ -14,14 +15,14 @@ import {
  * Defines the value type edited by an input dialog.
  */
 export enum CInputDialogInputMode {
-/**
- * Text input mode.
- */
-	TextInput,
-/**
- * Integer input mode.
- */
-	IntInput
+    /**
+    * Text input mode.
+    */
+    TextInput,
+    /**
+    * Integer input mode.
+    */
+    IntInput
 }
 
 /**
@@ -29,10 +30,14 @@ export enum CInputDialogInputMode {
  */
 export class CInputDialog extends CDialog
 {
-	static readonly DefaultWidth = 360;
-	static readonly DefaultHeight = 120;
-	static readonly Margin = 12;
-	static readonly Spacing = 8;
+    /** Default preferred logical width. */
+    static readonly DefaultWidth = 360;
+    /** Default preferred logical height. */
+    static readonly DefaultHeight = 120;
+    /** Default logical inset around contents. */
+    static readonly Margin = 12;
+    /** Default logical gap between adjacent items. */
+    static readonly Spacing = 8;
 
 	#m_label: CLabel;
 	#m_buttonBox: CDialogButtonBox;
@@ -41,29 +46,33 @@ export class CInputDialog extends CDialog
 	#m_layout: CVBoxLayout;
 	#m_inputMode = CInputDialogInputMode.TextInput;
 
-/**
- * Emitted when the text value changes.
- */
-	readonly textValueChanged = new CSignal<[string]>();
-/**
- * Emitted when a text value is accepted.
- */
-	readonly textValueSelected = new CSignal<[string]>();
-/**
- * Emitted when the integer value changes.
- */
-	readonly intValueChanged = new CSignal<[number]>();
-/**
- * Emitted when an integer value is accepted.
- */
-	readonly intValueSelected = new CSignal<[number]>();
+    /**
+    * Emitted when the text value changes.
+    * @group Signals
+    */
+    readonly textValueChanged = new CSignal<[string]>();
+    /**
+    * Emitted when a text value is accepted.
+    * @group Signals
+    */
+    readonly textValueSelected = new CSignal<[string]>();
+    /**
+    * Emitted when the integer value changes.
+    * @group Signals
+    */
+    readonly intValueChanged = new CSignal<[number]>();
+    /**
+    * Emitted when an integer value is accepted.
+    * @group Signals
+    */
+    readonly intValueSelected = new CSignal<[number]>();
 
-/**
- * Creates an input dialog.
- *
- * @param parent Optional parent widget.
- */
-	constructor(parent: CWidget | null = null)
+    /**
+    * Creates an input dialog.
+    *
+    * @param parent Optional parent widget.
+    */
+    constructor(parent: CWidget | null = null)
 	{
 		super(parent);
 
@@ -120,20 +129,18 @@ export class CInputDialog extends CDialog
 		);
 	}
 
-/**
-	 * Reads which editor is active.
-	 * @returns Text or integer input mode.
-	 */
-	inputMode(): CInputDialogInputMode
+    /**
+    * Returns whether the dialog edits text, integers or floating-point values.
+    */
+    inputMode(): CInputDialogInputMode
 	{
 		return this.#m_inputMode;
 	}
 
-/**
-	 * Switches the visible editor and rebuilds the dialog layout without clearing the values stored in either editor.
-	 * @param mode Text or integer input mode.
-	 */
-	setInputMode(mode: CInputDialogInputMode): void
+    /**
+    * Selects the input control used to collect a value.
+    */
+    setInputMode(mode: CInputDialogInputMode): void
 	{
 		if (this.#m_inputMode === mode)
 			return;
@@ -142,133 +149,143 @@ export class CInputDialog extends CDialog
 		this.#updateLayout();
 	}
 
-/**
-	 * Reads the prompt shown above the editor.
-	 * @returns Current prompt text.
-	 */
-	labelText(): string
+    /**
+    * Returns the prompt label text.
+    *
+    * @returns The current label text.
+    */
+    labelText(): string
 	{
 		return this.#m_label.text();
 	}
 
-/**
-	 * Changes the prompt displayed above the editor.
-	 * @param text Prompt to display.
-	 */
-	setLabelText(text: string): void
+    /**
+    * Sets the prompt label text.
+    *
+    * @param text New label text.
+    */
+    setLabelText(text: string): void
 	{
 		this.#m_label.setText(text);
 	}
 
-/**
-	 * Reads the text editor even when integer mode is active.
-	 * @returns Current text editor contents.
-	 */
-	textValue(): string
+    /**
+    * Returns the retained text-input value.
+    */
+    textValue(): string
 	{
 		return this.#m_lineEdit.text();
 	}
 
-/**
-	 * Updates the stored text editor value independently of which editor is visible.
-	 * @param text New text editor contents.
-	 */
-	setTextValue(text: string): void
+    /**
+    * Replaces the text editor's current input.
+    */
+    setTextValue(text: string): void
 	{
 		this.#m_lineEdit.setText(text);
 	}
 
-/**
-	 * Reads the spin box's current committed numeric value.
-	 * @returns Integer value in the configured range.
-	 */
-	intValue(): number
+    /**
+    * Returns the current integer value.
+    *
+    * @returns The current integer value.
+    */
+    intValue(): number
 	{
 		return this.#m_spinBox.value();
 	}
 
-/**
-	 * Sets the spin box value using its integer normalization and range constraints.
-	 * @param value Requested numeric value to store.
-	 */
-	setIntValue(value: number): void
+    /**
+    * Sets the current integer value.
+    *
+    * @param value New integer value.
+    */
+    setIntValue(value: number): void
 	{
 		this.#m_spinBox.setValue(value);
 	}
 
-/**
-	 * Reads the spin box's lower bound.
-	 * @returns Minimum accepted integer, inclusive.
-	 */
-	intMinimum(): number
+    /**
+    * Returns the minimum allowed integer value.
+    *
+    * @returns Minimum integer value.
+    */
+    intMinimum(): number
 	{
 		return this.#m_spinBox.minimum();
 	}
 
-/**
-	 * Changes the lower bound used for integer input.
-	 * @param minimum Requested inclusive integer minimum.
-	 */
-	setIntMinimum(minimum: number): void
+    /**
+    * Sets the minimum allowed integer value.
+    *
+    * @param minimum Minimum value.
+    */
+    setIntMinimum(minimum: number): void
 	{
 		this.#m_spinBox.setMinimum(minimum);
 	}
 
-/**
-	 * Reads the spin box's upper bound.
-	 * @returns Maximum accepted integer, inclusive.
-	 */
-	intMaximum(): number
+    /**
+    * Returns the maximum allowed integer value.
+    *
+    * @returns Maximum integer value.
+    */
+    intMaximum(): number
 	{
 		return this.#m_spinBox.maximum();
 	}
 
-/**
-	 * Changes the upper bound used for integer input.
-	 * @param maximum Requested inclusive integer maximum.
-	 */
-	setIntMaximum(maximum: number): void
+    /**
+    * Sets the maximum allowed integer value.
+    *
+    * @param maximum Maximum value.
+    */
+    setIntMaximum(maximum: number): void
 	{
 		this.#m_spinBox.setMaximum(maximum);
 	}
 
-/**
-	 * Changes both bounds used for integer input.
-	 * @param minimum Requested inclusive integer minimum.
-	 * @param maximum Requested inclusive integer maximum.
-	 */
-	setIntRange(minimum: number, maximum: number): void
+    /**
+    * Sets the allowed integer range.
+    *
+    * @param minimum Minimum value.
+    * @param maximum Maximum value.
+    */
+    setIntRange(minimum: number, maximum: number): void
 	{
 		this.#m_spinBox.setRange(minimum, maximum);
 	}
 
-/**
-	 * Reads the spin box increment.
-	 * @returns Integer amount used by step controls.
-	 */
-	intStep(): number
+    /**
+    * Returns the integer step size.
+    *
+    * @returns Current step size.
+    */
+    intStep(): number
 	{
 		return this.#m_spinBox.singleStep();
 	}
 
-/**
-	 * Changes the increment used by the spin box's step controls.
-	 * @param step Requested positive integer step.
-	 */
-	setIntStep(step: number): void
+    /**
+    * Sets the integer step size.
+    *
+    * @param step Step size.
+    */
+    setIntStep(step: number): void
 	{
 		this.#m_spinBox.setSingleStep(step);
 	}
 
-/**
-	 * Opens a modal dialog that prompts for text.
-	 * @param parent Parent widget that owns the dialog, or `null` for a top-level dialog.
-	 * @param title Text shown in the title bar.
-	 * @param label Prompt shown above the editor.
-	 * @param value Initial text. Defaults to an empty string.
-	 * @returns A promise resolving to the accepted text or `null` when rejected.
-	 */
-	static getText(
+    /**
+    * Shows a modal dialog and requests a text value.
+    *
+    * @param parent Optional parent widget.
+    * @param title Dialog title.
+    * @param label Prompt label.
+    * @param value Initial text value.
+    * @returns A promise resolving to the selected text, or `null` if rejected.
+    */
+    static getText(
 		parent: CWidget | null,
 		title: string,
 		label: string,
@@ -297,18 +314,19 @@ export class CInputDialog extends CDialog
 		});
 	}
 
-/**
-	 * Opens a modal dialog with a spin box and applies the range and increment before setting the initial value.
-	 * @param parent Parent widget that owns the dialog, or `null` for a top-level dialog.
-	 * @param title Text shown in the title bar.
-	 * @param label Prompt shown above the editor.
-	 * @param value Requested initial integer value. Defaults to zero.
-	 * @param minimum Inclusive lower bound. Defaults to `-2147483647`.
-	 * @param maximum Inclusive upper bound. Defaults to `2147483647`.
-	 * @param step Spin box increment. Defaults to one.
-	 * @returns A promise resolving to the accepted integer or `null` when rejected.
-	 */
-	static getInt(
+    /**
+    * Shows a modal dialog and requests an integer value.
+    *
+    * @param parent Optional parent widget.
+    * @param title Dialog title.
+    * @param label Prompt label.
+    * @param value Initial value.
+    * @param minimum Minimum allowed value.
+    * @param maximum Maximum allowed value.
+    * @param step Step size.
+    * @returns A promise resolving to the selected integer, or `null` if rejected.
+    */
+    static getInt(
 		parent: CWidget | null,
 		title: string,
 		label: string,

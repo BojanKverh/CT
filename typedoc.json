@@ -1,0 +1,58 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "src"
+  ],
+  "tsconfig": "tsconfig.build.json",
+  "out": "docs-site",
+  "readme": "docs/README.md",
+  "projectDocuments": [
+    "docs/custom-painting.md",
+    "docs/files.md",
+    "docs/focus-and-dialogs.md",
+    "docs/getting-started.md",
+    "docs/layouts.md",
+    "docs/maintaining-documentation.md",
+    "docs/model-view.md",
+    "docs/signals-and-slots.md",
+    "docs/styling.md"
+  ],
+  "excludeInternal": true,
+  "excludePrivate": true,
+  "visibilityFilters": {
+    "protected": true,
+    "private": false,
+    "inherited": true,
+    "external": false
+  },
+  "groupOrder": [
+    "Constructors",
+    "Signals",
+    "Properties",
+    "Accessors",
+    "Methods",
+    "*"
+  ],
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true
+  },
+  "categorizeByGroup": false,
+  "sort": [
+    "kind",
+    "alphabetical"
+  ],
+  "validation": {
+    "invalidLink": true,
+    "notExported": true
+  },
+  "entryPointStrategy": "expand",
+  "intentionallyNotExported": [
+    "CApplicationPaintDevice",
+    "CLineEditValidator",
+    "CLayoutAxisBounds"
+  ],
+  "plugin": [
+    "./tools/typedoc-parameters.mjs"
+  ]
+}

@@ -1,44 +1,29 @@
+/** @module Painting/CPaintEngine */
 import { CPixmap } from "./CPixmap.js";
 
 /**
- * Abstract low-level rendering interface used by {@link CPainter}.
+ * Abstract low-level rendering interface used by CPainter.
  *
  * Concrete engines translate these operations to a particular drawing backend.
  */
 export abstract class CPaintEngine {
-    /** Pushes the current drawing state so it can be restored after temporary changes. */
+    /** Saves the current rendering state. */
     abstract save(): void;
-    /** Restores the most recently saved drawing state. */
+    /** Restores the most recently saved rendering state. */
     abstract restore(): void;
 
-    /**
-     * Reports the current drawing opacity. The default engine assumes full opacity.
-     * @returns Opacity as a fraction. The base implementation returns `1`.
-     */
+    /** Returns opacity. Backends without transparency retain full opacity. */
     opacity(): number { return 1; }
 
-    /**
-     * Sets opacity on a supporting backend. The base implementation throws for values other than one.
-     * @param opacity Requested opacity as a fraction between zero and one.
-     */
+    /** Backends supporting transparency override this method. */
     setOpacity(opacity: number): void {
         if (opacity !== 1) throw new Error("This paint engine does not support opacity.");
     }
 
-    /**
-     * Moves the origin of subsequent drawing operations relative to the current transform.
-     * @param x Horizontal translation offset.
-     * @param y Vertical translation offset.
-     */
+    /** Translates the current coordinate system. */
     abstract translate(x: number, y: number): void;
 
-    /**
-     * Fills a rectangle with the current fill style.
-     * @param x Left edge in the current drawing coordinate system.
-     * @param y Top edge in the current drawing coordinate system.
-     * @param width Rectangle width in drawing units.
-     * @param height Rectangle height in drawing units.
-     */
+    /** Fills a rectangular area using the current fill style. */
     abstract fillRect(
         x: number,
         y: number,
@@ -46,13 +31,7 @@ export abstract class CPaintEngine {
         height: number
     ): void;
 
-    /**
-     * Strokes a rectangle with the current stroke style and line width.
-     * @param x Left edge in the current drawing coordinate system.
-     * @param y Top edge in the current drawing coordinate system.
-     * @param width Rectangle width in drawing units.
-     * @param height Rectangle height in drawing units.
-     */
+    /** Strokes a rectangular area using the current stroke style. */
     abstract strokeRect(
         x: number,
         y: number,
@@ -60,13 +39,7 @@ export abstract class CPaintEngine {
         height: number
     ): void;
 
-    /**
-     * Clears the pixels in the specified rectangle.
-     * @param x Left edge in the current drawing coordinate system.
-     * @param y Top edge in the current drawing coordinate system.
-     * @param width Rectangle width in drawing units.
-     * @param height Rectangle height in drawing units.
-     */
+    /** Clears a rectangular area. */
     abstract clearRect(
         x: number,
         y: number,
@@ -75,122 +48,52 @@ export abstract class CPaintEngine {
     ): void;
 
     /**
-     * Changes the color used for subsequent filled shapes.
-     * @param style Fill color string accepted by the drawing backend.
-     */
+    * Changes the brush color used for subsequent filled shapes. Widget code normally uses CPainter.setBrush().
+    */
     abstract setFillStyle(style: string): void;
     /**
-     * Changes the color used for subsequent outlines and lines.
-     * @param style Stroke color string accepted by the drawing backend.
-     */
+    * Changes the pen color used for subsequent text and outlines. Widget code normally uses CPainter.setPen().
+    */
     abstract setStrokeStyle(style: string): void;
     /**
-     * Changes the stroke thickness used for subsequent outlines.
-     * @param width Positive line width in drawing units.
-     */
+    * Changes outline thickness in logical pixels for subsequent drawing.
+    */
     abstract setLineWidth(width: number): void;
-    /**
-     * Measures a string with the current font without painting it.
-     * @param text Text to measure.
-     * @returns Measured advance width in drawing units.
-     */
+    /** Returns the rendered width of text using the current font. */
     abstract textWidth(text: string): number;
 
-    /**
-     * Intersects the current clipping region with a rectangle for subsequent drawing.
-     * @param x Left edge in the current drawing coordinate system.
-     * @param y Top edge in the current drawing coordinate system.
-     * @param width Rectangle width in drawing units.
-     * @param height Rectangle height in drawing units.
-     */
+    /** Intersects the current clipping region with a rectangle. */
     abstract clipRect(x: number, y: number, width: number,
 		height: number): void;
 
-    /**
-     * Reads the current backend font setting.
-     * @returns The font specification as a string.
-     */
+    /** Returns the current font specification. */
     abstract font() : string;
-    /**
-     * Changes the font used for subsequent text drawing and measurement.
-     * @param font Font specification accepted by the backend, such as a CSS font shorthand for Canvas.
-     */
+    /** Sets the current font specification. */
     abstract setFont(font: string): void;
-    /**
-     * Reads the horizontal alignment used for drawn text.
-     * @returns The alignment of text relative to its x coordinate.
-     */
+    /** Returns the current text alignment. */
     abstract textAlign() : CanvasTextAlign;
-    /**
-     * Sets the horizontal alignment for subsequent text.
-     * @param align Alignment of text relative to its x coordinate, such as `left` or `center`.
-     */
+    /** Sets the current text alignment. */
     abstract setTextAlign(align: CanvasTextAlign) : void;
     /**
-     * Sets the vertical reference for subsequent text.
-     * @param baseline Baseline corresponding to the supplied y coordinate, such as `alphabetic` or `middle`.
-     */
+    * Chooses the vertical reference line used by subsequent drawText() calls.
+    */
     abstract setTextBaseline(baseline: CanvasTextBaseline): void;
     /**
-     * Reads the baseline used for drawn text.
-     * @returns The vertical reference used for the text y coordinate.
-     */
+    * Returns the vertical text reference currently configured for drawing.
+    */
     abstract textBaseline() : CanvasTextBaseline;
-    /**
-     * Strokes a line segment with the current stroke style and width.
-     * @param x1 Horizontal start coordinate.
-     * @param y1 Vertical start coordinate.
-     * @param x2 Horizontal end coordinate.
-     * @param y2 Vertical end coordinate.
-     */
+    /** Draws a line segment. */
     abstract drawLine(x1: number, y1: number, x2: number, y2: number): void;
-    /**
-     * Draws text using the current font, alignment and baseline.
-     * @param text Text to draw.
-     * @param x Horizontal anchor in the current drawing coordinate system.
-     * @param y Vertical baseline position in the current drawing coordinate system.
-     */
+    /** Draws text at the specified position. */
     abstract drawText(text: string, x: number, y: number): void;
-    /**
-     * Draws a pixmap scaled to the requested destination rectangle.
-     * @param pixmap Source pixmap to draw.
-     * @param x Left edge of the destination.
-     * @param y Top edge of the destination.
-     * @param w Destination width.
-     * @param h Destination height.
-     */
+    /** Draws a pixmap into the specified destination rectangle. */
     abstract drawPixmap(pixmap: CPixmap, x: number, y: number, w: number, h: number): void;
-    /**
-     * Strokes the outline of an ellipse with the current stroke style.
-     * @param x Horizontal center coordinate.
-     * @param y Vertical center coordinate.
-     * @param w Nonnegative horizontal radius.
-     * @param h Nonnegative vertical radius.
-     */
+    /** Draws the outline of an ellipse. */
     abstract drawEllipse(x: number, y: number, w: number, h: number): void;
-    /**
-     * Fills an ellipse with the current fill style.
-     * @param x Horizontal center coordinate.
-     * @param y Vertical center coordinate.
-     * @param w Nonnegative horizontal radius.
-     * @param h Nonnegative vertical radius.
-     */
+    /** Fills an ellipse. */
     abstract fillEllipse(x: number, y: number, w: number, h: number): void;
-    /**
-     * Draws a rectangle using the current fill and stroke styles.
-     * @param x Left edge in the current drawing coordinate system.
-     * @param y Top edge in the current drawing coordinate system.
-     * @param w Rectangle width in drawing units.
-     * @param h Rectangle height in drawing units.
-     */
+    /** Draws a rectangle using the current fill and stroke styles. */
     abstract drawRect(x: number, y: number, w: number, h: number): void;
-    /**
-     * Fills and outlines a rectangle with rounded corners.
-     * @param x Left edge in the current drawing coordinate system.
-     * @param y Top edge in the current drawing coordinate system.
-     * @param w Rectangle width in drawing units.
-     * @param h Rectangle height in drawing units.
-     * @param r A nonnegative corner radius or an array of one to four radii in Canvas round-rectangle order.
-     */
+    /** Draws a rounded rectangle with the specified corner radius or radii. */
     abstract drawRoundedRect(x: number, y: number, w: number, h: number, r: number | number[] ): void;
 }

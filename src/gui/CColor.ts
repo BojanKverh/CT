@@ -1,3 +1,4 @@
+/** @module GUI/CColor */
 /**
  * Represents an RGBA color value.
  */
@@ -7,27 +8,20 @@ export class CColor {
 	#m_blue: number;
 	#m_alpha: number;
 
-		/**
-	 * Creates a new CColor instance.
-	 *
-	 * @param red Red.
-	 * @param green Green.
-	 * @param blue Blue.
-	 * @param alpha Alpha.
-	 */
-constructor(red: number = 0, green: number = 0, blue: number = 0, alpha = 255) {
+    /**
+    * Creates RGBA channels clamped to 0–255. The default is opaque black.
+    */
+    constructor(red: number = 0, green: number = 0, blue: number = 0, alpha = 255) {
 		this.#m_red = CColor.#clamp(red);
 		this.#m_green = CColor.#clamp(green);
 		this.#m_blue = CColor.#clamp(blue);
 		this.#m_alpha = CColor.#clamp(alpha);
 	}
 
-		/**
-	 * Assigns a color to the specified palette role.
-	 *
-	 * @param color Color.
-	 */
-setColor(color: string): void {
+    /**
+    * Parses #RRGGBB or #RRGGBBAA. Invalid input leaves the color unchanged; six-digit input preserves the existing alpha.
+    */
+    setColor(color: string): void {
 		if (!/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(color))
 			return;
 
@@ -38,73 +32,65 @@ setColor(color: string): void {
 			this.#m_alpha = parseInt(color.slice(7, 9), 16);
 	}
 
-		/**
-	 * Sets the alpha.
-	 *
-	 * @param alpha Alpha.
-	 */
-setAlpha(alpha: number)
+    /**
+    * Assigns the opacity channel directly. Use 0 for transparent and 255 for opaque; this setter does not clamp the input.
+    */
+    setAlpha(alpha: number)
 	{
 		this.#m_alpha = alpha;
 	}
 
-		/**
- * Reads the red channel.
- * @returns Red intensity from 0 through 255.
- */
-red(): number {
+    /**
+    * Red channel in the RGBA representation, normally between 0 and 255.
+    */
+    red(): number {
 		return this.#m_red;
 	}
 
-		/**
- * Reads the green channel.
- * @returns Green intensity from 0 through 255.
- */
-green(): number {
+    /**
+    * Green channel in the RGBA representation, normally between 0 and 255.
+    */
+    green(): number {
 		return this.#m_green;
 	}
 
-		/**
- * Reads the blue channel.
- * @returns Blue intensity from 0 through 255.
- */
-blue(): number {
+    /**
+    * Blue channel in the RGBA representation, normally between 0 and 255.
+    */
+    blue(): number {
 		return this.#m_blue;
 	}
 
-		/**
- * Reads the alpha channel.
- * @returns Alpha intensity from 0 through 255.
- */
-alpha(): number {
+    /**
+    * Opacity channel: 0 is transparent and 255 is opaque. setAlpha() can store values outside this range.
+    */
+    alpha(): number {
 		return this.#m_alpha;
 	}
 
-		/**
- * Compares the red, green, blue and alpha channels exactly.
- * @param other Color to compare.
- * @returns `true` if all four channels match.
- */
-equals(other: CColor): boolean {
+    /**
+    * Compares all four stored RGBA channels for exact equality.
+    */
+    equals(other: CColor): boolean {
 		return this.#m_red === other.#m_red
 			&& this.#m_green === other.#m_green
 			&& this.#m_blue === other.#m_blue
 			&& this.#m_alpha === other.#m_alpha;
 	}
 
-		/**
- * Serializes the color as CSS RGBA with normalized alpha.
- * @returns CSS `rgba(...)` string with alpha between zero and one.
- */
-toCss(): string {
+    /**
+    * Returns the color as a CSS color string.
+    *
+    */
+    toCss(): string {
 		return `rgba(${this.#m_red}, ${this.#m_green}, ${this.#m_blue}, ${this.#m_alpha / 255})`;
 	}
 
-		/**
- * Serializes the red, green and blue channels as hexadecimal.
- * @returns A `#rrggbb` string. Alpha is omitted.
- */
-toHex(): string {
+    /**
+    * Returns the color as a hexadecimal RGB string.
+    *
+    */
+    toHex(): string {
 		const hex = (value: number) => value.toString(16).padStart(2, "0");
 		return `#${hex(this.#m_red)}${hex(this.#m_green)}` + `${hex(this.#m_blue)}`;
 	}

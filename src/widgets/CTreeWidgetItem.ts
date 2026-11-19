@@ -1,119 +1,97 @@
-/** Implements the tree widget item widget. */
+/** @module Widgets/CTreeWidgetItem */
+/** Hierarchical row data and child ownership for CTreeWidget. */
 export class CTreeWidgetItem {
 	#m_texts: string[];
 	#m_parent: CTreeWidgetItem | null = null;
 	#m_children: CTreeWidgetItem[] = [];
 
-	/** Creates a new instance. */
-	constructor(texts: string[] = []) {
+    /**
+    * Retains column captions and optional parent-item membership.
+    * @param texts Input used to configure CTreeWidgetItem. Omit to use `[]`.
+    */
+    constructor(texts: string[] = []) {
 		this.#m_texts = [...texts];
 	}
 
-	/**
-	 * Reads the display text stored for a column.
-	 * @param column Zero-based column.
-	 * @returns Column text, or an empty string if none is stored.
-	 */
-	text(column: number): string {
-		/** Provides if behavior. */
+    /**
+    * Returns the text stored for one item column.
+    */
+    text(column: number): string {
 		if (column < 0)
 			return "";
 
 		return this.#m_texts[column] ?? "";
 	}
 
-	/**
-	 * Stores display text in a column, filling intervening columns with empty strings as needed.
-	 * @param column Nonnegative zero-based column index.
-	 * @param text Text to display in that column.
-	 */
-	setText(column: number, text: string): void {
-		/** Provides if behavior. */
+    /**
+    * Changes one column's caption and notifies the owning tree model when attached.
+    */
+    setText(column: number, text: string): void {
 		if (column < 0)
 			return;
 
-		/** Provides while behavior. */
 		while (this.#m_texts.length <= column)
 			this.#m_texts.push("");
 
 		this.#m_texts[column] = text;
 	}
 
-	/**
-	 * Reads the number of entries in the texts.
-	 * @returns The number of entries in the texts.
-	 */
-	columnCount(): number {
+    /**
+    * Returns the number of text columns retained by this item.
+    */
+    columnCount(): number {
 		return this.#m_texts.length;
 	}
 
-	/**
-	 * Reads the parent.
-	 * @returns The parent.
-	 */
-	parent(): CTreeWidgetItem | null {
+    /**
+    * Returns the parent tree item, or null for a root item.
+    */
+    parent(): CTreeWidgetItem | null {
 		return this.#m_parent;
 	}
 
-	/**
-	 * Looks up an immediate child.
-	 * @param index Zero-based child index.
-	 * @returns The child, or `null` if absent.
-	 */
-	child(index: number): CTreeWidgetItem | null {
+    /**
+    * Returns the child at a zero-based position, or null.
+    */
+    child(index: number): CTreeWidgetItem | null {
 		return this.#m_children[index] ?? null;
 	}
 
-	/**
-	 * Reads the number of entries in the children.
-	 * @returns The number of entries in the children.
-	 */
-	childCount(): number {
+    /**
+    * Returns the number of immediate child items.
+    */
+    childCount(): number {
 		return this.#m_children.length;
 	}
 
-	/**
-	 * Finds an immediate child by identity.
-	 * @param child Child item to look up.
-	 * @returns Zero-based child index, or `-1` if absent.
-	 */
-	indexOfChild(child: CTreeWidgetItem): number {
+    /**
+    * Returns a child's position, or -1 when it is not an immediate child.
+    */
+    indexOfChild(child: CTreeWidgetItem): number {
 		return this.#m_children.indexOf(child);
 	}
 
-	/**
-	 * Adds child.
-	 * @param child Child.
-	 */
-	addChild(child: CTreeWidgetItem): void {
+    /** Adds child. */
+    addChild(child: CTreeWidgetItem): void {
 		this.insertChild(this.#m_children.length, child);
 	}
 
-	/**
-	 * Inserts child.
-	 * @param index Zero-based item index.
-	 * @param child Child.
-	 */
-	insertChild(index: number, child: CTreeWidgetItem): void {
-		/** Provides if behavior. */
+    /** Inserts child. */
+    insertChild(index: number, child: CTreeWidgetItem): void {
 		if (child === this)
 			return;
 
-		/** Provides if behavior. */
 		if (this.#isAncestorOf(child))
 			return;
 
-		/** Provides if behavior. */
 		if (child.#m_parent === this) {
 			const oldIndex = this.#m_children.indexOf(child);
 
-			/** Provides if behavior. */
 			if (oldIndex < 0)
 				return;
 
 			this.#m_children.splice(oldIndex, 1);
 
-			/** Provides if behavior. */
 			if (oldIndex < index)
 				index--;
 		} else {
@@ -126,33 +104,23 @@ export class CTreeWidgetItem {
 		child.#m_parent = this;
 	}
 
-	/**
-	 * Removes child.
-	 * @param child Child.
-	 */
-	removeChild(child: CTreeWidgetItem): void {
+    /** Removes child. */
+    removeChild(child: CTreeWidgetItem): void {
 		const index = this.#m_children.indexOf(child);
 
-		/** Provides if behavior. */
 		if (index < 0)
 			return;
 
 		this.takeChild(index);
 	}
 
-	/**
-	 * Removes an immediate child and clears its parent link.
-	 * @param index Zero-based child index.
-	 * @returns Detached item, or `null` for an invalid or absent position.
-	 */
-	takeChild(index: number): CTreeWidgetItem | null {
-		/** Provides if behavior. */
+    /** Removes and returns child. */
+    takeChild(index: number): CTreeWidgetItem | null {
 		if (index < 0 || index >= this.#m_children.length)
 			return null;
 
 		const child = this.#m_children[index];
 
-		/** Provides if behavior. */
 		if (child === undefined)
 			return null;
 
@@ -165,12 +133,13 @@ export class CTreeWidgetItem {
 	#isAncestorOf(item: CTreeWidgetItem): boolean {
 		let parent = this.#m_parent;
 
-		/** Provides while behavior. */
 		while (parent !== null) {
-			/** Provides if behavior. */
 			if (parent === item)
 				return true;
 
+			/**
+			 * Returns the parent tree item, or null for a root item.
+			 */
 			parent = parent.#m_parent;
 		}
 

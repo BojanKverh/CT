@@ -1,3 +1,4 @@
+/** @module GUI/CStyleOptionTabWidget */
 import { CStyleOption } from "./CStyleOption.js";
 import type { CTabWidget } from "../widgets/CTabWidget.js";
 
@@ -5,51 +6,49 @@ import type { CTabWidget } from "../widgets/CTabWidget.js";
  * Contains style information used to render a tab.
  */
 export interface CStyleOptionTab {
-		/**
-	 * The text value.
-	 */
-text: string;
-		/**
-	 * The width value.
-	 */
-width: number;
-		/**
-	 * The enabled value.
-	 */
-enabled: boolean;
-		/**
-	 * The current value.
-	 */
-current: boolean;
-		/**
-	 * The hovered value.
-	 */
-hovered: boolean;
-		/**
-	 * The pressed value.
-	 */
-pressed: boolean;
+    /**
+    * Caption painted inside this tab.
+    */
+    text: string;
+    /**
+    * Logical width allocated to this tab.
+    */
+    width: number;
+    /**
+    * Whether this tab can be activated.
+    */
+    enabled: boolean;
+    /**
+    * Whether this tab owns the visible page.
+    */
+    current: boolean;
+    /**
+    * Whether the pointer is over this tab.
+    */
+    hovered: boolean;
+    /**
+    * Whether this tab has an active press interaction.
+    */
+    pressed: boolean;
 }
 
 /**
  * Contains style information used to render a tab widget.
  */
 export class CStyleOptionTabWidget extends CStyleOption {
-		/**
-	 * Returns or updates the tab height value.
-	 */
-tabHeight = 0;
-		/**
-	 * Returns or updates the tabs value.
-	 */
-tabs: CStyleOptionTab[] = [];
+    /**
+    * Logical pixel height allocated to the strip above the current page.
+    */
+    tabHeight = 0;
+    /**
+    * Ordered tab captions, widths and interaction states painted in the tab strip.
+    */
+    tabs: CStyleOptionTab[] = [];
 
-		/**
-	 * Creates a new CStyleOptionTabWidget instance.
-	 *
-	 * @param other Other.
-	 */
-constructor(other: CStyleOptionTabWidget | null = null) {
+    /**
+    * Copies the paint options from other, or initializes default appearance when other is null.
+    */
+    constructor(other: CStyleOptionTabWidget | null = null) {
 		super(other);
 
 		if (other) {
@@ -58,12 +57,12 @@ constructor(other: CStyleOptionTabWidget | null = null) {
 		}
 	}
 
-		/**
-	 * Initializes this style option from the specified tab widget.
-	 *
-	 * @param tabWidget Tab widget.
-	 */
-initFromTabWidget(tabWidget: CTabWidget): void {
+    /**
+    * Initializes this style option from the specified tab widget.
+    *
+    * @param tabWidget Tab widget.
+    */
+    initFromTabWidget(tabWidget: CTabWidget): void {
 		this.initFrom(tabWidget);
 
 		this.tabHeight = tabWidget.tabHeight();

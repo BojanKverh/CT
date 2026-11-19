@@ -1,3 +1,4 @@
+/** @module Widgets/CDoubleSpinBox */
 import { CSignal } from "../core/CSignal.js";
 import { CKeyEvent } from "../events/CKeyEvent.js";
 import { CWheelEvent } from "../events/CWheelEvent.js";
@@ -8,7 +9,7 @@ import { CLineEdit } from "./CLineEdit.js";
 import { CPushButton } from "./CPushButton.js";
 import { CWidget } from "./CWidget.js";
 
-/** Implements a spin box for floating-point values. */
+/** Floating-point editor with step buttons, precision and range constraints. */
 export class CDoubleSpinBox extends CWidget {
 	#m_editor = new CLineEdit(this);
 	#m_upButton = new CPushButton(this);
@@ -25,11 +26,17 @@ export class CDoubleSpinBox extends CWidget {
 		this.#m_decimals
 	);
 
-	/** Signal emitted when the value changes. */
-	readonly valueChanged = new CSignal<[number]>();
+    /**
+    * Emitted with the new numeric value after clamping and validation.
+    * @group Signals
+    */
+    readonly valueChanged = new CSignal<[number]>();
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null) {
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null) {
 		super(parent);
 
 		this.#m_editor.setValidator(this.#m_validator);
@@ -54,68 +61,64 @@ export class CDoubleSpinBox extends CWidget {
 		this.#updateEditorText();
 	}
 
-	/**
-	 * Returns the minimum value.
-	 * @returns The minimum.
-	 */
-	minimum(): number {
+    /**
+    * Lower permitted value.
+    * The initial value is `0`.
+    */
+    minimum(): number {
 		return this.#m_minimum;
 	}
 
-	/**
-	 * Returns the maximum value.
-	 * @returns The maximum.
-	 */
-	maximum(): number {
+    /**
+    * Upper permitted value.
+    * The initial value is `99.99`.
+    */
+    maximum(): number {
 		return this.#m_maximum;
 	}
 
-	/**
-	 * Returns the current value.
-	 * @returns The value.
-	 */
-	value(): number {
+    /**
+    * Current numeric value.
+    * The initial value is `0`.
+    */
+    value(): number {
 		return this.#m_value;
 	}
 
-	/**
-	 * Returns the step used by the buttons, arrow keys and mouse wheel.
-	 * @returns The single step.
-	 */
-	singleStep(): number {
+    /**
+    * Increment used for a single keyboard or step-button action.
+    * The initial value is `1`.
+    */
+    singleStep(): number {
 		return this.#m_singleStep;
 	}
 
-	/**
-	 * Returns the number of digits shown after the decimal point.
-	 * @returns The decimals.
-	 */
-	decimals(): number {
+    /**
+    * Number of decimal places used to format the numeric value.
+    * The initial value is `2`.
+    */
+    decimals(): number {
 		return this.#m_decimals;
 	}
 
-	/**
-	 * Sets the minimum value.
-	 * @param minimum Minimum.
-	 */
-	setMinimum(minimum: number): void {
+    /**
+    * Updates the lower numeric bound through setRange(), retaining the current maximum.
+    */
+    setMinimum(minimum: number): void {
 		this.setRange(minimum, this.#m_maximum);
 	}
 
-	/**
-	 * Sets the maximum value.
-	 * @param maximum Maximum.
-	 */
-	setMaximum(maximum: number): void {
+    /**
+    * Updates the upper numeric bound through setRange(), retaining the current minimum.
+    */
+    setMaximum(maximum: number): void {
 		this.setRange(this.#m_minimum, maximum);
 	}
 
-	/**
-	 * Sets the permitted value range.
-	 * @param minimum Minimum.
-	 * @param maximum Maximum.
-	 */
-	setRange(minimum: number, maximum: number): void {
+    /**
+    * Accepts finite inclusive bounds, rounds them to configured precision and re-clamps the current value. If minimum exceeds maximum, maximum becomes minimum.
+    */
+    setRange(minimum: number, maximum: number): void {
 		if (!Number.isFinite(minimum) || !Number.isFinite(maximum))
 			return;
 
@@ -133,11 +136,10 @@ export class CDoubleSpinBox extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Sets the current value.
-	 * @param value New value.
-	 */
-	setValue(value: number): void {
+    /**
+    * Accepts a finite value, rounds and clamps it, synchronizes editor text and emits valueChanged when the stored value changes.
+    */
+    setValue(value: number): void {
 		if (!Number.isFinite(value))
 			return;
 
@@ -158,20 +160,18 @@ export class CDoubleSpinBox extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Sets the step used by the buttons, arrow keys and mouse wheel.
-	 * @param step Step.
-	 */
-	setSingleStep(step: number): void {
+    /**
+    * Configures the finite non-negative increment used by the step buttons.
+    */
+    setSingleStep(step: number): void {
 		if (Number.isFinite(step))
 			this.#m_singleStep = Math.max(0, step);
 	}
 
-	/**
-	 * Sets the number of digits shown after the decimal point.
-	 * @param decimals Decimals.
-	 */
-	setDecimals(decimals: number): void {
+    /**
+    * Changes decimal precision and updates value bounds, validation and formatted editor text.
+    */
+    setDecimals(decimals: number): void {
 		if (!Number.isFinite(decimals))
 			return;
 
@@ -199,40 +199,33 @@ export class CDoubleSpinBox extends CWidget {
 		this.update();
 	}
 
-	/** Increases the current value by one step. */
-	stepUp(): void {
+    /**
+    * Adds one configured single step through the bounded value setter.
+    */
+    stepUp(): void {
 		this.setValue(this.#m_value + this.#m_singleStep);
 	}
 
-	/** Decreases the current value by one step. */
-	stepDown(): void {
+    /**
+    * Subtracts one configured single step through the bounded value setter.
+    */
+    stepDown(): void {
 		this.setValue(this.#m_value - this.#m_singleStep);
 	}
 
-	/**
-	 * Returns the embedded line editor.
-	 * @returns The editor.
-	 */
-	lineEdit(): CLineEdit {
+    /**
+    * Embedded text input used by this composite.
+    * The initial value is `new CLineEdit(this)`.
+    */
+    lineEdit(): CLineEdit {
 		return this.#m_editor;
 	}
 
-	/**
-	 * Sets the geometry.
-	 * @param x Horizontal position in parent coordinates.
-	 * @param y Vertical position in parent coordinates.
-	 * @param width Width in logical pixels.
-	 * @param height Height in logical pixels.
-	 */
 	override setGeometry(x: number, y: number, width: number, height: number): void {
 		super.setGeometry(x, y, width, height);
 		this.#updateChildGeometry();
 	}
 
-	/**
-	 * Returns the preferred size of the widget.
-	 * @returns A new `CSize`.
-	 */
 	override sizeHint(): CSize {
 		const minimumText = this.#format(this.#m_minimum);
 		const maximumText = this.#format(this.#m_maximum);
@@ -247,11 +240,8 @@ export class CDoubleSpinBox extends CWidget {
 		);
 	}
 
-	/**
-	 * Handles keyboard stepping and commits edited text.
-	 * @param event Event for a key press.
-	 */
-	protected override keyPressEvent(event: CKeyEvent): void {
+    /** Handles keyboard stepping and commits edited text. */
+    protected override keyPressEvent(event: CKeyEvent): void {
 		switch (event.key()) {
 		case "ArrowUp":
 			this.stepUp();
@@ -272,11 +262,8 @@ export class CDoubleSpinBox extends CWidget {
 		super.keyPressEvent(event);
 	}
 
-	/**
-	 * Handles mouse-wheel stepping.
-	 * @param event Event for wheel scrolling.
-	 */
-	protected override wheelEvent(event: CWheelEvent): void {
+    /** Handles mouse-wheel stepping. */
+    protected override wheelEvent(event: CWheelEvent): void {
 		if (event.deltaY() < 0)
 			this.stepUp();
 		else if (event.deltaY() > 0)

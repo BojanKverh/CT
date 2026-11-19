@@ -21,7 +21,10 @@
         "test": "vitest run",
         "test:package": "node tests/package-smoke.mjs",
         "test:watch": "vitest",
-        "dev": "vite examples/basic"
+        "dev": "vite examples/basic",
+        "docs": "typedoc --options typedoc.json",
+        "docs:audit": "node tools/audit-docs.mjs",
+        "docs:check": "npm run docs:audit && npm run docs -- --treatWarningsAsErrors --json docs-site/api.json && node tools/check-doc-output.mjs"
     },
     "keywords": [
         "canvas",
@@ -34,6 +37,7 @@
     "sideEffects": false,
     "devDependencies": {
         "jsdom": "^30.0.1",
+        "typedoc": "^0.28.20",
         "typescript": "^5.9.3",
         "vitest": "^3.2.7"
     }

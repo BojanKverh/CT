@@ -1,3 +1,4 @@
+/** @module Core/CDrag */
 import { CObject } from "./CObject.js";
 import { CMimeData } from "./CMimeData.js";
 import { CDropAction } from "../events/CDropAction.js";
@@ -13,78 +14,78 @@ export class CDrag extends CObject {
 	#m_dropAction = CDropAction.IgnoreAction;
 	#m_active = false;
 
-/**
- * Creates a drag operation for a source object.
- * @param source Object that initiated the drag.
- */
-	constructor(source: CObject) {
+    /**
+    * Creates a drag operation for a source object.
+    * @param source Object that initiated the drag.
+    */
+    constructor(source: CObject) {
 		super(source);
 
 		this.#m_source = source;
 	}
 
-/**
- * Returns the object that initiated the drag.
- * @returns Drag source object.
- */
-	source(): CObject {
+    /**
+    * Returns the object that initiated the drag.
+    * @returns Drag source object.
+    */
+    source(): CObject {
 		return this.#m_source;
 	}
 
-/**
- * Returns the data carried by the drag operation.
- * @returns MIME data, or `null` if none has been assigned.
- */
-	mimeData(): CMimeData | null {
+    /**
+    * Returns the data carried by the drag operation.
+    * @returns MIME data, or `null` if none has been assigned.
+    */
+    mimeData(): CMimeData | null {
 		return this.#m_mimeData;
 	}
 
-/**
- * Sets the data carried by the drag operation.
- * @param mimeData MIME data to carry, or `null`.
- */
-	setMimeData(mimeData: CMimeData | null): void {
+    /**
+    * Sets the data carried by the drag operation.
+    * @param mimeData MIME data to carry, or `null`.
+    */
+    setMimeData(mimeData: CMimeData | null): void {
 		this.#m_mimeData = mimeData;
 	}
 
-/**
- * Returns the supported drop actions.
- * @returns Bit mask of supported drop actions.
- */
-	supportedActions(): CDropAction {
+    /**
+    * Returns the supported drop actions.
+    * @returns Bit mask of supported drop actions.
+    */
+    supportedActions(): CDropAction {
 		return this.#m_supportedActions;
 	}
 
-/**
- * Returns the preferred default drop action.
- * @returns Default drop action.
- */
-	defaultAction(): CDropAction {
+    /**
+    * Returns the preferred default drop action.
+    * @returns Default drop action.
+    */
+    defaultAction(): CDropAction {
 		return this.#m_defaultAction;
 	}
 
-/**
- * Returns the action selected when the drag finished.
- * @returns Resulting drop action.
- */
-	dropAction(): CDropAction {
+    /**
+    * Returns the action selected when the drag finished.
+    * @returns Resulting drop action.
+    */
+    dropAction(): CDropAction {
 		return this.#m_dropAction;
 	}
 
-/**
- * Returns whether the drag operation is active.
- * @returns `true` while the drag is active.
- */
-	isActive(): boolean {
+    /**
+    * Whether the timer is currently scheduled.
+    * The initial value is `false`.
+    */
+    isActive(): boolean {
 		return this.#m_active;
 	}
 
-/**
- * Starts the drag operation with the supplied actions.
- * @param actions Bit mask of supported drop actions.
- * @param defaultAction Preferred action; unsupported values are replaced with `IgnoreAction`.
- */
-	exec(actions: CDropAction,
+    /**
+    * Starts the drag operation with the supplied actions.
+    * @param actions Bit mask of supported drop actions.
+    * @param defaultAction Preferred action; unsupported values are replaced with `IgnoreAction`.
+    */
+    exec(actions: CDropAction,
 		defaultAction: CDropAction = CDropAction.IgnoreAction): void {
 		this.#m_supportedActions = actions;
 
@@ -97,11 +98,11 @@ export class CDrag extends CObject {
 		this.#m_active = true;
 	}
 
-/**
- * Finishes the drag operation with a selected action.
- * @param action Drop action to record; unsupported values become `IgnoreAction`.
- */
-	finish(action: CDropAction): void {
+    /**
+    * Finishes the drag operation with a selected action.
+    * @param action Drop action to record; unsupported values become `IgnoreAction`.
+    */
+    finish(action: CDropAction): void {
 		if (!this.#m_active)
 			return;
 
@@ -113,10 +114,10 @@ export class CDrag extends CObject {
 		this.#m_active = false;
 	}
 
-/**
- * Cancels the drag operation.
- */
-	cancel(): void {
+    /**
+    * Cancels the drag operation.
+    */
+    cancel(): void {
 		this.finish(CDropAction.IgnoreAction);
 	}
 }

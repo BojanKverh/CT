@@ -1,9 +1,10 @@
+/** @module Widgets/CAbstractButton */
 import { CSignal } from "../core/CSignal.js";
 import { CWidget } from "./CWidget.js";
 import { CTimer } from "../core/CTimer.js";
 import { CFocusPolicy } from "../gui/CFocusPolicy.js";
 
-/** Abstract base class for abstract button widgets. */
+/** Shared caption, check state, activation signals and repeat timers for button controls. */
 export abstract class CAbstractButton extends CWidget {
 	#m_text = "";
 	#m_checkable = false;
@@ -14,19 +15,25 @@ export abstract class CAbstractButton extends CWidget {
 
 	#m_repeatTimer = new CTimer(this);
 
-	/** Public clicked member. */
-	readonly clicked = new CSignal<[]>();
-	/** Public toggled member. */
-	readonly toggled = new CSignal<[boolean]>();
+    /**
+    * Emitted when the concrete button activates, including configured auto-repeat ticks. Connect application actions here.
+    * @group Signals
+    */
+    readonly clicked = new CSignal<[]>();
+    /**
+    * Emitted with the new checked value when setChecked(), toggle() or disabling checkability changes the state.
+    * @group Signals
+    */
+    readonly toggled = new CSignal<[boolean]>();
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null) {
-		/** Provides super behavior. */
+    /**
+    * Creates a keyboard-focusable button with empty text and checkable state disabled.
+    */
+    constructor(parent: CWidget | null = null) {
 		super(parent);
 
 		this.#m_repeatTimer.timeout.connect(() => {
 			this.clicked.emit();
-			/** Provides if behavior. */
 			if (this.#m_repeatTimer.isSingleShot()) {
 				this.#m_repeatTimer.setSingleShot(false);
 				this.#m_repeatTimer.start(this.#m_autoRepeatInterval);
@@ -36,20 +43,18 @@ export abstract class CAbstractButton extends CWidget {
 		this.setFocusPolicy(CFocusPolicy.StrongFocus);
 	}
 
-	/**
-	 * Reads the button label.
-	 * @returns The current label, which may be empty.
-	 */
-	text(): string {
+    /**
+    * Stored caption or text value.
+    * The initial value is `""`.
+    */
+    text(): string {
 		return this.#m_text;
 	}
 
-	/**
-	 * Changes the label and requests repainting if the text differs.
-	 * @param text New label text.
-	 */
-	setText(text: string): void {
-		/** Provides if behavior. */
+    /**
+    * Changes the caption and schedules repaint. Reapplying the same text has no effect.
+    */
+    setText(text: string): void {
 		if (this.#m_text === text)
 			return;
 
@@ -57,26 +62,22 @@ export abstract class CAbstractButton extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Checks whether the button supports a checked state.
-	 * @returns `true` if checking is enabled.
-	 */
-	isCheckable(): boolean {
+    /**
+    * Reports whether checked-state changes are enabled. Defaults to false.
+    */
+    isCheckable(): boolean {
 		return this.#m_checkable;
 	}
 
-	/**
-	 * Enables or disables the checked state. Disabling a checked button clears the state and emits `toggled(false)`.
-	 * @param checkable `true` to allow the button to be checked.
-	 */
-	setCheckable(checkable: boolean): void {
-		/** Provides if behavior. */
+    /**
+    * Enables checked state. Setting false clears a checked button and emits toggled(false).
+    */
+    setCheckable(checkable: boolean): void {
 		if (this.#m_checkable === checkable)
 			return;
 
 		this.#m_checkable = checkable;
 
-		/** Provides if behavior. */
 		if (!checkable && this.#m_checked) {
 			this.#m_checked = false;
 			this.toggled.emit(false);
@@ -85,20 +86,18 @@ export abstract class CAbstractButton extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Reads the button's current checked state.
-	 * @returns `true` if the button is checked.
-	 */
-	isChecked(): boolean {
+    /**
+    * Whether the option is checked.
+    * The initial value is `false`.
+    */
+    isChecked(): boolean {
 		return this.#m_checked;
 	}
 
-	/**
-	 * Changes the state of a checkable button and emits `toggled` if the state changes.
-	 * @param checked Requested checked state.
-	 */
-	setChecked(checked: boolean): void {
-		/** Provides if behavior. */
+    /**
+    * Changes checked state and emits toggled when checkable. Ignored when checkability is disabled or the value is unchanged.
+    */
+    setChecked(checked: boolean): void {
 		if (!this.#m_checkable || this.#m_checked === checked)
 			return;
 
@@ -107,44 +106,45 @@ export abstract class CAbstractButton extends CWidget {
 		this.update();
 	}
 
-	/** Inverts the checked state if the button is checkable. */
-	toggle(): void {
-		/** Provides if behavior. */
+    /**
+    * Inverts checked state when checkable and emits toggled through setChecked().
+    */
+    toggle(): void {
 		if (!this.#m_checkable)
 			return;
 
 		this.setChecked(!this.#m_checked);
 	}
 
-	/**
-	 * Stops any active repeat timer and configures the delays for future auto-repeat activation.
-	 * @param delay Delay before the first repeat in milliseconds, clamped to zero or greater.
-	 * @param interval Time between repeats in milliseconds, clamped to at least one.
-	 */
-	setAutoRepeat(delay: number, interval: number): void {
+    /**
+    * Configures repeat delay and interval in milliseconds. Delay is clamped to at least zero and interval to at least one. Stops any previous repeat.
+    */
+    setAutoRepeat(delay: number, interval: number): void {
 		this.resetAutoRepeat();
 		this.#m_autoRepeatDelay = Math.max(0, delay);
 		this.#m_autoRepeatInterval = Math.max(1, interval);
 	}
-	
-	/** Stops the repeat timer and disables auto-repeat. */
-	resetAutoRepeat(): void {
+
+    /**
+    * Stops repeat delivery and clears the delay and interval so later presses do not repeat.
+    */
+    resetAutoRepeat(): void {
 		this.#m_repeatTimer.stop();
 		this.#m_autoRepeatDelay = -1;
 		this.#m_autoRepeatInterval = -1;
 	}
-	
-	/**
-	 * Checks whether auto-repeat is configured.
-	 * @returns `true` if the initial delay is nonnegative and the interval is positive.
-	 */
-	isAutoRepeat(): boolean {
+
+    /**
+    * Returns whether a non-negative delay and positive interval have been configured.
+    */
+    isAutoRepeat(): boolean {
 		return this.#m_autoRepeatDelay >= 0 && this.#m_autoRepeatInterval > 0;
 	}
 
-	/** Starts the initial repeat timer if configured. Its first timeout emits `clicked` and switches the timer to the repeat interval. */
-	protected startAutoRepeat(): void {
-		/** Provides if behavior. */
+    /**
+    * Starts the initial repeat delay for a press. Concrete buttons must pair this with stopAutoRepeat() on release.
+    */
+    protected startAutoRepeat(): void {
 		if (!this.isAutoRepeat()) {
 			this.stopAutoRepeat();
 			return;
@@ -154,8 +154,10 @@ export abstract class CAbstractButton extends CWidget {
 		this.#m_repeatTimer.start(this.#m_autoRepeatDelay);
 	}
 
-	/** Stops the current repeat timer while retaining the delay and interval. */
-	protected stopAutoRepeat(): void {
+    /**
+    * Stops the active repeat timer while retaining its configured delay and interval.
+    */
+    protected stopAutoRepeat(): void {
 		this.#m_repeatTimer.stop();
 	}
 }

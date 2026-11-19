@@ -1,3 +1,4 @@
+/** @module Widgets/CPlainTextEdit */
 import { CTextEdit } from "./CTextEdit.js";
 
 /**
@@ -9,10 +10,6 @@ import { CTextEdit } from "./CTextEdit.js";
  * Use setFont() and setPalette() to style the entire widget.
  */
 export class CPlainTextEdit extends CTextEdit {
-	/**
-	 * Reads the supports rich text of the plain text edit.
-	 * @returns `false` in this implementation.
-	 */
 	protected override supportsRichText(): boolean {
 		return false;
 	}

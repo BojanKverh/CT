@@ -1,35 +1,34 @@
+/** @module Widgets/CPopupWidget */
 import { CApplication } from "../core/CApplication.js";
 import { CFrameShape } from "../gui/CFrameStyle.js";
 import { CFrame } from "./CFrame.js";
 import { CPaletteColorRole } from "../gui/CPalette.js";
 import { CPainter } from "../painting/CPainter.js";
 
-/** Implements the popup widget widget. */
+/** Base popup window registered with application stacking and focus restoration. */
 export class CPopupWidget extends CFrame {
 	#m_open = false;
 
-	/** Creates a new instance. */
-	constructor() {
-		/** Provides super behavior. */
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    */
+    constructor() {
 		super();
 		this.setFrameShape(CFrameShape.Box);
 		this.hide();
 	}
 
-	/**
-	 * Checks whether the popup widget is open.
-	 * @returns `true` if the popup widget is open, otherwise `false`.
-	 */
-	isOpen(): boolean {
+    /**
+    * Reports whether this popup is registered as open.
+    */
+    isOpen(): boolean {
 		return this.#m_open;
 	}
 
-	/**
-	 * Opens the take focus. May request focus.
-	 * @param takeFocus Take focus flag. Defaults to `true`.
-	 */
-	open(takeFocus = true): void {
-		/** Provides if behavior. */
+    /**
+    * Registers and shows the popup, optionally transferring focus into it.
+    */
+    open(takeFocus = true): void {
 		if (this.#m_open)
 			return;
 
@@ -41,9 +40,10 @@ export class CPopupWidget extends CFrame {
 			this.setFocus();
 	}
 
-	/** Unregisters and hides an open popup. A closed popup is left as-is. */
-	close(): void {
-		/** Provides if behavior. */
+    /**
+    * Unregisters and hides the popup, restoring preceding focus when appropriate.
+    */
+    close(): void {
 		if (!this.#m_open)
 			return;
 

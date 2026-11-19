@@ -1,3 +1,4 @@
+/** @module Events/CDropEvent */
 import { CEvent, CEventType } from "./CEvent.js";
 import { CPoint } from "../geometry/CPoint.js";
 import { CMimeData } from "../core/CMimeData.js";
@@ -11,14 +12,14 @@ export class CDropEvent extends CEvent {
 	#m_proposedAction: CDropAction;
 	#m_dropAction: CDropAction;
 
-	/** Creates a drop event.
-	 * @param pos Position relative to the receiving widget.
-	 * @param mimeData Data carried by the drag operation.
-	 * @param possibleActions Actions supported by the drag source.
-	 * @param proposedAction Action proposed by the drag source.
-	 * @param type Event type; defaults to CEventType.Drop.
-	 */
-	constructor(pos: CPoint, mimeData: CMimeData,
+    /** Creates a drop event.
+    * @param pos Position relative to the receiving widget.
+    * @param mimeData Data carried by the drag operation.
+    * @param possibleActions Actions supported by the drag source.
+    * @param proposedAction Action proposed by the drag source.
+    * @param type Event type; defaults to CEventType.Drop.
+    */
+    constructor(pos: CPoint, mimeData: CMimeData,
 		possibleActions: CDropAction, proposedAction: CDropAction, type: CEventType = CEventType.Drop) {
 		super(type);
 
@@ -29,51 +30,35 @@ export class CDropEvent extends CEvent {
 		this.#m_dropAction = proposedAction;
 	}
 
-	/**
-	 * Looks up the location of the drag or drop.
-	 * @returns The stored point in coordinates relative to the receiving widget.
-	 */
-	pos(): CPoint {
+    /** Returns the widget-relative drop position. */
+    pos(): CPoint {
 		return this.#m_pos;
 	}
 
-	/**
-	 * Exposes the payload carried by the drag.
-	 * @returns The MIME data object supplied by the drag source.
-	 */
-	mimeData(): CMimeData {
+    /** Returns the MIME data carried by the drag operation. */
+    mimeData(): CMimeData {
 		return this.#m_mimeData;
 	}
 
-	/**
-	 * Looks up which actions the drag source supports.
-	 * @returns A bit mask of supported drop actions.
-	 */
-	possibleActions(): CDropAction {
+    /** Returns the actions supported by the drag source. */
+    possibleActions(): CDropAction {
 		return this.#m_possibleActions;
 	}
 
-	/**
-	 * Looks up the action suggested by the drag source.
-	 * @returns The original proposed action.
-	 */
-	proposedAction(): CDropAction {
+    /** Returns the action proposed by the drag source. */
+    proposedAction(): CDropAction {
 		return this.#m_proposedAction;
 	}
 
-	/**
-	 * Looks up the currently selected action. It starts as the proposed action.
-	 * @returns The selected drop action.
-	 */
-	dropAction(): CDropAction {
+    /** Returns the currently selected drop action. */
+    dropAction(): CDropAction {
 		return this.#m_dropAction;
 	}
 
-	/**
-	 * Changes the selected action without changing the event's acceptance. Unsupported actions are ignored.
-	 * @param action `IgnoreAction` or an action supported by the source.
-	 */
-	setDropAction(action: CDropAction): void {
+    /** Sets the drop action when it is supported by the drag source.
+    * @param action Drop action to select.
+    */
+    setDropAction(action: CDropAction): void {
 		if (action !== CDropAction.IgnoreAction &&
 			(this.#m_possibleActions & action) === 0)
 			return;
@@ -81,8 +66,8 @@ export class CDropEvent extends CEvent {
 		this.#m_dropAction = action;
 	}
 
-	/** Restores the source's proposed action as the selected action and marks the event accepted. */
-	acceptProposedAction(): void {
+    /** Selects the proposed action and accepts the event. */
+    acceptProposedAction(): void {
 		this.#m_dropAction = this.#m_proposedAction;
 		this.accept();
 	}

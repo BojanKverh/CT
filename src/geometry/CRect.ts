@@ -1,3 +1,4 @@
+/** @module Geometry/CRect */
 import { CPoint } from "./CPoint.js";
 
 /**
@@ -12,13 +13,13 @@ export class CRect {
     #m_height: number;
 
     /**
-     * Creates a rectangle with the specified position and dimensions.
-     *
-     * @param x Horizontal coordinate of the left edge.
-     * @param y Vertical coordinate of the top edge.
-     * @param width Rectangle width.
-     * @param height Rectangle height.
-     */
+    * Creates a rectangle with the specified position and dimensions.
+    *
+    * @param x Horizontal coordinate of the left edge.
+    * @param y Vertical coordinate of the top edge.
+    * @param width Rectangle width.
+    * @param height Rectangle height.
+    */
     constructor(x = 0, y = 0, width = 0, height = 0) {
         this.#m_x = x;
         this.#m_y = y;
@@ -27,74 +28,66 @@ export class CRect {
     }
 
     /**
-     * Returns the horizontal coordinate of the left edge.
-     * @returns The horizontal coordinate of the left edge.
-     */
+    * Horizontal origin in the coordinate system used by the rectangle.
+    */
     x(): number {
         return this.#m_x;
     }
 
     /**
-     * Returns the vertical coordinate of the top edge.
-     * @returns The vertical coordinate of the top edge.
-     */
+    * Vertical origin in the coordinate system used by the rectangle.
+    */
     y(): number {
         return this.#m_y;
     }
 
     /**
-     * Returns the rectangle width.
-     * @returns The rectangle width.
-     */
+    * Horizontal extent; this value is not automatically normalized.
+    */
     width(): number {
         return this.#m_width;
     }
 
     /**
-     * Returns the rectangle height.
-     * @returns The rectangle height.
-     */
+    * Vertical extent; this value is not automatically normalized.
+    */
     height(): number {
         return this.#m_height;
     }
 
     /**
-     * Returns the horizontal coordinate immediately after the right edge.
-     * @returns The horizontal coordinate immediately after the right edge.
-     */
+    * Horizontal trailing boundary, computed as x() + width().
+    */
     right(): number {
         return this.#m_x + this.#m_width;
     }
 
     /**
-     * Returns the vertical coordinate immediately after the bottom edge.
-     * @returns The vertical coordinate immediately after the bottom edge.
-     */
+    * Vertical trailing boundary, computed as y() + height().
+    */
     bottom(): number {
         return this.#m_y + this.#m_height;
     }
 
     /**
-     * Tests whether this rectangle has the same position and size as another rectangle.
-     *
-     * @param rect Rectangle to compare with.
-     * @returns `true` if both rectangles have identical geometry; otherwise `false`.
-     */
+    * Tests whether this rectangle has the same position and size as another rectangle.
+    *
+    * @param rect Rectangle to compare with.
+    * @returns `true` if both rectangles have identical geometry; otherwise `false`.
+    */
     equals(rect: CRect): boolean {
         return (this.x() === rect.x()) && (this.y() === rect.y()) &&
             (this.width() === rect.width()) && (this.height() === rect.height());
     }
 
     /**
-     * Sets the geometry. May update the x, the y, the width, the height.
-     * @param x Horizontal coordinate of the left edge.
-     *
-     * @param y Vertical coordinate of the top edge.
-     *
-     * @param width New rectangle width.
-     *
-     * @param height New rectangle height.
-     */
+    * Sets the rectangle position and dimensions.
+    *
+    * @param x Horizontal coordinate of the left edge.
+    * @param y Vertical coordinate of the top edge.
+    * @param width New rectangle width.
+    * @param height New rectangle height.
+    */
     setGeometry(x: number, y: number, width: number, height: number): void {
         this.#m_x = x;
         this.#m_y = y;
@@ -103,13 +96,13 @@ export class CRect {
     }
 
     /**
-     * Tests whether a point lies inside the rectangle.
-     *
-     * The left and top edges are included, while the right and bottom edges are excluded.
-     *
-     * @param point Point to test.
-     * @returns `true` if the point is inside the rectangle; otherwise `false`.
-     */
+    * Tests whether a point lies inside the rectangle.
+    *
+    * The left and top edges are included, while the right and bottom edges are excluded.
+    *
+    * @param point Point to test.
+    * @returns `true` if the point is inside the rectangle; otherwise `false`.
+    */
     contains(point: CPoint): boolean {
         return point.x() >= this.x()
             && point.x() < this.right()
@@ -118,9 +111,8 @@ export class CRect {
     }
 
     /**
-     * Computes the midpoint between the rectangle's edges.
-     * @returns A new point at the center of the rectangle.
-     */
+    * Returns a new point at the rectangle's geometric midpoint.
+    */
     center(): CPoint {
         return new CPoint(
             this.#m_x + this.#m_width / 2,
@@ -129,13 +121,13 @@ export class CRect {
     }
 
     /**
-     * Tests whether this rectangle overlaps another rectangle.
-     *
-     * Rectangles that only touch at an edge or corner are not considered intersecting.
-     *
-     * @param other Rectangle to test against.
-     * @returns `true` if the rectangles overlap; otherwise `false`.
-     */
+    * Tests whether this rectangle overlaps another rectangle.
+    *
+    * Rectangles that only touch at an edge or corner are not considered intersecting.
+    *
+    * @param other Rectangle to test against.
+    * @returns `true` if the rectangles overlap; otherwise `false`.
+    */
     intersects(other: CRect): boolean {
         return this.#m_x < other.right()
             && this.right() > other.x()
@@ -144,11 +136,11 @@ export class CRect {
     }
 
     /**
-     * Returns the overlapping area of this rectangle and another rectangle.
-     *
-     * @param other Rectangle to intersect with.
-     * @returns The intersection rectangle, or an empty rectangle if there is no overlap.
-     */
+    * Returns the overlapping area of this rectangle and another rectangle.
+    *
+    * @param other Rectangle to intersect with.
+    * @returns The intersection rectangle, or an empty rectangle if there is no overlap.
+    */
     intersection(other: CRect): CRect {
         const left = Math.max(this.#m_x, other.x());
         const top = Math.max(this.#m_y, other.y());

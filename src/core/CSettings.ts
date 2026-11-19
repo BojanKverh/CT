@@ -1,3 +1,4 @@
+/** @module Core/CSettings */
 /** Namespaced JSON settings backed by localStorage.
  * Storage errors switch this instance to an in-memory cache of values already
  * read or written. Those changes last for this instance's lifetime only.
@@ -8,37 +9,27 @@ export class CSettings {
     #m_storage: Storage | null;
     #m_cache = new Map<string, string>();
 
+    /**
+    * Configures a storage namespace for application settings. Values are serialized for browser storage.
+    */
     constructor(namespace: string, storage: Storage | null = CSettings.#browserStorage()) {
         if (namespace.trim() === "") throw new RangeError("Settings namespace must not be empty.");
         this.#m_namespace = namespace;
         this.#m_storage = storage;
     }
 
-    /**
-     * Checks whether the instance still uses persistent storage. An access error switches it to its in-memory cache.
-     * @returns `true` if persistent storage is still active.
-     */
+    /** Whether this instance still uses persistent storage. Access errors turn this off. */
     isPersistent(): boolean { return this.#m_storage !== null; }
 
     /**
-     * Reads and parses a namespaced setting.
-     * @param key Setting key within this instance's namespace.
-     * @returns Parsed JSON value, or `null` for a missing or corrupt entry.
-     */
+    * Reads a setting and returns the supplied fallback when the key is missing or cannot be read.
+    */
     value(key: string): unknown;
-    /**
-     * Reads a namespaced setting using a typed fallback. The stored JSON is returned without schema validation.
-     * @param key Setting key within this instance's namespace.
-     * @param defaultValue Fallback used when the stored entry is missing or corrupt.
-     * @returns Parsed JSON value or the supplied fallback.
-     */
+    /** The caller supplies the expected type; JSON content is not schema-validated. */
     value<T>(key: string, defaultValue: T): T;
     /**
-     * Reads a namespaced setting and parses its JSON representation.
-     * @param key Setting key within this instance's namespace.
-     * @param defaultValue Fallback for a missing or corrupt entry. Defaults to `null`.
-     * @returns Parsed JSON value or the fallback.
-     */
+    * Reads a setting and returns the supplied fallback when the key is missing or cannot be read.
+    */
     value(key: string, defaultValue: unknown = null): unknown {
         const raw = this.#read(key);
         if (raw === null) return defaultValue;
@@ -46,11 +37,8 @@ export class CSettings {
         catch { return defaultValue; }
     }
 
-    /**
-     * Stores a JSON snapshot. Serialization errors propagate before storage changes. A storage error switches the instance to memory.
-     * @param key Setting key within this instance's namespace.
-     * @param value JSON-compatible value to serialize. Unsupported values such as functions and nonfinite numbers are rejected.
-     */
+    /** Stores an independent JSON snapshot. Invalid/non-JSON values throw before
+    * changing anything; storage failures are handled by the memory fallback. */
     setValue(key: string, value: unknown): void {
         const raw = JSON.stringify(value, (_key, item: unknown) => {
             if (typeof item === "undefined" || typeof item === "function" ||
@@ -73,17 +61,12 @@ export class CSettings {
         this.#m_cache.set(storageKey, raw);
     }
 
-    /**
-     * Checks whether any raw value is stored, including JSON `null`, `false` and corrupt entries.
-     * @param key Setting key within this instance's namespace.
-     * @returns `true` if the underlying entry exists.
-     */
+    /** Includes stored null and false; corrupted JSON counts as an existing key. */
     contains(key: string): boolean { return this.#read(key) !== null; }
 
     /**
-     * Deletes the setting from storage and the local cache. A storage error switches the instance to memory.
-     * @param key Setting key within this instance's namespace.
-     */
+    * Removes one key from the application's settings namespace.
+    */
     remove(key: string): void {
         const storageKey = this.#key(key);
         if (this.#m_storage !== null) {

@@ -1,3 +1,4 @@
+/** @module Widgets/CSplitButton */
 import type { CAction } from "../core/CAction.js";
 import { CApplication } from "../core/CApplication.js";
 import type { CFocusEvent } from "../events/CFocusEvent.js";
@@ -16,6 +17,7 @@ type ButtonPart = "main" | "menu" | null;
 
 /** A push button with a separate trailing menu arrow. Menus and actions are borrowed. */
 export class CSplitButton extends CPushButton {
+    /** Logical width reserved for a split button's menu region. */
     static readonly MenuButtonWidth = 24;
     #menu: CMenu | null = null;
     #action: CAction | null = null;
@@ -26,6 +28,10 @@ export class CSplitButton extends CPushButton {
     #spaceDown = false;
     #destroying = false;
 
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
     constructor(parent: CWidget | null = null) {
         super(parent);
         this.clicked.connect(() => {
@@ -36,14 +42,13 @@ export class CSplitButton extends CPushButton {
     }
 
     /**
-     * Reads the menu.
-     * @returns The menu.
-     */
+    * Assigned popup menu.
+    * The initial value is `null`.
+    */
     menu(): CMenu | null { return this.#menu; }
     /**
-     * Closes and disconnects the old menu, attaches close handling to the new menu and updates preferred geometry.
-     * @param menu Menu to open from the dropdown area, or `null` to remove the dropdown.
-     */
+    * Assigns the popup opened by the menu segment.
+    */
     setMenu(menu: CMenu | null): void {
         if (menu === this.#menu) return;
         this.hideMenu();
@@ -60,14 +65,12 @@ export class CSplitButton extends CPushButton {
     }
 
     /**
-     * Reads the action.
-     * @returns The action.
-     */
+    * Returns the action mirrored and triggered by the main button segment, or null.
+    */
     defaultAction(): CAction | null { return this.#action; }
     /**
-     * Replaces the bound action and synchronizes the button with the new action's properties. Future action changes update the button.
-     * @param action Action to bind, or `null` to remove the binding.
-     */
+    * Connects the main segment to an action and updates its presentation from that action.
+    */
     setDefaultAction(action: CAction | null): void {
         if (action === this.#action) return;
         this.#disconnectAction?.();
@@ -88,34 +91,23 @@ export class CSplitButton extends CPushButton {
     }
 
     /**
-     * Computes the bounds of the separate menu control along the right edge.
-     * @returns Local rectangle with zero width when no menu is assigned.
-     */
+    * Returns the local rectangle of the independent menu segment.
+    */
     menuButtonRect(): CRect {
         const width = this.#menu === null ? 0 : Math.min(CSplitButton.MenuButtonWidth, this.width());
         return new CRect(this.width() - width, 0, width, this.height());
     }
-    /**
-     * Adds space for the menu control and an action icon, when present, to the base button size.
-     * @returns Preferred button dimensions in logical pixels.
-     */
     override sizeHint(): CSize {
         const hint = super.sizeHint();
         return new CSize(hint.width() + (this.#menu === null ? 0 : CSplitButton.MenuButtonWidth)
             + (this.#action?.icon() ? 22 : 0), hint.height());
     }
-    /**
-     * Checks whether the split button is down.
-     * @returns `true` if the split button is down, otherwise `false`.
-     */
     override isDown(): boolean { return this.#spaceDown || this.#pressed !== null || this.#menu?.isOpen() === true; }
-    /**
-     * Checks whether the split button is hovered.
-     * @returns `true` if the split button is hovered, otherwise `false`.
-     */
     override isHovered(): boolean { return this.#hovered !== null; }
 
-    /** Opens the configured nonempty menu for an enabled button, positions it near the button and selects its first selectable entry. */
+    /**
+    * Opens the assigned popup anchored to this button.
+    */
     showMenu(): void {
         const menu = this.#menu;
         if (!this.isEnabled() || menu === null || menu.count() === 0 || menu.isOpen()) return;
@@ -136,13 +128,11 @@ export class CSplitButton extends CPushButton {
         menu.open();
         this.update();
     }
-    /** Closes the associated menu if one is assigned. */
+    /**
+    * Closes the assigned popup.
+    */
     hideMenu(): void { this.#menu?.close(); }
 
-    /**
-     * Changes enabled state. Disabling cancels a press and repetition and closes the menu.
-     * @param enabled Whether to enable interaction.
-     */
     override setEnabled(enabled: boolean): void {
         if (!enabled) {
             this.#pressed = null;
@@ -152,11 +142,7 @@ export class CSplitButton extends CPushButton {
         }
         super.setEnabled(enabled);
     }
-    /** Closes the menu before hiding the split button. */
     override hide(): void { this.hideMenu(); super.hide(); }
-    /**
-     * Releases resources held by the split button. May update the destroying, the disconnect menu, the disconnect action.
-     */
     override destroy(): void {
         this.#destroying = true;
         this.hideMenu();
@@ -171,10 +157,6 @@ export class CSplitButton extends CPushButton {
         if (!this.rect().contains(point)) return null;
         return this.#menu !== null && this.menuButtonRect().contains(point) ? "menu" : "main";
     }
-    /**
-     * Tracks which part of the button was pressed on a left click and starts auto-repeat only for the main part when configured.
-     * @param event Mouse event with pointer coordinates local to the control.
-     */
     protected override mousePressEvent(event: CMouseEvent): void {
         if (event.button() !== CMouseButton.LeftButton) { event.ignore(); return; }
         this.#pressed = this.#part(event);
@@ -183,10 +165,6 @@ export class CSplitButton extends CPushButton {
         if (this.#pressed === "main" && this.isAutoRepeat()) this.startAutoRepeat();
         event.accept(); this.update();
     }
-    /**
-     * Stops repetition and activates the part where a left press began if the pointer releases over the same part.
-     * @param event Mouse event with pointer coordinates local to the control.
-     */
     protected override mouseReleaseEvent(event: CMouseEvent): void {
         if (event.button() !== CMouseButton.LeftButton) { event.ignore(); return; }
         const pressed = this.#pressed;
@@ -197,34 +175,18 @@ export class CSplitButton extends CPushButton {
         if (pressed === "menu") this.showMenu();
         else this.clicked.emit();
     }
-    /**
-     * Updates hover styling for whichever part is under the pointer.
-     * @param event Mouse event with pointer coordinates local to the control.
-     */
     protected override mouseMoveEvent(event: CMouseEvent): void {
         this.#hovered = this.#part(event);
         event.accept(); this.update();
     }
-    /**
-     * Updates hover styling from the entry position.
-     * @param event Mouse event with pointer coordinates local to the control.
-     */
     protected override mouseEnterEvent(event: CMouseEvent): void {
         this.#hovered = this.#part(event);
         event.accept(); this.update();
     }
-    /**
-     * Clears hover styling for both button parts.
-     * @param event Mouse event with pointer coordinates local to the control.
-     */
     protected override mouseLeaveEvent(event: CMouseEvent): void {
         this.#hovered = null;
         event.accept(); this.update();
     }
-    /**
-     * Handles dropdown shortcuts and main-button keyboard activation.
-     * @param event Keyboard event containing the key and modifiers.
-     */
     protected override keyPressEvent(event: CKeyEvent): void {
         if (!event.ctrl() && !event.meta() && (event.key() === "ArrowDown" || event.key() === "F4")) {
             if (this.#menu === null) { event.ignore(); return; }
@@ -243,10 +205,6 @@ export class CSplitButton extends CPushButton {
         }
         event.ignore();
     }
-    /**
-     * Emits `clicked` when a tracked Space press is released.
-     * @param event Keyboard event containing the key and modifiers.
-     */
     protected override keyReleaseEvent(event: CKeyEvent): void {
         if (event.key() !== " ") { event.ignore(); return; }
         const down = this.#spaceDown;
@@ -254,20 +212,12 @@ export class CSplitButton extends CPushButton {
         event.accept(); this.update();
         if (down) this.clicked.emit();
     }
-    /**
-     * Cancels pointer and Space presses and stops auto-repeat before forwarding focus exit.
-     * @param event Focus exit event.
-     */
     protected override focusOutEvent(event: CFocusEvent): void {
         this.#spaceDown = false;
         this.#pressed = null;
         this.stopAutoRepeat();
         super.focusOutEvent(event);
     }
-    /**
-     * Draws the split button through the supplied painter.
-     * @param painter Painter for the current drawing operation.
-     */
     protected override paintEvent(painter: CPainter): void {
         const option = new CStyleOptionSplitButton();
         option.initFromPushButton(this);

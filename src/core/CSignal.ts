@@ -1,3 +1,4 @@
+/** @module Core/CSignal */
 /**
  * Function type used as a slot connected to a signal.
  * @typeParam TArgs Tuple containing the signal argument types.
@@ -11,11 +12,11 @@ export type CSlot<TArgs extends unknown[]> = (...args: TArgs) => void;
 export class CSignal<TArgs extends unknown[] = []> {
     #m_slots = new Set<CSlot<TArgs>>();
 
-/**
- * Connects a slot to the signal.
- * @param slot Slot to invoke when the signal is emitted.
- * @returns A function that disconnects the slot.
- */
+    /**
+    * Connects a slot to the signal.
+    * @param slot Slot to invoke when the signal is emitted.
+    * @returns A function that disconnects the slot.
+    */
     connect(slot: CSlot<TArgs>): () => void {
     	this.#m_slots.add(slot);
 	    return () => {
@@ -23,26 +24,23 @@ export class CSignal<TArgs extends unknown[] = []> {
 	    };
     }
 
-/**
- * Disconnects a slot from the signal.
- * @param slot Previously connected slot.
- */
+    /**
+    * Disconnects a slot from the signal.
+    * @param slot Previously connected slot.
+    */
     disconnect(slot: CSlot<TArgs>): void {
         this.#m_slots.delete(slot);
     }
 
-    /**
-     * Returns whether the signal has connected slots.
-     * @returns `true` if the signal has connections, otherwise `false`.
-     */
+    /** Returns whether the signal has connected slots. */
     hasConnections(): boolean {
         return this.#m_slots.size > 0;
     }
 
-/**
- * Emits the signal and invokes all currently connected slots.
- * @param args Arguments passed to each connected slot.
- */
+    /**
+    * Emits the signal and invokes all currently connected slots.
+    * @param args Arguments passed to each connected slot.
+    */
     emit(...args: TArgs): void {
         const slots = [...this.#m_slots];
 

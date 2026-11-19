@@ -1,3 +1,4 @@
+/** @module Models/CFetchSqlTableAdapter */
 import {
 	CSqlTableAdapter,
 	type CSqlRow,
@@ -12,28 +13,43 @@ export type CSqlFetch = (
 	init?: RequestInit
 ) => Promise<Response>;
 
+/**
+ * HTTP transport overrides applied to requests made by CFetchSqlTableAdapter.
+ */
 export interface CFetchSqlTableAdapterOptions {
-	/** Custom fetch implementation, primarily useful for tests and polyfills. */
-	fetch?: CSqlFetch;
+    /** Custom fetch implementation, primarily useful for tests and polyfills. */
+    fetch?: CSqlFetch;
 
-	/** Static headers or a function evaluated before every request. */
-	headers?: HeadersInit | (() => HeadersInit);
+    /** Static headers or a function evaluated before every request. */
+    headers?: HeadersInit | (() => HeadersInit);
 
-	/** Static signal or a function returning the signal for the next request. */
-	signal?: AbortSignal | (() => AbortSignal | undefined);
+    /** Static signal or a function returning the signal for the next request. */
+    signal?: AbortSignal | (() => AbortSignal | undefined);
 
-	/** Fetch credentials mode. */
-	credentials?: RequestCredentials;
+    /** Fetch credentials mode. */
+    credentials?: RequestCredentials;
 }
 
 /** An HTTP failure returned by CFetchSqlTableAdapter. */
 export class CFetchSqlError extends Error {
-	readonly status: number;
-	readonly statusText: string;
-	readonly url: string;
-	readonly body: unknown;
+    /** HTTP response status captured when the request failed. */
+    readonly status: number;
+    /** HTTP response status description captured for the failure. */
+    readonly statusText: string;
+    /** URL requested by the failed HTTP operation. */
+    readonly url: string;
+    /** Response payload captured for diagnosis. */
+    readonly body: unknown;
 
-	constructor(
+    /**
+    * Captures HTTP response details alongside the failure message.
+    * @param message Input used to configure CFetchSqlError.
+    * @param status Input used to configure CFetchSqlError.
+    * @param statusText Input used to configure CFetchSqlError.
+    * @param url Input used to configure CFetchSqlError.
+    * @param body Input used to configure CFetchSqlError. Omit to use `null`.
+    */
+    constructor(
 		message: string,
 		status: number,
 		statusText: string,
@@ -65,7 +81,12 @@ export class CFetchSqlTableAdapter extends CSqlTableAdapter {
 	#m_signal: AbortSignal | (() => AbortSignal | undefined) | undefined;
 	#m_credentials: RequestCredentials | undefined;
 
-	constructor(
+    /**
+    * Configures a REST endpoint and optional fetch, headers, signal and credentials providers.
+    * @param baseUrl Base HTTP endpoint for adapter requests.
+    * @param options Optional adapter transport configuration. Omit to use `{}`.
+    */
+    constructor(
 		baseUrl: string,
 		options: CFetchSqlTableAdapterOptions = {}
 	) {
@@ -77,27 +98,20 @@ export class CFetchSqlTableAdapter extends CSqlTableAdapter {
 		this.#m_credentials = options.credentials;
 	}
 
-	/**
-	 * Reads the request prefix used by this adapter.
-	 * @returns Base URL without trailing slashes.
-	 */
-	baseUrl(): string {
+    /**
+    * Returns the HTTP endpoint prefix used for table requests.
+    */
+    baseUrl(): string {
 		return this.#m_baseUrl;
 	}
 
-	/**
-	 * Changes the prefix used for future requests and removes trailing slashes.
-	 * @param baseUrl New base URL.
-	 */
-	setBaseUrl(baseUrl: string): void {
+    /**
+    * Changes the HTTP endpoint prefix used for subsequent requests.
+    */
+    setBaseUrl(baseUrl: string): void {
 		this.#m_baseUrl = baseUrl.replace(/\/+$/, "");
 	}
 
-	/**
-	 * Requests a page with GET and validates the JSON response shape.
-	 * @param request Table, projection, offset, limit and optional sort and filter settings.
-	 * @returns A promise resolving to row objects and the nonnegative total count. Invalid responses reject.
-	 */
 	override async select(
 		request: CSqlSelectRequest
 	): Promise<CSqlSelectResult> {
@@ -133,12 +147,6 @@ export class CFetchSqlTableAdapter extends CSqlTableAdapter {
 		};
 	}
 
-	/**
-	 * Posts a JSON record to the table endpoint.
-	 * @param table Target table name.
-	 * @param values Column values to send as JSON.
-	 * @returns A promise resolving to the returned record object. Invalid responses reject.
-	 */
 	override async insert(
 		table: string,
 		values: Readonly<CSqlRow>
@@ -153,14 +161,6 @@ export class CFetchSqlTableAdapter extends CSqlTableAdapter {
 		return value;
 	}
 
-	/**
-	 * Sends a JSON PATCH to the record endpoint.
-	 * @param table Target table name.
-	 * @param _primaryKeyColumn Primary-key column name. This adapter addresses records by key value alone.
-	 * @param primaryKey Key value converted to a URL-encoded path segment.
-	 * @param values Column values to send as JSON.
-	 * @returns A promise that resolves on a successful response.
-	 */
 	override async update(
 		table: string,
 		_primaryKeyColumn: string,
@@ -174,13 +174,6 @@ export class CFetchSqlTableAdapter extends CSqlTableAdapter {
 		);
 	}
 
-	/**
-	 * Sends DELETE to the record endpoint.
-	 * @param table Target table name.
-	 * @param _primaryKeyColumn Primary-key column name. This adapter addresses records by key value alone.
-	 * @param primaryKey Key value converted to a URL-encoded path segment.
-	 * @returns A promise that resolves on a successful response.
-	 */
 	override async remove(
 		table: string,
 		_primaryKeyColumn: string,
@@ -260,8 +253,14 @@ export class CFetchSqlTableAdapter extends CSqlTableAdapter {
 		const text = await response.text();
 		if (text !== "") {
 			try {
+				/**
+				 * Response payload captured for diagnosis of a failed request.
+				 */
 				body = JSON.parse(text) as unknown;
 			} catch {
+				/**
+				 * Response payload captured for diagnosis of a failed request.
+				 */
 				body = text;
 			}
 

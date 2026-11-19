@@ -1,3 +1,4 @@
+/** @module Widgets/CButtonGroup */
 import { CObject } from "../core/CObject.js";
 import { CSignal } from "../core/CSignal.js";
 import { CAbstractButton } from "./CAbstractButton.js";
@@ -7,29 +8,33 @@ type CButtonConnections = {
 	toggledSlot: (checked: boolean) => void;
 };
 
-/** Implements the button group widget. */
+/** Coordinates button membership and exclusive check state and forwards group activation signals. */
 export class CButtonGroup extends CObject {
 	#m_buttons = new Map<CAbstractButton, CButtonConnections>();
 	#m_exclusive = true;
 	#m_updating = false;
 
-	/** Public button clicked member. */
-	readonly buttonClicked = new CSignal<[CAbstractButton]>();
-	/** Public button toggled member. */
-	readonly buttonToggled = new CSignal<[CAbstractButton, boolean]>();
+    /**
+    * Emitted with the group id of the button that was activated.
+    * @group Signals
+    */
+    readonly buttonClicked = new CSignal<[CAbstractButton]>();
+    /**
+    * Emitted with the button group id and its new checked state.
+    * @group Signals
+    */
+    readonly buttonToggled = new CSignal<[CAbstractButton, boolean]>();
 
-	/** Creates a new instance. */
-	constructor(parent: CObject | null = null) {
-		/** Provides super behavior. */
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CObject | null = null) {
 		super(parent);
 	}
 
-	/**
-	 * Adds button.
-	 * @param button Button.
-	 */
-	addButton(button: CAbstractButton): void {
-		/** Provides if behavior. */
+    /** Adds button. */
+    addButton(button: CAbstractButton): void {
 		if (this.#m_buttons.has(button))
 			return;
 
@@ -46,19 +51,14 @@ export class CButtonGroup extends CObject {
 
 		this.#m_buttons.set(button, { clickedSlot, toggledSlot });
 
-		/** Provides if behavior. */
 		if (this.#m_exclusive && button.isChecked())
 			this.#uncheckOthers(button);
 	}
 
-	/**
-	 * Removes button.
-	 * @param button Button.
-	 */
-	removeButton(button: CAbstractButton): void {
+    /** Removes button. */
+    removeButton(button: CAbstractButton): void {
 		const connections = this.#m_buttons.get(button);
 
-		/** Provides if behavior. */
 		if (connections === undefined)
 			return;
 
@@ -68,51 +68,43 @@ export class CButtonGroup extends CObject {
 		this.#m_buttons.delete(button);
 	}
 
-	/**
-	 * Reads the buttons of the button group.
-	 * @returns The buttons.
-	 */
-	buttons(): CAbstractButton[] {
+    /**
+    * Returns the registered button collection.
+    */
+    buttons(): CAbstractButton[] {
 		return [...this.#m_buttons.keys()];
 	}
 
-	/**
-	 * Checks whether the button group is exclusive.
-	 * @returns `true` if the button group is exclusive, otherwise `false`.
-	 */
-	isExclusive(): boolean {
+    /**
+    * Whether checking one member clears the other checked members.
+    * The initial value is `true`.
+    */
+    isExclusive(): boolean {
 		return this.#m_exclusive;
 	}
 
-	/**
-	 * Sets the exclusive.
-	 * @param exclusive Exclusive flag.
-	 */
-	setExclusive(exclusive: boolean): void {
-		/** Provides if behavior. */
+    /**
+    * Controls whether checking a member unchecks other group members.
+    */
+    setExclusive(exclusive: boolean): void {
 		if (this.#m_exclusive === exclusive)
 			return;
 
 		this.#m_exclusive = exclusive;
 
-		/** Provides if behavior. */
 		if (exclusive) {
 			const checked = this.checkedButton();
 
-			/** Provides if behavior. */
 			if (checked !== null)
 				this.#uncheckOthers(checked);
 		}
 	}
 
-	/**
-	 * Finds the first checked button in the group.
-	 * @returns Checked button in registration order, or `null` if none is checked.
-	 */
-	checkedButton(): CAbstractButton | null {
-		/** Provides for behavior. */
+    /**
+    * Returns a currently checked group member or null.
+    */
+    checkedButton(): CAbstractButton | null {
 		for (const button of this.#m_buttons.keys()) {
-			/** Provides if behavior. */
 			if (button.isChecked())
 				return button;
 		}
@@ -121,11 +113,9 @@ export class CButtonGroup extends CObject {
 	}
 
 	#buttonToggled(button: CAbstractButton, checked: boolean): void {
-		/** Provides if behavior. */
 		if (this.#m_updating)
 			return;
 
-		/** Provides if behavior. */
 		if (this.#m_exclusive && checked)
 			this.#uncheckOthers(button);
 
@@ -136,9 +126,7 @@ export class CButtonGroup extends CObject {
 		this.#m_updating = true;
 
 		try {
-			/** Provides for behavior. */
 			for (const button of this.#m_buttons.keys()) {
-				/** Provides if behavior. */
 				if (button !== checkedButton && button.isChecked())
 					button.setChecked(false);
 			}

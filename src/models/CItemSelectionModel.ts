@@ -1,3 +1,4 @@
+/** @module Models/CItemSelectionModel */
 import { CObject } from "../core/CObject.js";
 import { CSignal } from "../core/CSignal.js";
 import { CAbstractItemModel } from "./CAbstractItemModel.js";
@@ -18,12 +19,18 @@ function cellKey(index: CModelIndex): string {
  * Tracks the current index and selected indexes for an item model.
  */
 export class CItemSelectionModel extends CObject {
-	/** Emitted when the current index changes. */
-	readonly currentChanged =
+    /**
+    * Emitted when the current index changes.
+    * @group Signals
+    */
+    readonly currentChanged =
 		new CSignal<[CModelIndex, CModelIndex]>();
 
-	/** Emitted with newly selected and deselected indexes. */
-	readonly selectionChanged =
+    /**
+    * Emitted with newly selected and deselected indexes.
+    * @group Signals
+    */
+    readonly selectionChanged =
 		new CSignal<[CModelIndex[], CModelIndex[]]>();
 
 	#m_model: CAbstractItemModel;
@@ -32,33 +39,27 @@ export class CItemSelectionModel extends CObject {
     #rectangle: SelectionRectangle | null = null;
     #excludedCells = new Set<string>();
 
-	/** Creates a selection model for the specified item model. */
-	constructor(model: CAbstractItemModel, parent: CObject | null = null) {
+    /** Creates a selection model for the specified item model. */
+    constructor(model: CAbstractItemModel, parent: CObject | null = null) {
 		super(parent);
 		this.#m_model = model;
 	}
 
-	/**
-	 * Identifies the item model whose selection is tracked.
-	 * @returns The associated model.
-	 */
-	model(): CAbstractItemModel {
+    /** Returns the item model whose selection is tracked. */
+    model(): CAbstractItemModel {
 		return this.#m_model;
 	}
 
-	/**
-	 * Reads the current item independently of the selection.
-	 * @returns The current index, which may be invalid.
-	 */
-	currentIndex(): CModelIndex {
+    /**
+    * Zero-based current item index.
+    * The initial value is `new CModelIndex()`.
+    */
+    currentIndex(): CModelIndex {
 		return this.#m_currentIndex;
 	}
 
-	/**
-	 * Changes the current index and emits `currentChanged` when it differs. A valid index owned by another model is ignored.
-	 * @param index Index in the associated model, or an invalid index to clear the current item.
-	 */
-	setCurrentIndex(index: CModelIndex): void {
+    /** Sets the current index if it belongs to the associated model. */
+    setCurrentIndex(index: CModelIndex): void {
 		if (index.isValid() && index.model() !== this.#m_model)
 			return;
 
@@ -70,41 +71,27 @@ export class CItemSelectionModel extends CObject {
 		this.currentChanged.emit(index, previous);
 	}
 
-	/**
-	 * Returns whether at least one index is selected.
-	 * @returns `true` if the item selection model has selection, otherwise `false`.
-	 */
-	hasSelection(): boolean {
+    /** Returns whether at least one index is selected. */
+    hasSelection(): boolean {
 		if (this.#m_selectedIndexes.length > 0) return true;
         const rect = this.#rectangle;
         return rect !== null &&
             (rect.lastRow - rect.firstRow + 1) * (rect.lastColumn - rect.firstColumn + 1) > this.#excludedCells.size;
 	}
 
-	/**
-	 * Checks the explicit selection and any rectangular selection, including exclusions for individually deselected cells.
-	 * @param index Index owned by the associated model.
-	 * @returns `true` if the index is selected.
-	 */
-	isSelected(index: CModelIndex): boolean {
+    /** Returns whether the specified index is selected. */
+    isSelected(index: CModelIndex): boolean {
         if (!index.isValid() || index.model() !== this.#m_model) return false;
         if (this.#inRectangle(index)) return !this.#excludedCells.has(cellKey(index));
 		return this.#m_selectedIndexes.some(selected => selected.equals(index));
 	}
 
-	/**
-	 * Expands any selected rectangle, omits excluded cells and appends individually selected indexes.
-	 * @returns A fresh array of currently selected indexes.
-	 */
-	selectedIndexes(): CModelIndex[] {
+    /** Returns a copy of the selected indexes. */
+    selectedIndexes(): CModelIndex[] {
         return this.#collectIndexes(false);
     }
 
-    /**
-     * Captures selected indexes for remapping after rows change, preserving former rectangle coordinates that no longer resolve.
-     * @returns Selected indexes, including former coordinates needed by the row-change handler.
-     * @internal
-     */
+    /** @internal Includes former coordinates when a removal has already shortened the model. */
     indexesForRowChange(): CModelIndex[] {
         return this.#collectIndexes(true);
     }
@@ -127,11 +114,7 @@ export class CItemSelectionModel extends CObject {
         }
     }
 
-    /**
-     * Iterates rectangular and explicitly selected cells in row order, then column order within each row.
-     * @returns Iterator over the selected model indexes.
-     * @internal
-     */
+    /** @internal Iterates a flat table selection in view row and column order. */
     *selectedIndexesInRowOrder(): IterableIterator<CModelIndex> {
         const compare = (left: CModelIndex, right: CModelIndex) =>
             left.row() - right.row() || left.column() - right.column();
@@ -145,11 +128,8 @@ export class CItemSelectionModel extends CObject {
         while (extra < extras.length) yield extras[extra++]!;
     }
 
-	/**
-	 * Adds a valid index to the selection or removes its exclusion from the selected rectangle, then emits `selectionChanged`.
-	 * @param index Index owned by the associated model. Invalid, foreign and already selected indexes are ignored.
-	 */
-	select(index: CModelIndex): void {
+    /** Adds a valid index from the associated model to the selection. */
+    select(index: CModelIndex): void {
 		if (!index.isValid() || index.model() !== this.#m_model
 			|| this.isSelected(index))
 			return;
@@ -159,12 +139,7 @@ export class CItemSelectionModel extends CObject {
 		this.selectionChanged.emit([index], []);
 	}
 
-    /**
-     * Replaces the selection with the inclusive rectangle between two cells and clears previous exclusions. Emits a delta to listeners when the selected cells change.
-     * @param anchor First corner index owned by the associated flat model.
-     * @param end Opposite corner index owned by the same model.
-     * @internal
-     */
+    /** @internal Replaces the selection with a rectangle in a flat model. */
     selectRectangle(anchor: CModelIndex, end: CModelIndex): void {
         if (!anchor.isValid() || !end.isValid() ||
             anchor.model() !== this.#m_model || end.model() !== this.#m_model) return;
@@ -195,11 +170,8 @@ export class CItemSelectionModel extends CObject {
             index.column() >= rect.firstColumn && index.column() <= rect.lastColumn;
     }
 
-	/**
-	 * Removes an explicitly selected index or excludes a cell from the selected rectangle and emits `selectionChanged` on a change.
-	 * @param index Index to deselect.
-	 */
-	deselect(index: CModelIndex): void {
+    /** Removes an index from the selection. */
+    deselect(index: CModelIndex): void {
         if (index.isValid() && index.model() === this.#m_model && this.#inRectangle(index)) {
             const key = cellKey(index);
             if (!this.#excludedCells.has(key)) {
@@ -221,8 +193,8 @@ export class CItemSelectionModel extends CObject {
 		    this.selectionChanged.emit([], [deselected]);
 	}
 
-	/** Clears all selected indexes while preserving the current index. */
-	clearSelection(): void {
+    /** Clears all selected indexes while preserving the current index. */
+    clearSelection(): void {
         const deselected = this.selectionChanged.hasConnections() ? this.selectedIndexes() : [];
         this.#rectangle = null;
         this.#excludedCells.clear();
@@ -230,18 +202,14 @@ export class CItemSelectionModel extends CObject {
         if (deselected.length > 0) this.selectionChanged.emit([], deselected);
 	}
 
-	/** Clears the selection and resets the current index to an invalid index. */
-	clear(): void {
+    /** Clears both the selection and the current index. */
+    clear(): void {
 		this.clearSelection();
 		this.setCurrentIndex(new CModelIndex());
 	}
 
-	/**
-	 * Remaps current and selected indexes after model layout changes without emitting selection signals. A rectangle becomes a list of remapped cells. Unequal input lengths are ignored.
-	 * @param oldIndexes Indexes before the rearrangement.
-	 * @param newIndexes Corresponding indexes after it. Invalid indexes represent removed items.
-	 */
-	remapIndexes(
+    /** Remaps current and selected indexes after a model layout change. */
+    remapIndexes(
 		oldIndexes: CModelIndex[],
 		newIndexes: CModelIndex[]
 	): void {

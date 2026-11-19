@@ -1,36 +1,37 @@
+/** @module Widgets/CFrame */
 import type { CPainter } from "../painting/CPainter.js";
 import { CRect } from "../geometry/CRect.js";
 import { CWidget } from "./CWidget.js";
 import { CFrameShape, CFrameShadow } from "../gui/CFrameStyle.js"
 import { CStyleOptionFrame } from "../gui/CStyleOptionFrame.js";
 
-/** Implements the frame widget. */
+/** Widget with configurable frame shape, shadow and content inset. */
 export class CFrame extends CWidget {
 	#m_frameShape = CFrameShape.NoFrame;
 	#m_frameShadow = CFrameShadow.Plain;
 	#m_lineWidth = 1;
 	#m_midLineWidth = 0;
 
-	/** Creates a new instance. */
-	constructor(parent: CWidget | null = null) {
-		/** Provides super behavior. */
+    /**
+    * Initializes the control and its internal children in the supplied ownership hierarchy.
+    * @param parent Owner of this object. Widget parents manage child lifetime and inherited state. Omit to use `null`.
+    */
+    constructor(parent: CWidget | null = null) {
 		super(parent);
 	}
 
-	/**
-	 * Reads the frame shape.
-	 * @returns The frame shape.
-	 */
-	frameShape(): CFrameShape {
+    /**
+    * Geometric shape used by the frame style.
+    * The initial value is `CFrameShape.NoFrame`.
+    */
+    frameShape(): CFrameShape {
 		return this.#m_frameShape;
 	}
 
-	/**
-	 * Sets the frame shape.
-	 * @param shape Shape.
-	 */
-	setFrameShape(shape: CFrameShape): void {
-		/** Provides if behavior. */
+    /**
+    * Changes frame geometry and notifies the container to recompute content insets.
+    */
+    setFrameShape(shape: CFrameShape): void {
 		if (this.#m_frameShape === shape)
 			return;
 
@@ -39,20 +40,18 @@ export class CFrame extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Reads the frame shadow.
-	 * @returns The frame shadow.
-	 */
-	frameShadow(): CFrameShadow {
+    /**
+    * Raised, sunken or plain frame presentation.
+    * The initial value is `CFrameShadow.Plain`.
+    */
+    frameShadow(): CFrameShadow {
 		return this.#m_frameShadow;
 	}
 
-	/**
-	 * Sets the frame shadow.
-	 * @param shadow Shadow.
-	 */
-	setFrameShadow(shadow: CFrameShadow): void {
-		/** Provides if behavior. */
+    /**
+    * Changes raised, sunken or plain framing.
+    */
+    setFrameShadow(shadow: CFrameShadow): void {
 		if (this.#m_frameShadow === shadow)
 			return;
 
@@ -61,22 +60,20 @@ export class CFrame extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Reads the line width.
-	 * @returns The line width.
-	 */
-	lineWidth(): number {
+    /**
+    * Logical width used for the frame's main line.
+    * The initial value is `1`.
+    */
+    lineWidth(): number {
 		return this.#m_lineWidth;
 	}
 
-	/**
-	 * Sets the line width.
-	 * @param width Width.
-	 */
-	setLineWidth(width: number): void {
+    /**
+    * Changes the logical width of the principal frame outline.
+    */
+    setLineWidth(width: number): void {
 		width = Math.max(0, width);
 
-		/** Provides if behavior. */
 		if (this.#m_lineWidth === width)
 			return;
 
@@ -85,22 +82,20 @@ export class CFrame extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Reads the mid line width.
-	 * @returns The mid line width.
-	 */
-	midLineWidth(): number {
+    /**
+    * Logical width used for the frame's middle line.
+    * The initial value is `0`.
+    */
+    midLineWidth(): number {
 		return this.#m_midLineWidth;
 	}
 
-	/**
-	 * Sets the mid line width.
-	 * @param width Width.
-	 */
-	setMidLineWidth(width: number): void {
+    /**
+    * Changes the logical width of the secondary frame line.
+    */
+    setMidLineWidth(width: number): void {
 		width = Math.max(0, width);
 
-		/** Provides if behavior. */
 		if (this.#m_midLineWidth === width)
 			return;
 
@@ -109,38 +104,29 @@ export class CFrame extends CWidget {
 		this.update();
 	}
 
-	/**
-	 * Reads the frame width of the frame.
-	 * @returns The frame width.
-	 */
-	frameWidth(): number {
-		/** Provides if behavior. */
+    /**
+    * Returns the content inset calculated from the frame's shape and line settings.
+    */
+    frameWidth(): number {
 		if (this.#m_frameShape === CFrameShape.NoFrame)
 			return 0;
 
-		/** Provides if behavior. */
 		if (this.#m_frameShape === CFrameShape.Panel)
 			return this.#m_lineWidth;
 
-		/** Provides if behavior. */
 		if (this.#m_frameShadow === CFrameShadow.Plain)
 			return this.#m_lineWidth;
 
 		return 2 * this.#m_lineWidth + this.#m_midLineWidth;
 	}
 
-	/**
-	 * Reads the frame rect of the frame.
-	 * @returns The frame rect.
-	 */
-	frameRect(): CRect {
+    /**
+    * Returns the rectangle used for drawing this widget's frame.
+    */
+    frameRect(): CRect {
 		return this.rect();
 	}
 
-	/**
-	 * Returns the widget's contents rectangle.
-	 * @returns A new `CRect`.
-	 */
 	override contentsRect(): CRect {
 		const frameWidth = this.frameWidth();
 		return new CRect(frameWidth, frameWidth, Math.max(0, this.width() - 2 * frameWidth),
@@ -148,14 +134,9 @@ export class CFrame extends CWidget {
 		);
 	}
 
-	/**
-	 * Draws the frame through the supplied painter.
-	 * @param painter Painter for the current drawing operation.
-	 */
 	protected override paintEvent(painter: CPainter): void {
 		super.paintEvent(painter);
 
-		/** Provides if behavior. */
 		if (this.#m_frameShape === CFrameShape.NoFrame)
 			return;
 
@@ -165,10 +146,10 @@ export class CFrame extends CWidget {
 		this.style().drawFrame(painter, option);
 	}
 
-	/**
-	 * Provides the subclass hook for frame changed. This implementation does nothing.
-	 */
-	protected frameChanged(): void
+    /**
+    * Override to recompute container geometry after frame settings change.
+    */
+    protected frameChanged(): void
 	{
 	}
 }

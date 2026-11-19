@@ -1,3 +1,4 @@
+/** @module Dialogs/CColorDialog */
 import { CSignal } from "../core/CSignal.js";
 import { CColor } from "../gui/CColor.js";
 import { CVBoxLayout } from "../layouts/CVBoxLayout.js";
@@ -20,19 +21,25 @@ import { CPaletteColorRole } from "../gui/CPalette.js";
  */
 export class CColorDialog extends CDialog
 {
-	static readonly DefaultWidth = 300;
-	static readonly DefaultHeight = 360;
-	static readonly Margin = 12;
-	static readonly Spacing = 6;
+    /** Default preferred logical width. */
+    static readonly DefaultWidth = 300;
+    /** Default preferred logical height. */
+    static readonly DefaultHeight = 360;
+    /** Default logical inset around contents. */
+    static readonly Margin = 12;
+    /** Default logical gap between adjacent items. */
+    static readonly Spacing = 6;
 
-/**
- * Emitted whenever the current color changes.
- */
-	readonly currentColorChanged = new CSignal<[CColor]>();
-/**
- * Emitted when the current color is accepted.
- */
-	readonly colorSelected = new CSignal<[CColor]>();
+    /**
+    * Emitted whenever the current color changes.
+    * @group Signals
+    */
+    readonly currentColorChanged = new CSignal<[CColor]>();
+    /**
+    * Emitted when the current color is accepted.
+    * @group Signals
+    */
+    readonly colorSelected = new CSignal<[CColor]>();
 
 	#m_color: CColor;
 
@@ -47,13 +54,13 @@ export class CColorDialog extends CDialog
 
 	#m_updating = false;
 
-/**
- * Creates a color selection dialog.
- *
- * @param color Initial color.
- * @param parent Optional parent widget.
- */
-	constructor(
+    /**
+    * Creates a color selection dialog.
+    *
+    * @param color Initial color.
+    * @param parent Optional parent widget.
+    */
+    constructor(
 		color = new CColor(0, 0, 0),
 		parent: CWidget | null = null
 	) {
@@ -132,7 +139,7 @@ export class CColorDialog extends CDialog
         this.#m_display = new CLabel(frame);
         this.#m_display.setGeometry(rect.x(), rect.y(), rect.width(), rect.height());
         hbox.addWidget(frame);
-        
+
         layout.addLayout(hbox);
 		layout.addStretch(1);
 		layout.addWidget(this.#m_buttonBox);
@@ -175,20 +182,20 @@ export class CColorDialog extends CDialog
 		this.setWindowTitle("Pick color");
 	}
 
-/**
-	 * Reads the selected color, including alpha.
-	 * @returns An independent copy of the current RGBA color.
-	 */
-	currentColor(): CColor {
+    /**
+    * Returns a copy of the currently selected color.
+    *
+    * @returns Current color.
+    */
+    currentColor(): CColor {
 	    return new CColor(this.#m_color.red(), this.#m_color.green(), this.#m_color.blue(), 
             this.#m_color.alpha());
 	}
 
-/**
-	 * Updates the color controls and emits `currentColorChanged` when the color differs.
-	 * @param color Color to select.
-	 */
-	setCurrentColor(color: CColor): void {
+    /**
+    * Updates the working color shown by the dialog and its controls.
+    */
+    setCurrentColor(color: CColor): void {
 		if (this.#m_color.equals(color))
 			return;
 
@@ -196,13 +203,14 @@ export class CColorDialog extends CDialog
 		this.currentColorChanged.emit(this.currentColor());
 	}
 
-/**
-	 * Opens a modal color picker initialized to the supplied color.
-	 * @param initial Initial color to display.
-	 * @param parent Parent widget that owns the dialog, or `null` for a top-level dialog.
-	 * @returns A promise resolving to a copy of the accepted color, or `null` when rejected.
-	 */
-	static getColor(
+    /**
+    * Shows a modal color dialog.
+    *
+    * @param initial Initial color.
+    * @param parent Optional parent widget.
+    * @returns A promise resolving to the selected color, or `null` if rejected.
+    */
+    static getColor(
 		initial: CColor,
 		parent: CWidget | null = null
 	): Promise<CColor | null>
@@ -234,7 +242,7 @@ export class CColorDialog extends CDialog
 		spinBox.setRange(0, 255);
 		spinBox.setValue(value);
         spinBox.setMinimumSize(60, 30);
-        
+
 		return spinBox;
 	}
 
@@ -282,7 +290,7 @@ export class CColorDialog extends CDialog
         let pal = this.#m_display.palette();
         pal.setColor(CPaletteColorRole.Base, color);
         this.#m_display.setPalette(pal);
-		
+
 		this.#m_updating = false;
 	}
 
