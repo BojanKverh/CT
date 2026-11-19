@@ -40,4 +40,4 @@ The older Python audit is retained for comparisons. It uses text heuristics and 
 
 `npm run docs:examples` compiles every TypeScript block in source `@example` tags as a separate module against `src/index.ts`, using the project strict compiler options. The check injects no imports, variables or callbacks. Include imports from `canvas-toolkit-lib` and declare context explicitly, for example as typed parameters of a factory function. Creating widgets at runtime still requires an existing `CApplication`.
 
-Use small examples that demonstrate setup order, signals and failure handling where relevant. The checker validates types, not runtime behavior or network responses. Short contextual fragments in the conceptual guides are outside this source-example check.
+Use small examples that demonstrate setup order, signals and failure handling where relevant. The checker validates types, not runtime behavior or network responses. The complete TypeScript examples in Signals and slots and Model/View are checked by the same command. Contextual fragments in the other conceptual guides remain outside this check.

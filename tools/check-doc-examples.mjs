@@ -1,4 +1,4 @@
-/** Compile every source @example as an independent module, without injected context. */
+/** Compile source @example blocks and the complete examples in selected guides without injected context. */
 import ts from "typescript";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -36,6 +36,17 @@ function collect(directory) {
 }
 collect(join(root, "src"));
 if (examples.length === 0) throw new Error("No source examples found");
+const sourceCount = examples.length;
+// These guides contain complete examples. Other guides may contain contextual fragments.
+for (const guide of ["docs/signals-and-slots.md", "docs/model-view.md"]) {
+    const text = readFileSync(join(root, guide), "utf8").replaceAll("\r\n", "\n");
+    const blocks = [...text.matchAll(/```(?:ts|typescript)\s*\n([\s\S]*?)```/g)];
+    if (blocks.length === 0) throw new Error(guide + ": no TypeScript examples found");
+    for (const block of blocks) {
+        const line = text.slice(0, block.index).split("\n").length;
+        examples.push({ origin: guide + ":" + line, code: block[1] });
+    }
+}
 
 const configFile = ts.readConfigFile(join(root, "tsconfig.build.json"), ts.sys.readFile);
 if (configFile.error) throw new Error(ts.flattenDiagnosticMessageText(configFile.error.messageText, "\n"));
@@ -76,7 +87,7 @@ try {
             ? file.getLineAndCharacterOfPosition(diagnostic.start).line + 1 : undefined;
         console.error(`${origin ?? file?.fileName ?? "TypeScript"}${line ? ` (example line ${line})` : ""}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")}`);
     }
-    console.log(`${examples.length} source examples checked; ${diagnostics.length} errors.`);
+    console.log(`${sourceCount} source examples and ${examples.length - sourceCount} guide examples checked; ${diagnostics.length} errors.`);
     if (diagnostics.length) process.exitCode = 1;
 } finally {
     rmSync(directory, { recursive: true, force: true });
